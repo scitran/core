@@ -6,6 +6,7 @@ import os
 import bson
 import pprint
 import hashlib
+import logging
 import pymongo
 import tarfile
 import webapp2
@@ -14,15 +15,9 @@ import argparse
 
 import nimsutil
 
-#import experiments
-#import subjects
-#import sessions
-#import epochs
-#import users
-#import groups
-
 db = None
 stage_path = None
+log = logging.getLogger('nimsapi')
 
 #resource_types = {
 #        'exp':      experiments,
@@ -281,7 +276,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('uri', help='NIMS DB URI')
         self.add_argument('db', help='NIMS DB name')
         self.add_argument('stage_path', help='path to staging area')
-        self.add_argument('-n', '--logname', default=os.path.splitext(os.path.basename(__file__))[0], help='process name for log')
         self.add_argument('-f', '--logfile', help='path to log file')
         self.add_argument('-l', '--loglevel', default='info', help='path to log file')
         self.add_argument('-q', '--quiet', action='store_true', default=False, help='disable console logging')
@@ -312,7 +306,7 @@ routes = [
 
 if __name__ == '__main__':
     args = ArgumentParser().parse_args()
-    log = nimsutil.get_logger(args.logname, args.logfile, not args.quiet, args.loglevel)
+    nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
     stage_path = args.stage_path
     db = pymongo.MongoClient(*pymongo.uri_parser.parse_host(args.uri))[args.db]
 
@@ -320,6 +314,7 @@ if __name__ == '__main__':
     nimsapi = webapp2.WSGIApplication(routes, debug=True)
     httpserver.serve(nimsapi, host=httpserver.socket.gethostname(), port='8080')
 else:
+    nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
     nimsapi = webapp2.WSGIApplication(routes, debug=True)
 
 
