@@ -4,6 +4,8 @@
 
 import os
 import bson
+import json
+import uuid
 import pprint
 import hashlib
 import logging
@@ -12,6 +14,7 @@ import tarfile
 import webapp2
 import zipfile
 import argparse
+import bson.json_util
 
 import nimsutil
 
@@ -51,7 +54,7 @@ class NIMSAPI(webapp2.RequestHandler):
                 self.abort(406)
             if not tarfile.is_tarfile(upload_filepath) and not zipfile.is_zipfile(upload_filepath):
                 self.abort(415)
-            os.rename(upload_filepath, os.path.join(stage_path, filename))
+            os.rename(upload_filepath, os.path.join(stage_path, str(uuid.uuid1()) + '_' + filename)) # add UUID to prevent clobbering files
 
     def download(self):
         paths = []
@@ -63,9 +66,8 @@ class NIMSAPI(webapp2.RequestHandler):
             symlinks += _idsymlinks
 
     def dump(self):
-        self.response.write('<pre>\n')
-        self.response.write(pprint.pformat(list(db.sessions.find())))
-        self.response.write('</pre>\n')
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.sessions.find()), default=bson.json_util.default))
 
 
 class Experiments(webapp2.RequestHandler):
@@ -80,9 +82,12 @@ class Experiments(webapp2.RequestHandler):
 
     def get(self):
         """Return the list of Experiments."""
-        self.response.write('<pre>\n')
-        self.response.write(pprint.pformat(list(db.experiments.find())))
-        self.response.write('</pre>\n')
+        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
+        user = self.request.remote_user or '@public'
+        query = {'permissions.' + user: {'$exists': 'true'}}
+        projection = {'owner': 1, 'name': 1, 'permissions.' + user: 1}
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.experiments.find(query, projection)), default=bson.json_util.default))
 
     def put(self):
         """Update many Experiments."""
@@ -93,10 +98,10 @@ class Experiment(webapp2.RequestHandler):
 
     def get(self, _id):
         """Return Experiment details."""
-        self.response.write('<pre>\n')
-        self.response.write('experiment %s get, %s\n' % (_id, self.request.params))
-        self.response.write(pprint.pformat(list(db.experiments.find({'_id': bson.objectid.ObjectId(_id)}))))
-        self.response.write('</pre>\n')
+        query = {'_id': bson.objectid.ObjectId(_id)}
+        projection = None
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(db.experiments.find_one(query, projection), default=bson.json_util.default))
 
     def put(self, _id):
         """Update an existing Experiment."""
@@ -118,10 +123,11 @@ class ExperimentSessions(webapp2.RequestHandler):
 
     def get(self, _id):
         """Return the list of Experiment Sessions."""
-        self.response.write('<pre>\n')
-        self.response.write('experiment %s get sessions, %s\n' % (_id, self.request.params))
-        self.response.write(pprint.pformat(list(db.sessions.find({'experiment': bson.objectid.ObjectId(_id)}, ['timestamp']))))
-        self.response.write('</pre>\n')
+        embed_epochs = True if self.request.get('epochs').lower() in ['1', 'true'] else False
+        query = {'experiment': bson.objectid.ObjectId(_id)}
+        projection = {'epochs': embed_epochs}
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.sessions.find(query, projection)), default=bson.json_util.default))
 
 
 class ExperimentDatasets(webapp2.RequestHandler):
@@ -143,7 +149,17 @@ class Sessions(webapp2.RequestHandler):
 
     def get(self):
         """Return the list of Sessions."""
-        self.response.write('list sessions\n')
+        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
+        user = self.request.remote_user or '@public'
+        embed_epochs = True if self.request.get('epochs').lower() in ['1', 'true'] else False
+        query = {'permissions.' + user: {'$exists': 'true'}}
+        projection = {'epochs': embed_epochs}
+        sessions = []
+        for exp in db.experiments.find(query, {}):
+            query = {'experiment': bson.objectid.ObjectId(exp['_id'])}
+            sessions += list(db.sessions.find(query, projection))
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(sessions, default=bson.json_util.default))
 
     def put(self):
         """Update many Sessions."""
@@ -154,10 +170,10 @@ class Session(webapp2.RequestHandler):
 
     def get(self, _id):
         """Return Session details."""
-        self.response.write('<pre>\n')
-        self.response.write('session %s get, %s\n' % (_id, self.request.params))
-        self.response.write(pprint.pformat(list(db.sessions.find({'_id': _id}))))
-        self.response.write('</pre>\n')
+        query = {'_id': _id}
+        projection = None
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(db.sessions.find_one(query, projection), default=bson.json_util.default))
 
     def put(self, _id):
         """Update an existing Session."""
@@ -169,11 +185,10 @@ class Session(webapp2.RequestHandler):
 
     def move(self, _id):
         """
-        Move a Session to another Subject or Experiment.
+        Move a Session to another Experiment.
 
         Usage:
-            /nimsapi/sessions/123/move?dest=subj_456
-            /nimsapi/sessions/123/move?dest=exp_789
+            /nimsapi/sessions/123/move?dest=456
         """
         self.response.write('session %s move, %s\n' % (_id, self.request.params))
 
@@ -182,7 +197,10 @@ class SessionEpochs(webapp2.RequestHandler):
 
     def get(self, _id):
         """Return the list of Session Epochs."""
-        self.response.write('session %s get epochs, %s\n' % (_id, self.request.params))
+        query = {'_id': _id}
+        projection = {'epochs': 1}
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.sessions.find(query, projection)), default=bson.json_util.default))
 
 
 class SessionDatasets(webapp2.RequestHandler):
@@ -204,9 +222,8 @@ class Users(webapp2.RequestHandler):
 
     def get(self):
         """Return the list of Users."""
-        self.response.write('<pre>\n')
-        self.response.write(pprint.pformat(list(db.users.find({}, ['firstname', 'lastname']))))
-        self.response.write('</pre>\n')
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.users.find({}, ['firstname', 'lastname'])), default=bson.json_util.default))
 
     def put(self):
         """Update many Users."""
@@ -217,10 +234,8 @@ class User(webapp2.RequestHandler):
 
     def get(self, _id):
         """Return User details."""
-        self.response.write('<pre>\n')
-        self.response.write('user %s get, %s\n' % (_id, self.request.params))
-        self.response.write(pprint.pformat(list(db.users.find({'_id': _id}))))
-        self.response.write('</pre>\n')
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.users.find({'_id': _id})), default=bson.json_util.default))
 
     def put(self, _id):
         """Update an existing User."""
@@ -243,9 +258,8 @@ class Groups(webapp2.RequestHandler):
 
     def get(self):
         """Return the list of Groups."""
-        self.response.write('<pre>\n')
-        self.response.write(pprint.pformat(list(db.groups.find({}, []))))
-        self.response.write('</pre>\n')
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.groups.find()), default=bson.json_util.default))
 
     def put(self):
         """Update many Groups."""
@@ -256,10 +270,8 @@ class Group(webapp2.RequestHandler):
 
     def get(self, _id):
         """Return Group details."""
-        self.response.write('<pre>\n')
-        self.response.write('group %s get, %s\n' % (_id, self.request.params))
-        self.response.write(pprint.pformat(list(db.groups.find({'_id': _id}))))
-        self.response.write('</pre>\n')
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(json.dumps(list(db.groups.find({'_id': _id})), default=bson.json_util.default))
 
     def put(self, _id):
         """Update an existing Group."""
