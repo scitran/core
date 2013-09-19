@@ -6,7 +6,6 @@ import os
 import bson
 import json
 import uuid
-import pprint
 import hashlib
 import logging
 import pymongo
@@ -18,31 +17,22 @@ import bson.json_util
 
 import nimsutil
 
-db = None
-stage_path = None
-log = logging.getLogger('nimsapi')
+import epochs
+import sessions
+import experiments
+import nimsapiutil
 
-#resource_types = {
-#        'exp':      experiments,
-#        'subj':     subjects,
-#        'sess':     sessions,
-#        'epoch':    epochs,
-#        'uid':      users,
-#        'gid':      groups,
-#        }
+log = logging.getLogger('nimsapi')
 
 
 class NIMSAPI(webapp2.RequestHandler):
 
     def get(self):
-        #a = range(10000000)
-        #b = [i*i for i in a]
-        #return webapp2.redirect('/nimsapi/dump')
         self.response.write('nimsapi\n')
 
     def upload(self, filename):
-        #pprint.pprint(vars(self.request))
         hash_ = hashlib.md5()
+        stage_path = self.app.config['stage_path']
         with nimsutil.TempDir(prefix='.tmp', dir=stage_path) as tempdir_path:
             upload_filepath = os.path.join(tempdir_path, filename)
             log.info(os.path.basename(upload_filepath))
@@ -67,154 +57,14 @@ class NIMSAPI(webapp2.RequestHandler):
 
     def dump(self):
         self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.sessions.find()), default=bson.json_util.default))
+        self.response.write(json.dumps(list(self.app.db.sessions.find()), default=bson.json_util.default))
 
 
-class Experiments(webapp2.RequestHandler):
-
-    def count(self):
-        """Return the number of Experiments."""
-        self.response.write('%d experiments\n' % db.experiments.count())
-
-    def post(self):
-        """Create a new Experiment"""
-        self.response.write('experiments post\n')
-
-    def get(self):
-        """Return the list of Experiments."""
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        user = self.request.remote_user or '@public'
-        query = {'permissions.' + user: {'$exists': 'true'}}
-        projection = {'owner': 1, 'name': 1, 'permissions.' + user: 1}
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.experiments.find(query, projection)), default=bson.json_util.default))
-
-    def put(self):
-        """Update many Experiments."""
-        self.response.write('experiments put\n')
-
-
-class Experiment(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return Experiment details."""
-        query = {'_id': bson.objectid.ObjectId(_id)}
-        projection = None
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(db.experiments.find_one(query, projection), default=bson.json_util.default))
-
-    def put(self, _id):
-        """Update an existing Experiment."""
-        self.response.write('experiment %s put, %s\n' % (_id, self.request.params))
-
-    def delete(self, _id):
-        """Delete an Experiment."""
-        self.response.write('experiment %s delete, %s\n' % (_id, self.request.params))
-
-
-class ExperimentSubjects(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return the list of Experiment Subjects."""
-        self.response.write('experiment %s get subjects, %s\n' % (_id, self.request.params))
-
-
-class ExperimentSessions(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return the list of Experiment Sessions."""
-        embed_epochs = True if self.request.get('epochs').lower() in ['1', 'true'] else False
-        query = {'experiment': bson.objectid.ObjectId(_id)}
-        projection = {'epochs': embed_epochs}
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.sessions.find(query, projection)), default=bson.json_util.default))
-
-
-class ExperimentDatasets(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return the list of Experiment Datasets."""
-        self.response.write('experiment %s get datasets, %s\n' % (_id, self.request.params))
-
-
-class Sessions(webapp2.RequestHandler):
-
-    def count(self):
-        """Return the number of Sessions."""
-        self.response.write('sessions count\n')
-
-    def post(self):
-        """Create a new Session"""
-        self.response.write('sessions post\n')
-
-    def get(self):
-        """Return the list of Sessions."""
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        user = self.request.remote_user or '@public'
-        embed_epochs = True if self.request.get('epochs').lower() in ['1', 'true'] else False
-        query = {'permissions.' + user: {'$exists': 'true'}}
-        projection = {'epochs': embed_epochs}
-        sessions = []
-        for exp in db.experiments.find(query, {}):
-            query = {'experiment': bson.objectid.ObjectId(exp['_id'])}
-            sessions += list(db.sessions.find(query, projection))
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(sessions, default=bson.json_util.default))
-
-    def put(self):
-        """Update many Sessions."""
-        self.response.write('sessions put\n')
-
-
-class Session(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return Session details."""
-        query = {'_id': _id}
-        projection = None
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(db.sessions.find_one(query, projection), default=bson.json_util.default))
-
-    def put(self, _id):
-        """Update an existing Session."""
-        self.response.write('session %s put, %s\n' % (_id, self.request.params))
-
-    def delete(self, _id):
-        """Delete an Session."""
-        self.response.write('session %s delete, %s\n' % (_id, self.request.params))
-
-    def move(self, _id):
-        """
-        Move a Session to another Experiment.
-
-        Usage:
-            /nimsapi/sessions/123/move?dest=456
-        """
-        self.response.write('session %s move, %s\n' % (_id, self.request.params))
-
-
-class SessionEpochs(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return the list of Session Epochs."""
-        query = {'_id': _id}
-        projection = {'epochs': 1}
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.sessions.find(query, projection)), default=bson.json_util.default))
-
-
-class SessionDatasets(webapp2.RequestHandler):
-
-    def get(self, _id):
-        """Return the list of Session Datasets."""
-        self.response.write('session %s get datasets, %s\n' % (_id, self.request.params))
-
-
-class Users(webapp2.RequestHandler):
+class Users(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Users."""
-        self.response.write('%d users\n' % db.users.count())
+        self.response.write('%d users\n' % self.app.db.users.count())
 
     def post(self):
         """Create a new User"""
@@ -223,7 +73,7 @@ class Users(webapp2.RequestHandler):
     def get(self):
         """Return the list of Users."""
         self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.users.find({}, ['firstname', 'lastname'])), default=bson.json_util.default))
+        self.response.write(json.dumps(list(self.app.db.users.find({}, ['firstname', 'lastname'])), default=bson.json_util.default))
 
     def put(self):
         """Update many Users."""
@@ -235,7 +85,7 @@ class User(webapp2.RequestHandler):
     def get(self, _id):
         """Return User details."""
         self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.users.find({'_id': _id})), default=bson.json_util.default))
+        self.response.write(json.dumps(list(self.app.db.users.find({'_id': _id})), default=bson.json_util.default))
 
     def put(self, _id):
         """Update an existing User."""
@@ -250,7 +100,7 @@ class Groups(webapp2.RequestHandler):
 
     def count(self):
         """Return the number of Groups."""
-        self.response.write('%d groups\n' % db.groups.count())
+        self.response.write('%d groups\n' % self.app.db.groups.count())
 
     def post(self):
         """Create a new Group"""
@@ -258,8 +108,9 @@ class Groups(webapp2.RequestHandler):
 
     def get(self):
         """Return the list of Groups."""
+        print 'hit'
         self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.groups.find()), default=bson.json_util.default))
+        self.response.write(json.dumps(list(self.app.db.groups.find()), default=bson.json_util.default))
 
     def put(self):
         """Update many Groups."""
@@ -271,7 +122,7 @@ class Group(webapp2.RequestHandler):
     def get(self, _id):
         """Return Group details."""
         self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(db.groups.find({'_id': _id})), default=bson.json_util.default))
+        self.response.write(json.dumps(list(self.app.db.groups.find({'_id': _id})), default=bson.json_util.default))
 
     def put(self, _id):
         """Update an existing Group."""
@@ -286,7 +137,6 @@ class ArgumentParser(argparse.ArgumentParser):
     def __init__(self):
         super(ArgumentParser, self).__init__()
         self.add_argument('uri', help='NIMS DB URI')
-        self.add_argument('db', help='NIMS DB name')
         self.add_argument('stage_path', help='path to staging area')
         self.add_argument('-f', '--logfile', help='path to log file')
         self.add_argument('-l', '--loglevel', default='info', help='path to log file')
@@ -295,39 +145,36 @@ class ArgumentParser(argparse.ArgumentParser):
 
 routes = [
         webapp2.Route(r'/nimsapi',                                          NIMSAPI),
-        webapp2.Route(r'/nimsapi/upload/<filename:.+>',                     NIMSAPI, handler_method='upload', methods=['PUT']),
+        webapp2.Route(r'/nimsapi/upload/<:.+>',                             NIMSAPI, handler_method='upload', methods=['PUT']),
         webapp2.Route(r'/nimsapi/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
         webapp2.Route(r'/nimsapi/dump',                                     NIMSAPI, handler_method='dump', methods=['GET']),
-        webapp2.Route(r'/nimsapi/experiments',                              Experiments),
-        webapp2.Route(r'/nimsapi/experiments/count',                        Experiments, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/nimsapi/experiments/<_id:[0-9a-f]+>',              Experiment),
-        webapp2.Route(r'/nimsapi/experiments/<_id:[0-9a-f]+>/subjects',     ExperimentSubjects),
-        webapp2.Route(r'/nimsapi/experiments/<_id:[0-9a-f]+>/sessions',     ExperimentSessions),
-        webapp2.Route(r'/nimsapi/experiments/<_id:[0-9a-f]+>/datasets',     ExperimentDatasets),
-        webapp2.Route(r'/nimsapi/sessions',                                 Sessions),
-        webapp2.Route(r'/nimsapi/sessions/count',                           Sessions, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/nimsapi/sessions/<_id:[0-9.]+>',                   Session),
-        webapp2.Route(r'/nimsapi/sessions/<_id:[0-9.]+>/move',              Session, handler_method='move'),
         webapp2.Route(r'/nimsapi/users',                                    Users),
         webapp2.Route(r'/nimsapi/users/count',                              Users, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/nimsapi/users/<_id:.+>',                           User),
+        webapp2.Route(r'/nimsapi/users/<:.+>',                              User),
         webapp2.Route(r'/nimsapi/groups',                                   Groups),
         webapp2.Route(r'/nimsapi/groups/count',                             Groups, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/nimsapi/groups/<_id:.+>',                          Group),
+        webapp2.Route(r'/nimsapi/groups/<:.+>',                             Group),
+        webapp2.Route(r'/nimsapi/experiments',                              experiments.Experiments),
+        webapp2.Route(r'/nimsapi/experiments/count',                        experiments.Experiments, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/nimsapi/experiments/<:[0-9a-f]+>',                 experiments.Experiment),
+        webapp2.Route(r'/nimsapi/experiments/<:[0-9a-f]+>/sessions',        sessions.Sessions),
+        webapp2.Route(r'/nimsapi/sessions/count',                           sessions.Sessions, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/nimsapi/sessions/<:[0-9.]+>',                      sessions.Session),
+        webapp2.Route(r'/nimsapi/sessions/<:[0-9.]+>/move',                 sessions.Session, handler_method='move'),
+        webapp2.Route(r'/nimsapi/sessions/<:[0-9.]+>/epochs',               epochs.Epochs),
+        webapp2.Route(r'/nimsapi/epochs/count',                             epochs.Epochs, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/nimsapi/epochs/<:[0-9a-f]+>',                      epochs.Epoch),
         ]
+
 
 if __name__ == '__main__':
     args = ArgumentParser().parse_args()
     nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
-    stage_path = args.stage_path
-    db = pymongo.MongoClient(*pymongo.uri_parser.parse_host(args.uri))[args.db]
 
     from paste import httpserver
-    nimsapi = webapp2.WSGIApplication(routes, debug=True)
-    httpserver.serve(nimsapi, host=httpserver.socket.gethostname(), port='8080')
-else:
-    nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
-    nimsapi = webapp2.WSGIApplication(routes, debug=True)
+    app = webapp2.WSGIApplication(routes, debug=True, config=dict(stage_path=args.stage_path))
+    app.db = (pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)).get_default_database()
+    httpserver.serve(app, host=httpserver.socket.gethostname(), port='8080')
 
 
 #API = NIMSAPI
@@ -348,10 +195,14 @@ else:
 #    nimsapi = webapp2.WSGIApplication([PathPrefixRoute('/nimsapi', routes)], debug=True)
 
 
-# GUI:
-# /nims/status
-# /nims/browse
-# /nims/experiments
-# /nims/groups
-# /nims/preferences
-# /nims/admin
+# /experiments                  experiment info for all experiments
+# /experiments/ID/sessions      experiment info with embedded sessions for one experiment
+# /experiments/ID/epochs        experiment info with embedded sessions and embedded epochs for one experiment
+# /sessions/ID/epochs           experiment info with embedded sessions and embedded epochs for one session
+
+# /sessions                     experiment info with embedded sessions for all experiments
+# /epochs                       experiment info with embedded sessions and embedded epochs for all sessions
+
+# /experiments/ID               experiment details for one experiment
+# /sessions/ID                  sessions details for one session
+# /epochs/ID                    epoch details for one epoch
