@@ -3,7 +3,6 @@
 # @author:  Gunnar Schaefer
 
 import os
-import bson
 import json
 import uuid
 import hashlib
@@ -159,9 +158,9 @@ routes = [
         webapp2.Route(r'/nimsapi/experiments/<:[0-9a-f]+>',                 experiments.Experiment),
         webapp2.Route(r'/nimsapi/experiments/<:[0-9a-f]+>/sessions',        sessions.Sessions),
         webapp2.Route(r'/nimsapi/sessions/count',                           sessions.Sessions, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/nimsapi/sessions/<:[0-9.]+>',                      sessions.Session),
-        webapp2.Route(r'/nimsapi/sessions/<:[0-9.]+>/move',                 sessions.Session, handler_method='move'),
-        webapp2.Route(r'/nimsapi/sessions/<:[0-9.]+>/epochs',               epochs.Epochs),
+        webapp2.Route(r'/nimsapi/sessions/<:[0-9a-f]+>',                    sessions.Session),
+        webapp2.Route(r'/nimsapi/sessions/<:[0-9a-f]+>/move',               sessions.Session, handler_method='move'),
+        webapp2.Route(r'/nimsapi/sessions/<:[0-9a-f]+>/epochs',             epochs.Epochs),
         webapp2.Route(r'/nimsapi/epochs/count',                             epochs.Epochs, handler_method='count', methods=['GET']),
         webapp2.Route(r'/nimsapi/epochs/<:[0-9a-f]+>',                      epochs.Epoch),
         ]

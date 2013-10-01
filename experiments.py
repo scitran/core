@@ -19,7 +19,7 @@ class Experiments(webapp2.RequestHandler):
         self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
         user = self.request.remote_user or '@public'
         query = {'permissions.' + user: {'$exists': 'true'}}
-        projection = {'owner': 1, 'name': 1, 'permissions.' + user: 1, 'timestamp': 1}
+        projection = {'timestamp': 1, 'owner': 1, 'name': 1, 'permissions.' + user: 1}
         experiments = list(self.app.db.experiments.find(query, projection))
         self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(experiments, default=bson.json_util.default))
@@ -31,12 +31,12 @@ class Experiments(webapp2.RequestHandler):
 
 class Experiment(webapp2.RequestHandler):
 
-    def get(self, _id):
+    def get(self, exp_id):
         """Return one Experiment, conditionally with details."""
         self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
         user = self.request.remote_user or '@public'
-        query = {'_id': bson.objectid.ObjectId(_id), 'permissions.' + user: {'$exists': 'true'}}
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(_id)})
+        query = {'_id': bson.objectid.ObjectId(exp_id), 'permissions.' + user: {'$exists': 'true'}}
+        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(exp_id)})
         if not experiment:
             self.abort(404)
         if user not in experiment['permissions']:
@@ -46,10 +46,10 @@ class Experiment(webapp2.RequestHandler):
         self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(experiment, default=bson.json_util.default))
 
-    def put(self, _id):
+    def put(self, exp_id):
         """Update an existing Experiment."""
-        self.response.write('experiment %s put, %s\n' % (_id, self.request.params))
+        self.response.write('experiment %s put, %s\n' % (exp_id, self.request.params))
 
-    def delete(self, _id):
+    def delete(self, exp_id):
         """Delete an Experiment."""
-        self.response.write('experiment %s delete, %s\n' % (_id, self.request.params))
+        self.response.write('experiment %s delete, %s\n' % (exp_id, self.request.params))

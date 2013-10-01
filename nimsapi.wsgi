@@ -21,7 +21,7 @@ db_uri = 'mongodb://freebox.stanford.edu,freeboxy.stanford.edu/nims?replicaSet=r
 stage_path = '/scratch/upload'
 
 nimsutil.configure_log(logfile, False)
-db_client = pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)
+db_client = pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)
 
 application = webapp2.WSGIApplication(nimsapi.nimsapi.routes, debug=False, config=dict(stage_path=stage_path))
 application.db = db_client.get_default_database()

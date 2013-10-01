@@ -19,7 +19,7 @@ class Epochs(webapp2.RequestHandler):
         """Return the list of Session Epochs."""
         self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
         user = self.request.remote_user or '@public'
-        session = self.app.db.sessions.find_one({'_id': sess_id})
+        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sess_id)})
         if not session:
             self.abort(404)
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
@@ -27,7 +27,9 @@ class Epochs(webapp2.RequestHandler):
             self.abort(500)
         if user not in experiment['permissions']:
             self.abort(403)
-        epochs = list(self.app.db.epochs.find({'session': sess_id}, {'files': 0}))
+        query = {'session': bson.objectid.ObjectId(sess_id)}
+        projection = {'timestamp': 1, 'series': 1, 'acquisition': 1, 'description': 1, 'scan_type': 1}
+        epochs = list(self.app.db.epochs.find(query, projection))
         self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
 

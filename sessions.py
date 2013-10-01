@@ -24,7 +24,9 @@ class Sessions(webapp2.RequestHandler):
             self.abort(404)
         if user not in experiment['permissions']:
             self.abort(403)
-        sessions = list(self.app.db.sessions.find({'experiment': bson.objectid.ObjectId(exp_id)}))
+        query = {'experiment': bson.objectid.ObjectId(exp_id)}
+        projection = {'timestamp': 1, 'exam': 1}
+        sessions = list(self.app.db.sessions.find(query, projection))
         self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(sessions, default=bson.json_util.default))
 
@@ -39,7 +41,7 @@ class Session(webapp2.RequestHandler):
         """Return one Session, conditionally with details."""
         self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
         user = self.request.remote_user or '@public'
-        session = self.app.db.sessions.find_one({'_id': sess_id})
+        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sess_id)})
         if not session:
             self.abort(404)
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
