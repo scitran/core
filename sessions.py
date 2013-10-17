@@ -4,8 +4,10 @@ import json
 import webapp2
 import bson.json_util
 
+import nimsapiutil
 
-class Sessions(webapp2.RequestHandler):
+
+class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Sessions."""
@@ -25,9 +27,8 @@ class Sessions(webapp2.RequestHandler):
         if user not in experiment['permissions']:
             self.abort(403)
         query = {'experiment': bson.objectid.ObjectId(exp_id)}
-        projection = {'timestamp': 1, 'exam': 1}
+        projection = ['timestamp', 'subject']
         sessions = list(self.app.db.sessions.find(query, projection))
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(sessions, default=bson.json_util.default))
 
     def put(self):
@@ -35,7 +36,7 @@ class Sessions(webapp2.RequestHandler):
         self.response.write('sessions put\n')
 
 
-class Session(webapp2.RequestHandler):
+class Session(nimsapiutil.NIMSRequestHandler):
 
     def get(self, sess_id):
         """Return one Session, conditionally with details."""
@@ -49,7 +50,6 @@ class Session(webapp2.RequestHandler):
             self.abort(500)
         if user not in experiment['permissions']:
             self.abort(403)
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(session, default=bson.json_util.default))
 
     def put(self, _id):

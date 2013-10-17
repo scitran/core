@@ -4,8 +4,10 @@ import json
 import webapp2
 import bson.json_util
 
+import nimsapiutil
 
-class Epochs(webapp2.RequestHandler):
+
+class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Epochs."""
@@ -28,9 +30,8 @@ class Epochs(webapp2.RequestHandler):
         if user not in experiment['permissions']:
             self.abort(403)
         query = {'session': bson.objectid.ObjectId(sess_id)}
-        projection = {'timestamp': 1, 'series': 1, 'acquisition': 1, 'description': 1, 'scan_type': 1}
+        projection = ['timestamp', 'series', 'acquisition', 'description', 'datatype']
         epochs = list(self.app.db.epochs.find(query, projection))
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
 
     def put(self):
@@ -38,7 +39,7 @@ class Epochs(webapp2.RequestHandler):
         self.response.write('epochs put\n')
 
 
-class Epoch(webapp2.RequestHandler):
+class Epoch(nimsapiutil.NIMSRequestHandler):
 
     def get(self, epoch_id):
         """Return one Epoch, conditionally with details."""
@@ -55,7 +56,6 @@ class Epoch(webapp2.RequestHandler):
             self.abort(500)
         if user not in experiment['permissions']:
             self.abort(403)
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(epoch, default=bson.json_util.default))
 
     def put(self, _id):

@@ -24,7 +24,7 @@ import nimsapiutil
 log = logging.getLogger('nimsapi')
 
 
-class NIMSAPI(webapp2.RequestHandler):
+class NIMSAPI(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         self.response.write('nimsapi\n')
@@ -55,7 +55,6 @@ class NIMSAPI(webapp2.RequestHandler):
             symlinks += _idsymlinks
 
     def dump(self):
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(list(self.app.db.sessions.find()), default=bson.json_util.default))
 
 
@@ -71,31 +70,32 @@ class Users(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Users."""
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(self.app.db.users.find({}, ['firstname', 'lastname'])), default=bson.json_util.default))
+        projection = ['firstname', 'lastname', 'email_hash']
+        users = list(self.app.db.users.find({}, projection))
+        self.response.write(json.dumps(users, default=bson.json_util.default))
 
     def put(self):
         """Update many Users."""
         self.response.write('users put\n')
 
 
-class User(webapp2.RequestHandler):
+class User(nimsapiutil.NIMSRequestHandler):
 
-    def get(self, _id):
+    def get(self, uid):
         """Return User details."""
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(self.app.db.users.find({'_id': _id})), default=bson.json_util.default))
+        user = self.app.db.users.find_one({'_id': uid})
+        self.response.write(json.dumps(user, default=bson.json_util.default))
 
-    def put(self, _id):
+    def put(self, uid):
         """Update an existing User."""
-        self.response.write('user %s put, %s\n' % (_id, self.request.params))
+        self.response.write('user %s put, %s\n' % (uid, self.request.params))
 
-    def delete(self, _id):
+    def delete(self, uid):
         """Delete an User."""
-        self.response.write('user %s delete, %s\n' % (_id, self.request.params))
+        self.response.write('user %s delete, %s\n' % (uid, self.request.params))
 
 
-class Groups(webapp2.RequestHandler):
+class Groups(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Groups."""
@@ -107,27 +107,27 @@ class Groups(webapp2.RequestHandler):
 
     def get(self):
         """Return the list of Groups."""
-        print 'hit'
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(self.app.db.groups.find()), default=bson.json_util.default))
+        projection = ['_id']
+        groups = list(self.app.db.groups.find({}, projection))
+        self.response.write(json.dumps(groups, default=bson.json_util.default))
 
     def put(self):
         """Update many Groups."""
         self.response.write('groups put\n')
 
 
-class Group(webapp2.RequestHandler):
+class Group(nimsapiutil.NIMSRequestHandler):
 
-    def get(self, _id):
+    def get(self, gid):
         """Return Group details."""
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps(list(self.app.db.groups.find({'_id': _id})), default=bson.json_util.default))
+        group = self.app.db.groups.find_one({'_id': gid})
+        self.response.write(json.dumps(group, default=bson.json_util.default))
 
-    def put(self, _id):
+    def put(self, gid):
         """Update an existing Group."""
-        self.response.write('group %s put, %s\n' % (_id, self.request.params))
+        self.response.write('group %s put, %s\n' % (gid, self.request.params))
 
-    def delete(self, _id):
+    def delete(self, gid):
         """Delete an Group."""
 
 

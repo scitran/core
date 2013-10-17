@@ -4,7 +4,10 @@ import json
 import webapp2
 import bson.json_util
 
-class Experiments(webapp2.RequestHandler):
+import nimsapiutil
+
+
+class Experiments(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Experiments."""
@@ -19,9 +22,8 @@ class Experiments(webapp2.RequestHandler):
         self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
         user = self.request.remote_user or '@public'
         query = {'permissions.' + user: {'$exists': 'true'}}
-        projection = {'timestamp': 1, 'owner': 1, 'name': 1, 'permissions.' + user: 1}
+        projection = ['timestamp', 'group', 'name', 'permissions.'+user]
         experiments = list(self.app.db.experiments.find(query, projection))
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(experiments, default=bson.json_util.default))
 
     def put(self):
@@ -29,7 +31,7 @@ class Experiments(webapp2.RequestHandler):
         self.response.write('experiments put\n')
 
 
-class Experiment(webapp2.RequestHandler):
+class Experiment(nimsapiutil.NIMSRequestHandler):
 
     def get(self, exp_id):
         """Return one Experiment, conditionally with details."""
@@ -43,7 +45,6 @@ class Experiment(webapp2.RequestHandler):
             self.abort(403)
         if experiment['permissions'][user] != 'admin' and experiment['permissions'][user] != 'pi':
             experiment['permissions'] = {user: experiment['permissions'][user]}
-        self.response.headers['Content-Type'] = 'application/json'
         self.response.write(json.dumps(experiment, default=bson.json_util.default))
 
     def put(self, exp_id):
