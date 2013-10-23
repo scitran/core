@@ -19,15 +19,13 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def get(self, sess_id):
         """Return the list of Session Epochs."""
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        user = self.request.remote_user or '@public'
         session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sess_id)})
         if not session:
             self.abort(404)
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
         if not experiment:
             self.abort(500)
-        if user not in experiment['permissions']:
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
             self.abort(403)
         query = {'session': bson.objectid.ObjectId(sess_id)}
         projection = ['timestamp', 'series', 'acquisition', 'description', 'datatype']
@@ -43,8 +41,6 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
 
     def get(self, epoch_id):
         """Return one Epoch, conditionally with details."""
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        user = self.request.remote_user or '@public'
         epoch = self.app.db.epochs.find_one({'_id': bson.objectid.ObjectId(epoch_id)})
         if not epoch:
             self.abort(404)
@@ -54,7 +50,7 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
         if not experiment:
             self.abort(500)
-        if user not in experiment['permissions']:
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
             self.abort(403)
         self.response.write(json.dumps(epoch, default=bson.json_util.default))
 

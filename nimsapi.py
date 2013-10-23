@@ -88,7 +88,25 @@ class User(nimsapiutil.NIMSRequestHandler):
 
     def put(self, uid):
         """Update an existing User."""
-        self.response.write('user %s put, %s\n' % (uid, self.request.params))
+        user = self.app.db.users.find_one({'_id': uid})
+        if not user:
+            self.abort(404)
+        if uid == self.userid or self.user_is_superuser: # users can only update their own info
+            updates = {'$set': {}, '$unset': {}}
+            for k, v in self.request.params.iteritems():
+                if k != 'superuser' and k in user_fields:
+                    updates['$set'][k] = v # FIXME: do appropriate type conversion
+                elif k == 'superuser' and uid == self.userid and self.user_is_superuser is not None: # toggle superuser for requesting user
+                    updates['$set'][k] = v.lower() in ('1', 'true')
+                elif k == 'superuser' and uid != self.userid and self.user_is_superuser:             # enable/disable superuser for other user
+                    if v.lower() in ('1', 'true') and user.get('superuser') is None:
+                        updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
+                    elif v.lower() not in ('1', 'true'):
+                        updates['$unset'][k] = ''
+            user = self.app.db.users.find_and_modify({'_id': uid}, updates, new=True)
+        else:
+            self.abort(403)
+        self.response.write(json.dumps(user, default=bson.json_util.default) + '\n')
 
     def delete(self, uid):
         """Delete an User."""

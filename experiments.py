@@ -19,10 +19,8 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Experiments."""
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        user = self.request.remote_user or '@public'
-        query = {'permissions.' + user: {'$exists': 'true'}}
-        projection = ['timestamp', 'group', 'name', 'permissions.'+user]
+        query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
+        projection = ['timestamp', 'group', 'name', 'permissions.'+self.userid]
         experiments = list(self.app.db.experiments.find(query, projection))
         self.response.write(json.dumps(experiments, default=bson.json_util.default))
 
@@ -35,16 +33,14 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
 
     def get(self, exp_id):
         """Return one Experiment, conditionally with details."""
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        user = self.request.remote_user or '@public'
-        query = {'_id': bson.objectid.ObjectId(exp_id), 'permissions.' + user: {'$exists': 'true'}}
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(exp_id)})
         if not experiment:
             self.abort(404)
-        if user not in experiment['permissions']:
-            self.abort(403)
-        if experiment['permissions'][user] != 'admin' and experiment['permissions'][user] != 'pi':
-            experiment['permissions'] = {user: experiment['permissions'][user]}
+        if not self.user_is_superuser:
+            if self.userid not in experiment['permissions']:
+                self.abort(403)
+            if experiment['permissions'][self.userid] != 'admin' and experiment['permissions'][self.userid] != 'pi':
+                experiment['permissions'] = {self.userid: experiment['permissions'][self.userid]}
         self.response.write(json.dumps(experiment, default=bson.json_util.default))
 
     def put(self, exp_id):
