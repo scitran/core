@@ -20,8 +20,15 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
     def get(self):
         """Return the list of Experiments."""
         query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
-        projection = ['timestamp', 'group', 'name', 'permissions.'+self.userid]
+        projection = ['group', 'name', 'permissions.'+self.userid]
         experiments = list(self.app.db.experiments.find(query, projection))
+        session_aggregates = self.app.db.sessions.aggregate([
+                {'$match': {'experiment': {'$in': [exp['_id'] for exp in experiments]}}},
+                {'$group': {'_id': '$experiment', 'timestamp': {'$max': '$timestamp'}}},
+                ])['result']
+        timestamps = {sa['_id']: sa['timestamp'] for sa in session_aggregates}
+        for exp in experiments:
+            exp['timestamp'] = timestamps[exp['_id']]
         self.response.write(json.dumps(experiments, default=bson.json_util.default))
 
     def put(self):
@@ -36,6 +43,10 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(exp_id)})
         if not experiment:
             self.abort(404)
+        experiment['timestamp'] = self.app.db.sessions.aggregate([
+                {'$match': {'experiment': bson.objectid.ObjectId(exp_id)}},
+                {'$group': {'_id': '$experiment', 'timestamp': {'$max': '$timestamp'}}},
+                ])['result'][0]['timestamp']
         if not self.user_is_superuser:
             if self.userid not in experiment['permissions']:
                 self.abort(403)
