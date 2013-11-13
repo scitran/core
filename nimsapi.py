@@ -29,18 +29,22 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
     def get(self):
         self.response.write('nimsapi\n')
 
-    def upload(self, filename):
-        hash_ = hashlib.md5()
+    def upload(self):
+        # TODO add security: either authenticated user or machine-to-machine CRAM
+        if 'Content-MD5' not in self.request.headers:
+            self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+        filename = self.request.get('filename', 'anonymous')
         stage_path = self.app.config['stage_path']
         with nimsutil.TempDir(prefix='.tmp', dir=stage_path) as tempdir_path:
+            hash_ = hashlib.md5()
             upload_filepath = os.path.join(tempdir_path, filename)
             log.info(os.path.basename(upload_filepath))
             with open(upload_filepath, 'wb') as upload_file:
                 for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
                     hash_.update(chunk)
                     upload_file.write(chunk)
-            if hash_.hexdigest() != self.request.get('md5'):
-                self.abort(406)
+            if hash_.hexdigest() != self.request.headers['Content-MD5']:
+                self.abort(400, 'Content-MD5 mismatch.')
             if not tarfile.is_tarfile(upload_filepath) and not zipfile.is_zipfile(upload_filepath):
                 self.abort(415)
             os.rename(upload_filepath, os.path.join(stage_path, str(uuid.uuid1()) + '_' + filename)) # add UUID to prevent clobbering files
@@ -94,7 +98,7 @@ class User(nimsapiutil.NIMSRequestHandler):
         if uid == self.userid or self.user_is_superuser: # users can only update their own info
             updates = {'$set': {}, '$unset': {}}
             for k, v in self.request.params.iteritems():
-                if k != 'superuser' and k in user_fields:
+                if k != 'superuser' and k in []:#user_fields:
                     updates['$set'][k] = v # FIXME: do appropriate type conversion
                 elif k == 'superuser' and uid == self.userid and self.user_is_superuser is not None: # toggle superuser for requesting user
                     updates['$set'][k] = v.lower() in ('1', 'true')
@@ -162,7 +166,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
 routes = [
         webapp2.Route(r'/nimsapi',                                          NIMSAPI),
-        webapp2.Route(r'/nimsapi/upload/<:.+>',                             NIMSAPI, handler_method='upload', methods=['PUT']),
+        webapp2.Route(r'/nimsapi/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
         webapp2.Route(r'/nimsapi/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
         webapp2.Route(r'/nimsapi/dump',                                     NIMSAPI, handler_method='dump', methods=['GET']),
         webapp2.Route(r'/nimsapi/users',                                    Users),
