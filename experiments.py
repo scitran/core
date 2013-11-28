@@ -9,9 +9,35 @@ import nimsapiutil
 
 class Experiments(nimsapiutil.NIMSRequestHandler):
 
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Experiment List',
+        'type': 'array',
+        'items': {
+            'title': 'Experiment',
+            'type': 'object',
+            'properties': {
+                '_id': {
+                    'title': 'Database ID',
+                },
+                'firstname': {
+                    'title': 'First Name',
+                    'type': 'string',
+                },
+                'lastname': {
+                    'title': 'Last Name',
+                    'type': 'string',
+                },
+                'email_hash': {
+                    'type': 'string',
+                },
+            }
+        }
+    }
+
     def count(self, iid):
         """Return the number of Experiments."""
-        self.response.write('%d experiments\n' % self.app.db.experiments.count())
+        self.response.write(json.dumps(self.app.db.experiments.count()))
 
     def post(self, iid):
         """Create a new Experiment."""
@@ -37,6 +63,41 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
 
 
 class Experiment(nimsapiutil.NIMSRequestHandler):
+
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Experiment',
+        'type': 'object',
+        'properties': {
+            '_id': {
+                'title': 'Database ID',
+            },
+            'timestamp': {
+                'title': 'Timestamp',
+            },
+            'group': {
+                'title': 'Group',
+                'type': 'string',
+            },
+            'name': {
+                'title': 'Name',
+                'type': 'string',
+                'maxLength': 32,
+            },
+            'permissions': {
+                'title': 'Permissions',
+                'type': 'object',
+                'minProperties': 1,
+            },
+            'files': {
+                'title': 'Files',
+                'type': 'array',
+                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'uniqueItems': True,
+            },
+        },
+        'required': ['_id', 'group', 'name'],
+    }
 
     def get(self, iid, xid):
         """Return one Experiment, conditionally with details."""

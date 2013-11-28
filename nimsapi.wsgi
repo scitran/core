@@ -17,11 +17,12 @@ import nimsapi
 import nimsutil
 
 logfile = '/var/local/log/nimsapi.log'
-db_uri = 'mongodb://nimsfs.stanford.edu,nimsbk.stanford.edu/nims?replicaSet=cni'
+db_uri = 'mongodb://nims:cnimr750@cnifs.stanford.edu,cnibk.stanford.edu/nims?replicaSet=cni'
 stage_path = '/scratch/upload'
 
 nimsutil.configure_log(logfile, False)
 db_client = pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)
 
-application = webapp2.WSGIApplication(nimsapi.nimsapi.routes, debug=False, config=dict(stage_path=stage_path))
+application = nimsapi.app
+application.config = dict(stage_path=stage_path))
 application.db = db_client.get_default_database()

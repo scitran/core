@@ -9,9 +9,31 @@ import nimsapiutil
 
 class Sessions(nimsapiutil.NIMSRequestHandler):
 
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Session List',
+        'type': 'array',
+        'items': {
+            'title': 'Session',
+            'type': 'object',
+            'properties': {
+                '_id': {
+                    'title': 'Database ID',
+                },
+                'timestamp': {
+                    'title': 'Timestamp',
+                },
+                'subject': {
+                    'title': 'Subject Code',
+                    'type': 'string',
+                },
+            }
+        }
+    }
+
     def count(self, iid):
         """Return the number of Sessions."""
-        self.response.write('sessions count\n')
+        self.response.write(json.dumps(self.app.db.sessions.count()))
 
     def post(self, iid):
         """Create a new Session"""
@@ -35,6 +57,54 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
 
 class Session(nimsapiutil.NIMSRequestHandler):
+
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Session',
+        'type': 'object',
+        'properties': {
+            '_id': {
+                'title': 'Database ID',
+            },
+            'experiment': {
+                'title': 'Experiment ID',
+            },
+            'timestamp': {
+                'title': 'Timestamp',
+            },
+            'uid': {
+                'title': 'DICOM UID',
+                'type': 'string',
+            },
+            'firstname': {
+                'title': 'First Name',
+                'type': 'string',
+            },
+            'lastname': {
+                'title': 'Last Name',
+                'type': 'string',
+            },
+            'patient_id': {
+                'title': 'Patient ID',
+                'type': 'string',
+            },
+            'subject': {
+                'title': 'Subject Code',
+                'type': 'string',
+            },
+            'exam': {
+                'title': 'Exam Number',
+                'type': 'integer',
+            },
+            'files': {
+                'title': 'Files',
+                'type': 'array',
+                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'uniqueItems': True,
+            },
+        },
+        'required': ['_id', 'experiment', 'uid', 'patient_id', 'subject'],
+    }
 
     def get(self, iid, sid):
         """Return one Session, conditionally with details."""
