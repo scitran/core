@@ -100,7 +100,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         with nimsutil.TempDir(prefix='.tmp', dir=stage_path) as tempdir_path:
             hash_ = hashlib.md5()
             upload_filepath = os.path.join(tempdir_path, filename)
-            log.info('receiving upload ' + os.path.basename(upload_filepath))
+            log.info('upload from ' + self.request.user_agent + ': ' + os.path.basename(upload_filepath))
             with open(upload_filepath, 'wb') as upload_file:
                 for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
                     hash_.update(chunk)
