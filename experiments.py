@@ -9,6 +9,8 @@ import nimsapiutil
 
 class Experiments(nimsapiutil.NIMSRequestHandler):
 
+    """/experiments """
+
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
         'title': 'Experiment List',
@@ -35,15 +37,15 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
         }
     }
 
-    def count(self, iid):
+    def count(self):
         """Return the number of Experiments."""
         self.response.write(json.dumps(self.app.db.experiments.count()))
 
-    def post(self, iid):
+    def post(self):
         """Create a new Experiment."""
         self.response.write('experiments post\n')
 
-    def get(self, iid):
+    def get(self):
         """Return the list of Experiments."""
         query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
         projection = ['group', 'name', 'permissions.'+self.userid]
@@ -57,12 +59,14 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
             exp['timestamp'] = timestamps[exp['_id']]
         self.response.write(json.dumps(experiments, default=bson.json_util.default))
 
-    def put(self, iid):
+    def put(self):
         """Update many Experiments."""
         self.response.write('experiments put\n')
 
 
 class Experiment(nimsapiutil.NIMSRequestHandler):
+
+    """/experiments/<xid> """
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -99,7 +103,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
         'required': ['_id', 'group', 'name'],
     }
 
-    def get(self, iid, xid):
+    def get(self, xid):
         """Return one Experiment, conditionally with details."""
         experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(xid)})
         if not experiment:
@@ -115,10 +119,10 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
                 experiment['permissions'] = {self.userid: experiment['permissions'][self.userid]}
         self.response.write(json.dumps(experiment, default=bson.json_util.default))
 
-    def put(self, iid, xid):
+    def put(self, xid):
         """Update an existing Experiment."""
         self.response.write('experiment %s put, %s\n' % (exp_id, self.request.params))
 
-    def delete(self, iid, xid):
+    def delete(self, xid):
         """Delete an Experiment."""
         self.response.write('experiment %s delete, %s\n' % (exp_id, self.request.params))

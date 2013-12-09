@@ -28,6 +28,8 @@ log = logging.getLogger('nimsapi')
 
 class NIMSAPI(nimsapiutil.NIMSRequestHandler):
 
+    """/nimsapi """
+
     def head(self):
         """Return 200 OK."""
         self.response.set_status(200)
@@ -63,7 +65,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body>\n')
-        self.response.write('<p>nimsapi - ' + self.app.config['site_id'] + '</p>\n')
+        self.response.write('<h1>nimsapi - ' + self.app.config['site_id'] + '</h1>\n')
         self.response.write('<table class="tftable" border="1">\n')
         self.response.write('<tr><th>Resource</th><th>Description</th></tr>\n')
         for r, d in resources:
@@ -108,6 +110,8 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
 
 class Users(nimsapiutil.NIMSRequestHandler):
 
+    """/nimsapi/users """
+
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
         'title': 'User List',
@@ -144,26 +148,28 @@ class Users(nimsapiutil.NIMSRequestHandler):
         }
     }
 
-    def count(self, iid):
+    def count(self):
         """Return the number of Users."""
         self.response.write('%d users\n' % self.app.db.users.count())
 
-    def post(self, iid):
+    def post(self):
         """Create a new User"""
         self.response.write('users post\n')
 
-    def get(self, iid):
+    def get(self):
         """Return the list of Users."""
         projection = ['firstname', 'lastname', 'email_hash']
         users = list(self.app.db.users.find({}, projection))
         self.response.write(json.dumps(users, default=bson.json_util.default))
 
-    def put(self, iid):
+    def put(self):
         """Update many Users."""
         self.response.write('users put\n')
 
 
 class User(nimsapiutil.NIMSRequestHandler):
+
+    """/nimsapi/users/<uid> """
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -202,12 +208,12 @@ class User(nimsapiutil.NIMSRequestHandler):
         'required': ['_id'],
     }
 
-    def get(self, iid, uid):
+    def get(self, uid):
         """Return User details."""
         user = self.app.db.users.find_one({'_id': uid})
         self.response.write(json.dumps(user, default=bson.json_util.default))
 
-    def put(self, iid, uid):
+    def put(self, uid):
         """Update an existing User."""
         user = self.app.db.users.find_one({'_id': uid})
         if not user:
@@ -229,12 +235,14 @@ class User(nimsapiutil.NIMSRequestHandler):
             self.abort(403)
         self.response.write(json.dumps(user, default=bson.json_util.default) + '\n')
 
-    def delete(self, iid, uid):
+    def delete(self, uid):
         """Delete an User."""
         self.response.write('user %s delete, %s\n' % (uid, self.request.params))
 
 
 class Groups(nimsapiutil.NIMSRequestHandler):
+
+    """/nimsapi/groups """
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -252,26 +260,28 @@ class Groups(nimsapiutil.NIMSRequestHandler):
         }
     }
 
-    def count(self, iid):
+    def count(self):
         """Return the number of Groups."""
         self.response.write('%d groups\n' % self.app.db.groups.count())
 
-    def post(self, iid):
+    def post(self):
         """Create a new Group"""
         self.response.write('groups post\n')
 
-    def get(self, iid):
+    def get(self):
         """Return the list of Groups."""
         projection = ['_id']
         groups = list(self.app.db.groups.find({}, projection))
         self.response.write(json.dumps(groups, default=bson.json_util.default))
 
-    def put(self, iid):
+    def put(self):
         """Update many Groups."""
         self.response.write('groups put\n')
 
 
 class Group(nimsapiutil.NIMSRequestHandler):
+
+    """/nimsapi/groups/<gid>"""
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -313,16 +323,16 @@ class Group(nimsapiutil.NIMSRequestHandler):
         'required': ['_id'],
     }
 
-    def get(self, iid, gid):
+    def get(self, gid):
         """Return Group details."""
         group = self.app.db.groups.find_one({'_id': gid})
         self.response.write(json.dumps(group, default=bson.json_util.default))
 
-    def put(self, iid, gid):
+    def put(self, gid):
         """Update an existing Group."""
         self.response.write('group %s put, %s\n' % (gid, self.request.params))
 
-    def delete(self, iid, gid):
+    def delete(self, gid):
         """Delete an Group."""
 
 
@@ -385,8 +395,6 @@ routes = [
         webapp2.Route(r'/dump',                                     NIMSAPI, handler_method='dump', methods=['GET']),
         webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
         webapp2.Route(r'/remotes',                                  Remotes),
-    ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/<iid:[^/]+>', [
         webapp2.Route(r'/users',                                    Users),
         webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
@@ -422,6 +430,7 @@ app = webapp2.WSGIApplication(routes, debug=True)
 if __name__ == '__main__':
     args = ArgumentParser().parse_args()
     nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
+    # TODO: if pubkey not specified, throw log.warning
 
     from paste import httpserver
     app.config = dict(stage_path=args.stage_path, site_id=args.uid, pubkey=args.pubkey)

@@ -9,6 +9,8 @@ import nimsapiutil
 
 class Epochs(nimsapiutil.NIMSRequestHandler):
 
+    """/nimsapi/epochs """
+
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
         'title': 'Epoch List',
@@ -43,15 +45,15 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
         }
     }
 
-    def count(self, iid):
+    def count(self):
         """Return the number of Epochs."""
         self.response.write(json.dumps(self.app.db.epochs.count()))
 
-    def post(self, iid):
+    def post(self):
         """Create a new Epoch."""
         self.response.write('epochs post\n')
 
-    def get(self, iid, sid):
+    def get(self, sid):
         """Return the list of Session Epochs."""
         session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
         if not session:
@@ -66,12 +68,14 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
         epochs = list(self.app.db.epochs.find(query, projection))
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
 
-    def put(self, iid):
+    def put(self):
         """Update many Epochs."""
         self.response.write('epochs put\n')
 
 
 class Epoch(nimsapiutil.NIMSRequestHandler):
+
+    """/nimsapi/epochs/<eid> """
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -209,7 +213,7 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
         'required': ['_id'],
     }
 
-    def get(self, iid, eid):
+    def get(self, eid):
         """Return one Epoch, conditionally with details."""
         epoch = self.app.db.epochs.find_one({'_id': bson.objectid.ObjectId(eid)})
         if not epoch:
@@ -224,10 +228,10 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
             self.abort(403)
         self.response.write(json.dumps(epoch, default=bson.json_util.default))
 
-    def put(self, iid, eid):
+    def put(self, eid):
         """Update an existing Epoch."""
         self.response.write('epoch %s put, %s\n' % (epoch_id, self.request.params))
 
-    def delete(self, iid, eid):
+    def delete(self, eid):
         """Delete an Epoch."""
         self.response.write('epoch %s delete, %s\n' % (epoch_id, self.request.params))
