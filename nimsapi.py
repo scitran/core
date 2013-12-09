@@ -338,42 +338,27 @@ class Group(nimsapiutil.NIMSRequestHandler):
 
 class Remotes(nimsapiutil.NIMSRequestHandler):
 
+    """/nimsapi/remotes """
+
     def get(self):
-        """Return Remote NIMS sites"""
-        logging.info(self.user)
-        # TODO: remotes by default will show all registered remote site
-        if self.request.get('all'):
-            projection = ['_id', 'hostname', 'ip4']
-            sites = list(self.app.db.remotes.find({}, projection))
-            self.response.write(json.dumps(sites, default=bson.json_util.default))
-        # if 'all' not specificed, then user MUST be speficied
-        else:
-            """Return the list of remotes where user has membership"""
-            logging.info(self.user['_id'])
-            # projection = ['_id', 'hostname', 'ip4']
-            projection = ['_id', 'hostname', 'ip4', 'users']
+        """Return the list of remotes where user has membership"""
+        # TODO: implement special 'all' case - report ALL available instances, regardless of user permissions
+        # applies to adding new remote users, need to be able to select from ALL available remote sites
+        # query, user in userlist, _id does not match this site _id
+        query = {'users': {'$in': [self.user['_id']]}, '_id': {'$ne': self.app.config['site_id']}}
+        projection = ['_id']
+        remotes = list(self.app.db.remotes.find(query, projection))
+        data_remotes = []                                   # for list buildup
+        for remote in remotes:
+            # use own API to delegate requests (hacky usage of unit tests)
+            response = self.app.get_response('/nimsapi/experiments?user=' + self.user['_id'] + '&iid=' + remote['_id'], headers=[('User-Agent', 'remotes_requestor')])
+            xpcount = len(json.loads(response.body))
+            if xpcount > 0:
+                log.debug('%s has access to %s expirements on %s' % (self.user['_id'], xpcount, remote['_id']))
+                data_remotes.append(remote['_id'])
 
-            remotes = list(self.app.db.remotes.find({'users': {'$in': [self.user['_id']]}}, projection))
-            self.response.write(json.dumps(remotes, default=bson.json_util.default))
-
-            # TODO: IMPORTANT; refine how remotes are returned from pymongo queries
-
-            # in the list of remotes; in which sites, are there experiments, which the person has access to?
-            # return ONLY remote site names.
-
-            # if not superuser, does person have permissions to what is being queried
-            # query = {'permissions.' + self.userid: {'$in': 'true'}} if not self.user_is_superuser else None
-            # projection = ['_id', 'users', 'hostname', 'ip4']
-            # remotes = list(self.app.db.remotes.find(query, projection))
-
-            # session_aggregates = self.app.db.sessions.aggregate([
-            # #         {'$match': {'experiment': {'$in': [exp['_id'] for exp in experiments]}}},
-            #         {'$group': {'_id': '$experiment', 'timestamp': {'$max': '$timestamp'}}},
-            #         ])['result']
-            # timestamps = {sa['_id']: sa['timestamp'] for sa in session_aggregates}
-            # for exp in experiments:
-            #     exp['timestamp'] = timestamps[exp['_id']]
-            # self.response.write(json.dumps(experiments, default=bson.json_util.default))
+        # return json encoded list of remote site '_id's
+        self.response.write(json.dumps([data_remote for data_remote in data_remotes], indent=4, separators=(',', ': ')))
 
 
 class ArgumentParser(argparse.ArgumentParser):
