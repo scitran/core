@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# @author:  Gunnar Schaefer
+# @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import os
 import json
@@ -10,7 +10,6 @@ import logging
 import pymongo
 import tarfile
 import webapp2
-import requests
 import zipfile
 import argparse
 import bson.json_util
@@ -65,7 +64,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body>\n')
-        self.response.write('<h1>nimsapi - ' + self.app.config['site_id'] + '</h1>\n')
+        self.response.write('<h1>nimsapi - %s </h1>\n' % self.site_id)
         self.response.write('<table class="tftable" border="1">\n')
         self.response.write('<tr><th>Resource</th><th>Description</th></tr>\n')
         for r, d in resources:
@@ -347,10 +346,11 @@ class Remotes(nimsapiutil.NIMSRequestHandler):
         # query, user in userlist, _id does not match this site _id
         query = {'users': {'$in': [self.user['_id']]}, '_id': {'$ne': self.app.config['site_id']}}
         projection = ['_id']
+        # if app has no site-id or pubkey, cannot fetch peer registry, and db.remotes will be empty
         remotes = list(self.app.db.remotes.find(query, projection))
         data_remotes = []                                   # for list buildup
         for remote in remotes:
-            # use own API to delegate requests (hacky usage of unit tests)
+            # use own API to dispatch requests (hacky)
             response = self.app.get_response('/nimsapi/experiments?user=' + self.user['_id'] + '&iid=' + remote['_id'], headers=[('User-Agent', 'remotes_requestor')])
             xpcount = len(json.loads(response.body))
             if xpcount > 0:
@@ -358,7 +358,7 @@ class Remotes(nimsapiutil.NIMSRequestHandler):
                 data_remotes.append(remote['_id'])
 
         # return json encoded list of remote site '_id's
-        self.response.write(json.dumps([data_remote for data_remote in data_remotes], indent=4, separators=(',', ': ')))
+        self.response.write(json.dumps(data_remotes, indent=4, separators=(',', ': ')))
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -367,8 +367,8 @@ class ArgumentParser(argparse.ArgumentParser):
         super(ArgumentParser, self).__init__()
         self.add_argument('uri', help='NIMS DB URI')
         self.add_argument('stage_path', help='path to staging area')
-        self.add_argument('-k', '--pubkey', help='path to public SSL key')
-        self.add_argument('-u', '--uid', default='local', help='site UID')
+        self.add_argument('-k', '--pubkey', help='path to public SSL key file')
+        self.add_argument('-u', '--uid', help='site UID')
         self.add_argument('-f', '--logfile', help='path to log file')
         self.add_argument('-l', '--loglevel', default='info', help='path to log file')
         self.add_argument('-q', '--quiet', action='store_true', default=False, help='disable console logging')
@@ -415,10 +415,14 @@ app = webapp2.WSGIApplication(routes, debug=True)
 if __name__ == '__main__':
     args = ArgumentParser().parse_args()
     nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
-    # TODO: if pubkey not specified, throw log.warning
-
+    if args.pubkey:
+        pubkey = open(args.pubkey).read()  # failure raises a sensible IOError
+        log.debug('SSL pubkey loaded')
+    else:
+        pubkey = None
+        log.warning('PUBKEY NOT SPECIFIED')
     from paste import httpserver
-    app.config = dict(stage_path=args.stage_path, site_id=args.uid, pubkey=args.pubkey)
+    app.config = dict(stage_path=args.stage_path, site_id=args.uid, pubkey=pubkey)
     app.db = (pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)).get_default_database()
     httpserver.serve(app, host=httpserver.socket.gethostname(), port='8080')
 

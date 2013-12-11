@@ -64,34 +64,37 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         self.user_is_superuser = self.user.get('superuser')
         self.response.headers['Content-Type'] = 'application/json'
         self.target_id = self.request.get('iid', None)
-        self.site_id = self.app.config['site_id']
+        self.site_id = self.app.config.get('site_id')           # is ALREADY 'None' if not specified in args, never empty
+        self.pubkey = self.app.config.get('pubkey')             # is ALREADY 'None' if not specified in args, never empty
 
         # requests coming from another NIMS instance are dealt with differently
         if self.request.user_agent.startswith('NIMS Instance'):
-            log.debug("request from '{0}', interNIMS p2p initiated".format(self.request.user_agent))
+            log.debug('request from "{0}", interNIMS p2p initiated'.format(self.request.user_agent))
             try:
                 authinfo = self.request.headers['authorization']
                 challenge_id, digest = base64.b64decode(authinfo).split()
                 user, remote_site = challenge_id.split(':')
-                # log.info('{0} {1} {2}'.format(user, remote_site, digest))
+                # look up pubkey from db.remotes
                 projection = {'_id': False, 'pubkey': True}
                 remote_pubkey = self.app.db.remotes.find_one({'_id': remote_site}, projection)['pubkey']
-                # get the challenge from db.challenges
+                # look up challenge from db.challenges
                 projection = {'_id': False, 'challenge': True}
                 challenge = self.app.db.challenges.find_one({'_id': challenge_id}, projection)['challenge']
-                # purge challenge (challenges are single use)
+                # delete challenge from db.challenges
                 self.app.db.challenges.remove({'_id': challenge_id})
-                # verify
+                # calculate expected response
                 h = Crypto.Hash.HMAC.new(remote_pubkey, challenge)
                 self.expected = base64.b64encode('%s %s' % (challenge_id, h.hexdigest()))
                 log.debug('recieved: %s' % authinfo)
                 log.debug('expected: %s' % self.expected)
+                # verify
                 if self.expected == authinfo:
                     log.debug('CRAM response accepted - %s authenticated' % challenge_id)
                 else:
                     self.abort(403, 'Not Authorized: cram failed')
             except KeyError as e:
                 # send a 401 with a fresh challenge
+                # challenge associated with a challenge-id, cid, to ease lookup
                 cid = self.request.get('cid')
                 if not cid: self.abort(403, 'cid, challenge_id, required')
                 challenge = {'_id': cid,
@@ -107,15 +110,12 @@ class NIMSRequestHandler(webapp2.RequestHandler):
     def dispatch(self):
         """dispatching and request forwarding"""
         if self.target_id in [None, self.site_id]:
-            log.debug('{0} delegating to local {1}'.format(socket.gethostname(), self.request.url))
+            log.debug('{0} dispatching to local {1}'.format(socket.gethostname(), self.request.url))
             super(NIMSRequestHandler, self).dispatch()
-        else:
-            # WORK ON THIS SPOT
-            # capture error, and log.
-            self.pubkey = open(self.app.config['pubkey']).read()
-            # check if pubkey specified, throw error
-
-            log.debug('{0} delegating to remote {1}'.format(socket.gethostname(), self.target_id))
+        elif self.pubkey is None and self.site_id is None:
+            log.warning('target is %s, but no site ID, and no pubkey. cannot dispatch')
+        elif self.pubkey is not None and self.site_id is not None:
+            log.debug('{0} dispatching to remote {1}'.format(socket.gethostname(), self.target_id))
             # is target registered?
             target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id':False, 'hostname':True})
             if not target:
@@ -123,17 +123,15 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 self.abort(403, 'forbidden: site is not registered with interNIMS')
             self.cid = self.userid + ':' + self.site_id
             reqheaders = dict(self.request.headers)
-
             # adjust the request, pass as much of orig request as possible
             reqheaders['User-Agent'] = 'NIMS Instance {0}'.format(self.site_id)
             del reqheaders['Host']
             target_api = 'http://{0}{1}?{2}'.format(target['hostname'], self.request.path, self.request.query_string)
             reqparams = {'cid': self.cid}
-
-            # TODO: error handling for host-down/host-unreachable
             # first attempt, expect 401, send as little as possible...
+            # TODO: error handling for host-down/host-unreachable
+            # TODO: timeout?
             r = requests.request(method=self.request.method, url=target_api, params=reqparams, headers=reqheaders)
-
             if r.status_code == 401:
                 challenge = base64.b64decode(r.headers['www-authenticate'])
                 log.debug('Authorization requested - challenge: %s' % challenge)
@@ -143,7 +141,6 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 log.debug('b4encoded: %s' % response)
                 reqheaders['authorization'] = response
                 r = requests.request(method=self.request.method, url=target_api, params=reqparams, data=self.request.body, headers=reqheaders, cookies=self.request.cookies)
-
             self.response.write(r.content)
 
     def schema(self, *args, **kwargs):
