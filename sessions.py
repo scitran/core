@@ -4,6 +4,7 @@ import json
 import webapp2
 import bson.json_util
 
+import nimsdata
 import nimsapiutil
 
 
@@ -70,35 +71,20 @@ class Session(nimsapiutil.NIMSRequestHandler):
             '_id': {
                 'title': 'Database ID',
             },
+            'uid': {
+                'title': 'UID',
+                'type': 'string',
+            },
             'experiment': {
                 'title': 'Experiment ID',
             },
             'timestamp': {
                 'title': 'Timestamp',
             },
-            'uid': {
-                'title': 'DICOM UID',
-                'type': 'string',
-            },
-            'firstname': {
-                'title': 'First Name',
-                'type': 'string',
-            },
-            'lastname': {
-                'title': 'Last Name',
-                'type': 'string',
-            },
-            'patient_id': {
-                'title': 'Patient ID',
-                'type': 'string',
-            },
             'subject': {
                 'title': 'Subject Code',
                 'type': 'string',
-            },
-            'exam': {
-                'title': 'Exam Number',
-                'type': 'integer',
+                'maxLength': 16,
             },
             'files': {
                 'title': 'Files',
@@ -109,6 +95,12 @@ class Session(nimsapiutil.NIMSRequestHandler):
         },
         'required': ['_id', 'experiment', 'uid', 'patient_id', 'subject'],
     }
+
+    def schema(self, *args, **kwargs):
+        import copy
+        json_schema = copy.deepcopy(self.json_schema)
+        json_schema['properties'].update(nimsdata.NIMSData.session_properties)
+        self.response.write(json.dumps(json_schema, default=bson.json_util.default))
 
     def get(self, sid):
         """Return one Session, conditionally with details."""

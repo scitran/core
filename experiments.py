@@ -22,16 +22,20 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
                 '_id': {
                     'title': 'Database ID',
                 },
-                'firstname': {
-                    'title': 'First Name',
+                'timestamp': {
+                    'title': 'Timestamp',
+                },
+                'group': {
+                    'title': 'Group',
                     'type': 'string',
                 },
-                'lastname': {
-                    'title': 'Last Name',
+                'name': {
+                    'title': 'Name',
                     'type': 'string',
                 },
-                'email_hash': {
-                    'type': 'string',
+                'permissions': {
+                    'title': 'Permissions',
+                    'type': 'object',
                 },
             }
         }
