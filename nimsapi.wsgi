@@ -24,5 +24,5 @@ nimsutil.configure_log(logfile, False)
 db_client = pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)
 
 application = nimsapi.app
-application.config = dict(stage_path=stage_path))
+application.config = dict(stage_path=stage_path, site_id='stanford-cni')
 application.db = db_client.get_default_database()

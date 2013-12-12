@@ -35,44 +35,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return API documentation"""
-        resources = [
-                ('/experiments', 'list of experiments'),
-                ('/collections', 'list of collections'),
-                ('/experiments/<xid>/sessions', 'list of sessions for one experiment'),
-                ('/collections/<xid>/sessions', 'list of sessions for one collection'),
-                ('/sessions/<sid>/epochs', 'list of epochs for one session'),
-                ('', ''),
-                ('/experiments/<xid>', 'details for one experiment'),
-                ('/collections/<xid>', 'details for one collection'),
-                ('/sessions/<sid>', 'details for one session'),
-                ('/epochs/<eid>', 'details for one epoch'),
-                ('', ''),
-                ('/users', 'list of users'),
-                ('/groups', 'list of groups'),
-                ('/users/<uid>', 'details for one user'),
-                ('/groups/<gid>', 'details for one group'),
-        ]
-        self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
-        self.response.write('<html>\n')
-        self.response.write('<head>\n')
-        self.response.write('<title>NIMSAPI</title>\n')
-        self.response.write('<style type="text/css">\n')
-        self.response.write('.tftable {font-size:12px;color:#333333;width:100%;border-width: 1px;border-color: #a9a9a9;border-collapse: collapse;}\n')
-        self.response.write('.tftable th {font-size:12px;background-color:#b8b8b8;border-width: 1px;padding: 8px;border-style: solid;border-color: #a9a9a9;text-align:left;}\n')
-        self.response.write('.tftable tr {background-color:#cdcdcd;}\n')
-        self.response.write('.tftable td {font-size:12px;border-width: 1px;padding: 8px;border-style: solid;border-color: #a9a9a9;}\n')
-        self.response.write('</style>\n')
-        self.response.write('</head>\n')
-        self.response.write('<body>\n')
-        self.response.write('<h1>nimsapi - %s </h1>\n' % self.site_id)
-        self.response.write('<table class="tftable" border="1">\n')
-        self.response.write('<tr><th>Resource</th><th>Description</th></tr>\n')
-        for r, d in resources:
-            r = r.replace('<', '&#60;').replace('>', '&#62;')
-            self.response.write('<tr><td>%s</td><td>%s</td></tr>\n' % (r, d))
-        self.response.write('</table>\n')
-        self.response.write('</body>\n')
-        self.response.write('</html>\n')
+    	return webapp2.redirect('/nimsapi/docs', abort=True)
 
     def upload(self):
         # TODO add security: either authenticated user or machine-to-machine CRAM
