@@ -17,8 +17,7 @@ import nimsapi
 import nimsutil
 
 logfile = '/var/local/log/nimsapi.log'
-db_uri = 'mongodb://coronal2.stanford.edu/nims'
-#db_uri = 'mongodb://nims:cnimr750@cnifs.stanford.edu,cnibk.stanford.edu/nims?replicaSet=cni'
+db_uri = 'mongodb://nims:cnimr750@cnifs.stanford.edu,cnibk.stanford.edu/nims?replicaSet=cni'
 stage_path = '/scratch/upload'
 
 nimsutil.configure_log(logfile, False)
