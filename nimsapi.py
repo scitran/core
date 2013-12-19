@@ -12,6 +12,7 @@ import tarfile
 import webapp2
 import zipfile
 import argparse
+import markdown
 import bson.json_util
 import webapp2_extras.routes
 
@@ -35,7 +36,60 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return API documentation"""
-    	return webapp2.redirect('/nimsapi/docs', abort=True)
+        resource = """Resource                                          | Description
+                      :-------------------------------------------------|:-----------------------
+                      /nimsapi/download                                 | download
+                      /nimsapi/dump                                     | dump
+                      /nimsapi/upload                                   | upload
+                      /nimsapi/remotes                                  | list of remote instances
+                      /nimsapi/users                                    | list of users
+                      /nimsapi/users/count                              | count of users
+                      /nimsapi/users/listschema                         | schema for user list
+                      /nimsapi/users/schema                             | schema for single user
+                      /nimsapi/users/*<uid>*                            | details for one user, *<uid>*
+                      /nimsapi/groups                                   | list of groups
+                      /nimsapi/groups/count                             | count of groups
+                      /nimsapi/groups/listschema                        | schema for group list
+                      /nimsapi/groups/schema                            | schema for single group
+                      /nimsapi/groups/*<gid>*                           | details for one group, *<gid>*
+                      /nimsapi/experiments                              | list of experiments
+                      /nimsapi/experiments/count                        | count of experiments
+                      /nimsapi/experiments/listschema                   | schema for experiment list
+                      /nimsapi/experiments/schema                       | schema for single experiment
+                      /nimsapi/experiments/*<xid>*                      | details for one experiment, *<xid>*
+                      /nimsapi/experiments/*<xid>*/sessions             | list sessions for one experiment, *<xid>*
+                      /nimsapi/sessions/count                           | count of sessions
+                      /nimsapi/sessions/listschema                      | schema for sessions list
+                      /nimsapi/sessions/schema                          | schema for single session
+                      /nimsapi/sessions/*<sid>*                         | details for one session, *<sid>*
+                      /nimsapi/sessions/*<sid>*/move                    | move one session, *<sid>*, to a different experiment
+                      /nimsapi/sessions/*<sid>*/epochs                  | list epochs for one session, *<sid>*
+                      /nimsapi/epochs/count                             | count of epochs
+                      /nimsapi/epochs/listschema                        | schema for epoch list
+                      /nimsapi/epochs/schema                            | schema for single epoch
+                      /nimsapi/epochs/*<eid>*                           | details for one epoch, *<eid>*"""
+        resource = resource.replace('<', '&#60;').replace('>', '&#62;')
+        self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
+        self.response.write('<html>\n')
+        self.response.write('<head>\n')
+        self.response.write('<title>NIMSAPI</title>\n')
+        self.response.write('<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">\n')
+        self.response.write('<style type="text/css">\n')
+        self.response.write('table {width:0%; border-width:1px; padding: 0;border-collapse: collapse;}\n')
+        self.response.write('table tr {border-top: 1px solid #b8b8b8; background-color: white; margin: 0; padding: 0;}\n')
+        self.response.write('table tr:nth-child(2n) {background-color: #f8f8f8;}\n')
+        self.response.write('table thead tr :last-child {width:100%;}\n')
+        self.response.write('table tr th {font-weight: bold; border: 1px solid #b8b8b8; background-color: #cdcdcd; margin: 0; padding: 6px 13px;}\n')
+        self.response.write('table tr th {font-weight: bold; border: 1px solid #b8b8b8; background-color: #cdcdcd; margin: 0; padding: 6px 13px;}\n')
+        self.response.write('table tr td {border: 1px solid #b8b8b8; margin: 0; padding: 6px 13px;}\n')
+        self.response.write('table tr th :first-child, table tr td :first-child {margin-top: 0;}\n')
+        self.response.write('table tr th :last-child, table tr td :last-child {margin-bottom: 0;}\n')
+        self.response.write('</style>\n')
+        self.response.write('</head>\n')
+        self.response.write('<body style="min-width:900px">\n')
+        self.response.write(markdown.markdown(resource, ['extra']))
+        self.response.write('</body>\n')
+        self.response.write('</html>\n')
 
     def upload(self):
         # TODO add security: either authenticated user or machine-to-machine CRAM
