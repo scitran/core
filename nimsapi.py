@@ -3,6 +3,7 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import os
+import re
 import json
 import uuid
 import hashlib
@@ -42,33 +43,33 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
                       /nimsapi/dump                                     | dump
                       /nimsapi/upload                                   | upload
                       /nimsapi/remotes                                  | list of remote instances
-                      /nimsapi/users                                    | list of users
-                      /nimsapi/users/count                              | count of users
-                      /nimsapi/users/listschema                         | schema for user list
-                      /nimsapi/users/schema                             | schema for single user
+                      [(/nimsapi/users)]                                | list of users
+                      [(/nimsapi/users/count)]                          | count of users
+                      [(/nimsapi/users/listschema)]                     | schema for user list
+                      [(/nimsapi/users/schema)]                         | schema for single user
                       /nimsapi/users/*<uid>*                            | details for one user, *<uid>*
-                      /nimsapi/groups                                   | list of groups
-                      /nimsapi/groups/count                             | count of groups
-                      /nimsapi/groups/listschema                        | schema for group list
-                      /nimsapi/groups/schema                            | schema for single group
+                      [(/nimsapi/groups)]                               | list of groups
+                      [(/nimsapi/groups/count)]                         | count of groups
+                      [(/nimsapi/groups/listschema)]                    | schema for group list
+                      [(/nimsapi/groups/schema)]                        | schema for single group
                       /nimsapi/groups/*<gid>*                           | details for one group, *<gid>*
-                      /nimsapi/experiments                              | list of experiments
-                      /nimsapi/experiments/count                        | count of experiments
-                      /nimsapi/experiments/listschema                   | schema for experiment list
-                      /nimsapi/experiments/schema                       | schema for single experiment
+                      [(/nimsapi/experiments)]                          | list of experiments
+                      [(/nimsapi/experiments/count)]                    | count of experiments
+                      [(/nimsapi/experiments/listschema)]               | schema for experiment list
+                      [(/nimsapi/experiments/schema)]                   | schema for single experiment
                       /nimsapi/experiments/*<xid>*                      | details for one experiment, *<xid>*
                       /nimsapi/experiments/*<xid>*/sessions             | list sessions for one experiment, *<xid>*
-                      /nimsapi/sessions/count                           | count of sessions
-                      /nimsapi/sessions/listschema                      | schema for sessions list
-                      /nimsapi/sessions/schema                          | schema for single session
+                      [(/nimsapi/sessions/count)]                       | count of sessions
+                      [(/nimsapi/sessions/listschema)]                  | schema for sessions list
+                      [(/nimsapi/sessions/schema)]                      | schema for single session
                       /nimsapi/sessions/*<sid>*                         | details for one session, *<sid>*
                       /nimsapi/sessions/*<sid>*/move                    | move one session, *<sid>*, to a different experiment
                       /nimsapi/sessions/*<sid>*/epochs                  | list epochs for one session, *<sid>*
-                      /nimsapi/epochs/count                             | count of epochs
-                      /nimsapi/epochs/listschema                        | schema for epoch list
-                      /nimsapi/epochs/schema                            | schema for single epoch
+                      [(/nimsapi/epochs/count)]                         | count of epochs
+                      [(/nimsapi/epochs/listschema)]                    | schema for epoch list
+                      [(/nimsapi/epochs/schema)]                        | schema for single epoch
                       /nimsapi/epochs/*<eid>*                           | details for one epoch, *<eid>*"""
-        resource = resource.replace('<', '&#60;').replace('>', '&#62;')
+        resource = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resource).replace('<', '&lt;').replace('>', '&gt;')
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
         self.response.write('<html>\n')
         self.response.write('<head>\n')
@@ -307,6 +308,11 @@ class Group(nimsapiutil.NIMSRequestHandler):
             '_id': {
                 'title': 'Database ID',
                 'type': 'string',
+            },
+            'name': {
+                'title': 'Name',
+                'type': 'string',
+                'maxLength': 32,
             },
             'pis': {
                 'title': 'PIs',
