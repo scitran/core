@@ -20,10 +20,9 @@ import Crypto.PublicKey.RSA
 
 import nimsutil
 
-import epochs
-import sessions
 import experiments
 import nimsapiutil
+import collections_
 
 log = logging.getLogger('nimsapi')
 
@@ -39,38 +38,45 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
     def get(self):
         """Return API documentation"""
         resources = """
-                      Resource                                          | Description
-                      :-------------------------------------------------|:-----------------------
-                      /nimsapi/download                                 | download
-                      /nimsapi/dump                                     | dump
-                      /nimsapi/upload                                   | upload
-                      /nimsapi/remotes                                  | list of remote instances
-                      [(/nimsapi/users)]                                | list of users
-                      [(/nimsapi/users/count)]                          | count of users
-                      [(/nimsapi/users/listschema)]                     | schema for user list
-                      [(/nimsapi/users/schema)]                         | schema for single user
-                      /nimsapi/users/*<uid>*                            | details for one user, *<uid>*
-                      [(/nimsapi/groups)]                               | list of groups
-                      [(/nimsapi/groups/count)]                         | count of groups
-                      [(/nimsapi/groups/listschema)]                    | schema for group list
-                      [(/nimsapi/groups/schema)]                        | schema for single group
-                      /nimsapi/groups/*<gid>*                           | details for one group, *<gid>*
-                      [(/nimsapi/experiments)]                          | list of experiments
-                      [(/nimsapi/experiments/count)]                    | count of experiments
-                      [(/nimsapi/experiments/listschema)]               | schema for experiment list
-                      [(/nimsapi/experiments/schema)]                   | schema for single experiment
-                      /nimsapi/experiments/*<xid>*                      | details for one experiment, *<xid>*
-                      /nimsapi/experiments/*<xid>*/sessions             | list sessions for one experiment, *<xid>*
-                      [(/nimsapi/sessions/count)]                       | count of sessions
-                      [(/nimsapi/sessions/listschema)]                  | schema for sessions list
-                      [(/nimsapi/sessions/schema)]                      | schema for single session
-                      /nimsapi/sessions/*<sid>*                         | details for one session, *<sid>*
-                      /nimsapi/sessions/*<sid>*/move                    | move one session, *<sid>*, to a different experiment
-                      /nimsapi/sessions/*<sid>*/epochs                  | list epochs for one session, *<sid>*
-                      [(/nimsapi/epochs/count)]                         | count of epochs
-                      [(/nimsapi/epochs/listschema)]                    | schema for epoch list
-                      [(/nimsapi/epochs/schema)]                        | schema for single epoch
-                      /nimsapi/epochs/*<eid>*                           | details for one epoch, *<eid>*"""
+            Resource                                            | Description
+            :---------------------------------------------------|:-----------------------
+            nimsapi/download                                    | download
+            nimsapi/upload                                      | upload
+            nimsapi/remotes                                     | list of remote instances
+            [(nimsapi/users)]                                   | list of users
+            [(nimsapi/users/count)]                             | count of users
+            [(nimsapi/users/listschema)]                        | schema for user list
+            [(nimsapi/users/schema)]                            | schema for single user
+            nimsapi/users/*<uid>*                               | details for user *<uid>*
+            [(nimsapi/groups)]                                  | list of groups
+            [(nimsapi/groups/count)]                            | count of groups
+            [(nimsapi/groups/listschema)]                       | schema for group list
+            [(nimsapi/groups/schema)]                           | schema for single group
+            nimsapi/groups/*<gid>*                              | details for group *<gid>*
+            [(nimsapi/experiments)]                             | list of experiments
+            [(nimsapi/experiments/count)]                       | count of experiments
+            [(nimsapi/experiments/listschema)]                  | schema for experiment list
+            [(nimsapi/experiments/schema)]                      | schema for single experiment
+            nimsapi/experiments/*<xid>*                         | details for experiment *<xid>*
+            nimsapi/experiments/*<xid>*/sessions                | list sessions for experiment *<xid>*
+            [(nimsapi/sessions/count)]                          | count of sessions
+            [(nimsapi/sessions/listschema)]                     | schema for sessions list
+            [(nimsapi/sessions/schema)]                         | schema for single session
+            nimsapi/sessions/*<sid>*                            | details for session *<sid>*
+            nimsapi/sessions/*<sid>*/move                       | move session *<sid>* to a different experiment
+            nimsapi/sessions/*<sid>*/epochs                     | list epochs for session *<sid>*
+            [(nimsapi/epochs/count)]                            | count of epochs
+            [(nimsapi/epochs/listschema)]                       | schema for epoch list
+            [(nimsapi/epochs/schema)]                           | schema for single epoch
+            nimsapi/epochs/*<eid>*                              | details for epoch *<eid>*
+            [(nimsapi/collections)]                             | list of collections
+            [(nimsapi/collections/count)]                       | count of collections
+            [(nimsapi/collections/listschema)]                  | schema for collections list
+            [(nimsapi/collections/schema)]                      | schema for single collection
+            nimsapi/collections/*<cid>*                         | details for collection *<cid>*
+            nimsapi/collections/*<cid>*/sessions                | list sessions for collection *<cid>*
+            nimsapi/collections/*<cid>*/epochs?session=*<sid>*  | list of epochs for collection *<cid>*, optionally restricted to session *<sid>*
+            """
         resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resources).replace('<', '&lt;').replace('>', '&gt;').strip()
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
         self.response.write('<html>\n')
@@ -122,9 +128,6 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             _idpaths, _idsymlinks = resource_types[type_].download_info(_id)
             paths += _idpaths
             symlinks += _idsymlinks
-
-    def dump(self):
-        self.response.write(json.dumps(list(self.app.db.sessions.find()), default=bson.json_util.default))
 
 
 class Users(nimsapiutil.NIMSRequestHandler):
@@ -392,7 +395,7 @@ class ArgumentParser(argparse.ArgumentParser):
         super(ArgumentParser, self).__init__()
         self.add_argument('uri', help='NIMS DB URI')
         self.add_argument('stage_path', help='path to staging area')
-        self.add_argument('--privkey', help='path to private SSL key file')
+        self.add_argument('-k', '--privkey', help='path to private SSL key file')
         self.add_argument('-u', '--uid', help='site UID')
         self.add_argument('-f', '--logfile', help='path to log file')
         self.add_argument('-l', '--loglevel', default='info', help='path to log file')
@@ -402,7 +405,6 @@ routes = [
     webapp2.Route(r'/nimsapi',                                      NIMSAPI),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
         webapp2.Route(r'/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
-        webapp2.Route(r'/dump',                                     NIMSAPI, handler_method='dump', methods=['GET']),
         webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
         webapp2.Route(r'/remotes',                                  Remotes),
         webapp2.Route(r'/users',                                    Users),
@@ -420,17 +422,24 @@ routes = [
         webapp2.Route(r'/experiments/listschema',                   experiments.Experiments, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/experiments/schema',                       experiments.Experiment, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/experiments/<xid:[0-9a-f]{24}>',           experiments.Experiment),
-        webapp2.Route(r'/experiments/<xid:[0-9a-f]{24}>/sessions',  sessions.Sessions),
-        webapp2.Route(r'/sessions/count',                           sessions.Sessions, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/sessions/listschema',                      sessions.Sessions, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/sessions/schema',                          sessions.Session, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>',              sessions.Session),
-        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>/move',         sessions.Session, handler_method='move'),
-        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>/epochs',       epochs.Epochs),
-        webapp2.Route(r'/epochs/count',                             epochs.Epochs, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/epochs/listschema',                        epochs.Epochs, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/epochs/schema',                            epochs.Epoch, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/epochs/<eid:[0-9a-f]{24}>',                epochs.Epoch),
+        webapp2.Route(r'/experiments/<xid:[0-9a-f]{24}>/sessions',  experiments.Sessions),
+        webapp2.Route(r'/sessions/count',                           experiments.Sessions, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/sessions/listschema',                      experiments.Sessions, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/sessions/schema',                          experiments.Session, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>',              experiments.Session),
+        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>/move',         experiments.Session, handler_method='move'),
+        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>/epochs',       experiments.Epochs),
+        webapp2.Route(r'/epochs/count',                             experiments.Epochs, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/epochs/listschema',                        experiments.Epochs, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/epochs/schema',                            experiments.Epoch, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/epochs/<eid:[0-9a-f]{24}>',                experiments.Epoch),
+        webapp2.Route(r'/collections',                              collections_.Collections),
+        webapp2.Route(r'/collections/count',                        collections_.Collections, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/collections/listschema',                   collections_.Collections, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/collections/schema',                       collections_.Collection, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>',           collections_.Collection),
+        webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>/sessions',  collections_.Sessions),
+        webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>/epochs',    collections_.Epochs),
     ]),
 ]
 

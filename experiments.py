@@ -4,6 +4,7 @@ import json
 import webapp2
 import bson.json_util
 
+#import nimsdata
 import nimsapiutil
 
 
@@ -22,8 +23,9 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
                 '_id': {
                     'title': 'Database ID',
                 },
-                'timestamp': {
-                    'title': 'Timestamp',
+                'site': {
+                    'title': 'Site',
+                    'type': 'string',
                 },
                 'group': {
                     'title': 'Group',
@@ -32,6 +34,9 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
                 'name': {
                     'title': 'Name',
                     'type': 'string',
+                },
+                'timestamp': {
+                    'title': 'Timestamp',
                 },
                 'permissions': {
                     'title': 'Permissions',
@@ -54,13 +59,14 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
         query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
         projection = ['group', 'name', 'permissions.'+self.userid]
         experiments = list(self.app.db.experiments.find(query, projection))
-        session_aggregates = self.app.db.sessions.aggregate([
+        aggregated_sessions = self.app.db.sessions.aggregate([
                 {'$match': {'experiment': {'$in': [exp['_id'] for exp in experiments]}}},
                 {'$group': {'_id': '$experiment', 'timestamp': {'$max': '$timestamp'}}},
                 ])['result']
-        timestamps = {sa['_id']: sa['timestamp'] for sa in session_aggregates}
+        timestamps = {agg_sess['_id']: agg_sess['timestamp'] for agg_sess in aggregated_sessions}
         for exp in experiments:
             exp['timestamp'] = timestamps[exp['_id']]
+            exp['site'] = self.app.config['site_id']
         self.response.write(json.dumps(experiments, default=bson.json_util.default))
 
     def put(self):
@@ -80,8 +86,9 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
             '_id': {
                 'title': 'Database ID',
             },
-            'timestamp': {
-                'title': 'Timestamp',
+            'site': {
+                'title': 'Site',
+                'type': 'string',
             },
             'group': {
                 'title': 'Group',
@@ -91,6 +98,9 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
                 'title': 'Name',
                 'type': 'string',
                 'maxLength': 32,
+            },
+            'timestamp': {
+                'title': 'Timestamp',
             },
             'permissions': {
                 'title': 'Permissions',
@@ -104,7 +114,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
                 'uniqueItems': True,
             },
         },
-        'required': ['_id', 'group', 'name'],
+        'required': ['_id', 'group', 'name'], #FIXME
     }
 
     def get(self, xid):
@@ -130,3 +140,246 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
     def delete(self, xid):
         """Delete an Experiment."""
         self.response.write('experiment %s delete, %s\n' % (exp_id, self.request.params))
+
+
+class Sessions(nimsapiutil.NIMSRequestHandler):
+
+    """/sessions """
+
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Session List',
+        'type': 'array',
+        'items': {
+            'title': 'Session',
+            'type': 'object',
+            'properties': {
+                '_id': {
+                    'title': 'Database ID',
+                },
+                'name': {
+                    'title': 'Session',
+                    'type': 'string',
+                },
+                'subject': {
+                    'title': 'Subject',
+                    'type': 'string',
+                },
+                'site': {
+                    'title': 'Site',
+                    'type': 'string',
+                },
+            }
+        }
+    }
+
+    def count(self):
+        """Return the number of Sessions."""
+        self.response.write(json.dumps(self.app.db.sessions.count()))
+
+    def post(self):
+        """Create a new Session"""
+        self.response.write('sessions post\n')
+
+    def get(self, xid):
+        """Return the list of Experiment Sessions."""
+        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(xid)})
+        if not experiment:
+            self.abort(404)
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
+            self.abort(403)
+        query = {'experiment': bson.objectid.ObjectId(xid)}
+        projection = ['name', 'subject']
+        sessions = list(self.app.db.sessions.find(query, projection))
+        self.response.write(json.dumps(sessions, default=bson.json_util.default))
+
+    def put(self):
+        """Update many Sessions."""
+        self.response.write('sessions put\n')
+
+
+class Session(nimsapiutil.NIMSRequestHandler):
+
+    """/sessions/<sid> """
+
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Session',
+        'type': 'object',
+        'properties': {
+            '_id': {
+                'title': 'Database ID',
+            },
+            'uid': {
+                'title': 'UID',
+                'type': 'string',
+            },
+            'experiment': {
+                'title': 'Experiment ID',
+            },
+            'site': {
+                'title': 'Site',
+                'type': 'string',
+            },
+            'files': {
+                'title': 'Files',
+                'type': 'array',
+                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'uniqueItems': True,
+            },
+        },
+        'required': ['_id', 'experiment', 'uid', 'patient_id', 'subject'], #FIXME
+    }
+
+    def schema(self, *args, **kwargs):
+        import copy
+        json_schema = copy.deepcopy(self.json_schema)
+        json_schema['properties'].update(nimsdata.NIMSData.session_properties)
+        self.response.write(json.dumps(json_schema, default=bson.json_util.default))
+
+    def get(self, sid):
+        """Return one Session, conditionally with details."""
+        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
+        if not session:
+            self.abort(404)
+        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        if not experiment:
+            self.abort(500)
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
+            self.abort(403)
+        self.response.write(json.dumps(session, default=bson.json_util.default))
+
+    def put(self, sid):
+        """Update an existing Session."""
+        self.response.write('session %s put, %s\n' % (sid, self.request.params))
+
+    def delete(self, sid):
+        """Delete an Session."""
+        self.response.write('session %s delete, %s\n' % (sid, self.request.params))
+
+    def move(self, sid):
+        """
+        Move a Session to another Experiment.
+
+        Usage:
+            /nimsapi/sessions/123/move?dest=456
+        """
+        self.response.write('session %s move, %s\n' % (sid, self.request.params))
+
+
+class Epochs(nimsapiutil.NIMSRequestHandler):
+
+    """/nimsapi/epochs """
+
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Epoch List',
+        'type': 'array',
+        'items': {
+            'title': 'Epoch',
+            'type': 'object',
+            'properties': {
+                '_id': {
+                    'title': 'Database ID',
+                },
+                'name': {
+                    'title': 'Epoch',
+                    'type': 'string',
+                },
+                'description': {
+                    'title': 'Description',
+                    'type': 'string',
+                },
+                'datatype': {
+                    'title': 'Datatype',
+                    'type': 'string',
+                },
+            }
+        }
+    }
+
+    def count(self):
+        """Return the number of Epochs."""
+        self.response.write(json.dumps(self.app.db.epochs.count()))
+
+    def post(self):
+        """Create a new Epoch."""
+        self.response.write('epochs post\n')
+
+    def get(self, sid):
+        """Return the list of Session Epochs."""
+        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
+        if not session:
+            self.abort(404)
+        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        if not experiment:
+            self.abort(500)
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
+            self.abort(403)
+        query = {'session': bson.objectid.ObjectId(sid)}
+        projection = ['name', 'description', 'datatype']
+        epochs = list(self.app.db.epochs.find(query, projection))
+        self.response.write(json.dumps(epochs, default=bson.json_util.default))
+
+    def put(self):
+        """Update many Epochs."""
+        self.response.write('epochs put\n')
+
+
+class Epoch(nimsapiutil.NIMSRequestHandler):
+
+    """/nimsapi/epochs/<eid> """
+
+    json_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'Epoch',
+        'type': 'object',
+        'properties': {
+            '_id': {
+                'title': 'Database ID',
+            },
+            'uid': {
+                'title': 'UID',
+                'type': 'string',
+            },
+            'session': {
+                'title': 'Session ID',
+            },
+            'files': {
+                'title': 'Files',
+                'type': 'array',
+                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'uniqueItems': True,
+            },
+        },
+        'required': ['_id'], #FIXME
+    }
+
+    def schema(self, *args, **kwargs):
+        import copy
+        json_schema = copy.deepcopy(self.json_schema)
+        json_schema['properties'].update(nimsdata.nimsdicom.NIMSDicom.epoch_properties)
+        self.response.write(json.dumps(json_schema, default=bson.json_util.default))
+
+    def get(self, eid):
+        """Return one Epoch, conditionally with details."""
+        epoch = self.app.db.epochs.find_one({'_id': bson.objectid.ObjectId(eid)})
+        if not epoch:
+            self.abort(404)
+        session = self.app.db.sessions.find_one({'_id': epoch['session']})
+        if not session:
+            self.abort(500)
+        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        if not experiment:
+            self.abort(500)
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
+            self.abort(403)
+        self.response.write(json.dumps(epoch, default=bson.json_util.default))
+
+    def put(self, eid):
+        """Update an existing Epoch."""
+        self.response.write('epoch %s put, %s\n' % (epoch_id, self.request.params))
+
+    def delete(self, eid):
+        """Delete an Epoch."""
+        self.response.write('epoch %s delete, %s\n' % (epoch_id, self.request.params))

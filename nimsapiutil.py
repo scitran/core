@@ -27,17 +27,9 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         'title': 'File',
         'type': 'object',
         'properties': {
-            'datakind': {
-                'title': 'Data Kind',
-                'type': 'string',
-            },
-            'datatype': {
-                'title': 'Data Type',
-                'type': 'string',
-            },
-            'filetype': {
-                'title': 'File Type',
-                'type': 'string',
+            'type': {
+                'title': 'Type',
+                'type': 'array',
             },
             'filename': {
                 'title': 'File Name',
