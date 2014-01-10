@@ -456,10 +456,10 @@ if __name__ == '__main__':
         privkey = None
         log.warning('PRIVKEY NOT SPECIFIED')
 
-    from paste import httpserver
+    import paste.httpserver
     app.config = dict(stage_path=args.stage_path, site_id=args.uid, privkey=privkey)
     app.db = (pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)).get_default_database()
-    httpserver.serve(app, host=httpserver.socket.gethostname(), port='8080')
+    paste.httpserver.serve(app, port='8080')
 
 # import nimsapi, webapp2, pymongo, bson.json_util
 # nimsapi.app.db = pymongo.MongoClient('mongodb://nims:cnimr750@slice.stanford.edu/nims').get_default_database()
