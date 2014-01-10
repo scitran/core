@@ -189,7 +189,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
             self.abort(403)
         query = {'experiment': bson.objectid.ObjectId(xid)}
-        projection = ['name', 'subject']
+        projection = ['name', 'subject', 'notes']
         sessions = list(self.app.db.sessions.find(query, projection))
         self.response.write(json.dumps(sessions, default=bson.json_util.default))
 
@@ -251,7 +251,19 @@ class Session(nimsapiutil.NIMSRequestHandler):
 
     def put(self, sid):
         """Update an existing Session."""
-        self.response.write('session %s put, %s\n' % (sid, self.request.params))
+        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
+        if not session:
+            self.abort(404)
+        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        if not experiment:
+            self.abort(500)
+        if not self.user_is_superuser and self.userid not in experiment['permissions']:
+            self.abort(403)
+        updates = {'$set': {}, '$unset': {}}
+        for k, v in self.request.params.iteritems():
+            if k in ['notes']:
+                updates['$set'][k] = v # FIXME: do appropriate type conversion
+        self.app.db.sessions.update({'_id': bson.objectid.ObjectId(sid)}, updates)
 
     def delete(self, sid):
         """Delete an Session."""
