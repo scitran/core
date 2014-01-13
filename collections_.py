@@ -44,9 +44,6 @@ class Collections(nimsapiutil.NIMSRequestHandler):
                     'title': 'Name',
                     'type': 'string',
                 },
-                'timestamp': {
-                    'title': 'Timestamp',
-                },
                 'permissions': {
                     'title': 'Permissions',
                     'type': 'object',
@@ -68,13 +65,6 @@ class Collections(nimsapiutil.NIMSRequestHandler):
         query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
         projection = ['curator', 'name', 'permissions.'+self.userid]
         collections = list(self.app.db.collections.find(query, projection))
-        #session_aggregates = self.app.db.sessions.aggregate([
-        #        {'$match': {'collection': {'$in': [col['_id'] for col in collections]}}},
-        #        {'$group': {'_id': '$collection', 'timestamp': {'$max': '$timestamp'}}},
-        #        ])['result']
-        #timestamps = {sa['_id']: sa['timestamp'] for sa in session_aggregates}
-        #for col in collections:
-        #    col['timestamp'] = timestamps[col['_id']]
         self.response.write(json.dumps(collections, default=bson.json_util.default))
 
     def put(self):
@@ -107,9 +97,6 @@ class Collection(nimsapiutil.NIMSRequestHandler):
                 'type': 'string',
                 'maxLength': 32,
             },
-            'timestamp': {
-                'title': 'Timestamp',
-            },
             'permissions': {
                 'title': 'Permissions',
                 'type': 'object',
@@ -130,10 +117,6 @@ class Collection(nimsapiutil.NIMSRequestHandler):
         collection = self.app.db.collections.find_one({'_id': bson.objectid.ObjectId(cid)})
         if not collection:
             self.abort(404)
-        collection['timestamp'] = self.app.db.sessions.aggregate([
-                {'$match': {'collection': bson.objectid.ObjectId(cid)}},
-                {'$group': {'_id': '$collection', 'timestamp': {'$max': '$timestamp'}}},
-                ])['result'][0]['timestamp']
         if not self.user_is_superuser:
             if self.userid not in collection['permissions']:
                 self.abort(403)
