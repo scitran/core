@@ -27,8 +27,11 @@ db_client = pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else
 
 try:
     privkey = Crypto.PublicKey.RSA.importKey(open(privkey_file).read())
-except ValueError as e:
+except:
+    print privkey_file + ' is not a valid private SSL key file' # FIXME use logging
     privkey = None
+else:
+    print 'successfully loaded private SSL key from ' + privkey_file # FIXME use logging
 
 application = nimsapi.app
 application.config = dict(stage_path=stage_path, site_id='stanford_cni', privkey=privkey)

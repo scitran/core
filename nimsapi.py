@@ -451,10 +451,10 @@ if __name__ == '__main__':
 
     if args.privkey:
         privkey = Crypto.PublicKey.RSA.importKey(open(args.privkey).read())
-        log.debug('SSL private key loaded')
+        log.info('private SSL key loaded successfully')
     else:
         privkey = None
-        log.warning('PRIVKEY NOT SPECIFIED')
+        log.warning('private SSL key not specified: internims functionality disabled')
 
     import paste.httpserver
     app.config = dict(stage_path=args.stage_path, site_id=args.uid, privkey=privkey)
@@ -463,6 +463,8 @@ if __name__ == '__main__':
 
 # import nimsapi, webapp2, pymongo, bson.json_util
 # nimsapi.app.db = pymongo.MongoClient('mongodb://nims:cnimr750@slice.stanford.edu/nims').get_default_database()
-# response = webapp2.Request.blank('/nimsapi/local/users').get_response(nimsapi.app)
+# nimsapi.app.config['site_id'] = 'local'
+# headers = [('User-Agent', 'nimsfs')]
+# response = webapp2.Request.blank('/nimsapi/experiments?user=gsfr', headers=headers).get_response(nimsapi.app)
 # response.status
 # response.body

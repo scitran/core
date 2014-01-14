@@ -57,8 +57,8 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         self.user = self.app.db.users.find_one({'_id': self.userid})
         self.user_is_superuser = self.user.get('superuser')
         self.target_id = self.request.get('iid', None)
-        self.site_id = self.app.config.get('site_id')           # is ALREADY 'None' if not specified in args, never empty
-        self.privkey = self.app.config.get('privkey')           # is ALREADY 'None' if not specified in args, never empty
+        self.site_id = self.app.config['site_id']
+        self.privkey = self.app.config['privkey']
 
     def dispatch(self):
         """dispatching and request forwarding"""
