@@ -16,6 +16,7 @@ import argparse
 import markdown
 import bson.json_util
 import webapp2_extras.routes
+import Crypto.PublicKey.RSA
 
 import nimsutil
 
@@ -37,7 +38,8 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return API documentation"""
-        resource = """Resource                                          | Description
+        resources = """
+                      Resource                                          | Description
                       :-------------------------------------------------|:-----------------------
                       /nimsapi/download                                 | download
                       /nimsapi/dump                                     | dump
@@ -69,7 +71,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
                       [(/nimsapi/epochs/listschema)]                    | schema for epoch list
                       [(/nimsapi/epochs/schema)]                        | schema for single epoch
                       /nimsapi/epochs/*<eid>*                           | details for one epoch, *<eid>*"""
-        resource = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resource).replace('<', '&lt;').replace('>', '&gt;')
+        resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resources).replace('<', '&lt;').replace('>', '&gt;').strip()
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
         self.response.write('<html>\n')
         self.response.write('<head>\n')
@@ -88,7 +90,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body style="min-width:900px">\n')
-        self.response.write(markdown.markdown(resource, ['extra']))
+        self.response.write(markdown.markdown(resources, ['extra']))
         self.response.write('</body>\n')
         self.response.write('</html>\n')
 
@@ -390,7 +392,7 @@ class ArgumentParser(argparse.ArgumentParser):
         super(ArgumentParser, self).__init__()
         self.add_argument('uri', help='NIMS DB URI')
         self.add_argument('stage_path', help='path to staging area')
-        self.add_argument('-k', '--pubkey', help='path to public SSL key file')
+        self.add_argument('--privkey', help='path to private SSL key file')
         self.add_argument('-u', '--uid', help='site UID')
         self.add_argument('-f', '--logfile', help='path to log file')
         self.add_argument('-l', '--loglevel', default='info', help='path to log file')
@@ -438,14 +440,16 @@ app = webapp2.WSGIApplication(routes, debug=True)
 if __name__ == '__main__':
     args = ArgumentParser().parse_args()
     nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
-    if args.pubkey:
-        pubkey = open(args.pubkey).read()  # failure raises a sensible IOError
-        log.debug('SSL pubkey loaded')
+
+    if args.privkey:
+        privkey = Crypto.PublicKey.RSA.importKey(open(args.privkey).read())
+        log.debug('SSL private key loaded')
     else:
-        pubkey = None
-        log.warning('PUBKEY NOT SPECIFIED')
+        privkey = None
+        log.warning('PRIVKEY NOT SPECIFIED')
+
     from paste import httpserver
-    app.config = dict(stage_path=args.stage_path, site_id=args.uid, pubkey=pubkey)
+    app.config = dict(stage_path=args.stage_path, site_id=args.uid, privkey=privkey)
     app.db = (pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)).get_default_database()
     httpserver.serve(app, host=httpserver.socket.gethostname(), port='8080')
 
