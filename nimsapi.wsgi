@@ -18,7 +18,7 @@ import nimsutil
 import Crypto.PublicKey.RSA
 
 log_file = '/var/local/log/nimsapi.log'
-privkey_file = '/var/local/nims/internims/internims.pem'
+privkey_file = '/var/local/nims/nims.key'
 db_uri = 'mongodb://nims:cnimr750@cnifs.stanford.edu,cnibk.stanford.edu/nims?replicaSet=cni'
 stage_path = '/scratch/upload'
 
@@ -34,5 +34,7 @@ else:
     print 'successfully loaded private SSL key from ' + privkey_file # FIXME use logging
 
 application = nimsapi.app
-application.config = dict(stage_path=stage_path, site_id='stanford_cni', privkey=privkey)
+application.config['stage_path'] = stage_path
+application.config['site_id'] = 'stanford_cni'
+application.config['privkey']  = privkey
 application.db = db_client.get_default_database()
