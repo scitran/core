@@ -447,6 +447,7 @@ app.config = dict(stage_path='', site_id=None, privkey=None)
 
 
 if __name__ == '__main__':
+    import sys
     import paste.httpserver
 
     args = ArgumentParser().parse_args()
@@ -456,17 +457,16 @@ if __name__ == '__main__':
         try:
             privkey = Crypto.PublicKey.RSA.importKey(open(args.privkey).read())
         except:
-            log.warning(args.privkey + 'is not a valid private SSL key file')
-            privkey = None
+            log.warning(args.privkey + ' is not a valid private SSL key file, bailing out')
+            sys.exit(1)
         else:
             log.info('successfully loaded private SSL key from ' + args.privkey)
+            app.config['privkey'] = privkey
     else:
-        log.warning('private SSL key not specified: internims functionality disabled')
-        privkey = None
+        log.warning('private SSL key not specified, internims functionality disabled')
 
     app.config['stage_path'] = args.stage_path
     app.config['site_id'] = args.uid
-    app.config['privkey'] = args.privkey
     app.db = (pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)).get_default_database()
     paste.httpserver.serve(app, port='8080')
 
