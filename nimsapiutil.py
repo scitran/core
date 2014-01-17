@@ -13,8 +13,7 @@ import Crypto.PublicKey.RSA
 import Crypto.Signature.PKCS1_v1_5
 
 log = logging.getLogger('nimsapi')
-requests_log = logging.getLogger('requests')            # configure Requests logging
-requests_log.setLevel(logging.WARNING)                  # set level to WARNING (default is INFO)
+logging.getLogger('requests').setLevel(logging.WARNING)                  # silence Requests library logging
 
 
 class NIMSRequestHandler(webapp2.RequestHandler):

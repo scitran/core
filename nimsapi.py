@@ -7,7 +7,6 @@ import re
 import json
 import uuid
 import hashlib
-import logging
 import pymongo
 import tarfile
 import webapp2
@@ -17,6 +16,9 @@ import markdown
 import bson.json_util
 import webapp2_extras.routes
 import Crypto.PublicKey.RSA
+
+import logging
+import logging.config
 
 import nimsutil
 
@@ -392,13 +394,14 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def __init__(self):
         super(ArgumentParser, self).__init__()
-        self.add_argument('uri', help='NIMS DB URI')
-        self.add_argument('stage_path', help='path to staging area')
-        self.add_argument('-k', '--privkey', help='path to private SSL key file')
-        self.add_argument('-u', '--uid', help='site UID')
-        self.add_argument('-f', '--logfile', help='path to log file')
-        self.add_argument('-l', '--loglevel', default='info', help='path to log file')
-        self.add_argument('-q', '--quiet', action='store_true', default=False, help='disable console logging')
+        #self.add_argument('uri', help='NIMS DB URI')
+        #self.add_argument('stage_path', help='path to staging area')
+        self.add_argument('--privkey', help='path to private SSL key file')
+        self.add_argument('--site_id', help='site UID')
+        #self.add_argument('-f', '--logfile', help='path to log file')
+        #self.add_argument('-l', '--loglevel', default='info', help='path to log file')
+        #self.add_argument('-q', '--quiet', action='store_true', default=False, help='disable console logging')
+        self.add_argument('-c', '--configfile', help='path to configuration file')
 
 routes = [
     webapp2.Route(r'/nimsapi',                                      NIMSAPI),
@@ -449,9 +452,13 @@ app.config = dict(stage_path='', site_id=None, privkey=None)
 if __name__ == '__main__':
     import sys
     import paste.httpserver
+    import ConfigParser
 
     args = ArgumentParser().parse_args()
-    nimsutil.configure_log(args.logfile, not args.quiet, args.loglevel)
+    logging.config.fileConfig(args.configfile, disable_existing_loggers=False)
+
+    config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.configfile))})
+    config.read(args.configfile)
 
     if args.privkey:
         try:
@@ -465,9 +472,10 @@ if __name__ == '__main__':
     else:
         log.warning('private SSL key not specified, internims functionality disabled')
 
-    app.config['stage_path'] = args.stage_path
-    app.config['site_id'] = args.uid
-    app.db = (pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)).get_default_database()
+    app.config['stage_path'] = config.get('nims', 'stage_path')
+    app.config['site_id'] = args.site_id
+    db_uri = config.get('nims', 'db_uri')
+    app.db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()
     paste.httpserver.serve(app, port='8080')
 
 # import nimsapi, webapp2, pymongo, bson.json_util
