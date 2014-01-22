@@ -11,7 +11,6 @@ import pymongo
 import tarfile
 import webapp2
 import zipfile
-import argparse
 import markdown
 import bson.json_util
 import webapp2_extras.routes
@@ -20,11 +19,10 @@ import Crypto.PublicKey.RSA
 import logging
 import logging.config
 
-import nimsutil
-
 import experiments
 import nimsapiutil
 import collections_
+import tempdir as tempfile
 
 log = logging.getLogger('nimsapi')
 
@@ -108,7 +106,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         filename = self.request.get('filename', 'anonymous')
         stage_path = self.app.config['stage_path']
-        with nimsutil.TempDir(prefix='.tmp', dir=stage_path) as tempdir_path:
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=stage_path) as tempdir_path:
             hash_ = hashlib.md5()
             upload_filepath = os.path.join(tempdir_path, filename)
             log.info('upload from ' + self.request.user_agent + ': ' + os.path.basename(upload_filepath))
@@ -390,19 +388,6 @@ class Remotes(nimsapiutil.NIMSRequestHandler):
         self.response.write(json.dumps(data_remotes, indent=4, separators=(',', ': ')))
 
 
-class ArgumentParser(argparse.ArgumentParser):
-
-    def __init__(self):
-        super(ArgumentParser, self).__init__()
-        #self.add_argument('uri', help='NIMS DB URI')
-        #self.add_argument('stage_path', help='path to staging area')
-        self.add_argument('--privkey', help='path to private SSL key file')
-        self.add_argument('--site_id', help='site UID')
-        #self.add_argument('-f', '--logfile', help='path to log file')
-        #self.add_argument('-l', '--loglevel', default='info', help='path to log file')
-        #self.add_argument('-q', '--quiet', action='store_true', default=False, help='disable console logging')
-        self.add_argument('-c', '--configfile', help='path to configuration file')
-
 routes = [
     webapp2.Route(r'/nimsapi',                                      NIMSAPI),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
@@ -446,36 +431,45 @@ routes = [
 ]
 
 app = webapp2.WSGIApplication(routes, debug=True)
-app.config = dict(stage_path='', site_id=None, privkey=None)
+app.config = dict(stage_path='', site_id=None, ssl_key=None)
 
 
 if __name__ == '__main__':
     import sys
-    import paste.httpserver
+    import argparse
     import ConfigParser
+    import paste.httpserver
 
-    args = ArgumentParser().parse_args()
-    logging.config.fileConfig(args.configfile, disable_existing_loggers=False)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('config_file', help='path to config file')
+    arg_parser.add_argument('--db_uri', help='NIMS DB URI')
+    arg_parser.add_argument('--stage_path', help='path to staging area')
+    arg_parser.add_argument('--ssl_key', help='path to private SSL key file')
+    arg_parser.add_argument('--site_id', help='InterNIMS site ID')
+    args = arg_parser.parse_args()
 
-    config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.configfile))})
-    config.read(args.configfile)
+    config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
+    config.read(args.config_file)
+    logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
 
-    if args.privkey:
+    if args.ssl_key:
         try:
-            privkey = Crypto.PublicKey.RSA.importKey(open(args.privkey).read())
+            ssl_key = Crypto.PublicKey.RSA.importKey(open(args.ssl_key).read())
         except:
-            log.warning(args.privkey + ' is not a valid private SSL key file, bailing out')
+            log.error(args.ssl_key + ' is not a valid private SSL key file, bailing out')
             sys.exit(1)
         else:
-            log.info('successfully loaded private SSL key from ' + args.privkey)
-            app.config['privkey'] = privkey
+            log.info('successfully loaded private SSL key from ' + args.ssl_key)
+            app.config['ssl_key'] = ssl_key
     else:
         log.warning('private SSL key not specified, internims functionality disabled')
 
-    app.config['stage_path'] = config.get('nims', 'stage_path')
     app.config['site_id'] = args.site_id
-    db_uri = config.get('nims', 'db_uri')
+    app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
+
+    db_uri = args.db_uri or config.get('nims', 'db_uri')
     app.db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()
+
     paste.httpserver.serve(app, port='8080')
 
 # import nimsapi, webapp2, pymongo, bson.json_util

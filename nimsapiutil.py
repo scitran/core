@@ -57,7 +57,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         self.user_is_superuser = self.user.get('superuser')
         self.target_id = self.request.get('iid', None)
         self.site_id = self.app.config['site_id']
-        self.privkey = self.app.config['privkey']
+        self.ssl_key = self.app.config['ssl_key']
 
     def dispatch(self):
         """dispatching and request forwarding"""
@@ -90,7 +90,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                     super(NIMSRequestHandler, self).dispatch()
 
         # dispatch to remote instance
-        elif self.privkey is not None and self.site_id is not None:
+        elif self.ssl_key is not None and self.site_id is not None:
             log.debug(socket.gethostname() + ' dispatching to remote ' + self.target_id)
             # is target registered?
             target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id':False, 'hostname':True})
@@ -107,7 +107,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
             # create a signature of the incoming request payload
             h = Crypto.Hash.SHA.new(reqpayload)
-            signature = Crypto.Signature.PKCS1_v1_5.new(self.privkey).sign(h)
+            signature = Crypto.Signature.PKCS1_v1_5.new(self.ssl_key).sign(h)
             reqheaders['Authorization'] = base64.b64encode(signature)
 
             # construct outgoing request
@@ -119,8 +119,8 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             # TODO: headers
             self.response.write(r.content)
 
-        elif self.privkey is None or self.site_id is None:
-            log.debug('no private key (privkey), or local instance id (iid). cannot dispatch to remote')
+        elif self.ssl_key is None or self.site_id is None:
+            log.debug('ssl key or site id undefined, cannot dispatch to remote')
 
     def schema(self, *args, **kwargs):
         self.response.write(json.dumps(self.json_schema, default=bson.json_util.default))
