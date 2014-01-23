@@ -18,13 +18,12 @@ import Crypto.PublicKey.RSA
 
 import logging
 import logging.config
+log = logging.getLogger('nimsapi')
 
 import experiments
 import nimsapiutil
 import collections_
 import tempdir as tempfile
-
-log = logging.getLogger('nimsapi')
 
 
 class NIMSAPI(nimsapiutil.NIMSRequestHandler):
@@ -128,6 +127,11 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             _idpaths, _idsymlinks = resource_types[type_].download_info(_id)
             paths += _idpaths
             symlinks += _idsymlinks
+
+    def remotes(self):
+        """Return the list of remotes where user has membership"""
+        remotes = [remote['_id'] for remote in list(self.app.db.remotes.find({}, []))]
+        self.response.write(json.dumps(remotes))
 
 
 class Users(nimsapiutil.NIMSRequestHandler):
@@ -362,38 +366,12 @@ class Group(nimsapiutil.NIMSRequestHandler):
         """Delete an Group."""
 
 
-class Remotes(nimsapiutil.NIMSRequestHandler):
-
-    """/nimsapi/remotes """
-
-    def get(self):
-        """Return the list of remotes where user has membership"""
-        # TODO: implement special 'all' case - report ALL available instances, regardless of user permissions
-        # applies to adding new remote users, need to be able to select from ALL available remote sites
-        # query, user in userlist, _id does not match this site _id
-        query = {'users': {'$in': [self.user['_id']]}, '_id': {'$ne': self.app.config['site_id']}}
-        projection = ['_id']
-        # if app has no site-id or pubkey, cannot fetch peer registry, and db.remotes will be empty
-        remotes = list(self.app.db.remotes.find(query, projection))
-        data_remotes = []                                   # for list buildup
-        for remote in remotes:
-            # use own API to dispatch requests (hacky)
-            response = self.app.get_response('/nimsapi/experiments?user=' + self.user['_id'] + '&iid=' + remote['_id'], headers=[('User-Agent', 'remotes_requestor')])
-            xpcount = len(json.loads(response.body))
-            if xpcount > 0:
-                log.debug('%s has access to %s expirements on %s' % (self.user['_id'], xpcount, remote['_id']))
-                data_remotes.append(remote['_id'])
-
-        # return json encoded list of remote site '_id's
-        self.response.write(json.dumps(data_remotes, indent=4, separators=(',', ': ')))
-
-
 routes = [
     webapp2.Route(r'/nimsapi',                                      NIMSAPI),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
         webapp2.Route(r'/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
         webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
-        webapp2.Route(r'/remotes',                                  Remotes),
+        webapp2.Route(r'/remotes',                                  NIMSAPI, handler_method='remotes', methods=['GET']),
         webapp2.Route(r'/users',                                    Users),
         webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
@@ -450,6 +428,7 @@ if __name__ == '__main__':
 
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
     config.read(args.config_file)
+
     logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
 
     if args.ssl_key:

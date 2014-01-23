@@ -2,8 +2,7 @@
 
 import json
 import base64
-import socket       # socket.gethostname()
-import logging
+import socket
 import webapp2
 import datetime
 import requests
@@ -12,6 +11,7 @@ import Crypto.Hash.SHA
 import Crypto.PublicKey.RSA
 import Crypto.Signature.PKCS1_v1_5
 
+import logging
 log = logging.getLogger('nimsapi')
 logging.getLogger('requests').setLevel(logging.WARNING)                  # silence Requests library logging
 
@@ -93,7 +93,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         elif self.ssl_key is not None and self.site_id is not None:
             log.debug(socket.gethostname() + ' dispatching to remote ' + self.target_id)
             # is target registered?
-            target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id':False, 'hostname':True})
+            target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id':False, 'api_uri':True})
             if not target:
                 log.debug('remote host ' + self.target_id + ' not in auth list. DENIED')
                 self.abort(403, self.target_id + 'is not authorized')
@@ -111,8 +111,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             reqheaders['Authorization'] = base64.b64encode(signature)
 
             # construct outgoing request
-            target_api = 'http://' + target['hostname'] + self.request.path      # TODO: switch to https
-            # target_api = 'https://' + target['hostname'] + self.request.path)
+            target_api = 'https://' + target['api_uri'] + self.request.path.split('/nimsapi')[1]
             r = requests.request(method=self.request.method, data=reqpayload, url=target_api, params=reqparams, headers=reqheaders, verify=False)
 
             # return response content
