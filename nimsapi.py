@@ -7,7 +7,6 @@ import re
 import json
 import uuid
 import hashlib
-import pymongo
 import tarfile
 import webapp2
 import zipfile
@@ -414,6 +413,7 @@ app.config = dict(stage_path='', site_id=None, ssl_key=None)
 
 if __name__ == '__main__':
     import sys
+    import pymongo
     import argparse
     import ConfigParser
     import paste.httpserver
@@ -428,7 +428,6 @@ if __name__ == '__main__':
 
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
     config.read(args.config_file)
-
     logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
 
     if args.ssl_key:

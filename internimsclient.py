@@ -4,7 +4,6 @@
 
 import json
 import base64
-import pymongo
 import datetime
 import requests
 import Crypto.Hash.SHA
@@ -13,12 +12,14 @@ import Crypto.Signature.PKCS1_v1_5
 
 import logging
 import logging.config
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('internims')
 logging.getLogger('requests').setLevel(logging.WARNING)
 
 
 def update(db, api_uri, site_id, privkey, internims_url):
     """sends is-alive signal to internims central."""
+    db.remotes.ensure_index('UTC', expireAfterSeconds=120)
+
     exp_userlist = [exp['permissions'].viewkeys() for exp in db.experiments.find({}, {'_id': False, 'permissions': True})]
     col_userlist = [col['permissions'].viewkeys() for col in db.collections.find({}, {'_id': False, 'permissions': True})]
     userlists = exp_userlist + col_userlist
@@ -55,6 +56,7 @@ if __name__ == '__main__':
     import os
     import sys
     import time
+    import pymongo
     import argparse
     import ConfigParser
 
@@ -70,9 +72,7 @@ if __name__ == '__main__':
 
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.configfile))})
     config.read(args.configfile)
-
     logging.config.fileConfig(args.configfile, disable_existing_loggers=False)
-    log = logging.getLogger('nimsapi')
 
     privkey_file = args.ssl_key or config.get('nims', 'ssl_key')
     if privkey_file:
