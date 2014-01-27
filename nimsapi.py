@@ -41,6 +41,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             nimsapi/download                                    | download
             nimsapi/upload                                      | upload
             nimsapi/remotes                                     | list of remote instances
+            [(nimsapi/log)]                                     | list of uwsgi log messages
             [(nimsapi/users)]                                   | list of users
             [(nimsapi/users/count)]                             | count of users
             [(nimsapi/users/listschema)]                        | schema for user list
@@ -135,11 +136,19 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
     def log(self):
         """Return logs"""
         # TODO: don't hardcode log path.
+        logfile = '/var/log/uwsgi/app/nims.log'
         try:
-            logs = open('/var/log/uwsgi/app/nims.log').readlines()
+            logs = open(logfile).readlines()
         except IOError as e:
             log.debug(e)
-            self.abort(500, e)
+            if 'Permission denied' in e:
+                # specify body format to print details separate from comment
+                body_template = '${explanation}<br /><br />${detail}<br /><br />${comment}'
+                comment = 'To fix permissions, run the following command: chmod o+r ' + logfile
+                self.abort(500, detail=str(e), comment=comment, body_template=body_template)
+            else:
+                # file does not exist
+                self.abort(500, e)
         else:
             logs.reverse()
             numlines = self.request.get('n', None)
@@ -153,7 +162,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             if not numlines: numlines = len(trimmed)
 
             self.response.headers['Content-Type'] = 'application/json'
-            self.response.write(json.dumps(int(trimmed)))
+            self.response.write(json.dumps(trimmed[:int(numlines)]))
 
 
 class Users(nimsapiutil.NIMSRequestHandler):
