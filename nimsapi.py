@@ -132,6 +132,29 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         remotes = [remote['_id'] for remote in list(self.app.db.remotes.find({}, []))]
         self.response.write(json.dumps(remotes))
 
+    def log(self):
+        """Return logs"""
+        # TODO: don't hardcode log path.
+        try:
+            logs = open('/var/log/uwsgi/app/nims.log').readlines()
+        except IOError as e:
+            log.debug(e)
+            self.abort(500, e)
+        else:
+            logs.reverse()
+            numlines = self.request.get('n', None)
+
+            trimmed = []
+            for line in logs:
+                match = re.search('^[\d\s:-]{17}[\s]+nimsapi:[.]*', line)
+                if match:
+                    trimmed.append(line)
+
+            if not numlines: numlines = len(trimmed)
+
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.write(json.dumps(int(trimmed)))
+
 
 class Users(nimsapiutil.NIMSRequestHandler):
 
@@ -371,6 +394,7 @@ routes = [
         webapp2.Route(r'/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
         webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
         webapp2.Route(r'/remotes',                                  NIMSAPI, handler_method='remotes', methods=['GET']),
+        webapp2.Route(r'/log',                                      NIMSAPI, handler_method='log', methods=['GET']),
         webapp2.Route(r'/users',                                    Users),
         webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
