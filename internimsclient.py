@@ -49,7 +49,7 @@ def update(db, api_uri, site_id, privkey, internims_url):
         # cannot use new_remotes.viewkeys(). leads to 'bson.errors.InvalidDocument: Cannot encode object: dict_keys([])'
         db.users.update({'remotes': {'$exists':True}, '_id': {'$nin': new_remotes.keys()}}, {'$unset': {'remotes': ''}}, multi=True)
     else:
-        log.info((r.status_code, r.reason))
+        log.warning((r.status_code, r.reason))
 
 
 if __name__ == '__main__':

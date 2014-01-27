@@ -470,7 +470,7 @@ if __name__ == '__main__':
             log.error(args.ssl_key + ' is not a valid private SSL key file, bailing out')
             sys.exit(1)
         else:
-            log.info('successfully loaded private SSL key from ' + args.ssl_key)
+            log.debug('successfully loaded private SSL key from ' + args.ssl_key)
             app.config['ssl_key'] = ssl_key
     else:
         log.warning('private SSL key not specified, internims functionality disabled')

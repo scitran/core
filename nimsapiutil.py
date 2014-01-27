@@ -59,11 +59,16 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         self.site_id = self.app.config['site_id']
         self.ssl_key = self.app.config['ssl_key']
 
+        if not self.request.path.endswith('/nimsapi/log'):
+            # TODO: change to log.debug
+            log.info(self.request.method + ' ' + self.request.path)
+            log.info('params: ' + str(dict(self.request.params)))
+            log.info('headers: ' + str(dict(self.request.headers)))
+
     def dispatch(self):
         """dispatching and request forwarding"""
         # dispatch to local instance
         if self.target_id in [None, self.site_id]:
-            log.debug(socket.gethostname() + ' dispatching to local ' + self.request.url)
             # request originates from remote instance
             if self.request.user_agent.startswith('NIMS Instance'):
                 # is the requester an authorized remote site
@@ -80,10 +85,10 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 h = Crypto.Hash.SHA.new(payload)
                 verifier = Crypto.Signature.PKCS1_v1_5.new(key)
                 if verifier.verify(h, self.signature):
-                    log.debug('message/signature is authentic')
+                    # log.debug('message/signature is authentic')
                     super(NIMSRequestHandler, self).dispatch()
                 else:
-                    log.debug('message/signature is not authentic')
+                    log.warning('message/signature is not authentic')
                     self.abort(403, 'authentication failed')
             # request originates from self
             else:
