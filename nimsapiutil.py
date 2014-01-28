@@ -62,8 +62,9 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         if not self.request.path.endswith('/nimsapi/log'):
             # TODO: change to log.debug
             log.info(self.request.method + ' ' + self.request.path)
-            log.info('params: ' + str(dict(self.request.params)))
+            log.info('params: ' + str(self.request.params.mixed()))
             log.info('headers: ' + str(dict(self.request.headers)))
+
 
     def dispatch(self):
         """dispatching and request forwarding"""
