@@ -132,8 +132,8 @@ class Collection(nimsapiutil.NIMSRequestHandler):
         self.response.write('collection %s put, %s\n' % (exp_id, self.request.params))
 
     def delete(self, cid):
-        """Delete an Collection."""
-        self.response.write('collection %s delete, %s\n' % (exp_id, self.request.params))
+        """Delete a Collection."""
+        self.abort(501)
 
 
 class Sessions(nimsapiutil.NIMSRequestHandler):

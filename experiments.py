@@ -132,7 +132,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
 
     def delete(self, xid):
         """Delete an Experiment."""
-        self.response.write('experiment %s delete, %s\n' % (exp_id, self.request.params))
+        self.abort(501)
 
 
 class Sessions(nimsapiutil.NIMSRequestHandler):
@@ -259,8 +259,8 @@ class Session(nimsapiutil.NIMSRequestHandler):
         self.app.db.sessions.update({'_id': bson.ObjectId(sid)}, updates)
 
     def delete(self, sid):
-        """Delete an Session."""
-        self.response.write('session %s delete, %s\n' % (sid, self.request.params))
+        """Delete a Session."""
+        self.abort(501)
 
     def move(self, sid):
         """
@@ -387,4 +387,4 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
 
     def delete(self, eid):
         """Delete an Epoch."""
-        self.response.write('epoch %s delete, %s\n' % (epoch_id, self.request.params))
+        self.abort(501)
