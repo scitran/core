@@ -60,7 +60,7 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
     def get(self):
         """Return the list of Experiments."""
         query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
-        projection = ['group', 'name', 'timestamp', 'permissions.'+self.userid]
+        projection = ['group', 'name', 'timestamp', 'permissions.'+self.userid, 'notes']
         experiments = list(self.app.db.experiments.find(query, projection))
         for exp in experiments:
             exp['site'] = self.app.config['site_id']
@@ -322,7 +322,7 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
             self.abort(403)
         query = {'session': bson.ObjectId(sid)}
-        projection = ['name', 'description', 'datatype']
+        projection = ['name', 'description', 'datatype', 'notes']
         epochs = list(self.app.db.epochs.find(query, projection))
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
 

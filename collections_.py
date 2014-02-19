@@ -66,7 +66,7 @@ class Collections(nimsapiutil.NIMSRequestHandler):
     def get(self):
         """Return the list of Collections."""
         query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
-        projection = ['curator', 'name', 'permissions.'+self.userid]
+        projection = ['curator', 'name', 'permissions.'+self.userid, 'notes']
         collections = list(self.app.db.collections.find(query, projection))
         self.response.write(json.dumps(collections, default=bson.json_util.default))
 
@@ -187,7 +187,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
                 {'$group': {'_id': '$session'}},
                 ])['result']
         query = {'_id': {'$in': [agg_epoch['_id'] for agg_epoch in aggregated_epochs]}}
-        projection = ['name', 'subject']
+        projection = ['name', 'subject', 'notes']
         sessions = list(self.app.db.sessions.find(query, projection))
         for sess in sessions:
             sess['site'] = self.app.config['site_id']
@@ -250,7 +250,7 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400)
-        projection = ['name', 'description', 'datatype']
+        projection = ['name', 'description', 'datatype', 'notes']
         epochs = list(self.app.db.epochs.find(query, projection))
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
 
