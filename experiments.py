@@ -4,7 +4,10 @@ import json
 import webapp2
 import bson.json_util
 
-#import nimsdata
+import logging
+log = logging.getLogger('nimsapi')
+
+import nimsdata
 import nimsapiutil
 
 
