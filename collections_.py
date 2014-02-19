@@ -117,7 +117,7 @@ class Collection(nimsapiutil.NIMSRequestHandler):
 
     def get(self, cid):
         """Return one Collection, conditionally with details."""
-        collection = self.app.db.collections.find_one({'_id': bson.objectid.ObjectId(cid)})
+        collection = self.app.db.collections.find_one({'_id': bson.ObjectId(cid)})
         if not collection:
             self.abort(404)
         if not self.user_is_superuser:
@@ -177,13 +177,13 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def get(self, cid):
         """Return the list of Session Epochs."""
-        collection = self.app.db.collections.find_one({'_id': bson.objectid.ObjectId(cid)})
+        collection = self.app.db.collections.find_one({'_id': bson.ObjectId(cid)})
         if not collection:
             self.abort(404)
         if not self.user_is_superuser and self.userid not in collection['permissions']:
             self.abort(403)
         aggregated_epochs = self.app.db.epochs.aggregate([
-                {'$match': {'collections': bson.objectid.ObjectId(cid)}},
+                {'$match': {'collections': bson.ObjectId(cid)}},
                 {'$group': {'_id': '$session'}},
                 ])['result']
         query = {'_id': {'$in': [agg_epoch['_id'] for agg_epoch in aggregated_epochs]}}
@@ -239,15 +239,15 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def get(self, cid):
         """Return the list of Session Epochs."""
-        collection = self.app.db.collections.find_one({'_id': bson.objectid.ObjectId(cid)})
+        collection = self.app.db.collections.find_one({'_id': bson.ObjectId(cid)})
         if not collection:
             self.abort(404)
         if not self.user_is_superuser and self.userid not in collection['permissions']:
             self.abort(403)
-        query = {'collections': bson.objectid.ObjectId(cid)}
+        query = {'collections': bson.ObjectId(cid)}
         sid = self.request.get('session')
         if re.match(r'^[0-9a-f]{24}$', sid):
-            query['session'] = bson.objectid.ObjectId(sid)
+            query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400)
         projection = ['name', 'description', 'datatype']

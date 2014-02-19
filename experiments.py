@@ -116,7 +116,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
 
     def get(self, xid):
         """Return one Experiment, conditionally with details."""
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(xid)})
+        experiment = self.app.db.experiments.find_one({'_id': bson.ObjectId(xid)})
         if not experiment:
             self.abort(404)
         if not self.user_is_superuser:
@@ -176,12 +176,12 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def get(self, xid):
         """Return the list of Experiment Sessions."""
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(xid)})
+        experiment = self.app.db.experiments.find_one({'_id': bson.ObjectId(xid)})
         if not experiment:
             self.abort(404)
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
             self.abort(403)
-        query = {'experiment': bson.objectid.ObjectId(xid)}
+        query = {'experiment': bson.ObjectId(xid)}
         projection = ['name', 'subject', 'notes']
         sessions = list(self.app.db.sessions.find(query, projection))
         self.response.write(json.dumps(sessions, default=bson.json_util.default))
@@ -232,10 +232,10 @@ class Session(nimsapiutil.NIMSRequestHandler):
 
     def get(self, sid):
         """Return one Session, conditionally with details."""
-        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
+        session = self.app.db.sessions.find_one({'_id': bson.ObjectId(sid)})
         if not session:
             self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
         if not experiment:
             self.abort(500)
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
@@ -244,10 +244,10 @@ class Session(nimsapiutil.NIMSRequestHandler):
 
     def put(self, sid):
         """Update an existing Session."""
-        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
+        session = self.app.db.sessions.find_one({'_id': bson.ObjectId(sid)})
         if not session:
             self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
         if not experiment:
             self.abort(500)
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
@@ -256,7 +256,7 @@ class Session(nimsapiutil.NIMSRequestHandler):
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
-        self.app.db.sessions.update({'_id': bson.objectid.ObjectId(sid)}, updates)
+        self.app.db.sessions.update({'_id': bson.ObjectId(sid)}, updates)
 
     def delete(self, sid):
         """Delete an Session."""
@@ -313,15 +313,15 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def get(self, sid):
         """Return the list of Session Epochs."""
-        session = self.app.db.sessions.find_one({'_id': bson.objectid.ObjectId(sid)})
+        session = self.app.db.sessions.find_one({'_id': bson.ObjectId(sid)})
         if not session:
             self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
         if not experiment:
             self.abort(500)
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
             self.abort(403)
-        query = {'session': bson.objectid.ObjectId(sid)}
+        query = {'session': bson.ObjectId(sid)}
         projection = ['name', 'description', 'datatype']
         epochs = list(self.app.db.epochs.find(query, projection))
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
@@ -368,13 +368,13 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
 
     def get(self, eid):
         """Return one Epoch, conditionally with details."""
-        epoch = self.app.db.epochs.find_one({'_id': bson.objectid.ObjectId(eid)})
+        epoch = self.app.db.epochs.find_one({'_id': bson.ObjectId(eid)})
         if not epoch:
             self.abort(404)
         session = self.app.db.sessions.find_one({'_id': epoch['session']})
         if not session:
             self.abort(500)
-        experiment = self.app.db.experiments.find_one({'_id': bson.objectid.ObjectId(session['experiment'])})
+        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
         if not experiment:
             self.abort(500)
         if not self.user_is_superuser and self.userid not in experiment['permissions']:
