@@ -475,7 +475,7 @@ if __name__ == '__main__':
     else:
         log.warning('private SSL key not specified, internims functionality disabled')
 
-    app.config['site_id'] = args.site_id
+    app.config['site_id'] = args.site_id or 'local'
     app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
 
     db_uri = args.db_uri or config.get('nims', 'db_uri')

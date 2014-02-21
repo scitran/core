@@ -61,10 +61,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
         if not self.request.path.endswith('/nimsapi/log'):
             # TODO: change to log.debug
-            log.info(self.request.method + ' ' + self.request.path)
-            log.info('params: ' + str(self.request.params.mixed()))
-            log.info('headers: ' + str(dict(self.request.headers)))
-
+            log.info(self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
 
     def dispatch(self):
         """dispatching and request forwarding"""
@@ -129,3 +126,18 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
     def schema(self, *args, **kwargs):
         self.response.write(json.dumps(self.json_schema, default=bson.json_util.default))
+
+    def valid_parameters(self):
+        # FIXME: implement, using self.request.params.mixed()
+        return True
+
+    def user_access_epoch(self, epoch):
+        if self.user_is_superuser:
+            return True
+        session = self.app.db.sessions.find_one({'_id': epoch['session']})
+        if not session:
+            self.abort(500)
+        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
+        if not experiment:
+            self.abort(500)
+        return (self.userid in experiment['permissions'])

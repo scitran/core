@@ -368,16 +368,12 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
 
     def get(self, eid):
         """Return one Epoch, conditionally with details."""
+        if not self.valid_parameters():
+            self.abort(400, 'invalid parameters')
         epoch = self.app.db.epochs.find_one({'_id': bson.ObjectId(eid)})
         if not epoch:
             self.abort(404)
-        session = self.app.db.sessions.find_one({'_id': epoch['session']})
-        if not session:
-            self.abort(500)
-        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
-        if not experiment:
-            self.abort(500)
-        if not self.user_is_superuser and self.userid not in experiment['permissions']:
+        if not self.user_access_epoch(epoch):
             self.abort(403)
         self.response.write(json.dumps(epoch, default=bson.json_util.default))
 
