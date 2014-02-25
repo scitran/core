@@ -43,6 +43,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             nimsapi/remotes                                     | list of remote instances
             [(nimsapi/log)]                                     | list of uwsgi log messages
             [(nimsapi/users)]                                   | list of users
+            (nimsapi/users/current)                             | details for currently logged in user
             [(nimsapi/users/count)]                             | count of users
             [(nimsapi/users/listschema)]                        | schema for user list
             [(nimsapi/users/schema)]                            | schema for single user
@@ -208,6 +209,10 @@ class Users(nimsapiutil.NIMSRequestHandler):
     def count(self):
         """Return the number of Users."""
         self.response.write('%d users\n' % self.app.db.users.count())
+
+    def current(self):
+        """Return the current User."""
+        self.response.write(json.dumps(self.user))
 
     def post(self):
         """Create a new User"""
@@ -405,6 +410,7 @@ routes = [
         webapp2.Route(r'/remotes',                                  NIMSAPI, handler_method='remotes', methods=['GET']),
         webapp2.Route(r'/log',                                      NIMSAPI, handler_method='log', methods=['GET']),
         webapp2.Route(r'/users',                                    Users),
+        webapp2.Route(r'/users/current',                            Users, handler_method='current', methods=['GET']),
         webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/users/schema',                             User, handler_method='schema', methods=['GET']),
