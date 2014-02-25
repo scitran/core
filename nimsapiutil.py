@@ -2,7 +2,6 @@
 
 import json
 import base64
-import socket
 import webapp2
 import datetime
 import requests
@@ -52,16 +51,46 @@ class NIMSRequestHandler(webapp2.RequestHandler):
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
         self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
-        self.userid = self.request.remote_user or '@public'
+        self.access_token = self.request.headers.get('Authorization', None)
+        log.debug('accesstoken: ' + str(self.access_token))
+
+        self.userid = '@public'  # @public is default user
+        # check for user as url encoded param
+        if self.request.remote_user:
+            self.userid =  self.request.remote_user
+        # handle access token
+        if self.access_token:
+            r = requests.request(method='GET',
+                url='https://www.googleapis.com/plus/v1/people/me/openIdConnect',
+                params={'access_token': self.access_token})
+            if r.status_code == 200:
+                # TODO: reduce to minimum needed to match
+                user_profile = json.loads(r.content)
+                # FIXME: lookup should be on oauth_id
+                self.user = self.app.db.users.find_one({'firstname': user_profile['given_name'], 'lastname': user_profile['family_name']})
+                self.userid = self.user['_id']
+                log.debug('oauth user: ' + user_profile['email'])
+            else:
+                #TODO: add handlers for bad tokens.
+                log.debug('ERR: ' + str(r.status_code) + ' bad token')
         self.user = self.app.db.users.find_one({'oa2_id': self.userid})
-        self.user_is_superuser = self.user.get('superuser')
+        self.user_is_superuser = self.user.get('superuser', None)
+        log.debug(self.user)
+
+        # p2p request
         self.target_id = self.request.get('iid', None)
+        self.p2p_user = self.request.headers.get('X-From', None)
         self.site_id = self.app.config['site_id']
         self.ssl_key = self.app.config['ssl_key']
+        log.debug('X-From: ' + str(self.p2p_user))
+
+        # CORS bare minimum
+        self.response.headers.add('Access-Control-Allow-Origin', self.request.headers.get('origin', '*'))
 
         if not self.request.path.endswith('/nimsapi/log'):
             # TODO: change to log.debug
             log.info(self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
+            log.info(dict(self.request.headers))
 
     def dispatch(self):
         """dispatching and request forwarding"""
@@ -77,7 +106,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                     self.abort(403, requester + ' is not authorized')
                 log.debug('request from ' + self.request.user_agent + ', interNIMS p2p initiated')
                 # verify signature
-                self.signature = base64.b64decode(self.request.headers.get('Authorization'))
+                self.signature = base64.b64decode(self.request.headers.get('X-Signature'))
                 payload = self.request.body
                 key = Crypto.PublicKey.RSA.importKey(target['pubkey'])
                 h = Crypto.Hash.SHA.new(payload)
@@ -94,7 +123,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
         # dispatch to remote instance
         elif self.ssl_key is not None and self.site_id is not None:
-            log.debug(socket.gethostname() + ' dispatching to remote ' + self.target_id)
+            log.debug('dispatching to remote ' + self.target_id)
             # is target registered?
             target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id':False, 'api_uri':True})
             if not target:
@@ -102,16 +131,22 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 self.abort(403, self.target_id + 'is not authorized')
 
             # disassemble the incoming request
-            reqparams = dict(self.request.params)
+            reqparams = self.request.params
             reqpayload = self.request.body                                      # request payload, almost always empty
-            reqheaders = dict(self.request.headers)
+            reqheaders = self.request.headers
             reqheaders['User-Agent'] = 'NIMS Instance ' + self.site_id
+            reqheaders['X-From'] = self.userid
+            reqheaders['Content-Length'] = len(reqpayload)
             del reqheaders['Host']                                              # delete old host destination
+            try:
+                del reqheaders['Authorization']                                 # delete access_token
+            except KeyError as e:
+                pass                                                            # not all requests will have access_token
 
             # create a signature of the incoming request payload
             h = Crypto.Hash.SHA.new(reqpayload)
             signature = Crypto.Signature.PKCS1_v1_5.new(self.ssl_key).sign(h)
-            reqheaders['Authorization'] = base64.b64encode(signature)
+            reqheaders['X-Signature'] = base64.b64encode(signature)
 
             # construct outgoing request
             target_api = 'https://' + target['api_uri'] + self.request.path.split('/nimsapi')[1]
