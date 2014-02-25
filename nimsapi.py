@@ -267,12 +267,12 @@ class User(nimsapiutil.NIMSRequestHandler):
 
     def get(self, uid):
         """Return User details."""
-        user = self.app.db.users.find_one({'_id': uid})
+        user = self.app.db.users.find_one({'oa2_id': uid})
         self.response.write(json.dumps(user, default=bson.json_util.default))
 
     def put(self, uid):
         """Update an existing User."""
-        user = self.app.db.users.find_one({'_id': uid})
+        user = self.app.db.users.find_one({'oa2_id': uid})
         if not user:
             self.abort(404)
         if uid == self.userid or self.user_is_superuser: # users can only update their own info
@@ -287,7 +287,7 @@ class User(nimsapiutil.NIMSRequestHandler):
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
                         updates['$unset'][k] = ''
-            self.app.db.users.update({'_id': uid}, updates)
+            self.app.db.users.update({'oa2_id': uid}, updates)
         else:
             self.abort(403)
 
