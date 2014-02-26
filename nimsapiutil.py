@@ -55,27 +55,29 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         log.debug('accesstoken: ' + str(self.access_token))
 
         self.userid = '@public'  # @public is default user
+        # self.user_is_superuser = None
         # check for user as url encoded param
         if self.request.remote_user:
             self.userid =  self.request.remote_user
         # handle access token
-        if self.access_token:
+        if self.access_token and self.app.config['oauth2_id_endpoint']:
             r = requests.request(method='GET',
-                url='https://www.googleapis.com/plus/v1/people/me/openIdConnect',
-                params={'access_token': self.access_token})
+                url = self.app.config['oauth2_id_endpoint'],
+                headers={'Authorization': 'Bearer ' + self.access_token})
             if r.status_code == 200:
                 # TODO: reduce to minimum needed to match
                 user_profile = json.loads(r.content)
-                # FIXME: lookup should be on oauth_id
-                self.user = self.app.db.users.find_one({'firstname': user_profile['given_name'], 'lastname': user_profile['family_name']})
-                self.userid = self.user['_id']
+                # FIXME: lookup should be on user_id
+                self.user = self.app.db.users.find_one({'user_id': user_profile['email']})
+                # self.user_is_superuser = self.user.get('superuser', None)
+                self.userid = self.user['user_id']
                 log.debug('oauth user: ' + user_profile['email'])
             else:
                 #TODO: add handlers for bad tokens.
                 log.debug('ERR: ' + str(r.status_code) + ' bad token')
-        self.user = self.app.db.users.find_one({'oa2_id': self.userid})
-        self.user_is_superuser = self.user.get('superuser', None)
-        log.debug(self.user)
+        # self.user = self.app.db.users.find_one({'user_info': self.user_info})
+        self.user = self.app.db.users.find_one({'user_id': self.userid})
+        self.user_is_superuser = self.user.get('superuser', None) if self.user else False
 
         # p2p request
         self.target_id = self.request.get('iid', None)
@@ -143,6 +145,10 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             except KeyError as e:
                 pass                                                            # not all requests will have access_token
 
+            # build up a description of request to sign
+            # msg = self.request.method + self.request.path + str(self.request.params) + str(self.request.headers) + self.request.body
+            # log.debug(msg)
+
             # create a signature of the incoming request payload
             h = Crypto.Hash.SHA.new(reqpayload)
             signature = Crypto.Signature.PKCS1_v1_5.new(self.ssl_key).sign(h)
@@ -153,7 +159,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             r = requests.request(method=self.request.method, data=reqpayload, url=target_api, params=reqparams, headers=reqheaders, verify=False)
 
             # return response content
-            # TODO: headers
+            # TODO: think about: are the headers even useful?
             self.response.write(r.content)
 
         elif self.ssl_key is None or self.site_id is None:

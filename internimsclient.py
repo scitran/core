@@ -44,10 +44,10 @@ def update(db, api_uri, site_id, privkey, internims_url):
         new_remotes = response['users']
         log.debug('users w/ remotes: ' + str(new_remotes))
         for user in response['users']:
-            db.users.update({'oa2_id': user}, {'$set': {'remotes': new_remotes.get(user, [])}})
+            db.users.update({'user_id': user}, {'$set': {'remotes': new_remotes.get(user, [])}})
 
         # cannot use new_remotes.viewkeys(). leads to 'bson.errors.InvalidDocument: Cannot encode object: dict_keys([])'
-        db.users.update({'remotes': {'$exists':True}, 'oa2_id': {'$nin': new_remotes.keys()}}, {'$unset': {'remotes': ''}}, multi=True)
+        db.users.update({'remotes': {'$exists':True}, 'user_id': {'$nin': new_remotes.keys()}}, {'$unset': {'remotes': ''}}, multi=True)
     else:
         log.warning((r.status_code, r.reason))
 
