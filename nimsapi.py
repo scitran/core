@@ -488,10 +488,3 @@ if __name__ == '__main__':
     app.db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()
 
     paste.httpserver.serve(app, port='8080')
-
-# import nimsapi, webapp2, pymongo, bson.json_util
-# nimsapi.app.db = pymongo.MongoClient('mongodb://nims:cnimr750@slice.stanford.edu/nims').get_default_database()
-# headers = [('User-Agent', 'nimsfs')]
-# response = webapp2.Request.blank('/nimsapi/experiments?user=gsfr', headers=headers).get_response(nimsapi.app)
-# response.status
-# response.body
