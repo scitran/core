@@ -273,7 +273,7 @@ class User(nimsapiutil.NIMSRequestHandler):
 
     def get(self, uid):
         """Return User details."""
-        user = self.app.db.users.find_one({'user_info': uid})
+        user = self.app.db.users.find_one({'uid': uid})
         self.response.write(json.dumps(user, default=bson.json_util.default))
 
     def put(self, uid):
@@ -281,14 +281,14 @@ class User(nimsapiutil.NIMSRequestHandler):
         user = self.app.db.users.find_one({'user_info': uid})
         if not user:
             self.abort(404)
-        if uid == self.userid or self.user_is_superuser: # users can only update their own info
+        if uid == self.uid or self.user_is_superuser: # users can only update their own info
             updates = {'$set': {}, '$unset': {}}
             for k, v in self.request.params.iteritems():
                 if k != 'superuser' and k in []:#user_fields:
                     updates['$set'][k] = v # FIXME: do appropriate type conversion
-                elif k == 'superuser' and uid == self.userid and self.user_is_superuser is not None: # toggle superuser for requesting user
+                elif k == 'superuser' and uid == self.uid and self.user_is_superuser is not None: # toggle superuser for requesting user
                     updates['$set'][k] = v.lower() in ('1', 'true')
-                elif k == 'superuser' and uid != self.userid and self.user_is_superuser:             # enable/disable superuser for other user
+                elif k == 'superuser' and uid != self.uid and self.user_is_superuser:             # enable/disable superuser for other user
                     if v.lower() in ('1', 'true') and user.get('superuser') is None:
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
@@ -448,7 +448,7 @@ routes = [
 ]
 
 app = webapp2.WSGIApplication(routes, debug=True)
-app.config = dict(stage_path='', site_id=None, ssl_key=None)
+app.config = dict(stage_path='', site_id=None, ssl_key=None, insecure=False)
 
 
 if __name__ == '__main__':
@@ -486,7 +486,8 @@ if __name__ == '__main__':
     app.config['site_id'] = args.site_id or 'local'
     app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
-    log.debug(app.config['oauth2_id_endpoint'])
+    app.config['insecure'] = config.getboolean('nims', 'insecure')
+
     db_uri = args.db_uri or config.get('nims', 'db_uri')
     app.db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()
 
