@@ -104,14 +104,16 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 log.debug('request from ' + self.request.user_agent + ', interNIMS p2p initiated')
                 # verify signature
                 self.signature = base64.b64decode(self.request.headers.get('X-Signature'))
-                payload = self.request.body
+
+                # assemble msg to be hased
+                msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + self.request.headers.get('Date')
                 key = Crypto.PublicKey.RSA.importKey(target['pubkey'])
-                h = Crypto.Hash.SHA.new(payload)
+                h = Crypto.Hash.SHA.new(msg)
                 verifier = Crypto.Signature.PKCS1_v1_5.new(key)
                 if verifier.verify(h, self.signature):
                     super(NIMSRequestHandler, self).dispatch()
                 else:
-                    log.warning('message/signature is not authentic')
+                    log.debug('message/signature is not authentic')
                     self.abort(403, 'authentication failed')
             # request originates from self
             else:
@@ -126,31 +128,29 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 log.debug('remote host ' + self.target_id + ' not in auth list. DENIED')
                 self.abort(403, self.target_id + 'is not authorized')
 
-            # disassemble the incoming request
-            reqparams = self.request.params
-            reqpayload = self.request.body                                      # request payload, almost always empty
-            reqheaders = self.request.headers
-            reqheaders['User-Agent'] = 'NIMS Instance ' + self.site_id
-            reqheaders['X-From'] = self.uid
-            reqheaders['Content-Length'] = len(reqpayload)
-            del reqheaders['Host']                                              # delete old host destination
+            # adjust headers
+            headers = self.request.headers
+            headers['User-Agent'] = 'NIMS Instance ' + self.site_id
+            headers['X-From'] = self.uid
+            headers['Content-Length'] = len(self.request.body)
+            del headers['Host']                                                 # delete old host destination
             try:
-                del reqheaders['Authorization']                                 # delete access_token
-            except KeyError as e:
+                del headers['Authorization']                                    # delete access_token
+            except KeyError:
                 pass                                                            # not all requests will have access_token
 
-            # build up a description of request to sign
-            # msg = self.request.method + self.request.path + str(self.request.params) + str(self.request.headers) + self.request.body
-            # log.debug(msg)
-
-            # create a signature of the incoming request payload
-            h = Crypto.Hash.SHA.new(reqpayload)
+            # assemble msg to be hashed
+            nonce = str(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S'))
+            headers['Date'] = nonce
+            msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + nonce
+            # create a signature
+            h = Crypto.Hash.SHA.new(msg)
             signature = Crypto.Signature.PKCS1_v1_5.new(self.ssl_key).sign(h)
-            reqheaders['X-Signature'] = base64.b64encode(signature)
+            headers['X-Signature'] = base64.b64encode(signature)
 
             # construct outgoing request
             target_api = 'https://' + target['api_uri'] + self.request.path.split('/nimsapi')[1]
-            r = requests.request(method=self.request.method, data=reqpayload, url=target_api, params=reqparams, headers=reqheaders, verify=False)
+            r = requests.request(method=self.request.method, data=self.request.body, url=target_api, params=self.request.params, headers=headers, verify=False)
 
             # return response content
             # TODO: think about: are the headers even useful?
