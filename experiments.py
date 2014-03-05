@@ -1,6 +1,5 @@
 # @author:  Gunnar Schaefer
 
-import json
 import webapp2
 import bson.json_util
 
@@ -51,7 +50,7 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Experiments."""
-        self.response.write(json.dumps(self.app.db.experiments.count()))
+        self.response.write(self.app.db.experiments.count())
 
     def post(self):
         """Create a new Experiment."""
@@ -64,7 +63,7 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
         experiments = list(self.app.db.experiments.find(query, projection))
         for exp in experiments:
             exp['site'] = self.app.config['site_id']
-        self.response.write(json.dumps(experiments, default=bson.json_util.default))
+        return experiments
 
     def put(self):
         """Update many Experiments."""
@@ -117,8 +116,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
     def get(self, xid):
         """Return one Experiment, conditionally with details."""
         xid = bson.ObjectId(xid)
-        experiment = self.get_experiment(xid)
-        self.response.write(json.dumps(experiment, default=bson.json_util.default))
+        return self.get_experiment(xid)
 
     def put(self, xid):
         """Update an existing Experiment."""
@@ -168,7 +166,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Sessions."""
-        self.response.write(json.dumps(self.app.db.sessions.count()))
+        self.response.write(self.app.db.sessions.count())
 
     def post(self):
         """Create a new Session"""
@@ -180,8 +178,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
         self.get_experiment(xid) # ensure permissions
         query = {'experiment': xid}
         projection = ['name', 'subject', 'notes']
-        sessions = list(self.app.db.sessions.find(query, projection))
-        self.response.write(json.dumps(sessions, default=bson.json_util.default))
+        return list(self.app.db.sessions.find(query, projection))
 
     def put(self):
         """Update many Sessions."""
@@ -225,13 +222,12 @@ class Session(nimsapiutil.NIMSRequestHandler):
         import copy
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(nimsdata.NIMSData.session_properties)
-        self.response.write(json.dumps(json_schema, default=bson.json_util.default))
+        return json_schema
 
     def get(self, sid):
         """Return one Session, conditionally with details."""
         sid = bson.ObjectId(sid)
-        session = self.get_session(sid)
-        self.response.write(json.dumps(session, default=bson.json_util.default))
+        return self.get_session(sid)
 
     def put(self, sid):
         """Update an existing Session."""
@@ -290,7 +286,7 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Epochs."""
-        self.response.write(json.dumps(self.app.db.epochs.count()))
+        self.response.write(self.app.db.epochs.count())
 
     def post(self):
         """Create a new Epoch."""
@@ -302,8 +298,7 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
         self.get_session(sid) # ensure permissions
         query = {'session': sid}
         projection = ['name', 'description', 'datatype', 'notes']
-        epochs = list(self.app.db.epochs.find(query, projection))
-        self.response.write(json.dumps(epochs, default=bson.json_util.default))
+        return list(self.app.db.epochs.find(query, projection))
 
     def put(self):
         """Update many Epochs."""
@@ -343,13 +338,12 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
         import copy
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(nimsdata.nimsdicom.NIMSDicom.epoch_properties)
-        self.response.write(json.dumps(json_schema, default=bson.json_util.default))
+        return json_schema
 
     def get(self, eid):
         """Return one Epoch, conditionally with details."""
         eid = bson.ObjectId(eid)
-        epoch = self.get_epoch(eid)
-        self.response.write(json.dumps(epoch, default=bson.json_util.default))
+        return self.get_epoch(eid)
 
     def put(self, eid):
         """Update an existing Epoch."""

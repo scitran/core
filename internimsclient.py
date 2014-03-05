@@ -18,7 +18,7 @@ logging.getLogger('requests').setLevel(logging.WARNING)
 
 def update(db, api_uri, site_id, privkey, internims_url):
     """sends is-alive signal to internims central."""
-    db.remotes.ensure_index('UTC', expireAfterSeconds=120)
+    db.remotes.ensure_index('timestamp', expireAfterSeconds=120)
 
     exp_userlist = [e['permissions'] for e in db.experiments.find(None, {'_id': False, 'permissions.uid': True})]
     col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True})]
@@ -34,18 +34,18 @@ def update(db, api_uri, site_id, privkey, internims_url):
         response = (json.loads(r.content))
         # update remotes entries
         for site in response['sites']:
-            site['UTC'] = datetime.datetime.strptime(site['timestamp'], '%Y-%m-%dT%H:%M:%S.%f')
-            db.remotes.find_and_modify({'_id': site['_id']}, update=site, upsert=True)
-            log.debug('upserting remote: ' + site['_id'])
+            #FIXME
+            site['timestamp'] = datetime.datetime.strptime(site['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+            db.remotes.update({'_id': site['_id']}, site, upsert=True)
+        log.debug('updating remotes: ' + ', '.join((r['_id'] for r in response['sites'])))
 
-        # update, add remotes to users
-        new_remotes = response['users']
-        log.debug('users w/ remotes: ' + str(new_remotes))
-        for user in response['users']:
-            db.users.update({'uid': user}, {'$set': {'remotes': new_remotes.get(user, [])}})
+        # delete remotes from users, who no longer have remotes
+        db.users.update({'remotes': {'$exists':True}, 'uid': {'$nin': response['users'].keys()}}, {'$unset': {'remotes': ''}}, multi=True)
 
-        # cannot use new_remotes.viewkeys(). leads to 'bson.errors.InvalidDocument: Cannot encode object: dict_keys([])'
-        db.users.update({'remotes': {'$exists':True}, 'uid': {'$nin': new_remotes.keys()}}, {'$unset': {'remotes': ''}}, multi=True)
+        # add remotes to users
+        log.debug('users w/ remotes: ' + ', '.join(response['users']))
+        for uid, remotes in response['users'].iteritems():
+            db.users.update({'uid': uid}, {'$set': {'remotes': remotes}})
     else:
         log.warning((r.status_code, r.reason))
 

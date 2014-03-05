@@ -43,10 +43,10 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             nimsapi/remotes                                     | list of remote instances
             [(nimsapi/log)]                                     | list of uwsgi log messages
             [(nimsapi/users)]                                   | list of users
-            nimsapi/users/current                               | details for currently logged in user
             [(nimsapi/users/count)]                             | count of users
             [(nimsapi/users/listschema)]                        | schema for user list
             [(nimsapi/users/schema)]                            | schema for single user
+            nimsapi/users/current                               | details for currently logged-in user
             nimsapi/users/*<uid>*                               | details for user *<uid>*
             [(nimsapi/groups)]                                  | list of groups
             [(nimsapi/groups/count)]                            | count of groups
@@ -130,16 +130,13 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             symlinks += _idsymlinks
 
     def remotes(self):
-        """Return the list of remotes where user has membership"""
-        remotes = [remote['_id'] for remote in list(self.app.db.remotes.find({}, []))]
-        self.response.write(json.dumps(remotes, default=bson.json_util.default))
+        """Return the list of all remote sites."""
+        return list(self.app.db.remotes.find(None, []))
 
     def log(self):
-        """Return logs"""
-        # TODO: don't hardcode log path.
-        logfile = '/var/log/uwsgi/app/nims.log'
+        """Return logs."""
         try:
-            logs = open(logfile).readlines()
+            logs = open(app.config['log_path']).readlines()
         except IOError as e:
             log.debug(e)
             if 'Permission denied' in e:
@@ -150,20 +147,11 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             else:
                 # file does not exist
                 self.abort(500, e)
-        else:
-            logs.reverse()
-            numlines = self.request.get('n', None)
-
-            trimmed = []
-            for line in logs:
-                match = re.search('^[\d\s:-]{17}[\s]+nimsapi:[.]*', line)
-                if match:
-                    trimmed.append(line)
-
-            if not numlines: numlines = len(trimmed)
-
-            self.response.headers['Content-Type'] = 'application/json'
-            self.response.write(json.dumps(trimmed[:int(numlines)]))
+        try:
+            n = int(self.request.get('n', 10000))
+        except:
+            self.abort(400, 'n must be an integer')
+        return [line for line in reversed(logs) if re.match('[\d\s:-]{17}[\s]+nimsapi:[.]*', line)][:n]
 
 
 class Users(nimsapiutil.NIMSRequestHandler):
@@ -208,12 +196,7 @@ class Users(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Users."""
-        self.response.write('%d users\n' % self.app.db.users.count())
-
-    def current(self):
-        """Return the current User."""
-        # FIXME: trim this down to not use the self.user object, and only send relevant info
-        self.response.write(json.dumps(self.user, default=bson.json_util.default))
+        self.response.write(self.app.db.users.count())
 
     def post(self):
         """Create a new User"""
@@ -221,9 +204,7 @@ class Users(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Users."""
-        projection = ['firstname', 'lastname', 'email_hash']
-        users = list(self.app.db.users.find({}, projection))
-        self.response.write(json.dumps(users, default=bson.json_util.default))
+        return list(self.app.db.users.find({}, ['firstname', 'lastname', 'email_hash']))
 
     def put(self):
         """Update many Users."""
@@ -271,14 +252,28 @@ class User(nimsapiutil.NIMSRequestHandler):
         'required': ['_id'],
     }
 
+    def current(self):
+        """Return details for the current User."""
+        if self.request.method == 'GET':
+            return self.get(self.uid)
+        elif self.request.method == 'PUT':
+            return self.put(self.uid)
+
     def get(self, uid):
         """Return User details."""
-        user = self.app.db.users.find_one({'uid': uid})
-        self.response.write(json.dumps(user, default=bson.json_util.default))
+        projection = []
+        if self.request.get('remotes') in ('1', 'true'):
+            projection += ['remotes']
+        if self.request.get('status') in ('1', 'true'):
+            projection += ['status']
+        if self.request.get('login') in ('1', 'true'):
+            projection += ['firstname', 'lastname', 'superuser']
+            self.app.db.users.update({'uid': uid}, {'$inc': {'logins': 1}})
+        return self.app.db.users.find_one({'uid': uid}, projection or None)
 
     def put(self, uid):
         """Update an existing User."""
-        user = self.app.db.users.find_one({'user_info': uid})
+        user = self.app.db.users.find_one({'uid': uid})
         if not user:
             self.abort(404)
         if uid == self.uid or self.user_is_superuser: # users can only update their own info
@@ -293,7 +288,7 @@ class User(nimsapiutil.NIMSRequestHandler):
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
                         updates['$unset'][k] = ''
-            self.app.db.users.update({'user_info': uid}, updates)
+            self.app.db.users.update({'uid': uid}, updates)
         else:
             self.abort(403)
 
@@ -324,7 +319,7 @@ class Groups(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Groups."""
-        self.response.write('%d groups\n' % self.app.db.groups.count())
+        self.response.write(self.app.db.groups.count())
 
     def post(self):
         """Create a new Group"""
@@ -332,9 +327,7 @@ class Groups(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Groups."""
-        projection = ['_id']
-        groups = list(self.app.db.groups.find({}, projection))
-        self.response.write(json.dumps(groups, default=bson.json_util.default))
+        return list(self.app.db.groups.find({}, []))
 
     def put(self):
         """Update many Groups."""
@@ -392,8 +385,7 @@ class Group(nimsapiutil.NIMSRequestHandler):
 
     def get(self, gid):
         """Return Group details."""
-        group = self.app.db.groups.find_one({'_id': gid})
-        self.response.write(json.dumps(group, default=bson.json_util.default))
+        return self.app.db.groups.find_one({'_id': gid})
 
     def put(self, gid):
         """Update an existing Group."""
@@ -411,10 +403,10 @@ routes = [
         webapp2.Route(r'/remotes',                                  NIMSAPI, handler_method='remotes', methods=['GET']),
         webapp2.Route(r'/log',                                      NIMSAPI, handler_method='log', methods=['GET']),
         webapp2.Route(r'/users',                                    Users),
-        webapp2.Route(r'/users/current',                            Users, handler_method='current', methods=['GET']),
         webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/users/schema',                             User, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/users/current',                            User, handler_method='current', methods=['GET', 'PUT']),
         webapp2.Route(r'/users/<uid>',                              User),
         webapp2.Route(r'/groups',                                   Groups),
         webapp2.Route(r'/groups/count',                             Groups, handler_method='count', methods=['GET']),
@@ -447,8 +439,14 @@ routes = [
     ]),
 ]
 
+def dispatcher(router, request, response):
+    rv = router.default_dispatcher(request, response)
+    if rv is not None:
+        return webapp2.Response(json.dumps(rv, default=bson.json_util.default))
+
 app = webapp2.WSGIApplication(routes, debug=True)
-app.config = dict(stage_path='', site_id=None, ssl_key=None, insecure=False)
+app.router.set_dispatcher(dispatcher)
+app.config = dict(stage_path='', site_id=None, ssl_key=None, insecure=False, log_path='')
 
 
 if __name__ == '__main__':
@@ -462,6 +460,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('config_file', help='path to config file')
     arg_parser.add_argument('--db_uri', help='NIMS DB URI')
     arg_parser.add_argument('--stage_path', help='path to staging area')
+    arg_parser.add_argument('--log_path', help='path to API log file')
     arg_parser.add_argument('--ssl_key', help='path to private SSL key file')
     arg_parser.add_argument('--site_id', help='InterNIMS site ID')
     arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint')
@@ -485,6 +484,7 @@ if __name__ == '__main__':
 
     app.config['site_id'] = args.site_id or 'local'
     app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
+    app.config['log_path'] = args.log_path
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
     app.config['insecure'] = config.getboolean('nims', 'insecure')
 

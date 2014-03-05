@@ -102,24 +102,19 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                     log.debug('remote host ' + requester + ' not in auth list. DENIED')
                     self.abort(403, requester + ' is not authorized')
                 log.debug('request from ' + self.request.user_agent + ', interNIMS p2p initiated')
-                # verify signature
-                self.signature = base64.b64decode(self.request.headers.get('X-Signature'))
 
-                # assemble msg to be hased
+                # assemble msg to be hashed and verify signature
+                self.signature = base64.b64decode(self.request.headers.get('X-Signature'))
                 msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + self.request.headers.get('Date')
                 key = Crypto.PublicKey.RSA.importKey(target['pubkey'])
                 h = Crypto.Hash.SHA.new(msg)
                 verifier = Crypto.Signature.PKCS1_v1_5.new(key)
-                if verifier.verify(h, self.signature):
-                    super(NIMSRequestHandler, self).dispatch()
-                else:
-                    log.debug('message/signature is not authentic')
-                    self.abort(403, 'authentication failed')
-            # request originates from self
-            else:
-                    super(NIMSRequestHandler, self).dispatch()
+                if not verifier.verify(h, self.signature):
+                    log.debug('remote message/signature is not authentic')
+                    self.abort(403, 'remote message/signature is not authentic')
+            return super(NIMSRequestHandler, self).dispatch()
 
-        # dispatch to remote instance
+        # delegate to remote instance
         elif self.ssl_key is not None and self.site_id is not None:
             log.debug('dispatching to remote ' + self.target_id)
             # is target registered?
@@ -134,10 +129,8 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             headers['X-From'] = self.uid
             headers['Content-Length'] = len(self.request.body)
             del headers['Host']                                                 # delete old host destination
-            try:
-                del headers['Authorization']                                    # delete access_token
-            except KeyError:
-                pass                                                            # not all requests will have access_token
+            if 'Authorization' in headers:
+                del headers['Authorization']                                    # delete access_token, if present
 
             # assemble msg to be hashed
             nonce = str(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S'))
@@ -159,8 +152,8 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         elif self.ssl_key is None or self.site_id is None:
             log.debug('ssl key or site id undefined, cannot dispatch to remote')
 
-    def schema(self, *args, **kwargs):
-        self.response.write(json.dumps(self.json_schema, default=bson.json_util.default))
+    def schema(self):
+        return self.json_schema
 
     def get_collection(self, cid, min_role='anon-read'):
         collection = self.app.db.collections.find_one({'_id': cid})
