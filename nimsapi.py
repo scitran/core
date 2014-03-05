@@ -43,7 +43,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             nimsapi/remotes                                     | list of remote instances
             [(nimsapi/log)]                                     | list of uwsgi log messages
             [(nimsapi/users)]                                   | list of users
-            (nimsapi/users/current)                             | details for currently logged in user
+            nimsapi/users/current                               | details for currently logged in user
             [(nimsapi/users/count)]                             | count of users
             [(nimsapi/users/listschema)]                        | schema for user list
             [(nimsapi/users/schema)]                            | schema for single user
@@ -132,7 +132,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
     def remotes(self):
         """Return the list of remotes where user has membership"""
         remotes = [remote['_id'] for remote in list(self.app.db.remotes.find({}, []))]
-        self.response.write(json.dumps(remotes))
+        self.response.write(json.dumps(remotes, default=bson.json_util.default))
 
     def log(self):
         """Return logs"""
@@ -212,7 +212,8 @@ class Users(nimsapiutil.NIMSRequestHandler):
 
     def current(self):
         """Return the current User."""
-        self.response.write(json.dumps(self.user))
+        # FIXME: trim this down to not use the self.user object, and only send relevant info
+        self.response.write(json.dumps(self.user, default=bson.json_util.default))
 
     def post(self):
         """Create a new User"""
@@ -272,27 +273,27 @@ class User(nimsapiutil.NIMSRequestHandler):
 
     def get(self, uid):
         """Return User details."""
-        user = self.app.db.users.find_one({'oa2_id': uid})
+        user = self.app.db.users.find_one({'uid': uid})
         self.response.write(json.dumps(user, default=bson.json_util.default))
 
     def put(self, uid):
         """Update an existing User."""
-        user = self.app.db.users.find_one({'oa2_id': uid})
+        user = self.app.db.users.find_one({'user_info': uid})
         if not user:
             self.abort(404)
-        if uid == self.userid or self.user_is_superuser: # users can only update their own info
+        if uid == self.uid or self.user_is_superuser: # users can only update their own info
             updates = {'$set': {}, '$unset': {}}
             for k, v in self.request.params.iteritems():
                 if k != 'superuser' and k in []:#user_fields:
                     updates['$set'][k] = v # FIXME: do appropriate type conversion
-                elif k == 'superuser' and uid == self.userid and self.user_is_superuser is not None: # toggle superuser for requesting user
+                elif k == 'superuser' and uid == self.uid and self.user_is_superuser is not None: # toggle superuser for requesting user
                     updates['$set'][k] = v.lower() in ('1', 'true')
-                elif k == 'superuser' and uid != self.userid and self.user_is_superuser:             # enable/disable superuser for other user
+                elif k == 'superuser' and uid != self.uid and self.user_is_superuser:             # enable/disable superuser for other user
                     if v.lower() in ('1', 'true') and user.get('superuser') is None:
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
                         updates['$unset'][k] = ''
-            self.app.db.users.update({'oa2_id': uid}, updates)
+            self.app.db.users.update({'user_info': uid}, updates)
         else:
             self.abort(403)
 
@@ -447,7 +448,7 @@ routes = [
 ]
 
 app = webapp2.WSGIApplication(routes, debug=True)
-app.config = dict(stage_path='', site_id=None, ssl_key=None)
+app.config = dict(stage_path='', site_id=None, ssl_key=None, insecure=False)
 
 
 if __name__ == '__main__':
@@ -463,6 +464,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--stage_path', help='path to staging area')
     arg_parser.add_argument('--ssl_key', help='path to private SSL key file')
     arg_parser.add_argument('--site_id', help='InterNIMS site ID')
+    arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint')
     args = arg_parser.parse_args()
 
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
@@ -483,6 +485,8 @@ if __name__ == '__main__':
 
     app.config['site_id'] = args.site_id or 'local'
     app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
+    app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
+    app.config['insecure'] = config.getboolean('nims', 'insecure')
 
     db_uri = args.db_uri or config.get('nims', 'db_uri')
     app.db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()

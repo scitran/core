@@ -20,11 +20,9 @@ def update(db, api_uri, site_id, privkey, internims_url):
     """sends is-alive signal to internims central."""
     db.remotes.ensure_index('UTC', expireAfterSeconds=120)
 
-    exp_userlist = [exp['permissions'].viewkeys() for exp in db.experiments.find({}, {'_id': False, 'permissions': True})]
-    col_userlist = [col['permissions'].viewkeys() for col in db.collections.find({}, {'_id': False, 'permissions': True})]
-    userlists = exp_userlist + col_userlist
-    all_users = set([user for experiment in userlists for user in experiment])
-    remote_users = filter(lambda u: '#' in u, all_users)
+    exp_userlist = [e['permissions'] for e in db.experiments.find(None, {'_id': False, 'permissions.uid': True})]
+    col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True})]
+    remote_users = list(set([user['uid'] for container in exp_userlist+col_userlist for user in container if '#' in user['uid']]))
 
     payload = json.dumps({'iid': site_id, 'api_uri': api_uri, 'users': remote_users})
     h = Crypto.Hash.SHA.new(payload)
@@ -44,10 +42,10 @@ def update(db, api_uri, site_id, privkey, internims_url):
         new_remotes = response['users']
         log.debug('users w/ remotes: ' + str(new_remotes))
         for user in response['users']:
-            db.users.update({'oa2_id': user}, {'$set': {'remotes': new_remotes.get(user, [])}})
+            db.users.update({'uid': user}, {'$set': {'remotes': new_remotes.get(user, [])}})
 
         # cannot use new_remotes.viewkeys(). leads to 'bson.errors.InvalidDocument: Cannot encode object: dict_keys([])'
-        db.users.update({'remotes': {'$exists':True}, 'oa2_id': {'$nin': new_remotes.keys()}}, {'$unset': {'remotes': ''}}, multi=True)
+        db.users.update({'remotes': {'$exists':True}, 'uid': {'$nin': new_remotes.keys()}}, {'$unset': {'remotes': ''}}, multi=True)
     else:
         log.warning((r.status_code, r.reason))
 
@@ -67,7 +65,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--api_uri', help='API URL, without http:// or https://')
     arg_parser.add_argument('--site_id', help='instance ID')
     arg_parser.add_argument('--sleeptime', default=60, type=int, help='time to sleep between is alive signals')
-    arg_parser.add_argument('-k', '--ssl_key', help='path to privkey file')
+    arg_parser.add_argument('--ssl_key', help='path to privkey file')
     args = arg_parser.parse_args()
 
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.configfile))})

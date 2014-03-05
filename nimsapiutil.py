@@ -14,6 +14,13 @@ import logging
 log = logging.getLogger('nimsapi')
 logging.getLogger('requests').setLevel(logging.WARNING)                  # silence Requests library logging
 
+INTEGER_ROLES = {
+        'anon-read':  0,
+        'read-only':  1,
+        'read-write': 2,
+        'admin':      3,
+        }
+
 
 class NIMSRequestHandler(webapp2.RequestHandler):
 
@@ -50,32 +57,24 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.request.remote_user = self.request.get('user', None) # FIXME: auth system should set REMOTE_USER
+        self.uid = '@public'  # @public is default user
         self.access_token = self.request.headers.get('Authorization', None)
         log.debug('accesstoken: ' + str(self.access_token))
 
-        self.userid = '@public'  # @public is default user
-        # check for user as url encoded param
-        if self.request.remote_user:
-            self.userid =  self.request.remote_user
-        # handle access token
-        if self.access_token:
-            r = requests.request(method='GET',
-                url='https://www.googleapis.com/plus/v1/people/me/openIdConnect',
-                params={'access_token': self.access_token})
+        if self.access_token and self.app.config['oauth2_id_endpoint']:
+            r = requests.request(method='GET', url = self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + self.access_token})
             if r.status_code == 200:
-                # TODO: reduce to minimum needed to match
-                user_profile = json.loads(r.content)
-                # FIXME: lookup should be on oauth_id
-                self.user = self.app.db.users.find_one({'firstname': user_profile['given_name'], 'lastname': user_profile['family_name']})
-                self.userid = self.user['_id']
-                log.debug('oauth user: ' + user_profile['email'])
+                oauth_user = json.loads(r.content)
+                self.uid = oauth_user['email']
+                log.debug('oauth user: ' + oauth_user['email'])
             else:
                 #TODO: add handlers for bad tokens.
                 log.debug('ERR: ' + str(r.status_code) + ' bad token')
-        self.user = self.app.db.users.find_one({'oa2_id': self.userid})
-        self.user_is_superuser = self.user.get('superuser', None)
-        log.debug(self.user)
+        elif self.app.config['insecure'] and 'X-Requested-With' not in self.request.headers and self.request.get('user', None):
+            self.uid = self.request.get('user')
+
+        self.user = self.app.db.users.find_one({'uid': self.uid})
+        self.user_is_superuser = self.user.get('superuser', None) if self.user else False
 
         # p2p request
         self.target_id = self.request.get('iid', None)
@@ -88,9 +87,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         self.response.headers.add('Access-Control-Allow-Origin', self.request.headers.get('origin', '*'))
 
         if not self.request.path.endswith('/nimsapi/log'):
-            # TODO: change to log.debug
             log.info(self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
-            log.info(dict(self.request.headers))
 
     def dispatch(self):
         """dispatching and request forwarding"""
@@ -107,15 +104,16 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 log.debug('request from ' + self.request.user_agent + ', interNIMS p2p initiated')
                 # verify signature
                 self.signature = base64.b64decode(self.request.headers.get('X-Signature'))
-                payload = self.request.body
+
+                # assemble msg to be hased
+                msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + self.request.headers.get('Date')
                 key = Crypto.PublicKey.RSA.importKey(target['pubkey'])
-                h = Crypto.Hash.SHA.new(payload)
+                h = Crypto.Hash.SHA.new(msg)
                 verifier = Crypto.Signature.PKCS1_v1_5.new(key)
                 if verifier.verify(h, self.signature):
-                    # log.debug('message/signature is authentic')
                     super(NIMSRequestHandler, self).dispatch()
                 else:
-                    log.warning('message/signature is not authentic')
+                    log.debug('message/signature is not authentic')
                     self.abort(403, 'authentication failed')
             # request originates from self
             else:
@@ -130,30 +128,32 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 log.debug('remote host ' + self.target_id + ' not in auth list. DENIED')
                 self.abort(403, self.target_id + 'is not authorized')
 
-            # disassemble the incoming request
-            reqparams = self.request.params
-            reqpayload = self.request.body                                      # request payload, almost always empty
-            reqheaders = self.request.headers
-            reqheaders['User-Agent'] = 'NIMS Instance ' + self.site_id
-            reqheaders['X-From'] = self.userid
-            reqheaders['Content-Length'] = len(reqpayload)
-            del reqheaders['Host']                                              # delete old host destination
+            # adjust headers
+            headers = self.request.headers
+            headers['User-Agent'] = 'NIMS Instance ' + self.site_id
+            headers['X-From'] = self.uid
+            headers['Content-Length'] = len(self.request.body)
+            del headers['Host']                                                 # delete old host destination
             try:
-                del reqheaders['Authorization']                                 # delete access_token
-            except KeyError as e:
+                del headers['Authorization']                                    # delete access_token
+            except KeyError:
                 pass                                                            # not all requests will have access_token
 
-            # create a signature of the incoming request payload
-            h = Crypto.Hash.SHA.new(reqpayload)
+            # assemble msg to be hashed
+            nonce = str(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S'))
+            headers['Date'] = nonce
+            msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + nonce
+            # create a signature
+            h = Crypto.Hash.SHA.new(msg)
             signature = Crypto.Signature.PKCS1_v1_5.new(self.ssl_key).sign(h)
-            reqheaders['X-Signature'] = base64.b64encode(signature)
+            headers['X-Signature'] = base64.b64encode(signature)
 
             # construct outgoing request
             target_api = 'https://' + target['api_uri'] + self.request.path.split('/nimsapi')[1]
-            r = requests.request(method=self.request.method, data=reqpayload, url=target_api, params=reqparams, headers=reqheaders, verify=False)
+            r = requests.request(method=self.request.method, data=self.request.body, url=target_api, params=self.request.params, headers=headers, verify=False)
 
             # return response content
-            # TODO: headers
+            # TODO: think about: are the headers even useful?
             self.response.write(r.content)
 
         elif self.ssl_key is None or self.site_id is None:
@@ -162,17 +162,69 @@ class NIMSRequestHandler(webapp2.RequestHandler):
     def schema(self, *args, **kwargs):
         self.response.write(json.dumps(self.json_schema, default=bson.json_util.default))
 
-    def valid_parameters(self):
-        # FIXME: implement, using self.request.params.mixed()
-        return True
+    def get_collection(self, cid, min_role='anon-read'):
+        collection = self.app.db.collections.find_one({'_id': cid})
+        if not collection:
+            self.abort(404)
+        if not self.user_is_superuser:
+            for perm in collection['permissions']:
+                if perm['uid'] == self.uid:
+                    break
+            else:
+                self.abort(403, self.uid + ' does not have permission to this Collection')
+            if INTEGER_ROLES[perm['role']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' on this Collection')
+            if perm['role'] != 'admin': # if not admin, mask all other permissions
+                    collection['permissions'] = [{'uid': self.uid, 'role': perm['role']}]
+        return collection
 
-    def user_access_epoch(self, epoch):
-        if self.user_is_superuser:
-            return True
+    def get_experiment(self, xid, min_role='anon-read'):
+        experiment = self.app.db.experiments.find_one({'_id': xid})
+        if not experiment:
+            self.abort(404)
+        if not self.user_is_superuser:
+            for perm in experiment['permissions']:
+                if perm['uid'] == self.uid:
+                    break
+            else:
+                self.abort(403, self.uid + ' does not have permission to this Experiment')
+            if INTEGER_ROLES[perm['role']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' on this Experiment')
+            if perm['role'] != 'admin': # if not admin, mask all other permissions
+                    experiment['permissions'] = [{'uid': self.uid, 'role': perm['role']}]
+        return experiment
+
+    def get_session(self, sid, min_role='anon-read'):
+        #FIXME: implement min_role logic
+        session = self.app.db.sessions.find_one({'_id': sid})
+        if not session:
+            self.abort(404)
+        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
+        if not experiment:
+            self.abort(500)
+        if not self.user_is_superuser:
+            for perm in experiment['permissions']:
+                if perm['uid'] == self.uid:
+                    break
+            else:
+                self.abort(403, 'user does not have permission to this Session')
+        return session
+
+    def get_epoch(self, eid, min_role='anon-read'):
+        #FIXME: implement min_role logic
+        epoch = self.app.db.epochs.find_one({'_id': eid})
+        if not epoch:
+            self.abort(404)
         session = self.app.db.sessions.find_one({'_id': epoch['session']})
         if not session:
             self.abort(500)
         experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
         if not experiment:
             self.abort(500)
-        return (self.userid in experiment['permissions'])
+        if not self.user_is_superuser:
+            for perm in experiment['permissions']:
+                if perm['uid'] == self.uid:
+                    break
+            else:
+                self.abort(403, 'user does not have permission to this Epoch')
+        return epoch

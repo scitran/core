@@ -10,15 +10,6 @@ log = logging.getLogger('nimsapi')
 
 import nimsapiutil
 
-# curator (later: multiple curators and authorizers)
-# name
-# permissions
-# epochs point to collections
-
-# /collections
-# /collections/<cid>/sessions
-# /collections/<cid>/epochs?session=<sid>
-# /collections/<cid>/sessions/<sid>/epochs
 
 class Collections(nimsapiutil.NIMSRequestHandler):
 
@@ -61,23 +52,17 @@ class Collections(nimsapiutil.NIMSRequestHandler):
 
     def post(self):
         """Create a new Collection."""
-        if not self.valid_parameters(): # FIXME: move to superclass init
-            self.abort(400, 'invalid parameters')
         name = self.request.get('name') or 'innominate'
         epoch_ids = [bson.ObjectId(eid) for eid in self.request.get_all('epochs[]', [])]
-        epochs = [self.app.db.epochs.find_one({'_id': eid}, ['session']) for eid in epoch_ids]
-        if not all(epochs):
-            self.abort(400, 'some Epoch IDs are invalid')
-        if not all([self.user_access_epoch(epoch) for epoch in epochs]):
-            self.abort(403, 'user does not have access to all Epochs')
-        cid = self.app.db.collections.insert({'curator': self.userid, 'name': name, 'permissions': {self.userid: 'admin'}})
+        [self.get_epoch(eid) for eid in epoch_ids] # ensure permissions
+        cid = self.app.db.collections.insert({'curator': self.uid, 'name': name, 'permissions': [{'uid': self.uid, 'role': 'admin'}]})
         for eid in epoch_ids:
             self.app.db.epochs.update({'_id': eid}, {'$push': {'collections': cid}})
 
     def get(self):
         """Return the list of Collections."""
-        query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
-        projection = ['curator', 'name', 'permissions.'+self.userid, 'notes']
+        query = {'permissions.uid': self.uid} if not self.user_is_superuser else None
+        projection = {'curator': 1, 'name': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid}}}
         collections = list(self.app.db.collections.find(query, projection))
         self.response.write(json.dumps(collections, default=bson.json_util.default))
 
@@ -128,36 +113,19 @@ class Collection(nimsapiutil.NIMSRequestHandler):
 
     def get(self, cid):
         """Return one Collection, conditionally with details."""
-        collection = self.app.db.collections.find_one({'_id': bson.ObjectId(cid)})
-        if not collection:
-            self.abort(404)
-        if not self.user_is_superuser:
-            if self.userid not in collection['permissions']:
-                self.abort(403)
-            if collection['permissions'][self.userid] != 'admin': # mask other users' permissions
-                collection['permissions'] = {self.userid: collection['permissions'][self.userid]}
+        cid = bson.ObjectId(cid)
+        collection = self.get_collection(cid)
         self.response.write(json.dumps(collection, default=bson.json_util.default))
 
     def put(self, cid):
         """Update an existing Collection."""
         cid = bson.ObjectId(cid)
-        if not self.valid_parameters(): # FIXME: move to superclass init
-            self.abort(400, 'invalid parameters')
-        collection = self.app.db.collections.find_one({'_id': cid})
-        if not collection:
-            self.abort(404, 'Collection not found')
-        if not self.user_is_superuser and collection['permissions'].get(self.userid) != 'admin':
-            self.abort(403, 'user must be admin on Collection to modify')
+        self.get_collection(cid, 'admin') # ensure permissions
         add_epoch_ids = [bson.ObjectId(eid) for eid in self.request.get_all('add_epochs[]', [])]
-        add_epochs = [self.app.db.epochs.find_one({'_id': eid}, ['session']) for eid in add_epoch_ids]
         del_epoch_ids = [bson.ObjectId(eid) for eid in self.request.get_all('del_epochs[]', [])]
-        del_epochs = [self.app.db.epochs.find_one({'_id': eid}, ['session']) for eid in del_epoch_ids]
-        if not all(add_epochs + del_epochs):
-            self.abort(400, 'some Epoch IDs are invalid')
-        if not all([self.user_access_epoch(epoch) for epoch in add_epochs]):
-            self.abort(403, 'user does not have access to all Epochs')
+        [self.get_epoch(eid) for eid in add_epoch_ids] # ensure permissions
+        [self.get_epoch(eid) for eid in del_epoch_ids] # ensure permissions
         for eid in add_epoch_ids:
-            print 'adding', eid, 'to', cid
             self.app.db.epochs.update({'_id': eid}, {'$addToSet': {'collections': bson.ObjectId(cid)}})
         for eid in del_epoch_ids:
             self.app.db.epochs.update({'_id': eid}, {'$pull': {'collections': bson.ObjectId(cid)}})
@@ -165,11 +133,7 @@ class Collection(nimsapiutil.NIMSRequestHandler):
     def delete(self, cid):
         """Delete a Collection."""
         cid = bson.ObjectId(cid)
-        collection = self.app.db.collections.find_one({'_id': cid}, ['permissions'])
-        if not collection:
-            self.abort(404, 'Collection not found')
-        if not self.user_is_superuser and collection['permissions'].get(self.userid) != 'admin':
-            self.abort(403, 'user must be admin on Collection to delete')
+        self.get_collection(cid, 'admin') # ensure permissions
         self.app.db.epochs.update({'collections': cid}, {'$pull': {'collections': cid}}, multi=True)
         self.app.db.collections.remove({'_id': cid})
 
@@ -215,13 +179,10 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def get(self, cid):
         """Return the list of Session Epochs."""
-        collection = self.app.db.collections.find_one({'_id': bson.ObjectId(cid)})
-        if not collection:
-            self.abort(404)
-        if not self.user_is_superuser and self.userid not in collection['permissions']:
-            self.abort(403)
+        cid = bson.ObjectId(cid)
+        self.get_collection(cid) # ensure permissions
         aggregated_epochs = self.app.db.epochs.aggregate([
-                {'$match': {'collections': bson.ObjectId(cid)}},
+                {'$match': {'collections': cid}},
                 {'$group': {'_id': '$session'}},
                 ])['result']
         query = {'_id': {'$in': [agg_epoch['_id'] for agg_epoch in aggregated_epochs]}}
@@ -277,18 +238,16 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def get(self, cid):
         """Return the list of Session Epochs."""
-        collection = self.app.db.collections.find_one({'_id': bson.ObjectId(cid)})
-        if not collection:
-            self.abort(404)
-        if not self.user_is_superuser and self.userid not in collection['permissions']:
-            self.abort(403)
-        query = {'collections': bson.ObjectId(cid)}
+        cid = bson.ObjectId(cid)
+        self.get_collection(cid) # ensure permissions
+        query = {'collections': cid}
         sid = self.request.get('session')
-        if re.match(r'^[0-9a-f]{24}$', sid):
+        if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
-            self.abort(400)
+            self.abort(400, sid + ' is not a valid ObjectId')
         projection = ['name', 'description', 'datatype', 'notes']
+        print query
         epochs = list(self.app.db.epochs.find(query, projection))
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
 

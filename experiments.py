@@ -59,8 +59,8 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Experiments."""
-        query = {'permissions.' + self.userid: {'$exists': 'true'}} if not self.user_is_superuser else None
-        projection = ['group', 'name', 'timestamp', 'permissions.'+self.userid, 'notes']
+        query = {'permissions.uid': self.uid} if not self.user_is_superuser else None
+        projection = {'group': 1, 'name': 1, 'timestamp': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid}}}
         experiments = list(self.app.db.experiments.find(query, projection))
         for exp in experiments:
             exp['site'] = self.app.config['site_id']
@@ -116,19 +116,19 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
 
     def get(self, xid):
         """Return one Experiment, conditionally with details."""
-        experiment = self.app.db.experiments.find_one({'_id': bson.ObjectId(xid)})
-        if not experiment:
-            self.abort(404)
-        if not self.user_is_superuser:
-            if self.userid not in experiment['permissions']:
-                self.abort(403)
-            if experiment['permissions'][self.userid] != 'admin' and experiment['permissions'][self.userid] != 'pi':
-                experiment['permissions'] = {self.userid: experiment['permissions'][self.userid]}
+        xid = bson.ObjectId(xid)
+        experiment = self.get_experiment(xid)
         self.response.write(json.dumps(experiment, default=bson.json_util.default))
 
     def put(self, xid):
         """Update an existing Experiment."""
-        self.response.write('experiment %s put, %s\n' % (exp_id, self.request.params))
+        xid = bson.ObjectId(xid)
+        self.get_experiment(xid, 'read-write') # ensure permissions
+        updates = {'$set': {}, '$unset': {}}
+        for k, v in self.request.params.iteritems():
+            if k in ['notes']:
+                updates['$set'][k] = v # FIXME: do appropriate type conversion
+        self.app.db.experiments.update({'_id': xid}, updates)
 
     def delete(self, xid):
         """Delete an Experiment."""
@@ -176,12 +176,9 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def get(self, xid):
         """Return the list of Experiment Sessions."""
-        experiment = self.app.db.experiments.find_one({'_id': bson.ObjectId(xid)})
-        if not experiment:
-            self.abort(404)
-        if not self.user_is_superuser and self.userid not in experiment['permissions']:
-            self.abort(403)
-        query = {'experiment': bson.ObjectId(xid)}
+        xid = bson.ObjectId(xid)
+        self.get_experiment(xid) # ensure permissions
+        query = {'experiment': xid}
         projection = ['name', 'subject', 'notes']
         sessions = list(self.app.db.sessions.find(query, projection))
         self.response.write(json.dumps(sessions, default=bson.json_util.default))
@@ -232,31 +229,19 @@ class Session(nimsapiutil.NIMSRequestHandler):
 
     def get(self, sid):
         """Return one Session, conditionally with details."""
-        session = self.app.db.sessions.find_one({'_id': bson.ObjectId(sid)})
-        if not session:
-            self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
-        if not experiment:
-            self.abort(500)
-        if not self.user_is_superuser and self.userid not in experiment['permissions']:
-            self.abort(403)
+        sid = bson.ObjectId(sid)
+        session = self.get_session(sid)
         self.response.write(json.dumps(session, default=bson.json_util.default))
 
     def put(self, sid):
         """Update an existing Session."""
-        session = self.app.db.sessions.find_one({'_id': bson.ObjectId(sid)})
-        if not session:
-            self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
-        if not experiment:
-            self.abort(500)
-        if not self.user_is_superuser and self.userid not in experiment['permissions']:
-            self.abort(403)
+        sid = bson.ObjectId(sid)
+        self.get_session(sid, 'read-write') # ensure permissions
         updates = {'$set': {}, '$unset': {}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
-        self.app.db.sessions.update({'_id': bson.ObjectId(sid)}, updates)
+        self.app.db.sessions.update({'_id': sid}, updates)
 
     def delete(self, sid):
         """Delete a Session."""
@@ -313,15 +298,9 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def get(self, sid):
         """Return the list of Session Epochs."""
-        session = self.app.db.sessions.find_one({'_id': bson.ObjectId(sid)})
-        if not session:
-            self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
-        if not experiment:
-            self.abort(500)
-        if not self.user_is_superuser and self.userid not in experiment['permissions']:
-            self.abort(403)
-        query = {'session': bson.ObjectId(sid)}
+        sid = bson.ObjectId(sid)
+        self.get_session(sid) # ensure permissions
+        query = {'session': sid}
         projection = ['name', 'description', 'datatype', 'notes']
         epochs = list(self.app.db.epochs.find(query, projection))
         self.response.write(json.dumps(epochs, default=bson.json_util.default))
@@ -368,18 +347,19 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
 
     def get(self, eid):
         """Return one Epoch, conditionally with details."""
-        if not self.valid_parameters():
-            self.abort(400, 'invalid parameters')
-        epoch = self.app.db.epochs.find_one({'_id': bson.ObjectId(eid)})
-        if not epoch:
-            self.abort(404)
-        if not self.user_access_epoch(epoch):
-            self.abort(403)
+        eid = bson.ObjectId(eid)
+        epoch = self.get_epoch(eid)
         self.response.write(json.dumps(epoch, default=bson.json_util.default))
 
     def put(self, eid):
         """Update an existing Epoch."""
-        self.response.write('epoch %s put, %s\n' % (epoch_id, self.request.params))
+        eid = bson.ObjectId(eid)
+        self.get_epoch(eid, 'read-write') # ensure permissions
+        updates = {'$set': {}, '$unset': {}}
+        for k, v in self.request.params.iteritems():
+            if k in ['notes']:
+                updates['$set'][k] = v # FIXME: do appropriate type conversion
+        self.app.db.epochs.update({'_id': eid}, updates)
 
     def delete(self, eid):
         """Delete an Epoch."""
