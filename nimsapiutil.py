@@ -57,100 +57,104 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.uid = '@public'  # @public is default user
-        self.access_token = self.request.headers.get('Authorization', None)
-        log.debug('accesstoken: ' + str(self.access_token))
-
-        if self.access_token and self.app.config['oauth2_id_endpoint']:
-            r = requests.request(method='GET', url = self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + self.access_token})
-            if r.status_code == 200:
-                oauth_user = json.loads(r.content)
-                self.uid = oauth_user['email']
-                log.debug('oauth user: ' + oauth_user['email'])
-            else:
-                #TODO: add handlers for bad tokens.
-                log.debug('ERR: ' + str(r.status_code) + ' bad token')
-        elif self.app.config['insecure'] and 'X-Requested-With' not in self.request.headers and self.request.get('user', None):
-            self.uid = self.request.get('user')
-
-        self.user = self.app.db.users.find_one({'uid': self.uid})
-        self.user_is_superuser = self.user.get('superuser', None) if self.user else False
-
-        # p2p request
         self.target_id = self.request.get('iid', None)
-        self.p2p_user = self.request.headers.get('X-From', None)
-        self.site_id = self.app.config['site_id']
-        self.ssl_key = self.app.config['ssl_key']
-        log.debug('X-From: ' + str(self.p2p_user))
+        self.access_token = self.request.headers.get('Authorization', None)
 
-        # CORS bare minimum
+        # CORS header
         self.response.headers.add('Access-Control-Allow-Origin', self.request.headers.get('origin', '*'))
 
+        if self.access_token and self.app.config['oauth2_id_endpoint']:
+            r = requests.request(method='GET', url=self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + self.access_token})
+            if r.status_code == 200:
+                self.uid = json.loads(r.content)['email']
+                log.debug('oauth user: ' + self.uid)
+            else:
+                # TODO: add handlers for bad tokens
+                # inform app of expired token, app will try to get new token, or ask user to log in again
+                log.debug('ERR: ' + str(r.status_code) + r.reason + ' bad token')
+        elif self.app.config['insecure'] and 'X-Requested-With' not in self.request.headers and self.request.get('user', None):
+            self.uid = self.request.get('user')
+        else:
+            self.uid = '@public'
+            self.user_is_superuser = False
+
+        if self.uid != '@public':
+            user = self.app.db.users.find_one({'_id': self.uid})
+            if user:
+                self.user_is_superuser = user.get('superuser', None)
+            else:
+                self.abort(403, 'user: ' + self.uid + ' does not exist')
+
+        if self.target_id not in [None, self.app.config['site_id']]:
+            self.rtype = 'to_remote'
+
+            if not self.app.config['site_id']:
+                self.abort(500, 'api site_id is not configured')
+            if not self.app.config['ssl_key']:
+                self.abort(500, 'api ssl_key is not configured')
+
+            target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id': False, 'api_uri': True})
+            if not target:
+                log.debug('remote host ' + self.target_id + ' is not an authorized remote.')
+                self.abort(403, 'remote host ' + self.target_id + ' is not an authorized remote.')
+
+            # adjust headers
+            self.headers = self.request.headers
+            self.headers['User-Agent'] = 'NIMS Instance ' + self.app.config['site_id']
+            self.headers['X-From'] = (self.uid + '#' + self.app.config['site_id']) if self.uid != '@public' else self.uid
+            self.headers['Content-Length'] = len(self.request.body)
+            self.headers['Date'] = str(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S'))   # Nonce for msg
+            del self.headers['Host']
+            if self.headers.get('Authorization'): del self.headers['Authorization']
+
+            # adjust params
+            self.params = self.request.params.mixed()
+            if self.params.get('user'): del self.params['user']
+            del self.params['iid']
+
+            # assemble msg, hash, and signature
+            msg = self.request.method + self.request.path + str(self.params) + self.request.body + self.headers.get('Date')
+            signature = Crypto.Signature.PKCS1_v1_5.new(self.app.config['ssl_key']).sign(Crypto.Hash.SHA.new(msg))
+            self.headers['X-Signature'] = base64.b64encode(signature)
+
+            # prepare delegated request URI
+            self.target_api = target['api_uri'] + self.request.path.split('/nimsapi')[1]
+
+        elif self.request.user_agent.startswith('NIMS Instance'):
+            self.rtype = 'from_remote'
+
+            self.uid = self.request.headers.get('X-From')
+            self.user_is_superuser = False
+
+            remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
+            requester = self.app.db.remotes.find_one({'_id':remote_instance})
+            if not requester:
+                log.debug('remote host ' + remote_instance + ' not in auth list. DENIED')
+                self.abort(403, remote_instance + ' is not authorized')
+
+            # assemble msg, hash, and verify recieved signature
+            signature = base64.b64decode(self.request.headers.get('X-Signature'))
+            msg = self.request.method + self.request.path + str(self.request.params.mixed()) + self.request.body + self.request.headers.get('Date')
+            verifier = Crypto.Signature.PKCS1_v1_5.new(Crypto.PublicKey.RSA.importKey(requester['pubkey']))
+            if not verifier.verify(Crypto.Hash.SHA.new(msg), signature):
+                log.debug('remote message/signature is not authentic')
+                self.abort(403, 'remote message/signature is not authentic')
+        else:
+            self.rtype = 'local'
+
+        # TODO: question: okay to move this logging block into dispatch?
         if not self.request.path.endswith('/nimsapi/log'):
-            log.info(self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
+            log.info(self.rtype + ' ' + self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        # dispatch to local instance
-        if self.target_id in [None, self.site_id]:
-            # request originates from remote instance
-            if self.request.user_agent.startswith('NIMS Instance'):
-                # is the requester an authorized remote site
-                requester = self.request.user_agent.replace('NIMS Instance', '').strip()
-                target = self.app.db.remotes.find_one({'_id':requester})
-                if not target:
-                    log.debug('remote host ' + requester + ' not in auth list. DENIED')
-                    self.abort(403, requester + ' is not authorized')
-                log.debug('request from ' + self.request.user_agent + ', interNIMS p2p initiated')
-
-                # assemble msg to be hashed and verify signature
-                self.signature = base64.b64decode(self.request.headers.get('X-Signature'))
-                msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + self.request.headers.get('Date')
-                key = Crypto.PublicKey.RSA.importKey(target['pubkey'])
-                h = Crypto.Hash.SHA.new(msg)
-                verifier = Crypto.Signature.PKCS1_v1_5.new(key)
-                if not verifier.verify(h, self.signature):
-                    log.debug('remote message/signature is not authentic')
-                    self.abort(403, 'remote message/signature is not authentic')
+        if self.rtype in ['local', 'from_remote']:
             return super(NIMSRequestHandler, self).dispatch()
-
-        # delegate to remote instance
-        elif self.ssl_key is not None and self.site_id is not None:
-            log.debug('dispatching to remote ' + self.target_id)
-            # is target registered?
-            target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id':False, 'api_uri':True})
-            if not target:
-                log.debug('remote host ' + self.target_id + ' not in auth list. DENIED')
-                self.abort(403, self.target_id + 'is not authorized')
-
-            # adjust headers
-            headers = self.request.headers
-            headers['User-Agent'] = 'NIMS Instance ' + self.site_id
-            headers['X-From'] = self.uid
-            headers['Content-Length'] = len(self.request.body)
-            del headers['Host']                                                 # delete old host destination
-            if 'Authorization' in headers:
-                del headers['Authorization']                                    # delete access_token, if present
-
-            # assemble msg to be hashed
-            nonce = str(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S'))
-            headers['Date'] = nonce
-            msg = self.request.method + self.request.path + str(dict(self.request.params)) + self.request.body + nonce
-            # create a signature
-            h = Crypto.Hash.SHA.new(msg)
-            signature = Crypto.Signature.PKCS1_v1_5.new(self.ssl_key).sign(h)
-            headers['X-Signature'] = base64.b64encode(signature)
-
-            # construct outgoing request
-            target_api = 'https://' + target['api_uri'] + self.request.path.split('/nimsapi')[1]
-            r = requests.request(method=self.request.method, data=self.request.body, url=target_api, params=self.request.params, headers=headers, verify=False)
-
-            # return response content
-            # TODO: think about: are the headers even useful?
+        else:
+            r = requests.request(method=self.request.method, data=self.request.body, url=self.target_api, params=self.params, headers=self.headers, verify=False)
+            if not r.status_code == 200:
+                self.abort(r.status_code, 'internims p2p err: ' + r.reason)
             self.response.write(r.content)
-
-        elif self.ssl_key is None or self.site_id is None:
-            log.debug('ssl key or site id undefined, cannot dispatch to remote')
 
     def schema(self):
         return self.json_schema
@@ -184,7 +188,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             if INTEGER_ROLES[perm['role']] < INTEGER_ROLES[min_role]:
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' on this Experiment')
             if perm['role'] != 'admin': # if not admin, mask all other permissions
-                    experiment['permissions'] = [{'uid': self.uid, 'role': perm['role']}]
+                experiment['permissions'] = [{'uid': self.uid, 'role': perm['role']}]
         return experiment
 
     def get_session(self, sid, min_role='anon-read'):

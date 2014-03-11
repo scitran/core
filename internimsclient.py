@@ -2,6 +2,7 @@
 #
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
+import re
 import json
 import base64
 import datetime
@@ -34,7 +35,6 @@ def update(db, api_uri, site_id, privkey, internims_url):
         response = (json.loads(r.content))
         # update remotes entries
         for site in response['sites']:
-            #FIXME
             site['timestamp'] = datetime.datetime.strptime(site['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
             db.remotes.update({'_id': site['_id']}, site, upsert=True)
         log.debug('updating remotes: ' + ', '.join((r['_id'] for r in response['sites'])))
@@ -47,7 +47,10 @@ def update(db, api_uri, site_id, privkey, internims_url):
         for uid, remotes in response['users'].iteritems():
             db.users.update({'uid': uid}, {'$set': {'remotes': remotes}})
     else:
-        log.warning((r.status_code, r.reason))
+        # r.reason contains generic description for the specific error code
+        # need the part of the error response body that contains the detailed explanation
+        reason = re.search('<br /><br />\n(.*)\n\n\n </body>\n</html>', r.content)
+        log.warning((r.status_code, reason.group(1)))
 
 
 if __name__ == '__main__':
