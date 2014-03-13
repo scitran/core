@@ -33,7 +33,7 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         """Return 200 OK."""
         self.response.set_status(200)
 
-    def get(self):
+    def get(self, *args):
         """Return API documentation"""
         resources = """
             Resource                                            | Description
@@ -100,6 +100,15 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         self.response.write('</body>\n')
         self.response.write('</html>\n')
 
+    def login(self):
+        """Return details for the current User."""
+        log.info(self.uid + ' has logged in')
+        return self.app.db.users.find_and_modify({'_id': self.uid}, {'$inc': {'logins': 1}}, fields=['firstname', 'lastname', 'superuser'])
+
+    def remotes(self):
+        """Return the list of all remote sites."""
+        return [r['_id'] for r in self.app.db.remotes.find()]
+
     def upload(self):
         # TODO add security: either authenticated user or machine-to-machine CRAM
         if 'Content-MD5' not in self.request.headers:
@@ -129,29 +138,22 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             paths += _idpaths
             symlinks += _idsymlinks
 
-    def remotes(self):
-        """Return the list of all remote sites."""
-        return list(self.app.db.remotes.find(None, []))
-
     def log(self):
         """Return logs."""
         try:
             logs = open(app.config['log_path']).readlines()
         except IOError as e:
-            log.debug(e)
             if 'Permission denied' in e:
-                # specify body format to print details separate from comment
                 body_template = '${explanation}<br /><br />${detail}<br /><br />${comment}'
                 comment = 'To fix permissions, run the following command: chmod o+r ' + logfile
                 self.abort(500, detail=str(e), comment=comment, body_template=body_template)
             else:
-                # file does not exist
-                self.abort(500, e)
+                self.abort(500, e) # file does not exist
         try:
             n = int(self.request.get('n', 10000))
         except:
             self.abort(400, 'n must be an integer')
-        return [line for line in reversed(logs) if re.match('[\d\s:-]{17}[\s]+nimsapi:[.]*', line)][:n]
+        return [line.strip() for line in reversed(logs) if re.match('[-:0-9 ]{18} +nimsapi:(?!.*[/a-z]*/log )', line)][:n]
 
 
 class Users(nimsapiutil.NIMSRequestHandler):
@@ -252,13 +254,6 @@ class User(nimsapiutil.NIMSRequestHandler):
         'required': ['_id'],
     }
 
-    def current(self):
-        """Return details for the current User."""
-        if self.request.method == 'GET':
-            return self.get(self.uid)
-        elif self.request.method == 'PUT':
-            return self.put(self.uid)
-
     def get(self, uid):
         """Return User details."""
         projection = []
@@ -266,14 +261,11 @@ class User(nimsapiutil.NIMSRequestHandler):
             projection += ['remotes']
         if self.request.get('status') in ('1', 'true'):
             projection += ['status']
-        if self.request.get('login') in ('1', 'true'):
-            projection += ['firstname', 'lastname', 'superuser']
-            self.app.db.users.update({'uid': uid}, {'$inc': {'logins': 1}})
-        return self.app.db.users.find_one({'uid': uid}, projection or None)
+        return self.app.db.users.find_one({'_id': uid}, projection or None)
 
     def put(self, uid):
         """Update an existing User."""
-        user = self.app.db.users.find_one({'uid': uid})
+        user = self.app.db.users.find_one({'_id': uid})
         if not user:
             self.abort(404)
         if uid == self.uid or self.user_is_superuser: # users can only update their own info
@@ -288,7 +280,7 @@ class User(nimsapiutil.NIMSRequestHandler):
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
                         updates['$unset'][k] = ''
-            self.app.db.users.update({'uid': uid}, updates)
+            self.app.db.users.update({'_id': uid}, updates)
         else:
             self.abort(403)
 
@@ -396,17 +388,16 @@ class Group(nimsapiutil.NIMSRequestHandler):
 
 
 routes = [
-    webapp2.Route(r'/nimsapi',                                      NIMSAPI),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
-        webapp2.Route(r'/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
-        webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
+        webapp2.Route(r'/login',                                    NIMSAPI, handler_method='login', methods=['GET', 'POST']),
         webapp2.Route(r'/remotes',                                  NIMSAPI, handler_method='remotes', methods=['GET']),
+        webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
+        webapp2.Route(r'/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
         webapp2.Route(r'/log',                                      NIMSAPI, handler_method='log', methods=['GET']),
         webapp2.Route(r'/users',                                    Users),
         webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/users/schema',                             User, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/users/current',                            User, handler_method='current', methods=['GET', 'PUT']),
         webapp2.Route(r'/users/<uid>',                              User),
         webapp2.Route(r'/groups',                                   Groups),
         webapp2.Route(r'/groups/count',                             Groups, handler_method='count', methods=['GET']),
@@ -437,16 +428,18 @@ routes = [
         webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>/sessions',  collections_.Sessions),
         webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>/epochs',    collections_.Epochs),
     ]),
+    webapp2.Route(r'/nimsapi',                                      NIMSAPI),
+    webapp2.Route(r'/nimsapi/<:.*>',                                NIMSAPI),
 ]
 
 def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
-        return webapp2.Response(json.dumps(rv, default=bson.json_util.default))
+        return response.write(json.dumps(rv, default=bson.json_util.default))
 
 app = webapp2.WSGIApplication(routes, debug=True)
 app.router.set_dispatcher(dispatcher)
-app.config = dict(stage_path='', site_id=None, ssl_key=None, insecure=False, log_path='')
+app.config = dict(stage_path='', site_id='local', ssl_key=None, insecure=False, log_path='')
 
 
 if __name__ == '__main__':
@@ -482,9 +475,9 @@ if __name__ == '__main__':
     else:
         log.warning('private SSL key not specified, internims functionality disabled')
 
-    app.config['site_id'] = args.site_id or 'local'
+    app.config['site_id'] = args.site_id or app.config['site_id']
     app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
-    app.config['log_path'] = args.log_path
+    app.config['log_path'] = args.log_path or app.config['log_path']
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
     app.config['insecure'] = config.getboolean('nims', 'insecure')
 

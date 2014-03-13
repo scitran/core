@@ -30,7 +30,7 @@ def update(db, api_uri, site_id, privkey, internims_url):
     signature = Crypto.Signature.PKCS1_v1_5.new(privkey).sign(h)
     headers = {'Authorization': base64.b64encode(signature)}
 
-    r = requests.post(url=internims_url, data=payload, headers=headers, verify=True)
+    r = requests.post(internims_url, data=payload, headers=headers)
     if r.status_code == 200:
         response = (json.loads(r.content))
         # update remotes entries
@@ -40,12 +40,12 @@ def update(db, api_uri, site_id, privkey, internims_url):
         log.debug('updating remotes: ' + ', '.join((r['_id'] for r in response['sites'])))
 
         # delete remotes from users, who no longer have remotes
-        db.users.update({'remotes': {'$exists':True}, 'uid': {'$nin': response['users'].keys()}}, {'$unset': {'remotes': ''}}, multi=True)
+        db.users.update({'remotes': {'$exists':True}, '_id': {'$nin': response['users'].keys()}}, {'$unset': {'remotes': ''}}, multi=True)
 
         # add remotes to users
         log.debug('users w/ remotes: ' + ', '.join(response['users']))
         for uid, remotes in response['users'].iteritems():
-            db.users.update({'uid': uid}, {'$set': {'remotes': remotes}})
+            db.users.update({'_id': uid}, {'$set': {'remotes': remotes}})
     else:
         # r.reason contains generic description for the specific error code
         # need the part of the error response body that contains the detailed explanation
