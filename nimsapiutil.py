@@ -1,5 +1,9 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
+import logging
+log = logging.getLogger('nimsapi')
+logging.getLogger('requests').setLevel(logging.WARNING)                  # silence Requests library logging
+
 import json
 import base64
 import webapp2
@@ -9,10 +13,6 @@ import bson.json_util
 import Crypto.Hash.SHA
 import Crypto.PublicKey.RSA
 import Crypto.Signature.PKCS1_v1_5
-
-import logging
-log = logging.getLogger('nimsapi')
-logging.getLogger('requests').setLevel(logging.WARNING)                  # silence Requests library logging
 
 INTEGER_ROLES = {
         'anon-read':  0,
@@ -141,27 +141,32 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        log.info(self.rtype + ' ' + self.uid + ' ' + self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
+        log.debug(self.rtype + ' ' + self.uid + ' ' + self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
         if self.rtype in ['local', 'from_remote']:
             return super(NIMSRequestHandler, self).dispatch()
         else:
+            if self.request.method == 'OPTIONS':
+                return self.options()
             r = requests.request(self.request.method, self.target_uri, params=self.params, data=self.request.body, headers=self.headers, verify=False)
-            if not r.status_code == 200:
+            if r.status_code != 200:
                 self.abort(r.status_code, 'internims p2p err: ' + r.reason)
             self.response.write(r.content)
 
     def abort(self, code, *args, **kwargs):
-        log.debug(str(code) + ' ' + '; '.join(args))
+        log.warning(str(code) + ' ' + '; '.join(args))
         if 'Access-Control-Allow-Origin' in self.response.headers:
             headers = kwargs.setdefault('headers', {})
             headers['Access-Control-Allow-Origin'] = self.response.headers['Access-Control-Allow-Origin']
         webapp2.abort(code, *args, **kwargs)
 
     def options(self, *args, **kwargs):
-        self.response.headers['Access-Control-Allow-Methods'] = 'POST, GET, PUT, DELETE, OPTIONS'
+        self.response.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PUT, DELETE, OPTIONS'
         self.response.headers['Access-Control-Allow-Headers'] = 'Authorization'
+        self.response.headers['Access-Control-Max-Age'] = '151200'
 
     def schema(self):
+        if self.request.method == 'OPTIONS':
+            return self.options()
         return self.json_schema
 
     def get_collection(self, cid, min_role='anon-read'):

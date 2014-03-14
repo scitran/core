@@ -1,10 +1,9 @@
 # @author:  Gunnar Schaefer
 
-import webapp2
-import bson.json_util
-
 import logging
 log = logging.getLogger('nimsapi')
+
+import bson.json_util
 
 import nimsdata
 import nimsapiutil
@@ -50,6 +49,8 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Experiments."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         self.response.write(self.app.db.experiments.count())
 
     def post(self):
@@ -166,6 +167,8 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Sessions."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         self.response.write(self.app.db.sessions.count())
 
     def post(self):
@@ -219,6 +222,8 @@ class Session(nimsapiutil.NIMSRequestHandler):
     }
 
     def schema(self, *args, **kwargs):
+        if self.request.method == 'OPTIONS':
+            return self.options()
         import copy
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(nimsdata.NIMSData.session_properties)
@@ -242,15 +247,6 @@ class Session(nimsapiutil.NIMSRequestHandler):
     def delete(self, sid):
         """Delete a Session."""
         self.abort(501)
-
-    def move(self, sid):
-        """
-        Move a Session to another Experiment.
-
-        Usage:
-            /nimsapi/sessions/123/move?dest=456
-        """
-        self.response.write('session %s move, %s\n' % (sid, self.request.params))
 
 
 class Epochs(nimsapiutil.NIMSRequestHandler):
@@ -286,6 +282,8 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Epochs."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         self.response.write(self.app.db.epochs.count())
 
     def post(self):
@@ -335,6 +333,8 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
     }
 
     def schema(self, *args, **kwargs):
+        if self.request.method == 'OPTIONS':
+            return self.options()
         import copy
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(nimsdata.nimsdicom.NIMSDicom.epoch_properties)

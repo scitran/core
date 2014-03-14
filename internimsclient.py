@@ -2,6 +2,11 @@
 #
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
+import logging
+import logging.config
+log = logging.getLogger('internims')
+logging.getLogger('requests').setLevel(logging.WARNING)
+
 import re
 import json
 import base64
@@ -10,11 +15,6 @@ import requests
 import Crypto.Hash.SHA
 import Crypto.PublicKey.RSA
 import Crypto.Signature.PKCS1_v1_5
-
-import logging
-import logging.config
-log = logging.getLogger('internims')
-logging.getLogger('requests').setLevel(logging.WARNING)
 
 
 def update(db, api_uri, site_id, privkey, internims_url):

@@ -1,11 +1,9 @@
 # @author:  Gunnar Schaefer
 
-import re
-import webapp2
-import bson.json_util
-
 import logging
 log = logging.getLogger('nimsapi')
+
+import bson.json_util
 
 import nimsapiutil
 
@@ -47,6 +45,8 @@ class Collections(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Collections."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         self.response.write(self.app.db.collections.count())
 
     def post(self):
@@ -168,6 +168,8 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Sessions."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         self.response.write(self.app.db.sessions.count())
 
     def post(self):
@@ -227,6 +229,8 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Epochs."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         self.response.write(self.app.db.epochs.count())
 
     def post(self):
