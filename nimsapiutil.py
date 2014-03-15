@@ -169,69 +169,63 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             return self.options()
         return self.json_schema
 
-    def get_collection(self, cid, min_role='anon-read'):
+    def get_collection(self, cid, min_role=None):
         collection = self.app.db.collections.find_one({'_id': cid})
         if not collection:
-            self.abort(404)
+            self.abort(404, 'no such Collection')
         if not self.user_is_superuser:
-            for perm in collection['permissions']:
-                if perm['uid'] == self.uid:
-                    break
-            else:
-                self.abort(403, self.uid + ' does not have permission to this Collection')
-            if INTEGER_ROLES[perm['role']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' on this Collection')
-            if perm['role'] != 'admin': # if not admin, mask all other permissions
-                    collection['permissions'] = [{'uid': self.uid, 'role': perm['role']}]
+            coll = self.app.db.collections.find_one({'_id': cid, 'permissions.uid': self.uid}, ['permissions.$'])
+            if not coll:
+                self.abort(403, self.uid + ' does not have permissions on this Collection')
+            if min_role and INTEGER_ROLES[coll['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Collection')
+            if coll['permissions'][0]['role'] != 'admin': # if not admin, mask permissions of other users
+                collection['permissions'] = coll['permissions']
         return collection
 
-    def get_experiment(self, xid, min_role='anon-read'):
+    def get_experiment(self, xid, min_role=None):
         experiment = self.app.db.experiments.find_one({'_id': xid})
         if not experiment:
-            self.abort(404)
+            self.abort(404, 'no such Experiment')
         if not self.user_is_superuser:
-            for perm in experiment['permissions']:
-                if perm['uid'] == self.uid:
-                    break
-            else:
-                self.abort(403, self.uid + ' does not have permission to this Experiment')
-            if INTEGER_ROLES[perm['role']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' on this Experiment')
-            if perm['role'] != 'admin': # if not admin, mask all other permissions
-                experiment['permissions'] = [{'uid': self.uid, 'role': perm['role']}]
+            exp = self.app.db.experiments.find_one({'_id': xid, 'permissions.uid': self.uid}, ['permissions.$'])
+            if not exp:
+                self.abort(403, self.uid + ' does not have permissions on this Experiment')
+            if min_role and INTEGER_ROLES[exp['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Experiment')
+            if exp['permissions'][0]['role'] != 'admin': # if not admin, mask permissions of other users
+                experiment['permissions'] = exp['permissions']
         return experiment
 
-    def get_session(self, sid, min_role='anon-read'):
-        #FIXME: implement min_role logic
+    def get_session(self, sid, min_role=None):
         session = self.app.db.sessions.find_one({'_id': sid})
         if not session:
-            self.abort(404)
-        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
-        if not experiment:
-            self.abort(500)
+            self.abort(404, 'no such Session')
         if not self.user_is_superuser:
-            for perm in experiment['permissions']:
-                if perm['uid'] == self.uid:
-                    break
-            else:
-                self.abort(403, 'user does not have permission to this Session')
+            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions.uid': self.uid}, ['permissions.$'])
+            if not experiment:
+                if not self.app.db.experiments.find_one({'_id': session['experiment']}, []):
+                    self.abort(500)
+                else:
+                    self.abort(403, self.uid + ' does not have permissions to this Session')
+            if min_role and INTEGER_ROLES[experiment['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Session')
         return session
 
-    def get_epoch(self, eid, min_role='anon-read'):
-        #FIXME: implement min_role logic
+    def get_epoch(self, eid, min_role=None):
         epoch = self.app.db.epochs.find_one({'_id': eid})
         if not epoch:
-            self.abort(404)
-        session = self.app.db.sessions.find_one({'_id': epoch['session']})
-        if not session:
-            self.abort(500)
-        experiment = self.app.db.experiments.find_one({'_id': session['experiment']})
-        if not experiment:
-            self.abort(500)
+            self.abort(404, 'no such Epoch')
         if not self.user_is_superuser:
-            for perm in experiment['permissions']:
-                if perm['uid'] == self.uid:
-                    break
-            else:
-                self.abort(403, 'user does not have permission to this Epoch')
+            session = self.app.db.sessions.find_one({'_id': epoch['session']}, ['experiment'])
+            if not session:
+                self.abort(500)
+            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions.uid': self.uid}, ['permissions.$'])
+            if not experiment:
+                if not self.app.db.experiments.find_one({'_id': session['experiment']}, []):
+                    self.abort(500)
+                else:
+                    self.abort(403, self.uid + ' does not have permissions on this Epoch')
+            if min_role and INTEGER_ROLES[experiment['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Epoch')
         return epoch

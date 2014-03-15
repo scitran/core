@@ -203,30 +203,21 @@ class Group(nimsapiutil.NIMSRequestHandler):
                 'type': 'string',
                 'maxLength': 32,
             },
-            'pis': {
-                'title': 'PIs',
+            'roles': {
+                'title': 'Roles',
                 'type': 'array',
                 'default': [],
                 'items': {
-                    'type': 'string',
-                },
-                'uniqueItems': True,
-            },
-            'admins': {
-                'title': 'Admins',
-                'type': 'array',
-                'default': [],
-                'items': {
-                    'type': 'string',
-                },
-                'uniqueItems': True,
-            },
-            'memebers': {
-                'title': 'Members',
-                'type': 'array',
-                'default': [],
-                'items': {
-                    'type': 'string',
+                    'type': 'object',
+                    'properties': {
+                        'uid': {
+                            'type': 'string',
+                        },
+                        'role': {
+                            'type': 'string',
+                            'enum': [k for k, v in sorted(nimsapiutil.INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
+                        },
+                    },
                 },
                 'uniqueItems': True,
             },
