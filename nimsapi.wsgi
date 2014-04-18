@@ -48,6 +48,7 @@ else:
 site_id = config.get('nims', 'site_id')
 application = nimsapi.app
 application.config['stage_path'] = config.get('nims', 'stage_path')
+application.config['log_path'] = config.get('nims', 'log_path')
 application.config['site_id'] = site_id
 application.config['ssl_key']  = privkey
 application.config['oauth2_id_endpoint'] = config.get('oauth2', 'id_endpoint')

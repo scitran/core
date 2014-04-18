@@ -1,12 +1,9 @@
 # @author:  Gunnar Schaefer
 
-import re
-import json
-import webapp2
-import bson.json_util
-
 import logging
 log = logging.getLogger('nimsapi')
+
+import bson.json_util
 
 import nimsapiutil
 
@@ -48,7 +45,9 @@ class Collections(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Collections."""
-        self.response.write(json.dumps(self.app.db.collections.count()))
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        self.response.write(self.app.db.collections.count())
 
     def post(self):
         """Create a new Collection."""
@@ -63,8 +62,7 @@ class Collections(nimsapiutil.NIMSRequestHandler):
         """Return the list of Collections."""
         query = {'permissions.uid': self.uid} if not self.user_is_superuser else None
         projection = {'curator': 1, 'name': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid}}}
-        collections = list(self.app.db.collections.find(query, projection))
-        self.response.write(json.dumps(collections, default=bson.json_util.default))
+        return list(self.app.db.collections.find(query, projection))
 
     def put(self):
         """Update many Collections."""
@@ -114,8 +112,7 @@ class Collection(nimsapiutil.NIMSRequestHandler):
     def get(self, cid):
         """Return one Collection, conditionally with details."""
         cid = bson.ObjectId(cid)
-        collection = self.get_collection(cid)
-        self.response.write(json.dumps(collection, default=bson.json_util.default))
+        return self.get_collection(cid)
 
     def put(self, cid):
         """Update an existing Collection."""
@@ -171,7 +168,9 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Sessions."""
-        self.response.write(json.dumps(self.app.db.sessions.count()))
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        self.response.write(self.app.db.sessions.count())
 
     def post(self):
         """Create a new Session"""
@@ -190,7 +189,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
         sessions = list(self.app.db.sessions.find(query, projection))
         for sess in sessions:
             sess['site'] = self.app.config['site_id']
-        self.response.write(json.dumps(sessions, default=bson.json_util.default))
+        return sessions
 
     def put(self):
         """Update many Sessions."""
@@ -230,7 +229,9 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
 
     def count(self):
         """Return the number of Epochs."""
-        self.response.write(json.dumps(self.app.db.epochs.count()))
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        self.response.write(self.app.db.epochs.count())
 
     def post(self):
         """Create a new Epoch."""
@@ -247,9 +248,7 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
         projection = ['name', 'description', 'datatype', 'notes']
-        print query
-        epochs = list(self.app.db.epochs.find(query, projection))
-        self.response.write(json.dumps(epochs, default=bson.json_util.default))
+        return list(self.app.db.epochs.find(query, projection))
 
     def put(self):
         """Update many Epochs."""

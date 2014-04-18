@@ -2,6 +2,10 @@
 #
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
+import logging
+import logging.config
+log = logging.getLogger('nimsapi')
+
 import os
 import re
 import json
@@ -15,14 +19,22 @@ import bson.json_util
 import webapp2_extras.routes
 import Crypto.PublicKey.RSA
 
-import logging
-import logging.config
-log = logging.getLogger('nimsapi')
-
+import users
 import experiments
 import nimsapiutil
 import collections_
 import tempdir as tempfile
+
+def hrsize(size):
+    if size < 1000:
+        return '%d%s' % (size, 'B')
+    for suffix in 'KMGTPEZY':
+        size /= 1024.
+        if size < 10.:
+            return '%.1f%s' % (size, suffix)
+        if size < 1000.:
+            return '%.0f%s' % (size, suffix)
+    return '%.0f%s' % (size, 'Y')
 
 
 class NIMSAPI(nimsapiutil.NIMSRequestHandler):
@@ -38,12 +50,12 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         resources = """
             Resource                                            | Description
             :---------------------------------------------------|:-----------------------
-            nimsapi/download                                    | download
+            nimsapi/login                                       | user login
+            [(nimsapi/remotes)]                                 | list of remote instances
             nimsapi/upload                                      | upload
-            nimsapi/remotes                                     | list of remote instances
-            [(nimsapi/log)]                                     | list of uwsgi log messages
+            nimsapi/download                                    | download
+            [(nimsapi/log)]                                     | log messages
             [(nimsapi/users)]                                   | list of users
-            nimsapi/users/current                               | details for currently logged in user
             [(nimsapi/users/count)]                             | count of users
             [(nimsapi/users/listschema)]                        | schema for user list
             [(nimsapi/users/schema)]                            | schema for single user
@@ -100,7 +112,22 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         self.response.write('</body>\n')
         self.response.write('</html>\n')
 
+    def login(self):
+        """Return details for the current User."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        log.debug(self.uid + ' has logged in')
+        return self.app.db.users.find_and_modify({'_id': self.uid}, {'$inc': {'logins': 1}}, fields=['firstname', 'lastname', 'superuser'])
+
+    def remotes(self):
+        """Return the list of all remote sites."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        return [r['_id'] for r in self.app.db.remotes.find()]
+
     def upload(self):
+        if self.request.method == 'OPTIONS':
+            return self.options()
         # TODO add security: either authenticated user or machine-to-machine CRAM
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
@@ -109,7 +136,6 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=stage_path) as tempdir_path:
             hash_ = hashlib.md5()
             upload_filepath = os.path.join(tempdir_path, filename)
-            log.info('upload from ' + self.request.user_agent + ': ' + os.path.basename(upload_filepath))
             with open(upload_filepath, 'wb') as upload_file:
                 for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
                     hash_.update(chunk)
@@ -118,9 +144,12 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
                 self.abort(400, 'Content-MD5 mismatch.')
             if not tarfile.is_tarfile(upload_filepath) and not zipfile.is_zipfile(upload_filepath):
                 self.abort(415)
+            log.info('upload from %s: %s [%s]' % (self.request.user_agent, os.path.basename(upload_filepath), hrsize(self.request.content_length)))
             os.rename(upload_filepath, os.path.join(stage_path, str(uuid.uuid1()) + '_' + filename)) # add UUID to prevent clobbering files
 
     def download(self):
+        if self.request.method == 'OPTIONS':
+            return self.options()
         paths = []
         symlinks = []
         for js_id in self.request.get('id', allow_multiple=True):
@@ -129,326 +158,89 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             paths += _idpaths
             symlinks += _idsymlinks
 
-    def remotes(self):
-        """Return the list of remotes where user has membership"""
-        remotes = [remote['_id'] for remote in list(self.app.db.remotes.find({}, []))]
-        self.response.write(json.dumps(remotes, default=bson.json_util.default))
-
     def log(self):
-        """Return logs"""
-        # TODO: don't hardcode log path.
-        logfile = '/var/log/uwsgi/app/nims.log'
+        """Return logs."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
         try:
-            logs = open(logfile).readlines()
+            logs = open(app.config['log_path']).readlines()
         except IOError as e:
-            log.debug(e)
             if 'Permission denied' in e:
-                # specify body format to print details separate from comment
                 body_template = '${explanation}<br /><br />${detail}<br /><br />${comment}'
                 comment = 'To fix permissions, run the following command: chmod o+r ' + logfile
                 self.abort(500, detail=str(e), comment=comment, body_template=body_template)
             else:
-                # file does not exist
-                self.abort(500, e)
-        else:
-            logs.reverse()
-            numlines = self.request.get('n', None)
-
-            trimmed = []
-            for line in logs:
-                match = re.search('^[\d\s:-]{17}[\s]+nimsapi:[.]*', line)
-                if match:
-                    trimmed.append(line)
-
-            if not numlines: numlines = len(trimmed)
-
-            self.response.headers['Content-Type'] = 'application/json'
-            self.response.write(json.dumps(trimmed[:int(numlines)]))
-
-
-class Users(nimsapiutil.NIMSRequestHandler):
-
-    """/nimsapi/users """
-
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'User List',
-        'type': 'array',
-        'items': {
-            'title': 'User',
-            'type': 'object',
-            'properties': {
-                '_id': {
-                    'title': 'Database ID',
-                    'type': 'string',
-                },
-                'firstname': {
-                    'title': 'First Name',
-                    'type': 'string',
-                    'default': '',
-                },
-                'lastname': {
-                    'title': 'Last Name',
-                    'type': 'string',
-                    'default': '',
-                },
-                'email': {
-                    'title': 'Email',
-                    'type': 'string',
-                    'format': 'email',
-                    'default': '',
-                },
-                'email_hash': {
-                    'type': 'string',
-                    'default': '',
-                },
-            }
-        }
-    }
-
-    def count(self):
-        """Return the number of Users."""
-        self.response.write('%d users\n' % self.app.db.users.count())
-
-    def current(self):
-        """Return the current User."""
-        # FIXME: trim this down to not use the self.user object, and only send relevant info
-        self.response.write(json.dumps(self.user, default=bson.json_util.default))
-
-    def post(self):
-        """Create a new User"""
-        self.response.write('users post\n')
-
-    def get(self):
-        """Return the list of Users."""
-        projection = ['firstname', 'lastname', 'email_hash']
-        users = list(self.app.db.users.find({}, projection))
-        self.response.write(json.dumps(users, default=bson.json_util.default))
-
-    def put(self):
-        """Update many Users."""
-        self.response.write('users put\n')
-
-
-class User(nimsapiutil.NIMSRequestHandler):
-
-    """/nimsapi/users/<uid> """
-
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'User',
-        'type': 'object',
-        'properties': {
-            '_id': {
-                'title': 'Database ID',
-                'type': 'string',
-            },
-            'firstname': {
-                'title': 'First Name',
-                'type': 'string',
-                'default': '',
-            },
-            'lastname': {
-                'title': 'Last Name',
-                'type': 'string',
-                'default': '',
-            },
-            'email': {
-                'title': 'Email',
-                'type': 'string',
-                'format': 'email',
-                'default': '',
-            },
-            'email_hash': {
-                'type': 'string',
-                'default': '',
-            },
-            'superuser': {
-                'title': 'Superuser',
-                'type': 'boolean',
-            },
-        },
-        'required': ['_id'],
-    }
-
-    def get(self, uid):
-        """Return User details."""
-        user = self.app.db.users.find_one({'uid': uid})
-        self.response.write(json.dumps(user, default=bson.json_util.default))
-
-    def put(self, uid):
-        """Update an existing User."""
-        user = self.app.db.users.find_one({'user_info': uid})
-        if not user:
-            self.abort(404)
-        if uid == self.uid or self.user_is_superuser: # users can only update their own info
-            updates = {'$set': {}, '$unset': {}}
-            for k, v in self.request.params.iteritems():
-                if k != 'superuser' and k in []:#user_fields:
-                    updates['$set'][k] = v # FIXME: do appropriate type conversion
-                elif k == 'superuser' and uid == self.uid and self.user_is_superuser is not None: # toggle superuser for requesting user
-                    updates['$set'][k] = v.lower() in ('1', 'true')
-                elif k == 'superuser' and uid != self.uid and self.user_is_superuser:             # enable/disable superuser for other user
-                    if v.lower() in ('1', 'true') and user.get('superuser') is None:
-                        updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
-                    elif v.lower() not in ('1', 'true'):
-                        updates['$unset'][k] = ''
-            self.app.db.users.update({'user_info': uid}, updates)
-        else:
-            self.abort(403)
-
-    def delete(self, uid):
-        """Delete an User."""
-        self.response.write('user %s delete, %s\n' % (uid, self.request.params))
-
-
-class Groups(nimsapiutil.NIMSRequestHandler):
-
-    """/nimsapi/groups """
-
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'Group List',
-        'type': 'array',
-        'items': {
-            'title': 'Group',
-            'type': 'object',
-            'properties': {
-                '_id': {
-                    'title': 'Database ID',
-                    'type': 'string',
-                },
-            }
-        }
-    }
-
-    def count(self):
-        """Return the number of Groups."""
-        self.response.write('%d groups\n' % self.app.db.groups.count())
-
-    def post(self):
-        """Create a new Group"""
-        self.response.write('groups post\n')
-
-    def get(self):
-        """Return the list of Groups."""
-        projection = ['_id']
-        groups = list(self.app.db.groups.find({}, projection))
-        self.response.write(json.dumps(groups, default=bson.json_util.default))
-
-    def put(self):
-        """Update many Groups."""
-        self.response.write('groups put\n')
-
-
-class Group(nimsapiutil.NIMSRequestHandler):
-
-    """/nimsapi/groups/<gid>"""
-
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'Group',
-        'type': 'object',
-        'properties': {
-            '_id': {
-                'title': 'Database ID',
-                'type': 'string',
-            },
-            'name': {
-                'title': 'Name',
-                'type': 'string',
-                'maxLength': 32,
-            },
-            'pis': {
-                'title': 'PIs',
-                'type': 'array',
-                'default': [],
-                'items': {
-                    'type': 'string',
-                },
-                'uniqueItems': True,
-            },
-            'admins': {
-                'title': 'Admins',
-                'type': 'array',
-                'default': [],
-                'items': {
-                    'type': 'string',
-                },
-                'uniqueItems': True,
-            },
-            'memebers': {
-                'title': 'Members',
-                'type': 'array',
-                'default': [],
-                'items': {
-                    'type': 'string',
-                },
-                'uniqueItems': True,
-            },
-        },
-        'required': ['_id'],
-    }
-
-    def get(self, gid):
-        """Return Group details."""
-        group = self.app.db.groups.find_one({'_id': gid})
-        self.response.write(json.dumps(group, default=bson.json_util.default))
-
-    def put(self, gid):
-        """Update an existing Group."""
-        self.response.write('group %s put, %s\n' % (gid, self.request.params))
-
-    def delete(self, gid):
-        """Delete an Group."""
+                self.abort(500, e) # file does not exist
+        try:
+            n = int(self.request.get('n', 10000))
+        except:
+            self.abort(400, 'n must be an integer')
+        return [line.strip() for line in reversed(logs) if re.match('[-:0-9 ]{18} +nimsapi:(?!.*[/a-z]*/log )', line)][:n]
 
 
 routes = [
-    webapp2.Route(r'/nimsapi',                                      NIMSAPI),
+    webapp2.Route(r'/nimsapi',                                          NIMSAPI),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
-        webapp2.Route(r'/download',                                 NIMSAPI, handler_method='download', methods=['GET']),
-        webapp2.Route(r'/upload',                                   NIMSAPI, handler_method='upload', methods=['PUT']),
-        webapp2.Route(r'/remotes',                                  NIMSAPI, handler_method='remotes', methods=['GET']),
-        webapp2.Route(r'/log',                                      NIMSAPI, handler_method='log', methods=['GET']),
-        webapp2.Route(r'/users',                                    Users),
-        webapp2.Route(r'/users/current',                            Users, handler_method='current', methods=['GET']),
-        webapp2.Route(r'/users/count',                              Users, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/users/listschema',                         Users, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/users/schema',                             User, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/users/<uid>',                              User),
-        webapp2.Route(r'/groups',                                   Groups),
-        webapp2.Route(r'/groups/count',                             Groups, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/groups/listschema',                        Groups, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/groups/schema',                            Group, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/groups/<gid>',                             Group),
-        webapp2.Route(r'/experiments',                              experiments.Experiments),
-        webapp2.Route(r'/experiments/count',                        experiments.Experiments, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/experiments/listschema',                   experiments.Experiments, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/experiments/schema',                       experiments.Experiment, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/experiments/<xid:[0-9a-f]{24}>',           experiments.Experiment),
-        webapp2.Route(r'/experiments/<xid:[0-9a-f]{24}>/sessions',  experiments.Sessions),
-        webapp2.Route(r'/sessions/count',                           experiments.Sessions, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/sessions/listschema',                      experiments.Sessions, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/sessions/schema',                          experiments.Session, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>',              experiments.Session),
-        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>/move',         experiments.Session, handler_method='move'),
-        webapp2.Route(r'/sessions/<sid:[0-9a-f]{24}>/epochs',       experiments.Epochs),
-        webapp2.Route(r'/epochs/count',                             experiments.Epochs, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/epochs/listschema',                        experiments.Epochs, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/epochs/schema',                            experiments.Epoch, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/epochs/<eid:[0-9a-f]{24}>',                experiments.Epoch),
-        webapp2.Route(r'/collections',                              collections_.Collections),
-        webapp2.Route(r'/collections/count',                        collections_.Collections, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/collections/listschema',                   collections_.Collections, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/collections/schema',                       collections_.Collection, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>',           collections_.Collection),
-        webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>/sessions',  collections_.Sessions),
-        webapp2.Route(r'/collections/<cid:[0-9a-f]{24}>/epochs',    collections_.Epochs),
+        webapp2.Route(r'/login',                                        NIMSAPI, handler_method='login', methods=['OPTIONS', 'GET', 'POST']),
+        webapp2.Route(r'/remotes',                                      NIMSAPI, handler_method='remotes', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/upload',                                       NIMSAPI, handler_method='upload', methods=['OPTIONS', 'PUT']),
+        webapp2.Route(r'/download',                                     NIMSAPI, handler_method='download', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/log',                                          NIMSAPI, handler_method='log', methods=['OPTIONS', 'GET']),
+    ]),
+    webapp2.Route(r'/nimsapi/users',                                    users.Users),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/users', [
+        webapp2.Route(r'/count',                                        users.Users, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/listschema',                                   users.Users, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       users.User, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<uid>',                                        users.User),
+    ]),
+    webapp2.Route(r'/nimsapi/groups',                                   users.Groups),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/groups', [
+        webapp2.Route(r'/count',                                        users.Groups, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/listschema',                                   users.Groups, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       users.Group, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<gid>',                                        users.Group),
+    ]),
+    webapp2.Route(r'/nimsapi/experiments',                              experiments.Experiments),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/experiments', [
+        webapp2.Route(r'/count',                                        experiments.Experiments, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/listschema',                                   experiments.Experiments, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       experiments.Experiment, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<xid:[0-9a-f]{24}>',                           experiments.Experiment),
+        webapp2.Route(r'/<xid:[0-9a-f]{24}>/sessions',                  experiments.Sessions),
+    ]),
+    webapp2.Route(r'/nimsapi/collections',                              collections_.Collections),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/collections', [
+        webapp2.Route(r'/count',                                        collections_.Collections, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/listschema',                                   collections_.Collections, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       collections_.Collection, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<cid:[0-9a-f]{24}>',                           collections_.Collection),
+        webapp2.Route(r'/<cid:[0-9a-f]{24}>/sessions',                  collections_.Sessions),
+        webapp2.Route(r'/<cid:[0-9a-f]{24}>/epochs',                    collections_.Epochs),
+    ]),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/sessions', [
+        webapp2.Route(r'/count',                                        experiments.Sessions, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/listschema',                                   experiments.Sessions, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       experiments.Session, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<sid:[0-9a-f]{24}>',                           experiments.Session),
+        webapp2.Route(r'/<sid:[0-9a-f]{24}>/epochs',                    experiments.Epochs),
+    ]),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/epochs', [
+        webapp2.Route(r'/count',                                        experiments.Epochs, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/listschema',                                   experiments.Epochs, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       experiments.Epoch, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<eid:[0-9a-f]{24}>',                           experiments.Epoch),
     ]),
 ]
 
+def dispatcher(router, request, response):
+    rv = router.default_dispatcher(request, response)
+    if rv is not None:
+        return response.write(json.dumps(rv, default=bson.json_util.default))
+
 app = webapp2.WSGIApplication(routes, debug=True)
-app.config = dict(stage_path='', site_id=None, ssl_key=None, insecure=False)
+app.router.set_dispatcher(dispatcher)
+app.config = dict(stage_path='', site_id='local', ssl_key=None, insecure=False, log_path='')
 
 
 if __name__ == '__main__':
@@ -462,6 +254,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('config_file', help='path to config file')
     arg_parser.add_argument('--db_uri', help='NIMS DB URI')
     arg_parser.add_argument('--stage_path', help='path to staging area')
+    arg_parser.add_argument('--log_path', help='path to API log file')
     arg_parser.add_argument('--ssl_key', help='path to private SSL key file')
     arg_parser.add_argument('--site_id', help='InterNIMS site ID')
     arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint')
@@ -470,6 +263,7 @@ if __name__ == '__main__':
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
     config.read(args.config_file)
     logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
+    logging.getLogger('paste.httpserver').setLevel(logging.INFO) # silence paste logging
 
     if args.ssl_key:
         try:
@@ -483,8 +277,9 @@ if __name__ == '__main__':
     else:
         log.warning('private SSL key not specified, internims functionality disabled')
 
-    app.config['site_id'] = args.site_id or 'local'
+    app.config['site_id'] = args.site_id or app.config['site_id']
     app.config['stage_path'] = args.stage_path or config.get('nims', 'stage_path')
+    app.config['log_path'] = args.log_path or app.config['log_path']
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
     app.config['insecure'] = config.getboolean('nims', 'insecure')
 
