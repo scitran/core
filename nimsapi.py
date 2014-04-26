@@ -51,7 +51,8 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
             Resource                                            | Description
             :---------------------------------------------------|:-----------------------
             nimsapi/login                                       | user login
-            [(nimsapi/remotes)]                                 | list of remote instances
+            [(nimsapi/sites)]                                   | local and remote sites
+            [(nimsapi/roles)]                                   | user roles
             nimsapi/upload                                      | upload
             nimsapi/download                                    | download
             [(nimsapi/log)]                                     | log messages
@@ -119,11 +120,17 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         log.debug(self.uid + ' has logged in')
         return self.app.db.users.find_and_modify({'_id': self.uid}, {'$inc': {'logins': 1}}, fields=['firstname', 'lastname', 'superuser'])
 
-    def remotes(self):
-        """Return the list of all remote sites."""
+    def sites(self):
+        """Return local and remote sites."""
         if self.request.method == 'OPTIONS':
             return self.options()
-        return [r['_id'] for r in self.app.db.remotes.find()]
+        return dict(local={'_id': app.config['site_id'], 'name': app.config['site_name']}, remotes=list(self.app.db.remotes.find(None, ['name'])))
+
+    def roles(self):
+        """Return the list of user roles."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        return nimsapiutil.ROLES
 
     def upload(self):
         if self.request.method == 'OPTIONS':
@@ -182,7 +189,8 @@ routes = [
     webapp2.Route(r'/nimsapi',                                          NIMSAPI),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
         webapp2.Route(r'/login',                                        NIMSAPI, handler_method='login', methods=['OPTIONS', 'GET', 'POST']),
-        webapp2.Route(r'/remotes',                                      NIMSAPI, handler_method='remotes', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/sites',                                        NIMSAPI, handler_method='sites', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/roles',                                        NIMSAPI, handler_method='roles', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/upload',                                       NIMSAPI, handler_method='upload', methods=['OPTIONS', 'PUT']),
         webapp2.Route(r'/download',                                     NIMSAPI, handler_method='download', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/log',                                          NIMSAPI, handler_method='log', methods=['OPTIONS', 'GET']),

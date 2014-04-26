@@ -14,12 +14,32 @@ import Crypto.Hash.SHA
 import Crypto.PublicKey.RSA
 import Crypto.Signature.PKCS1_v1_5
 
-INTEGER_ROLES = {
-        'anon-read':  0,
-        'read-only':  1,
-        'read-write': 2,
-        'admin':      3,
-        }
+ROLES = [
+        {
+            'rid': 'anon-read',
+            'name': 'Anonymized',
+            'sort': 0,
+            'public': True,
+            },
+        {
+            'rid': 'read-only',
+            'name': 'Read-Only',
+            'sort': 1,
+            'public': True,
+            },
+        {
+            'rid': 'read-write',
+            'name': 'Read-Write',
+            'sort': 2,
+            },
+        {
+            'rid': 'admin',
+            'name': 'Admin',
+            'sort': 3,
+            },
+        ]
+
+INTEGER_ROLES = {r['rid']: r['sort'] for r in ROLES}
 
 
 class NIMSRequestHandler(webapp2.RequestHandler):
@@ -181,6 +201,11 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Collection')
             if coll['permissions'][0]['role'] != 'admin': # if not admin, mask permissions of other users
                 collection['permissions'] = coll['permissions']
+        for i, perm in enumerate(collection['permissions']):
+            if perm['uid'] == '@public':
+                collection['public'] = perm['role']
+                collection['permissions'].pop(i)
+                break
         return collection
 
     def get_experiment(self, xid, min_role=None):
@@ -195,6 +220,11 @@ class NIMSRequestHandler(webapp2.RequestHandler):
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Experiment')
             if exp['permissions'][0]['role'] != 'admin': # if not admin, mask permissions of other users
                 experiment['permissions'] = exp['permissions']
+        for i, perm in enumerate(experiment['permissions']):
+            if perm['uid'] == '@public':
+                experiment['public'] = perm['role']
+                experiment['permissions'].pop(i)
+                break
         return experiment
 
     def get_session(self, sid, min_role=None):

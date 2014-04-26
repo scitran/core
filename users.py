@@ -178,7 +178,7 @@ class Groups(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Groups."""
-        return list(self.app.db.groups.find({}, []))
+        return list(self.app.db.groups.find(None, ['name']))
 
     def put(self):
         """Update many Groups."""
