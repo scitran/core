@@ -60,6 +60,8 @@ class Users(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Users."""
+        if self.uid == '@public':
+            self.abort(403, 'must be logged in to retrieve User list')
         return list(self.app.db.users.find({}, ['firstname', 'lastname', 'email_hash']))
 
     def put(self):
@@ -110,6 +112,8 @@ class User(nimsapiutil.NIMSRequestHandler):
 
     def get(self, uid):
         """Return User details."""
+        if self.uid == '@public':
+            self.abort(403, 'must be logged in to retrieve User info')
         projection = []
         if self.request.get('remotes') in ('1', 'true'):
             projection += ['remotes']
@@ -178,7 +182,19 @@ class Groups(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Groups."""
-        return list(self.app.db.groups.find(None, ['name']))
+        query = None
+        if not self.user_is_superuser:
+            if self.request.get('admin').lower() in ('1', 'true'):
+                query = {'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}}
+            elif self.request.get('experiment_permissions').lower() in ('1', 'true'):
+                experiments = [exp['_id'] for exp in self.app.db.experiments.aggregate([
+                        {'$match': {'permissions.uid': self.uid}},
+                        {'$group': {'_id': '$group'}},
+                        ])['result']]
+                query = {'_id': {'$in': experiments}}
+            else:
+                query = {'roles.uid': self.uid}
+        return list(self.app.db.groups.find(query, ['name']))
 
     def put(self):
         """Update many Groups."""
@@ -229,7 +245,10 @@ class Group(nimsapiutil.NIMSRequestHandler):
         """Return Group details."""
         group = self.app.db.groups.find_one({'_id': gid})
         if not group:
-            self.abort(404, 'no such Group')
+            self.abort(404, 'no such Group: ' + gid)
+        group = self.app.db.groups.find_one({'_id': gid, 'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}})
+        if not group:
+            self.abort(403, 'User ' + self.uid + ' is not an admin on Group ' + gid)
         return group
 
     def put(self, gid):

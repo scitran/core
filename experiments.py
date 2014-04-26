@@ -59,7 +59,12 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Experiments."""
-        query = {'permissions.uid': self.uid} if not self.user_is_superuser else None
+        query = None
+        if not self.user_is_superuser:
+            if self.request.get('admin').lower() in ('1', 'true'):
+                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}}
+            else:
+                query = {'permissions.uid': self.uid}
         projection = {'group': 1, 'name': 1, 'timestamp': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid}}}
         experiments = list(self.app.db.experiments.find(query, projection))
         for exp in experiments:
