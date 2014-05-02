@@ -5,7 +5,7 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-import nimsdata
+#import nimsdata
 import nimsapiutil
 
 
@@ -62,10 +62,10 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
         query = None
         if not self.user_is_superuser:
             if self.request.get('admin').lower() in ('1', 'true'):
-                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}}
+                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'role': 'admin', 'site': self.source_site}}}
             else:
-                query = {'permissions.uid': self.uid}
-        projection = {'group': 1, 'name': 1, 'timestamp': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid}}}
+                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
+        projection = {'group': 1, 'name': 1, 'timestamp': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
         experiments = list(self.app.db.experiments.find(query, projection))
         for exp in experiments:
             exp['site'] = self.app.config['site_id']

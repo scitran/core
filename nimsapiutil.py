@@ -77,8 +77,9 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.target_id = self.request.get('site', None)
+        self.target_site = self.request.get('site', None)
         self.access_token = self.request.headers.get('Authorization', None)
+        self.source_site = None       # requesting remote site; gets set if request from remote
 
         # CORS header
         if 'Origin' in self.request.headers and self.request.headers['Origin'].startswith('https://'):
@@ -105,7 +106,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             else:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
 
-        if self.target_id not in [None, self.app.config['site_id']]:
+        if self.target_site not in [None, self.app.config['site_id']]:
             self.rtype = 'to_remote'
 
             if not self.app.config['site_id']:
@@ -113,9 +114,9 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             if not self.app.config['ssl_key']:
                 self.abort(500, 'api ssl_key is not configured')
 
-            target = self.app.db.remotes.find_one({'_id': self.target_id}, {'_id': False, 'api_uri': True})
+            target = self.app.db.remotes.find_one({'_id': self.target_site}, {'_id': False, 'api_uri': True})
             if not target:
-                self.abort(402, 'remote host ' + self.target_id + ' is not an authorized remote')
+                self.abort(402, 'remote host ' + self.target_site + ' is not an authorized remote')
 
             # adjust headers
             self.headers = self.request.headers
@@ -142,7 +143,8 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         elif self.request.user_agent.startswith('NIMS Instance'):
             self.rtype = 'from_remote'
 
-            self.uid = self.request.headers.get('X-From')
+            # store remote user info into self.uid and self.source_site
+            self.uid, self.source_site = self.request.headers.get('X-From').split('#')
             self.user_is_superuser = False
 
             remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
@@ -161,7 +163,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        log.debug(self.rtype + ' ' + self.uid + ' ' + self.request.method + ' ' + self.request.path + ' ' + str(self.request.params.mixed()))
+        log.debug('%s %s %s %s %s %s' % (self.rtype, self.uid, self.source_site, self.request.method, self.request.path, str(self.request.params.mixed())))
         if self.rtype in ['local', 'from_remote']:
             return super(NIMSRequestHandler, self).dispatch()
         else:
@@ -194,7 +196,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         if not collection:
             self.abort(404, 'no such Collection')
         if not self.user_is_superuser:
-            coll = self.app.db.collections.find_one({'_id': cid, 'permissions.uid': self.uid}, ['permissions.$'])
+            coll = self.app.db.collections.find_one({'_id': cid, 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
             if not coll:
                 self.abort(403, self.uid + ' does not have permissions on this Collection')
             if min_role and INTEGER_ROLES[coll['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
@@ -213,7 +215,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         if not experiment:
             self.abort(404, 'no such Experiment')
         if not self.user_is_superuser:
-            exp = self.app.db.experiments.find_one({'_id': xid, 'permissions.uid': self.uid}, ['permissions.$'])
+            exp = self.app.db.experiments.find_one({'_id': xid, 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
             if not exp:
                 self.abort(403, self.uid + ' does not have permissions on this Experiment')
             if min_role and INTEGER_ROLES[exp['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
@@ -232,7 +234,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         if not session:
             self.abort(404, 'no such Session')
         if not self.user_is_superuser:
-            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions.uid': self.uid}, ['permissions.$'])
+            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
             if not experiment:
                 if not self.app.db.experiments.find_one({'_id': session['experiment']}, []):
                     self.abort(500)
@@ -250,7 +252,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
             session = self.app.db.sessions.find_one({'_id': epoch['session']}, ['experiment'])
             if not session:
                 self.abort(500)
-            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions.uid': self.uid}, ['permissions.$'])
+            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
             if not experiment:
                 if not self.app.db.experiments.find_one({'_id': session['experiment']}, []):
                     self.abort(500)

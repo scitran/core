@@ -60,8 +60,8 @@ class Collections(nimsapiutil.NIMSRequestHandler):
 
     def get(self):
         """Return the list of Collections."""
-        query = {'permissions.uid': self.uid} if not self.user_is_superuser else None
-        projection = {'curator': 1, 'name': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid}}}
+        query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}} if not self.user_is_superuser else None
+        projection = {'curator': 1, 'name': 1, 'notes': 1, 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
         return list(self.app.db.collections.find(query, projection))
 
     def put(self):
