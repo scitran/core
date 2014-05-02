@@ -19,10 +19,10 @@ import Crypto.Signature.PKCS1_v1_5
 
 def update(db, api_uri, site_name, site_id, privkey, internims_url):
     """sends is-alive signal to internims central."""
-    exp_userlist = [e['permissions'] for e in db.experiments.find(None, {'_id': False, 'permissions.uid': True})]
-    col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True})]
-    grp_userlist = [g['roles'] for g in db.groups.find(None, {'_id': False, 'roles.uid': True})]
-    remote_users = list(set([user['uid'] for container in exp_userlist+col_userlist+grp_userlist for user in container if '#' in user['uid']]))
+    exp_userlist = [e['permissions'] for e in db.experiments.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
+    col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
+    grp_userlist = [g['roles'] for g in db.groups.find(None, {'_id': False, 'roles.uid': True, 'roles.site': True})]
+    remote_users = list(set([user['uid']+'#'+user['site'] for container in exp_userlist+col_userlist+grp_userlist for user in container if user.get('site') != None]))
 
     payload = json.dumps({'site': site_id, 'api_uri': api_uri, 'users': remote_users, 'name': site_name})
     h = Crypto.Hash.SHA.new(payload)
