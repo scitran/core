@@ -2,7 +2,7 @@
 
 import logging
 log = logging.getLogger('nimsapi')
-logging.getLogger('requests').setLevel(logging.WARNING)                  # silence Requests library logging
+logging.getLogger('urllib3').setLevel(logging.WARNING) # silence Requests library logging
 
 import json
 import base64
@@ -169,7 +169,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         else:
             if self.request.method == 'OPTIONS':
                 return self.options()
-            r = requests.request(self.request.method, self.target_uri, params=self.params, data=self.request.body, headers=self.headers, verify=False)
+            r = requests.request(self.request.method, self.target_uri, params=self.params, data=self.request.body, headers=self.headers)
             if r.status_code != 200:
                 self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
             self.response.write(r.content)

@@ -5,7 +5,7 @@
 import logging
 import logging.config
 log = logging.getLogger('internims')
-logging.getLogger('requests').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING) # silence Requests library logging
 
 import re
 import json

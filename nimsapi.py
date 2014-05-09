@@ -13,7 +13,6 @@ import uuid
 import hashlib
 import tarfile
 import webapp2
-import zipfile
 import markdown
 import bson.json_util
 import webapp2_extras.routes
@@ -142,17 +141,17 @@ class NIMSAPI(nimsapiutil.NIMSRequestHandler):
         stage_path = self.app.config['stage_path']
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=stage_path) as tempdir_path:
             hash_ = hashlib.md5()
-            upload_filepath = os.path.join(tempdir_path, filename)
-            with open(upload_filepath, 'wb') as upload_file:
+            filepath = os.path.join(tempdir_path, filename)
+            with open(filepath, 'wb') as upload_file:
                 for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
                     hash_.update(chunk)
                     upload_file.write(chunk)
             if hash_.hexdigest() != self.request.headers['Content-MD5']:
                 self.abort(400, 'Content-MD5 mismatch.')
-            if not tarfile.is_tarfile(upload_filepath) and not zipfile.is_zipfile(upload_filepath):
+            if not tarfile.is_tarfile(filepath):
                 self.abort(415)
-            log.info('upload from %s: %s [%s]' % (self.request.user_agent, os.path.basename(upload_filepath), hrsize(self.request.content_length)))
-            os.rename(upload_filepath, os.path.join(stage_path, str(uuid.uuid1()) + '_' + filename)) # add UUID to prevent clobbering files
+            log.info('upload from %s: %s [%s]' % (self.request.user_agent, filename, hrsize(self.request.content_length)))
+            os.rename(filepath, os.path.join(stage_path, str(uuid.uuid1()) + '_' + filename)) # add UUID to prevent clobbering files
 
     def download(self):
         if self.request.method == 'OPTIONS':

@@ -9,9 +9,10 @@ configfile = '../production.ini'
 config = ConfigParser.ConfigParser()
 config.read(configfile)
 
-site.addsitedir(os.path.join(config.get('nims', 'virtualenv'), 'lib', 'python2.7', 'site-packages'))
+site.addsitedir(os.path.join(config.get('nims', 'virtualenv'), 'lib/python2.7/site-packages'))
 sys.path.append(config.get('nims', 'here'))
 os.environ['PYTHON_EGG_CACHE'] = config.get('nims', 'python_egg_cache')
+os.umask(0o022)
 
 import pymongo
 import Crypto.Random
@@ -33,7 +34,7 @@ privkey_file = config.get('nims', 'ssl_key')
 try:
     privkey = Crypto.PublicKey.RSA.importKey(open(privkey_file).read())
 except Exception:
-    log.warn(privkey_file + 'is not a valid private SSL key file')
+    log.warn(privkey_file + ' is not a valid private SSL key file')
     privkey = None
 else:
     log.info('successfully loaded private SSL key from ' + privkey_file)
