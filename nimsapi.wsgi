@@ -26,7 +26,7 @@ import logging.config
 logging.config.fileConfig(configfile, disable_existing_loggers=False)
 log = logging.getLogger('nimsapi')
 
-import nimsapi
+import api
 import internimsclient
 
 # read in private key
@@ -42,8 +42,9 @@ else:
 # configure uwsgi application
 site_id = config.get('nims', 'site_id')
 site_name = config.get('nims', 'site_name')
-application = nimsapi.app
+application = api.app
 application.config['stage_path'] = config.get('nims', 'stage_path')
+application.config['store_path'] = config.get('nims', 'store_path')
 application.config['log_path'] = config.get('nims', 'log_path')
 application.config['site_name'] = site_name
 application.config['site_id'] = site_id
@@ -52,8 +53,10 @@ application.config['oauth2_id_endpoint'] = config.get('oauth2', 'id_endpoint')
 application.config['insecure'] = config.getboolean('nims', 'insecure')
 
 # connect to db
+kwargs = dict(tz_aware=True)
 db_uri = config.get('nims', 'db_uri')
-application.db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()
+db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+application.db = db_client.get_default_database()
 
 # send is-alive signals
 api_uri = config.get('nims', 'api_uri')

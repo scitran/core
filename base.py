@@ -42,7 +42,7 @@ ROLES = [
 INTEGER_ROLES = {r['rid']: r['sort'] for r in ROLES}
 
 
-class NIMSRequestHandler(webapp2.RequestHandler):
+class RequestHandler(webapp2.RequestHandler):
 
     """fetches pubkey from own self.db.remotes. needs to be aware of OWN site uid"""
 
@@ -165,7 +165,7 @@ class NIMSRequestHandler(webapp2.RequestHandler):
         """dispatching and request forwarding"""
         log.debug('%s %s %s %s %s %s' % (self.rtype, self.uid, self.source_site, self.request.method, self.request.path, str(self.request.params.mixed())))
         if self.rtype in ['local', 'from_remote']:
-            return super(NIMSRequestHandler, self).dispatch()
+            return super(RequestHandler, self).dispatch()
         else:
             if self.request.method == 'OPTIONS':
                 return self.options()

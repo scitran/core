@@ -5,10 +5,10 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-import nimsapiutil
+import base
 
 
-class Users(nimsapiutil.NIMSRequestHandler):
+class Users(base.RequestHandler):
 
     """/nimsapi/users """
 
@@ -69,7 +69,7 @@ class Users(nimsapiutil.NIMSRequestHandler):
         self.response.write('users put\n')
 
 
-class User(nimsapiutil.NIMSRequestHandler):
+class User(base.RequestHandler):
 
     """/nimsapi/users/<uid> """
 
@@ -130,7 +130,7 @@ class User(nimsapiutil.NIMSRequestHandler):
         if not user:
             self.abort(404)
         if uid == self.uid or self.user_is_superuser: # users can only update their own info
-            updates = {'$set': {}, '$unset': {}}
+            updates = {'$set': {'_id': uid}, '$unset': {'__null__': ''}}
             for k, v in self.request.params.iteritems():
                 if k != 'superuser' and k in []:#user_fields:
                     updates['$set'][k] = v # FIXME: do appropriate type conversion
@@ -150,7 +150,7 @@ class User(nimsapiutil.NIMSRequestHandler):
         self.response.write('user %s delete, %s\n' % (uid, self.request.params))
 
 
-class Groups(nimsapiutil.NIMSRequestHandler):
+class Groups(base.RequestHandler):
 
     """/nimsapi/groups """
 
@@ -201,7 +201,7 @@ class Groups(nimsapiutil.NIMSRequestHandler):
         self.response.write('groups put\n')
 
 
-class Group(nimsapiutil.NIMSRequestHandler):
+class Group(base.RequestHandler):
 
     """/nimsapi/groups/<gid>"""
 
@@ -231,7 +231,7 @@ class Group(nimsapiutil.NIMSRequestHandler):
                         },
                         'role': {
                             'type': 'string',
-                            'enum': [k for k, v in sorted(nimsapiutil.INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
+                            'enum': [k for k, v in sorted(base.INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
                         },
                     },
                 },

@@ -5,10 +5,10 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-import nimsapiutil
+import base
 
 
-class Collections(nimsapiutil.NIMSRequestHandler):
+class Collections(base.RequestHandler):
 
     """/collections """
 
@@ -69,7 +69,7 @@ class Collections(nimsapiutil.NIMSRequestHandler):
         self.response.write('collections put\n')
 
 
-class Collection(nimsapiutil.NIMSRequestHandler):
+class Collection(base.RequestHandler):
 
     """/collections/<cid> """
 
@@ -102,7 +102,7 @@ class Collection(nimsapiutil.NIMSRequestHandler):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'items': base.RequestHandler.file_schema,
                 'uniqueItems': True,
             },
         },
@@ -135,7 +135,7 @@ class Collection(nimsapiutil.NIMSRequestHandler):
         self.app.db.collections.remove({'_id': cid})
 
 
-class Sessions(nimsapiutil.NIMSRequestHandler):
+class Sessions(base.RequestHandler):
 
     """/collections/<cid>/sessions """
 
@@ -196,7 +196,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
         self.response.write('sessions put\n')
 
 
-class Epochs(nimsapiutil.NIMSRequestHandler):
+class Epochs(base.RequestHandler):
 
     """/collections/<cid>/epochs """
 

@@ -5,11 +5,12 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-#import nimsdata
-import nimsapiutil
+import nimsdata
+
+import base
 
 
-class Experiments(nimsapiutil.NIMSRequestHandler):
+class Experiments(base.RequestHandler):
 
     """/experiments """
 
@@ -76,7 +77,7 @@ class Experiments(nimsapiutil.NIMSRequestHandler):
         self.response.write('experiments put\n')
 
 
-class Experiment(nimsapiutil.NIMSRequestHandler):
+class Experiment(base.RequestHandler):
 
     """/experiments/<xid> """
 
@@ -112,7 +113,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'items': base.RequestHandler.file_schema,
                 'uniqueItems': True,
             },
         },
@@ -139,7 +140,7 @@ class Experiment(nimsapiutil.NIMSRequestHandler):
         self.abort(501)
 
 
-class Sessions(nimsapiutil.NIMSRequestHandler):
+class Sessions(base.RequestHandler):
 
     """/sessions """
 
@@ -193,7 +194,7 @@ class Sessions(nimsapiutil.NIMSRequestHandler):
         self.response.write('sessions put\n')
 
 
-class Session(nimsapiutil.NIMSRequestHandler):
+class Session(base.RequestHandler):
 
     """/sessions/<sid> """
 
@@ -219,7 +220,7 @@ class Session(nimsapiutil.NIMSRequestHandler):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'items': base.RequestHandler.file_schema,
                 'uniqueItems': True,
             },
         },
@@ -254,7 +255,7 @@ class Session(nimsapiutil.NIMSRequestHandler):
         self.abort(501)
 
 
-class Epochs(nimsapiutil.NIMSRequestHandler):
+class Epochs(base.RequestHandler):
 
     """/nimsapi/epochs """
 
@@ -308,7 +309,7 @@ class Epochs(nimsapiutil.NIMSRequestHandler):
         self.response.write('epochs put\n')
 
 
-class Epoch(nimsapiutil.NIMSRequestHandler):
+class Epoch(base.RequestHandler):
 
     """/nimsapi/epochs/<eid> """
 
@@ -330,7 +331,7 @@ class Epoch(nimsapiutil.NIMSRequestHandler):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': nimsapiutil.NIMSRequestHandler.file_schema,
+                'items': base.RequestHandler.file_schema,
                 'uniqueItems': True,
             },
         },
