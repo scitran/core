@@ -82,7 +82,13 @@ class Core(base.RequestHandler):
             nimsapi/collections/*<cid>*/sessions                | list sessions for collection *<cid>*
             nimsapi/collections/*<cid>*/epochs?session=*<sid>*  | list of epochs for collection *<cid>*, optionally restricted to session *<sid>*
             """
-        resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resources).replace('<', '&lt;').replace('>', '&gt;').strip()
+
+        if self.debug:
+            resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1?user=%s)' % self.uid, resources)
+        else:
+            resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resources)
+        resources = resources.replace('<', '&lt;').replace('>', '&gt;').strip()
+
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
         self.response.write('<html>\n')
         self.response.write('<head>\n')
@@ -101,6 +107,11 @@ class Core(base.RequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body style="min-width:900px">\n')
+        if self.debug and not self.request.get('user', None):
+            self.response.write('<form name="username" action="" method="get">\n')
+            self.response.write('Username: <input type="text" name="user">\n')
+            self.response.write('<input type="submit" value="Generate Custom Links">\n')
+            self.response.write('</form>\n')
         self.response.write(markdown.markdown(resources, ['extra']))
         self.response.write('</body>\n')
         self.response.write('</html>\n')
@@ -151,19 +162,19 @@ class Core(base.RequestHandler):
                 log.debug('Done        %s' % filename)
 
     def update_db(self, dataset):
-        existing_group_names = [g['_id'] for g in self.app.db.groups.find(None, ['_id'])]
-        group_name_matches = difflib.get_close_matches(dataset.nims_group, existing_group_names, cutoff=0.8)
-        if len(group_name_matches) == 1:
-            group_name = group_name_matches[0]
+        existing_group_ids = [g['_id'] for g in self.app.db.groups.find(None, ['_id'])]
+        group_id_matches = difflib.get_close_matches(dataset.nims_group, existing_group_ids, cutoff=0.8)
+        if len(group_id_matches) == 1:
+            group_id = group_id_matches[0]
             experiment_name = dataset.nims_experiment or 'untitled'
         else:
-            group_name = 'unknown'
-            experiment_name = group_name + '/' + dataset.nims_experiment
-        group = self.app.db.groups.find_one({'_id': group_name})
+            group_id = 'unknown'
+            experiment_name = group_id + '/' + dataset.nims_experiment
+        group = self.app.db.groups.find_one({'_id': group_id})
         experiment_spec = {'group': group['_id'], 'name': experiment_name}
         experiment = self.app.db.experiments.find_and_modify(
                 experiment_spec,
-                {'$setOnInsert': dict(permissions=group['roles'], files=[])},
+                {'$setOnInsert': dict(group_name=group['name'], permissions=group['roles'], files=[])},
                 upsert=True,
                 new=True,
                 )

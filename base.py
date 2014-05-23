@@ -80,6 +80,7 @@ class RequestHandler(webapp2.RequestHandler):
         self.target_site = self.request.get('site', None)
         self.access_token = self.request.headers.get('Authorization', None)
         self.source_site = None       # requesting remote site; gets set if request from remote
+        self.debug = self.app.config['insecure']
 
         # CORS header
         if 'Origin' in self.request.headers and self.request.headers['Origin'].startswith('https://'):
@@ -93,18 +94,18 @@ class RequestHandler(webapp2.RequestHandler):
                 # TODO: add handlers for bad tokens
                 # inform app of expired token, app will try to get new token, or ask user to log in again
                 log.debug('ERR: ' + str(r.status_code) + r.reason + ' bad token')
-        elif self.app.config['insecure'] and 'X-Requested-With' not in self.request.headers and self.request.get('user', None):
+        elif self.debug and self.request.get('user', None):
             self.uid = self.request.get('user')
         else:
             self.uid = '@public'
-            self.user_is_superuser = False
 
-        if self.uid != '@public':
-            user = self.app.db.users.find_one({'_id': self.uid}, ['superuser'])
-            if user:
-                self.user_is_superuser = user.get('superuser', None)
-            else:
-                self.abort(403, 'user ' + self.uid + ' does not exist')
+        user = self.app.db.users.find_one({'_id': self.uid}, ['superuser'])
+        if user:
+            self.user_is_superuser = user.get('superuser', None)
+        elif self.uid == '@public':
+            self.user_is_superuser = False
+        else:
+            self.abort(403, 'user ' + self.uid + ' does not exist')
 
         if self.target_site not in [None, self.app.config['site_id']]:
             self.rtype = 'to_remote'

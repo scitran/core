@@ -62,7 +62,11 @@ class Users(base.RequestHandler):
         """Return the list of Users."""
         if self.uid == '@public':
             self.abort(403, 'must be logged in to retrieve User list')
-        return list(self.app.db.users.find({}, ['firstname', 'lastname', 'email_hash']))
+        users = list(self.app.db.users.find({}, ['firstname', 'lastname', 'email_hash']))
+        if self.debug:
+            for user in users:
+                user['metadata'] = self.uri_for('user', uid=str(user['_id']), _full=True) + '?' + self.request.query_string
+        return users
 
     def put(self):
         """Update many Users."""
@@ -122,6 +126,8 @@ class User(base.RequestHandler):
         user = self.app.db.users.find_one({'_id': uid}, projection or None)
         if not user:
             self.abort(404, 'no such User')
+        if self.debug:
+            user['groups'] = self.uri_for('groups', uid=uid, _full=True) + '?' + self.request.query_string
         return user
 
     def put(self, uid):
@@ -180,21 +186,24 @@ class Groups(base.RequestHandler):
         """Create a new Group"""
         self.response.write('groups post\n')
 
-    def get(self):
+    def get(self, uid=None):
         """Return the list of Groups."""
         query = None
-        if not self.user_is_superuser:
-            if self.request.get('admin').lower() in ('1', 'true'):
-                query = {'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}}
-            elif self.request.get('experiment_permissions').lower() in ('1', 'true'):
-                experiments = [exp['_id'] for exp in self.app.db.experiments.aggregate([
-                        {'$match': {'permissions.uid': self.uid}},
-                        {'$group': {'_id': '$group'}},
-                        ])['result']]
-                query = {'_id': {'$in': experiments}}
-            else:
-                query = {'roles.uid': self.uid}
-        return list(self.app.db.groups.find(query, ['name']))
+        if uid is not None:
+            if uid != self.uid and not self.user_is_superuser:
+                self.abort(403, 'User ' + self.uid + ' may not see the Groups of User ' + uid)
+            query = {'roles.uid': uid}
+        else:
+            if not self.user_is_superuser:
+                if self.request.get('admin').lower() in ('1', 'true'):
+                    query = {'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}}
+                else:
+                    query = {'roles.uid': self.uid}
+        groups = list(self.app.db.groups.find(query, ['name']))
+        if self.debug:
+            for group in groups:
+                group['metadata'] = self.uri_for('group', gid=str(group['_id']), _full=True) + '?' + self.request.query_string
+        return groups
 
     def put(self):
         """Update many Groups."""
@@ -246,9 +255,10 @@ class Group(base.RequestHandler):
         group = self.app.db.groups.find_one({'_id': gid})
         if not group:
             self.abort(404, 'no such Group: ' + gid)
-        group = self.app.db.groups.find_one({'_id': gid, 'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}})
-        if not group:
-            self.abort(403, 'User ' + self.uid + ' is not an admin on Group ' + gid)
+        if not self.user_is_superuser:
+            group = self.app.db.groups.find_one({'_id': gid, 'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}})
+            if not group:
+                self.abort(403, 'User ' + self.uid + ' is not an admin on Group ' + gid)
         return group
 
     def put(self, gid):
