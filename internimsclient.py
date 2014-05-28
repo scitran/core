@@ -5,7 +5,7 @@
 import logging
 import logging.config
 log = logging.getLogger('internims')
-logging.getLogger('urllib3').setLevel(logging.WARNING) # silence Requests library logging
+logging.getLogger('urllib3').setLevel(logging.WARNING)  # silence Requests library logging
 
 import re
 import json
@@ -22,7 +22,7 @@ def update(db, api_uri, site_name, site_id, privkey, internims_url):
     exp_userlist = [e['permissions'] for e in db.experiments.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
     col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
     grp_userlist = [g['roles'] for g in db.groups.find(None, {'_id': False, 'roles.uid': True, 'roles.site': True})]
-    remote_users = list(set([user['uid']+'#'+user['site'] for container in exp_userlist+col_userlist+grp_userlist for user in container if user.get('site') != None]))
+    remote_users = list(set([user['uid']+'#'+user['site'] for container in exp_userlist+col_userlist+grp_userlist for user in container if user.get('site') is not None]))
 
     payload = json.dumps({'site': site_id, 'api_uri': api_uri, 'users': remote_users, 'name': site_name})
     h = Crypto.Hash.SHA.new(payload)
@@ -50,7 +50,11 @@ def update(db, api_uri, site_name, site_id, privkey, internims_url):
         # r.reason contains generic description for the specific error code
         # need the part of the error response body that contains the detailed explanation
         reason = re.search('<br /><br />\n(.*)\n\n\n </body>\n</html>', r.content)
-        log.warning((r.status_code, reason.group(1)))
+        if reason:
+            msg = reason.group(1)
+        else:
+            msg = r.reason
+        log.warning('%s - %s' % (r.status_code, msg))
         return False
 
 
