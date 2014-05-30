@@ -53,10 +53,10 @@ class Collections(base.RequestHandler):
         """Create a new Collection."""
         name = self.request.get('name') or 'innominate'
         epoch_ids = [bson.ObjectId(eid) for eid in self.request.get_all('epochs[]', [])]
-        [self.get_epoch(eid) for eid in epoch_ids] # ensure permissions
-        cid = self.app.db.collections.insert({'curator': self.uid, 'name': name, 'permissions': [{'uid': self.uid, 'role': 'admin'}]})
-        for eid in epoch_ids:
-            self.app.db.epochs.update({'_id': eid}, {'$push': {'collections': cid}})
+        [self.get_epoch(e_id) for e_id in epoch_ids] # ensure permissions
+        _id = self.app.db.collections.insert({'curator': self.uid, 'name': name, 'permissions': [{'uid': self.uid, 'role': 'admin'}]})
+        for e_id in epoch_ids:
+            self.app.db.epochs.update({'_id': e_id}, {'$push': {'collections': _id}})
 
     def get(self):
         """Return the list of Collections."""
@@ -65,9 +65,10 @@ class Collections(base.RequestHandler):
         collections = list(self.app.db.collections.find(query, projection))
         if self.debug:
             for coll in collections:
-                coll['metadata'] = self.uri_for('collection', _id=str(coll['_id']), _full=True) + '?' + self.request.query_string
-                coll['sessions'] = self.uri_for('vp_sessions', _id=str(coll['_id']), _full=True) + '?' + self.request.query_string
-                coll['epochs'] = self.uri_for('vp_epochs', _id=str(coll['_id']), _full=True) + '?' + self.request.query_string
+                cid = str(coll['_id'])
+                coll['metadata'] = self.uri_for('collection', cid=cid, _full=True) + '?' + self.request.query_string
+                coll['sessions'] = self.uri_for('vp_sessions', cid=cid, _full=True) + '?' + self.request.query_string
+                coll['epochs'] = self.uri_for('vp_epochs', cid=cid, _full=True) + '?' + self.request.query_string
         return collections
 
     def put(self):
@@ -115,33 +116,33 @@ class Collection(base.RequestHandler):
         'required': ['_id', 'group', 'name'], #FIXME
     }
 
-    def get(self, _id):
+    def get(self, cid):
         """Return one Collection, conditionally with details."""
-        cid = bson.ObjectId(_id)
-        coll = self.get_collection(cid)
+        _id = bson.ObjectId(cid)
+        coll = self.get_collection(_id)
         if self.debug:
-            coll['sessions'] = self.uri_for('vp_sessions', _id=_id, _full=True) + '?' + self.request.query_string
+            coll['sessions'] = self.uri_for('vp_sessions', cid=cid, _full=True) + '?' + self.request.query_string
         return coll
 
-    def put(self, _id):
+    def put(self, cid):
         """Update an existing Collection."""
-        cid = bson.ObjectId(_id)
-        self.get_collection(cid, 'admin') # ensure permissions
+        _id = bson.ObjectId(cid)
+        self.get_collection(_id, 'admin') # ensure permissions
         add_epoch_ids = [bson.ObjectId(eid) for eid in self.request.get_all('add_epochs[]', [])]
         del_epoch_ids = [bson.ObjectId(eid) for eid in self.request.get_all('del_epochs[]', [])]
-        [self.get_epoch(eid) for eid in add_epoch_ids] # ensure permissions
-        [self.get_epoch(eid) for eid in del_epoch_ids] # ensure permissions
-        for eid in add_epoch_ids:
-            self.app.db.epochs.update({'_id': eid}, {'$addToSet': {'collections': bson.ObjectId(cid)}})
-        for eid in del_epoch_ids:
-            self.app.db.epochs.update({'_id': eid}, {'$pull': {'collections': bson.ObjectId(cid)}})
+        [self.get_epoch(e_id) for e_id in add_epoch_ids] # ensure permissions
+        [self.get_epoch(e_id) for e_id in del_epoch_ids] # ensure permissions
+        for e_id in add_epoch_ids:
+            self.app.db.epochs.update({'_id': e_id}, {'$addToSet': {'collections': _id}})
+        for e_id in del_epoch_ids:
+            self.app.db.epochs.update({'_id': e_id}, {'$pull': {'collections': _id}})
 
-    def delete(self, _id):
+    def delete(self, cid):
         """Delete a Collection."""
-        cid = bson.ObjectId(_id)
-        self.get_collection(cid, 'admin') # ensure permissions
-        self.app.db.epochs.update({'collections': cid}, {'$pull': {'collections': cid}}, multi=True)
-        self.app.db.collections.remove({'_id': cid})
+        _id = bson.ObjectId(cid)
+        self.get_collection(_id, 'admin') # ensure permissions
+        self.app.db.epochs.update({'collections': _id}, {'$pull': {'collections': _id}}, multi=True)
+        self.app.db.collections.remove({'_id': _id})
 
 
 class Sessions(base.RequestHandler):
@@ -185,12 +186,12 @@ class Sessions(base.RequestHandler):
         """Create a new Session"""
         self.response.write('sessions post\n')
 
-    def get(self, _id):
+    def get(self, cid):
         """Return the list of Session Epochs."""
-        cid = bson.ObjectId(_id)
-        self.get_collection(cid) # ensure permissions
+        _id = bson.ObjectId(cid)
+        self.get_collection(_id) # ensure permissions
         aggregated_epochs = self.app.db.epochs.aggregate([
-                {'$match': {'collections': cid}},
+                {'$match': {'collections': _id}},
                 {'$group': {'_id': '$session'}},
                 ])['result']
         query = {'_id': {'$in': [agg_epoch['_id'] for agg_epoch in aggregated_epochs]}}
@@ -200,8 +201,9 @@ class Sessions(base.RequestHandler):
             sess['site'] = self.app.config['site_id']
         if self.debug:
             for sess in sessions:
-                sess['metadata'] = self.uri_for('session', _id=str(sess['_id']), _full=True) + '?user=' + self.request.get('user')
-                sess['epochs'] = self.uri_for('vp_epochs', _id=_id, _full=True) + '?session=%s&user=%s' % (sess['_id'], self.request.get('user'))
+                sid = str(sess['_id'])
+                sess['metadata'] = self.uri_for('session', sid=sid, _full=True) + '?user=' + self.request.get('user')
+                sess['epochs'] = self.uri_for('vp_epochs', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.get('user'))
         return sessions
 
     def put(self):
@@ -250,11 +252,11 @@ class Epochs(base.RequestHandler):
         """Create a new Epoch."""
         self.response.write('epochs post\n')
 
-    def get(self, _id):
+    def get(self, cid):
         """Return the list of Session Epochs."""
-        cid = bson.ObjectId(_id)
-        self.get_collection(cid) # ensure permissions
-        query = {'collections': cid}
+        _id = bson.ObjectId(cid)
+        self.get_collection(_id) # ensure permissions
+        query = {'collections': _id}
         sid = self.request.get('session')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
@@ -264,7 +266,8 @@ class Epochs(base.RequestHandler):
         epochs = list(self.app.db.epochs.find(query, projection))
         if self.debug:
             for epoch in epochs:
-                epoch['metadata'] = self.uri_for('epoch', _id=str(epoch['_id']), _full=True) + '?user=' + self.request.get('user')
+                eid = str(epoch['_id'])
+                epoch['metadata'] = self.uri_for('epoch', eid=eid, _full=True) + '?user=' + self.request.get('user')
         return epochs
 
     def put(self):

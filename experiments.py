@@ -67,7 +67,7 @@ class Experiments(base.RequestHandler):
             else:
                 query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
         projection = {
-                'group': 1, 'group_name': 1, 'name': 1, 'timestamp': 1, 'notes': 1,
+                'group': 1, 'group_name': 1, 'name': 1, 'notes': 1,
                 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}},
                 }
         experiments = list(self.app.db.experiments.find(query, projection))
@@ -76,8 +76,9 @@ class Experiments(base.RequestHandler):
             exp['site_name'] = self.app.config['site_name']
         if self.debug:
             for exp in experiments:
-                exp['metadata'] = self.uri_for('experiment', _id=str(exp['_id']), _full=True) + '?' + self.request.query_string
-                exp['sessions'] = self.uri_for('sessions', _id=str(exp['_id']), _full=True) + '?' + self.request.query_string
+                xid = str(exp['_id'])
+                exp['metadata'] = self.uri_for('experiment', xid=xid, _full=True) + '?' + self.request.query_string
+                exp['sessions'] = self.uri_for('sessions', xid=xid, _full=True) + '?' + self.request.query_string
         return experiments
 
     def put(self):
@@ -128,23 +129,23 @@ class Experiment(base.RequestHandler):
         'required': ['_id', 'group', 'name'], #FIXME
     }
 
-    def get(self, _id):
+    def get(self, xid):
         """Return one Experiment, conditionally with details."""
-        xid = bson.ObjectId(_id)
-        exp = self.get_experiment(xid)
+        _id = bson.ObjectId(xid)
+        exp = self.get_experiment(_id)
         if self.debug:
-            exp['sessions'] = self.uri_for('sessions', _id=_id, _full=True) + '?' + self.request.query_string
+            exp['sessions'] = self.uri_for('sessions', xid=xid, _full=True) + '?' + self.request.query_string
         return exp
 
-    def put(self, _id):
+    def put(self, xid):
         """Update an existing Experiment."""
-        xid = bson.ObjectId(_id)
-        self.get_experiment(xid, 'read-write') # ensure permissions
+        _id = bson.ObjectId(xid)
+        self.get_experiment(_id, 'read-write') # ensure permissions
         updates = {'$set': {}, '$unset': {}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
-        self.app.db.experiments.update({'_id': xid}, updates)
+        self.app.db.experiments.update({'_id': _id}, updates)
 
     def delete(self, xid):
         """Delete an Experiment."""
@@ -192,17 +193,18 @@ class Sessions(base.RequestHandler):
         """Create a new Session"""
         self.response.write('sessions post\n')
 
-    def get(self, _id):
+    def get(self, xid):
         """Return the list of Experiment Sessions."""
-        xid = bson.ObjectId(_id)
-        self.get_experiment(xid) # ensure permissions
-        query = {'experiment': xid}
+        _id = bson.ObjectId(xid)
+        self.get_experiment(_id) # ensure permissions
+        query = {'experiment': _id}
         projection = ['name', 'subject', 'notes']
         sessions =  list(self.app.db.sessions.find(query, projection))
         if self.debug:
             for sess in sessions:
-                sess['metadata'] = self.uri_for('session', _id=str(sess['_id']), _full=True) + '?' + self.request.query_string
-                sess['epochs'] = self.uri_for('epochs', _id=str(sess['_id']), _full=True) + '?' + self.request.query_string
+                sid = str(sess['_id'])
+                sess['metadata'] = self.uri_for('session', sid=sid, _full=True) + '?' + self.request.query_string
+                sess['epochs'] = self.uri_for('epochs', sid=sid, _full=True) + '?' + self.request.query_string
         return sessions
 
     def put(self):
@@ -251,25 +253,25 @@ class Session(base.RequestHandler):
         json_schema['properties'].update(nimsdata.NIMSData.session_properties)
         return json_schema
 
-    def get(self, _id):
+    def get(self, sid):
         """Return one Session, conditionally with details."""
-        sid = bson.ObjectId(_id)
-        sess = self.get_session(sid)
+        _id = bson.ObjectId(sid)
+        sess = self.get_session(_id)
         if self.debug:
-            sess['epochs'] = self.uri_for('epochs', _id=_id, _full=True) + '?' + self.request.query_string
+            sess['epochs'] = self.uri_for('epochs', sid=sid, _full=True) + '?' + self.request.query_string
         return sess
 
-    def put(self, _id):
+    def put(self, sid):
         """Update an existing Session."""
-        sid = bson.ObjectId(_id)
-        self.get_session(sid, 'read-write') # ensure permissions
+        _id = bson.ObjectId(sid)
+        self.get_session(_id, 'read-write') # ensure permissions
         updates = {'$set': {}, '$unset': {}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
-        self.app.db.sessions.update({'_id': sid}, updates)
+        self.app.db.sessions.update({'_id': _id}, updates)
 
-    def delete(self, _id):
+    def delete(self, sid):
         """Delete a Session."""
         self.abort(501)
 
@@ -315,16 +317,17 @@ class Epochs(base.RequestHandler):
         """Create a new Epoch."""
         self.response.write('epochs post\n')
 
-    def get(self, _id):
+    def get(self, sid):
         """Return the list of Session Epochs."""
-        sid = bson.ObjectId(_id)
-        self.get_session(sid) # ensure permissions
-        query = {'session': sid}
+        _id = bson.ObjectId(sid)
+        self.get_session(_id) # ensure permissions
+        query = {'session': _id}
         projection = ['name', 'description', 'datatype', 'notes']
         epochs = list(self.app.db.epochs.find(query, projection))
         if self.debug:
             for epoch in epochs:
-                epoch['metadata'] = self.uri_for('epoch', _id=str(epoch['_id']), _full=True) + '?' + self.request.query_string
+                eid = str(epoch['_id'])
+                epoch['metadata'] = self.uri_for('epoch', eid=eid, _full=True) + '?' + self.request.query_string
         return epochs
 
     def put(self):
@@ -369,21 +372,21 @@ class Epoch(base.RequestHandler):
         json_schema['properties'].update(nimsdata.nimsdicom.NIMSDicom.epoch_properties)
         return json_schema
 
-    def get(self, _id):
+    def get(self, eid):
         """Return one Epoch, conditionally with details."""
-        eid = bson.ObjectId(_id)
-        return self.get_epoch(eid)
+        _id = bson.ObjectId(eid)
+        return self.get_epoch(_id)
 
-    def put(self, _id):
+    def put(self, eid):
         """Update an existing Epoch."""
-        eid = bson.ObjectId(_id)
-        self.get_epoch(eid, 'read-write') # ensure permissions
+        _id = bson.ObjectId(eid)
+        self.get_epoch(_id, 'read-write') # ensure permissions
         updates = {'$set': {}, '$unset': {}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
-        self.app.db.epochs.update({'_id': eid}, updates)
+        self.app.db.epochs.update({'_id': _id}, updates)
 
-    def delete(self, _id):
+    def delete(self, eid):
         """Delete an Epoch."""
         self.abort(501)

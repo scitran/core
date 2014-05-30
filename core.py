@@ -174,7 +174,7 @@ class Core(base.RequestHandler):
         experiment_spec = {'group': group['_id'], 'name': experiment_name}
         experiment = self.app.db.experiments.find_and_modify(
                 experiment_spec,
-                {'$setOnInsert': dict(group_name=group['name'], permissions=group['roles'], files=[])},
+                {'$setOnInsert': base.NoNoneDict(group_name=group.get('name'), permissions=group['roles'], files=[])},
                 upsert=True,
                 new=True,
                 )
@@ -209,7 +209,7 @@ class Core(base.RequestHandler):
     @staticmethod
     def entity_metadata(dataset, properties, presets={}):
         metadata = [(prop, getattr(dataset, attrs['attribute'])) for prop, attrs in properties.iteritems() if 'attribute' in attrs]
-        return {key: value for key, value in (metadata + presets.items()) if value is not None}
+        return base.NoNoneDict(metadata, **presets)
 
     def download(self):
         if self.request.method == 'OPTIONS':

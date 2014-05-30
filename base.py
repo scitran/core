@@ -42,6 +42,21 @@ ROLES = [
 INTEGER_ROLES = {r['rid']: r['sort'] for r in ROLES}
 
 
+class NoNoneDict(dict):
+
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        for key in self.keys():
+            if self[key] is None:
+                del self[key]
+
+    def __setitem__(self, key, val):
+        if val is not None:
+            dict.__setitem__(self, key, val)
+        elif key in self:
+            dict.__delitem__(self, key)
+
+
 class RequestHandler(webapp2.RequestHandler):
 
     """fetches pubkey from own self.db.remotes. needs to be aware of OWN site uid"""
