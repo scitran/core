@@ -29,6 +29,89 @@ def hrsize(size):
     return '%.0f%s' % (size, 'Y')
 
 
+def sort_file(db, filepath, digest, store_path):
+    filename = os.path.basename(filepath)
+    try:
+        log.info('Parsing     %s' % filename)
+        dataset = nimsdata.parse(filepath)
+    except nimsdata.NIMSDataError:
+        return 415, 'Can\'t parse %s' % filename
+    else:
+        log.info('Sorting     %s' % filename)
+        # TODO: bail, if any required params are not set
+        epoch_spec, epoch_id = update_db(db, dataset)
+        epoch_path = os.path.join(store_path, epoch_id[-3:] + '/' + epoch_id)
+        if not os.path.exists(epoch_path):
+            os.makedirs(epoch_path)
+        file_ext = '.' + filename.split('.', 1)[1] # split on the first .
+        file_spec = dict(epoch_spec.items() + [('files.datatype', dataset.nims_type)])
+        file_info = dict(
+                datatype=dataset.nims_type,
+                filename=dataset.nims_filename,
+                ext=file_ext,
+                size=os.path.getsize(filepath),
+                sha1=digest,
+                #hash=dataset.nims_hash, TODO: datasets should be able to hash themselves (but not here)
+                )
+        success = db.epochs.update(file_spec, {'$set': {'files.$': file_info}})
+        if not success['updatedExisting']:
+            db.epochs.update(epoch_spec, {'$addToSet': {'files': file_info}})
+        shutil.move(filepath, epoch_path + '/' + dataset.nims_filename + file_ext)
+        log.debug('Done        %s' % filename)
+
+
+def update_db(db, dataset):
+    existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
+    group_id_matches = difflib.get_close_matches(dataset.nims_group, existing_group_ids, cutoff=0.8)
+    if len(group_id_matches) == 1:
+        group_id = group_id_matches[0]
+        experiment_name = dataset.nims_experiment or 'untitled'
+    else:
+        group_id = 'unknown'
+        experiment_name = group_id + '/' + dataset.nims_experiment
+    group = db.groups.find_one({'_id': group_id})
+    experiment_spec = {'group': group['_id'], 'name': experiment_name}
+    experiment = db.experiments.find_and_modify(
+            experiment_spec,
+            {'$setOnInsert': base.NoNoneDict(group_name=group.get('name'), permissions=group['roles'], files=[])},
+            upsert=True,
+            new=True,
+            )
+    # experiment timestamp and timezone are inherited from latest epoch
+    if experiment.get('timestamp', dataset.nims_timestamp - datetime.timedelta(1)) < dataset.nims_timestamp:
+        db.experiments.update(experiment_spec, {'$set': dict(timestamp=dataset.nims_timestamp, timezone=dataset.nims_timezone)})
+    session_spec = {'uid': dataset.nims_session}
+    session = db.sessions.find_and_modify(
+            session_spec,
+            {
+                '$setOnInsert': dict(experiment=experiment['_id'], files=[]),
+                '$set': entity_metadata(dataset, dataset.session_properties, session_spec), # session_spec ensures non-empty $set
+                },
+            upsert=True,
+            new=True,
+            )
+    # session timestamp and timezone are inherited from earliest epoch
+    if session.get('timestamp', dataset.nims_timestamp + datetime.timedelta(1)) > dataset.nims_timestamp:
+        db.sessions.update(session_spec, {'$set': dict(timestamp=dataset.nims_timestamp, timezone=dataset.nims_timezone)})
+    epoch_spec = {'uid': dataset.nims_epoch}
+    epoch = db.epochs.find_and_modify(
+            epoch_spec,
+            {
+                '$setOnInsert': dict(session=session['_id'], files=[]),
+                '$set': entity_metadata(dataset, dataset.epoch_properties),
+                },
+            upsert=True,
+            new=True,
+            )
+    return epoch_spec, str(epoch['_id'])
+
+
+def entity_metadata(dataset, properties, presets={}):
+    metadata = [(prop, getattr(dataset, attrs['attribute'])) for prop, attrs in properties.iteritems() if 'attribute' in attrs]
+    #metadata = [(prop, dataset.getattr(attrs['attribute']) for prop, attrs in properties.iteritems() if 'attribute' in attrs]
+    return base.NoNoneDict(metadata, **presets)
+
+
 class Core(base.RequestHandler):
 
     """/nimsapi """
@@ -133,83 +216,7 @@ class Core(base.RequestHandler):
             if not tarfile.is_tarfile(filepath):
                 self.abort(415, 'Only tar files are accepted.')
             log.info('Received    %s [%s] from %s' % (filename, hrsize(self.request.content_length), self.request.user_agent))
-            try:
-                log.info('Parsing     %s' % filename)
-                dataset = nimsdata.parse(filepath)
-            except nimsdata.NIMSDataError:
-                self.abort(415, 'Can\'t parse %s' % filename)
-            else:
-                log.info('Sorting     %s' % filename)
-                # TODO: bail, if any required params are not set
-                epoch_spec, epoch_id = self.update_db(dataset)
-                epoch_path = os.path.join(self.app.config['store_path'], epoch_id[-3:] + '/' + epoch_id)
-                if not os.path.exists(epoch_path):
-                    os.makedirs(epoch_path)
-                file_ext = '.' + filename.split('.', 1)[1] # split on the first .
-                file_spec = dict(epoch_spec.items() + [('files.datatype', dataset.nims_type)])
-                file_info = dict(
-                        datatype=dataset.nims_type,
-                        filename=dataset.nims_filename,
-                        ext=file_ext,
-                        size=os.path.getsize(filepath),
-                        sha1=hash_.hexdigest(),
-                        #hash=dataset.nims_hash, TODO: datasets should be able to hash themselves (but not here)
-                        )
-                success = self.app.db.epochs.update(file_spec, {'$set': {'files.$': file_info}})
-                if not success['updatedExisting']:
-                    self.app.db.epochs.update(epoch_spec, {'$addToSet': {'files': file_info}})
-                shutil.move(filepath, epoch_path + '/' + dataset.nims_filename + file_ext)
-                log.debug('Done        %s' % filename)
-
-    def update_db(self, dataset):
-        existing_group_ids = [g['_id'] for g in self.app.db.groups.find(None, ['_id'])]
-        group_id_matches = difflib.get_close_matches(dataset.nims_group, existing_group_ids, cutoff=0.8)
-        if len(group_id_matches) == 1:
-            group_id = group_id_matches[0]
-            experiment_name = dataset.nims_experiment or 'untitled'
-        else:
-            group_id = 'unknown'
-            experiment_name = group_id + '/' + dataset.nims_experiment
-        group = self.app.db.groups.find_one({'_id': group_id})
-        experiment_spec = {'group': group['_id'], 'name': experiment_name}
-        experiment = self.app.db.experiments.find_and_modify(
-                experiment_spec,
-                {'$setOnInsert': base.NoNoneDict(group_name=group.get('name'), permissions=group['roles'], files=[])},
-                upsert=True,
-                new=True,
-                )
-        # experiment timestamp and timezone are inherited from latest epoch
-        if experiment.get('timestamp', dataset.nims_timestamp - datetime.timedelta(1)) < dataset.nims_timestamp:
-            self.app.db.experiments.update(experiment_spec, {'$set': dict(timestamp=dataset.nims_timestamp, timezone=dataset.nims_timezone)})
-        session_spec = {'uid': dataset.nims_session}
-        session = self.app.db.sessions.find_and_modify(
-                session_spec,
-                {
-                    '$setOnInsert': dict(experiment=experiment['_id'], files=[]),
-                    '$set': self.entity_metadata(dataset, dataset.session_properties, session_spec), # session_spec ensures non-empty $set
-                    },
-                upsert=True,
-                new=True,
-                )
-        # session timestamp and timezone are inherited from earliest epoch
-        if session.get('timestamp', dataset.nims_timestamp + datetime.timedelta(1)) > dataset.nims_timestamp:
-            self.app.db.sessions.update(session_spec, {'$set': dict(timestamp=dataset.nims_timestamp, timezone=dataset.nims_timezone)})
-        epoch_spec = {'uid': dataset.nims_epoch}
-        epoch = self.app.db.epochs.find_and_modify(
-                epoch_spec,
-                {
-                    '$setOnInsert': dict(session=session['_id'], files=[]),
-                    '$set': self.entity_metadata(dataset, dataset.epoch_properties),
-                    },
-                upsert=True,
-                new=True,
-                )
-        return epoch_spec, str(epoch['_id'])
-
-    @staticmethod
-    def entity_metadata(dataset, properties, presets={}):
-        metadata = [(prop, getattr(dataset, attrs['attribute'])) for prop, attrs in properties.iteritems() if 'attribute' in attrs]
-        return base.NoNoneDict(metadata, **presets)
+            sort_file(self.app.db, filepath, hash_.hexdigest(), self.app.config['store_path'])
 
     def download(self):
         if self.request.method == 'OPTIONS':

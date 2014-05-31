@@ -9,6 +9,18 @@ import hashlib
 import argparse
 
 
+def hrsize(size):
+    if size < 1000:
+        return '%d%s' % (size, 'B')
+    for suffix in 'KMGTPEZY':
+        size /= 1024.
+        if size < 10.:
+            return '%.1f%s' % (size, suffix)
+        if size < 1000.:
+            return '%.0f%s' % (size, suffix)
+    return '%.0f%s' % (size, 'Y')
+
+
 def rsinit(args):
     db_client = pymongo.MongoClient(args.uri)
     repl_conf = eval(args.config)
@@ -68,19 +80,36 @@ example:
 """
 
 
-def hrsize(size):
-    if size < 1000:
-        return '%d%s' % (size, 'B')
-    for suffix in 'KMGTPEZY':
-        size /= 1024.
-        if size < 10.:
-            return '%.1f%s' % (size, suffix)
-        if size < 1000.:
-            return '%.0f%s' % (size, suffix)
-    return '%.0f%s' % (size, 'Y')
-
-
 def sort(args):
+    import core
+    print 'initializing DB'
+    kwargs = dict(tz_aware=True)
+    db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
+    db = db_client.get_default_database()
+    print 'inspecting %s' % args.path
+    files = []
+    for dirpath, dirnames, filenames in os.walk(args.path):
+        for filepath in [os.path.join(dirpath, fn) for fn in filenames if not fn.startswith('.')]:
+            if not os.path.islink(filepath):
+                files.append(filepath)
+        dirnames[:] = [dn for dn in dirnames if not dn.startswith('.')] # need to use slice assignment to influence walk behavior
+    file_cnt = len(files)
+    print 'found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt
+    for i, filepath in enumerate(files):
+        print 'sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), hrsize(os.path.getsize(filepath)), i, file_cnt)
+        hash_ = hashlib.sha1()
+        with open(filepath, 'rb') as fd:
+            for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
+                hash_.update(chunk)
+        core.sort_file(db, filepath, hash_.hexdigest(), args.sort_path)
+
+sort_desc = """
+example:
+./scripts/bootstrap.py sort mongodb://localhost/nims /tmp/data /tmp/sorted
+"""
+
+
+def upload(args):
     import datetime
     import requests
     print 'inspecting %s' % args.path
@@ -113,9 +142,9 @@ def sort(args):
                 else:
                     print 'failure     %s: %s %s, %s' % (log_info, filename, r.status_code, r.reason, r.text)
 
-sort_desc = """
+upload_desc = """
 example:
-./scripts/bootstrap.py sort /tmp/data
+./scripts/bootstrap.py upload /tmp/data https://example.com/upload
 """
 
 
@@ -155,13 +184,24 @@ dbinit_parser.set_defaults(func=dbinit)
 
 sort_parser = subparsers.add_parser(
         name='sort',
-        help='initialize database',
+        help='sort all files in a dicrectory tree',
         description=sort_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
+sort_parser.add_argument('db_uri', help='database URI')
 sort_parser.add_argument('path', help='filesystem path to data')
-sort_parser.add_argument('url', help='upload URL')
+sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
 sort_parser.set_defaults(func=sort)
+
+upload_parser = subparsers.add_parser(
+        name='upload',
+        help='upload all files in a directory tree',
+        description=upload_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+upload_parser.add_argument('path', help='filesystem path to data')
+upload_parser.add_argument('url', help='upload URL')
+upload_parser.set_defaults(func=upload)
 
 args = parser.parse_args()
 args.func(args)

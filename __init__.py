@@ -1,5 +1,5 @@
 # @author:  Gunnar Schaefer
 
-import nimsapi
+import api
 
-app = nimsapi.app
+app = api.app
