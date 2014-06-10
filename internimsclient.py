@@ -5,7 +5,7 @@
 import logging
 import logging.config
 log = logging.getLogger('internims')
-logging.getLogger('urllib3').setLevel(logging.WARNING)  # silence Requests library logging
+logging.getLogger('requests').setLevel(logging.WARNING)  # silence Requests library logging
 
 import re
 import json
@@ -32,19 +32,30 @@ def update(db, api_uri, site_name, site_id, privkey, internims_url):
     r = requests.post(internims_url, data=payload, headers=headers)
     if r.status_code == 200:
         response = (json.loads(r.content))
+        # log receive info
+        log.debug('recieved sites: %s ' % ', '.join(s['_id'] for s in response['sites']))
+        log.debug('recieved users: %s' % ', '.join([key for key in response['users']]))
+
         # update remotes entries
+        db.remotes.remove({'_id': {'$nin': [site['_id'] for site in response['sites']]}})
         for site in response['sites']:
-            site['timestamp'] = datetime.datetime.strptime(site['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
-            db.remotes.update({'_id': site['_id']}, site, upsert=True)
-        log.debug('updating remotes: ' + ', '.join((r['_id'] for r in response['sites'])))
+            if site['_id'] != site_id:
+                site['timestamp'] = datetime.datetime.strptime(site['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+                db.remotes.update({'_id': site['_id']}, site, upsert=True)
 
         # delete remotes from users, who no longer have remotes
         db.users.update({'remotes': {'$exists': True}, '_id': {'$nin': response['users'].keys()}}, {'$unset': {'remotes': ''}}, multi=True)
 
         # add remotes to users
-        log.debug('users w/ remotes: ' + ', '.join(response['users']))
         for uid, remotes in response['users'].iteritems():
             db.users.update({'_id': uid}, {'$set': {'remotes': remotes}})
+
+        # log updated DB content
+        log.info('%3d users with remote data, %3d remotes' % (
+                len([u['_id'] for u in db.users.find({'remotes': {'$exists': True}}, {'_id': True})]),
+                len([s['_id'] for s in db.remotes.find({}, {'_id': True})])
+                ))
+
         return True
     else:
         # r.reason contains generic description for the specific error code
