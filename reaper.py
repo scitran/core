@@ -297,7 +297,7 @@ class DicomReaper(Reaper):
                         filepath = new_filepath
                     os.utime(filepath, (int(dcm.timestamp.strftime('%s')), int(dcm.timestamp.strftime('%s'))))  # correct timestamps
                     if dcm.manufacturer.upper() == 'SIEMENS':
-                        dcm_dict.setdefault(1, []).append(filepath) # ignore Siemens acquisition numbers
+                        dcm_dict.setdefault(0, []).append(filepath) # ignore Siemens acquisition numbers
                     else:
                         dcm_dict.setdefault(dcm.acq_no, []).append(filepath)
                 log.info('Compressing %s' % self)
@@ -305,7 +305,7 @@ class DicomReaper(Reaper):
                     arcdir_path = os.path.join(series_path, '%s_%s_dicoms' % (self.name_prefix, acq_no))
                     arc_path = '%s.tgz' % arcdir_path
                     dcm = nimsdata.nimsdicom.NIMSDicom(acq_paths[0])
-                    acq_info_dict[acq_no] = (dcm, '%s_%s' % (self.name_prefix, acq_no), '%s a%s' % (self.log_info, acq_no))
+                    acq_info_dict[acq_no] = (dcm, '%s_%s' % (self.name_prefix, acq_no), '%s.%s' % (self.log_info, acq_no))
                     os.mkdir(arcdir_path)
                     for filepath in acq_paths:
                         os.rename(filepath, '%s.dcm' % os.path.join(arcdir_path, os.path.basename(filepath)))
