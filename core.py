@@ -240,10 +240,11 @@ class Core(base.RequestHandler):
         """Return local and remote sites."""
         if self.request.method == 'OPTIONS':
             return self.options()
-        return dict(
-                local={'_id': self.app.config['site_id'], 'name': self.app.config['site_name']},
-                remotes=list(self.app.db.remotes.find(None, ['name'])),
-                )
+        if self.request.get('all').lower() in ('1', 'true'):
+            remotes = list(self.app.db.remotes.find(None, ['name']))
+        else:
+            remotes = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
+        return dict(local={'_id': self.app.config['site_id'], 'name': self.app.config['site_name']}, remotes=remotes)
 
     def roles(self):
         """Return the list of user roles."""
