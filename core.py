@@ -131,6 +131,7 @@ class Core(base.RequestHandler):
             nimsapi/upload                                      | upload
             nimsapi/download                                    | download
             [(nimsapi/log)]                                     | log messages
+            [(nimsapi/search)]                                  | search
             [(nimsapi/users)]                                   | list of users
             [(nimsapi/users/count)]                             | count of users
             [(nimsapi/users/listschema)]                        | schema for user list
@@ -270,3 +271,107 @@ class Core(base.RequestHandler):
         except:
             self.abort(400, 'n must be an integer')
         return [line.strip() for line in reversed(logs) if re.match('[-:0-9 ]{18} +nimsapi:(?!.*[/a-z]*/log )', line)][:n]
+
+    search_schema = {
+        'title': 'Search',
+        'type': 'array',
+        'items': [
+            {
+                'title': 'Session',
+                'type': 'array',
+                'items': [
+                    {
+                        'title': 'Date',
+                        'type': 'date',
+                        'field': 'session.date',
+                    },
+                    {
+                        'title': 'Subject',
+                        'type': 'array',
+                        'items': [
+                            {
+                                'title': 'Name',
+                                'type': 'array',
+                                'items': [
+                                    {
+                                        'title': 'First',
+                                        'type': 'string',
+                                        'field': 'session.subject.firstname',
+                                    },
+                                    {
+                                        'title': 'Last',
+                                        'type': 'String',
+                                        'field': 'session.subject.lastname',
+                                    },
+                                ],
+                            },
+                            {
+                                'title': 'Date of Birth',
+                                'type': 'date',
+                                'field': 'session.subject.dob',
+                            },
+                            {
+                                'title': 'Sex',
+                                'type': 'string',
+                                'enum': ['male', 'female'],
+                                'field': 'session.subject.sex',
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                'title': 'MR',
+                'type': 'array',
+                'items': [
+                    {
+                        'title': 'Scan Type',
+                        'type': 'string',
+                        'enum': ['anatomical', 'fMRI', 'DTI'],
+                        'field': 'epoch.type',
+                    },
+                    {
+                        'title': 'Echo Time',
+                        'type': 'number',
+                        'field': 'epoch.echo_time',
+                    },
+                    {
+                        'title': 'Size',
+                        'type': 'array',
+                        'items': [
+                            {
+                                'title': 'X',
+                                'type': 'integer',
+                                'field': 'epoch.size.x',
+                            },
+                            {
+                                'title': 'Y',
+                                'type': 'integer',
+                                'field': 'epoch.size.y',
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                'title': 'EEG',
+                'type': 'array',
+                'items': [
+                    {
+                        'title': 'Electrode Count',
+                        'type': 'integer',
+                        'field': 'epoch.electrode_count',
+                    },
+                ],
+            },
+        ],
+    }
+
+    def search(self):
+        """Search."""
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        elif self.request.method == 'GET':
+            return self.search_schema
+        else:
+            pass

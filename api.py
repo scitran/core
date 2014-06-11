@@ -25,6 +25,7 @@ routes = [
         webapp2.Route(r'/sites',                                        core.Core, handler_method='sites', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/roles',                                        core.Core, handler_method='roles', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/log',                                          core.Core, handler_method='log', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/search',                                       core.Core, handler_method='search', methods=['OPTIONS', 'GET', 'POST']),
     ]),
     webapp2.Route(r'/nimsapi/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/users', [
