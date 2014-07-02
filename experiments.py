@@ -6,6 +6,7 @@ log = logging.getLogger('nimsapi')
 import bson.json_util
 
 import nimsdata
+import nimsdata.nimsdicom
 
 import base
 
@@ -26,7 +27,13 @@ class Experiments(base.RequestHandler):
                     'title': 'Database ID',
                 },
                 'site': {
+                    'type': 'string',
+                },
+                'site_name': {
                     'title': 'Site',
+                    'type': 'string',
+                },
+                'gid': {
                     'type': 'string',
                 },
                 'group': {
@@ -39,6 +46,8 @@ class Experiments(base.RequestHandler):
                 },
                 'timestamp': {
                     'title': 'Timestamp',
+                    'type': 'string',
+                    'format': 'date-time',
                 },
                 'permissions': {
                     'title': 'Permissions',
@@ -67,7 +76,7 @@ class Experiments(base.RequestHandler):
             else:
                 query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
         projection = {
-                'group': 1, 'group_name': 1, 'name': 1, 'notes': 1,
+                'gid': 1, 'group': 1, 'name': 1, 'notes': 1,
                 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}},
                 }
         experiments = list(self.app.db.experiments.find(query, projection))
@@ -96,23 +105,13 @@ class Experiment(base.RequestHandler):
         'type': 'object',
         'properties': {
             '_id': {
-                'title': 'Database ID',
             },
             'site': {
+                'type': 'string',
+            },
+            'site_name': {
                 'title': 'Site',
                 'type': 'string',
-            },
-            'group': {
-                'title': 'Group',
-                'type': 'string',
-            },
-            'name': {
-                'title': 'Name',
-                'type': 'string',
-                'maxLength': 32,
-            },
-            'timestamp': {
-                'title': 'Timestamp',
             },
             'permissions': {
                 'title': 'Permissions',
@@ -129,10 +128,15 @@ class Experiment(base.RequestHandler):
         'required': ['_id', 'group', 'name'], #FIXME
     }
 
+    def schema(self, *args, **kwargs):
+        return super(Experiment, self).schema(nimsdata.nimsdicom.NIMSDicom.experiment_properties)
+
     def get(self, xid):
         """Return one Experiment, conditionally with details."""
         _id = bson.ObjectId(xid)
         exp = self.get_experiment(_id)
+        exp['site'] = self.app.config['site_id']
+        exp['site_name'] = self.app.config['site_name']
         if self.debug:
             exp['sessions'] = self.uri_for('sessions', xid=xid, _full=True) + '?' + self.request.query_string
         return exp
@@ -141,7 +145,7 @@ class Experiment(base.RequestHandler):
         """Update an existing Experiment."""
         _id = bson.ObjectId(xid)
         self.get_experiment(_id, 'read-write') # ensure permissions
-        updates = {'$set': {}, '$unset': {}}
+        updates = {'$set': {}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
@@ -198,7 +202,7 @@ class Sessions(base.RequestHandler):
         _id = bson.ObjectId(xid)
         self.get_experiment(_id) # ensure permissions
         query = {'experiment': _id}
-        projection = ['name', 'subject', 'notes']
+        projection = ['label', 'subject.code', 'notes']
         sessions =  list(self.app.db.sessions.find(query, projection))
         if self.debug:
             for sess in sessions:
@@ -222,18 +226,8 @@ class Session(base.RequestHandler):
         'type': 'object',
         'properties': {
             '_id': {
-                'title': 'Database ID',
-            },
-            'uid': {
-                'title': 'UID',
-                'type': 'string',
             },
             'experiment': {
-                'title': 'Experiment ID',
-            },
-            'site': {
-                'title': 'Site',
-                'type': 'string',
             },
             'files': {
                 'title': 'Files',
@@ -246,12 +240,7 @@ class Session(base.RequestHandler):
     }
 
     def schema(self, *args, **kwargs):
-        if self.request.method == 'OPTIONS':
-            return self.options()
-        import copy
-        json_schema = copy.deepcopy(self.json_schema)
-        json_schema['properties'].update(nimsdata.NIMSData.session_properties)
-        return json_schema
+        return super(Session, self).schema(nimsdata.nimsdicom.NIMSDicom.session_properties)
 
     def get(self, sid):
         """Return one Session, conditionally with details."""
@@ -265,7 +254,7 @@ class Session(base.RequestHandler):
         """Update an existing Session."""
         _id = bson.ObjectId(sid)
         self.get_session(_id, 'read-write') # ensure permissions
-        updates = {'$set': {}, '$unset': {}}
+        updates = {'$set': {}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion
@@ -322,7 +311,7 @@ class Epochs(base.RequestHandler):
         _id = bson.ObjectId(sid)
         self.get_session(_id) # ensure permissions
         query = {'session': _id}
-        projection = ['name', 'description', 'datatype', 'notes']
+        projection = ['label', 'description', 'datatype', 'notes']
         epochs = list(self.app.db.epochs.find(query, projection))
         if self.debug:
             for epoch in epochs:
@@ -345,14 +334,8 @@ class Epoch(base.RequestHandler):
         'type': 'object',
         'properties': {
             '_id': {
-                'title': 'Database ID',
-            },
-            'uid': {
-                'title': 'UID',
-                'type': 'string',
             },
             'session': {
-                'title': 'Session ID',
             },
             'files': {
                 'title': 'Files',
@@ -365,12 +348,7 @@ class Epoch(base.RequestHandler):
     }
 
     def schema(self, *args, **kwargs):
-        if self.request.method == 'OPTIONS':
-            return self.options()
-        import copy
-        json_schema = copy.deepcopy(self.json_schema)
-        json_schema['properties'].update(nimsdata.nimsdicom.NIMSDicom.epoch_properties)
-        return json_schema
+        return super(Epoch, self).schema(nimsdata.nimsdicom.NIMSDicom.epoch_properties)
 
     def get(self, eid):
         """Return one Epoch, conditionally with details."""
@@ -381,7 +359,7 @@ class Epoch(base.RequestHandler):
         """Update an existing Epoch."""
         _id = bson.ObjectId(eid)
         self.get_epoch(_id, 'read-write') # ensure permissions
-        updates = {'$set': {}, '$unset': {}}
+        updates = {'$set': {}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
                 updates['$set'][k] = v # FIXME: do appropriate type conversion

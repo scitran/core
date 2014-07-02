@@ -195,7 +195,7 @@ class Sessions(base.RequestHandler):
                 {'$group': {'_id': '$session'}},
                 ])['result']
         query = {'_id': {'$in': [agg_epoch['_id'] for agg_epoch in aggregated_epochs]}}
-        projection = ['name', 'subject', 'notes']
+        projection = ['label', 'subject', 'notes']
         sessions = list(self.app.db.sessions.find(query, projection))
         for sess in sessions:
             sess['site'] = self.app.config['site_id']
@@ -262,7 +262,7 @@ class Epochs(base.RequestHandler):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = ['name', 'description', 'datatype', 'notes']
+        projection = ['label', 'description', 'datatype', 'notes']
         epochs = list(self.app.db.epochs.find(query, projection))
         if self.debug:
             for epoch in epochs:

@@ -2,10 +2,16 @@
 #
 # @author:  Gunnar Schaefer
 
+"""
+apt-get -V install ipython python-virtualenv python-dev dcmtk
+adduser --disabled-password --uid 1000 --gecos "NIMS" nims
+"""
+
 import logging
 import logging.config
-log = logging.getLogger('nimsproc.reaper')
-logging.getLogger('nimsproc.reaper.scu').setLevel(logging.INFO)     # silence SCU logging
+log = logging.getLogger('nimsapi.reaper')
+logging.getLogger('nimsapi.reaper.scu').setLevel(logging.INFO)      # silence SCU logging
+logging.getLogger('nimsdata').setLevel(logging.WARNING)             # silence nimsdata logging
 logging.getLogger('requests').setLevel(logging.WARNING)             # silence Requests library logging
 
 import os
@@ -13,6 +19,7 @@ import re
 import glob
 import json
 import time
+import dicom
 import shutil
 import hashlib
 import tarfile
@@ -21,8 +28,11 @@ import requests
 import bson.json_util
 
 import scu
-import nimsdata
 import tempdir as tempfile
+
+from nimsdata import nimsdicom
+from nimsdata import nimspfile
+from nimsdata import nimsgephysio
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -38,11 +48,26 @@ def hrsize(size):
     return '%.0f%s' % (size, 'Y')
 
 
+def create_archive(path, content, arcname, **kwargs):
+    def add_to_archive(archive, content, arcname):
+        archive.add(content, arcname, recursive=False)
+        if os.path.isdir(content):
+            for fn in sorted(os.listdir(content), key=lambda fn: not fn.endswith('.json')):
+                add_to_archive(archive, os.path.join(content, fn), os.path.join(arcname, fn))
+    with tarfile.open(path, 'w:gz', **kwargs) as archive:
+        add_to_archive(archive, content, arcname)
+
+
+def write_json_file(path, json_document):
+    with open(path, 'w') as json_file:
+        json.dump(json_document, json_file, default=bson.json_util.default)
+
+
 class Reaper(object):
 
-    def __init__(self, id_, upload_url, pat_id, discard_ids, peripheral_data, sleep_time, tempdir, anonymize):
+    def __init__(self, id_, upload_urls, pat_id, discard_ids, peripheral_data, sleep_time, tempdir, anonymize):
         self.id_ = id_
-        self.upload_url = upload_url
+        self.upload_urls = upload_urls
         self.pat_id = pat_id
         self.discard_ids = discard_ids
         self.peripheral_data = peripheral_data
@@ -68,14 +93,13 @@ class Reaper(object):
             f.write(new_datetime.strftime(DATE_FORMAT + '\n'))
     reference_datetime = property(get_reference_datetime, set_reference_datetime)
 
-    def retrieve_peripheral_physio(self, name, data_path, reap_path, reap_data, reap_name, log_info):
-        lower_time_bound = reap_data.timestamp + datetime.timedelta(seconds=reap_data.prescribed_duration) - datetime.timedelta(seconds=15)
+    def retrieve_gephysio(self, name, data_path, reap_path, reap_data, reap_name, log_info):
+        lower_time_bound = reap_data.timestamp + datetime.timedelta(seconds=reap_data.prescribed_duration or 0) - datetime.timedelta(seconds=15)
         upper_time_bound = lower_time_bound + datetime.timedelta(seconds=180)
         sleep_time = (upper_time_bound - datetime.datetime.now()).total_seconds()
         if sleep_time > 0:
             log.info('Periph data %s waiting for %s for %d seconds' % (log_info, name, sleep_time))
             time.sleep(sleep_time)
-
         while True:
             try:
                 physio_files = os.listdir(data_path)
@@ -86,21 +110,28 @@ class Reaper(object):
             else:
                 log.warning('Periph data %s %s temporarily unavailable' % (log_info, name))
                 time.sleep(5)
-
-        physio_tuples = filter(lambda pt: pt[0], [(re.match('.+_%s_([0-9_]+)' % reap_data.psd_name, pfn), pfn) for pfn in physio_files])
+        physio_tuples = filter(lambda pt: pt[0], [(re.match('.+_%s_([0-9_]{18,20})$' % reap_data.psd_name, pfn), pfn) for pfn in physio_files])
         physio_tuples = [(datetime.datetime.strptime(pts.group(1), '%m%d%Y%H_%M_%S_%f'), pfn) for pts, pfn in physio_tuples]
         physio_tuples = filter(lambda pt: lower_time_bound <= pt[0] <= upper_time_bound, physio_tuples)
         if physio_tuples:
             log.info('Periph data %s %s found' % (log_info, name))
             with tempfile.TemporaryDirectory(dir=self.tempdir) as tempdir_path:
+                metadata = {
+                        'filetype': nimsgephysio.NIMSGEPhysio.filetype,
+                        'header': {
+                            'group': reap_data.nims_group_id,
+                            'experiment': reap_data.nims_experiment,
+                            'session': reap_data.nims_session_id,
+                            'epoch': reap_data.nims_epoch_id,
+                            'timestamp': reap_data.nims_timestamp,
+                            },
+                        }
                 physio_reap_path = os.path.join(tempdir_path, reap_name)
                 os.mkdir(physio_reap_path)
-                with open(os.path.join(physio_reap_path, reap_name+'.json'), 'w') as metadata_file:
-                    json.dump(nimsdata.nimsphysio.NIMSPhysio.derived_metadata(reap_data), metadata_file, default=bson.json_util.default)
+                write_json_file(os.path.join(physio_reap_path, 'metadata.json'), metadata)
                 for pts, pfn in physio_tuples:
                     shutil.copy2(os.path.join(data_path, pfn), physio_reap_path)
-                with tarfile.open(os.path.join(reap_path, reap_name+'.tgz'), 'w:gz', compresslevel=6) as archive:
-                    archive.add(physio_reap_path, arcname=reap_name)
+                create_archive(os.path.join(reap_path, reap_name+'.tgz'), physio_reap_path, reap_name, compresslevel=6)
         else:
             log.info('Periph data %s %s not found' % (log_info, name))
 
@@ -112,7 +143,7 @@ class Reaper(object):
                 log.warning('Periph data %s %s does not exist' % (log_info, pdn))
 
     peripheral_data_fn_map = {
-            'physio':   retrieve_peripheral_physio
+            'gephysio':   retrieve_gephysio
             }
 
     def upload(self, path, log_info):
@@ -123,22 +154,23 @@ class Reaper(object):
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
                     hash_.update(chunk)
-            log.info('Uploading   %s %s [%s]' % (log_info, filename, hrsize(os.path.getsize(filepath))))
-            with open(filepath, 'rb') as fd:
-                headers = {'User-Agent': 'reaper ' + self.id_, 'Content-MD5': hash_.hexdigest()}
-                try:
-                    start = datetime.datetime.now()
-                    r = requests.put(self.upload_url + '?filename=%s_%s' % (self.id_, filename), data=fd, headers=headers)
-                    upload_duration = (datetime.datetime.now() - start).total_seconds()
-                except requests.exceptions.ConnectionError as e:
-                    log.error('Error       %s %s: %s' % (log_info, filename, e))
-                    return False
-                else:
-                    if r.status_code == 200:
-                        log.debug('Success     %s %s [%s/s]' % (log_info, filename, hrsize(os.path.getsize(filepath)/upload_duration)))
-                    else:
-                        log.warning('Failure     %s %s: %s %s' % (log_info, filename, r.status_code, r.reason))
+            headers = {'User-Agent': 'reaper ' + self.id_, 'Content-MD5': hash_.hexdigest()}
+            for url in self.upload_urls:
+                log.info('Uploading   %s %s [%s] to %s' % (log_info, filename, hrsize(os.path.getsize(filepath)), url))
+                with open(filepath, 'rb') as fd:
+                    try:
+                        start = datetime.datetime.now()
+                        r = requests.put(url + '?filename=%s_%s' % (self.id_, filename), data=fd, headers=headers)
+                        upload_duration = (datetime.datetime.now() - start).total_seconds()
+                    except requests.exceptions.ConnectionError as e:
+                        log.error('Error       %s %s: %s' % (log_info, filename, e))
                         return False
+                    else:
+                        if r.status_code == 200:
+                            log.debug('Success     %s %s [%s/s]' % (log_info, filename, hrsize(os.path.getsize(filepath)/upload_duration)))
+                        else:
+                            log.warning('Failure     %s %s: %s %s' % (log_info, filename, r.status_code, r.reason))
+                            return False
         return True
 
 
@@ -249,7 +281,7 @@ class DicomReaper(Reaper):
                     self.timestamp = ''
                 self.image_count = int(scu_resp.NumberOfSeriesRelatedInstances)
                 self.needs_reaping = True
-                self.name_prefix = '%s_%s' % (self.exam.id_, self.id_)
+                self.fail_count = 0
                 self.log_info = 'e%s s%s' % (self.exam.id_, self.id_)
 
             def __str__(self):
@@ -271,13 +303,17 @@ class DicomReaper(Reaper):
                         if reap_count == self.image_count:
                             acq_info_dict = self.split_into_acquisitions(tempdir_path)
                             for acq_no, acq_info in acq_info_dict.iteritems():
-                                self.reaper.retrieve_peripheral_data(tempdir_path, *acq_info)
+                                self.reaper.retrieve_peripheral_data(tempdir_path, nimsdicom.NIMSDicom(acq_info[0]), *acq_info[1:])
                             if self.reaper.upload(tempdir_path, self.log_info):
                                 success = True
                                 self.needs_reaping = False
                                 log.info('Done        %s' % self)
                         else:
-                            log.warning('Incomplete  %s, %dr' % (self, reap_count))
+                            self.fail_count += 1
+                            log.warning('Incomplete  %s, %dr, %df' % (self, reap_count, self.fail_count))
+                            if self.fail_count > 9:
+                                self.needs_reaping = False
+                                log.warning('Abandoning  %s, too many failures' % self)
                 return success
 
             def split_into_acquisitions(self, series_path):
@@ -287,32 +323,51 @@ class DicomReaper(Reaper):
                 acq_info_dict = {}
                 for filepath in [os.path.join(series_path, filename) for filename in os.listdir(series_path)]:
                     if self.reaper.anonymize:
-                        dcm = nimsdata.nimsdicom.NIMSDicom(filepath, metadata_only=False)
-                        dcm.write_anonymized_file(filepath)
-                    else:
-                        dcm = nimsdata.nimsdicom.NIMSDicom(filepath)
+                        self.DicomFile.anonymize(filepath)
+                    dcm = self.DicomFile(filepath)
                     if os.path.basename(filepath).startswith('(none)'):
                         new_filepath = filepath.replace('(none)', 'NA')
                         os.rename(filepath, new_filepath)
                         filepath = new_filepath
                     os.utime(filepath, (int(dcm.timestamp.strftime('%s')), int(dcm.timestamp.strftime('%s'))))  # correct timestamps
-                    if dcm.manufacturer.upper() == 'SIEMENS':
-                        dcm_dict.setdefault(0, []).append(filepath) # ignore Siemens acquisition numbers
-                    else:
-                        dcm_dict.setdefault(dcm.acq_no, []).append(filepath)
+                    dcm_dict.setdefault(dcm.acq_no, []).append(filepath)
                 log.info('Compressing %s' % self)
                 for acq_no, acq_paths in dcm_dict.iteritems():
-                    arcdir_path = os.path.join(series_path, '%s_%s_dicoms' % (self.name_prefix, acq_no))
-                    arc_path = '%s.tgz' % arcdir_path
-                    dcm = nimsdata.nimsdicom.NIMSDicom(acq_paths[0])
-                    acq_info_dict[acq_no] = (dcm, '%s_%s' % (self.name_prefix, acq_no), '%s.%s' % (self.log_info, acq_no))
+                    name_prefix = '%s_%s%s' % (self.exam.id_, self.id_, '_'+str(acq_no) if acq_no is not None else '')
+                    dir_name = name_prefix + '_dicoms'
+                    arcdir_path = os.path.join(series_path, dir_name)
+                    dcm = self.DicomFile(acq_paths[0])
                     os.mkdir(arcdir_path)
                     for filepath in acq_paths:
                         os.rename(filepath, '%s.dcm' % os.path.join(arcdir_path, os.path.basename(filepath)))
-                    with tarfile.open(arcdir_path+'.tgz', 'w:gz', compresslevel=6) as archive:
-                        archive.add(arcdir_path, arcname='%s_%s_dicoms' % (self.name_prefix, acq_no))
+                    write_json_file(os.path.join(arcdir_path, 'metadata.json'), {'filetype': nimsdicom.NIMSDicom.filetype})
+                    create_archive(arcdir_path+'.tgz', arcdir_path, dir_name, compresslevel=6)
                     shutil.rmtree(arcdir_path)
+                    acq_info_dict[acq_no] = (arcdir_path+'.tgz', name_prefix, '%s%s' % (self.log_info, '.'+str(acq_no) if acq_no is not None else ''))
                 return acq_info_dict
+
+
+            class DicomFile(object):
+
+                TAG_PSD_NAME = (0x0019, 0x109c)
+
+                def __init__(self, filepath):
+                    dcm = dicom.read_file(filepath, stop_before_pixels=True)
+                    study_date = dcm.get('StudyDate')
+                    study_time = dcm.get('StudyTime')
+                    acq_date = dcm.get('AcquisitionDate')
+                    acq_time = dcm.get('AcquisitionTime')
+                    study_datetime = study_date and study_time and datetime.datetime.strptime(study_date + study_time[:6], '%Y%m%d%H%M%S')
+                    acq_datetime = acq_date and acq_time and datetime.datetime.strptime(acq_date + acq_time[:6], '%Y%m%d%H%M%S')
+                    self.timestamp = acq_datetime or study_datetime
+                    self.acq_no = int(dcm.get('AcquisitionNumber', 1)) if dcm.get('Manufacturer').upper() != 'SIEMENS' else None
+
+                @staticmethod
+                def anonymize(filepath):
+                    dcm = dicom.read_file(filepath, stop_before_pixels=False)
+                    dcm.PatientName = ''
+                    dcm.PatientBirthDate = dcm.PatientBirthDate[:6] + '15' if dcm.PatientBirthDate else ''
+                    dcm.save_as(filepath)
 
 
 class PFileReaper(Reaper):
@@ -378,18 +433,18 @@ class PFileReaper(Reaper):
 
         def parse_pfile(self):
             try:
-                self.pfile = nimsdata.nimsraw.NIMSPFile(self.path)
-            except nimsdata.nimsraw.NIMSPFileError:
+                self.pfile = nimspfile.NIMSPFile(self.path)
+            except nimspfile.NIMSPFileError:
                 self.pfile = None
             else:
                 self.name_prefix = '%s_%s_%s' % (self.pfile.exam_no, self.pfile.series_no, self.pfile.acq_no)
 
         def is_auxfile(self, filepath):
-            if open(filepath).read(32) == self.pfile._hdr.series.series_uid:
+            if open(filepath).read(32) == self.pfile._hdr.series.series_uid: # use GE-compacted UID
                 return True
             try:
-                return (nimsdata.nimsraw.NIMSPFile(filepath)._hdr.series.series_uid == self.pfile._hdr.series.series_uid)
-            except nimsdata.nimsraw.NIMSPFileError:
+                return (nimspfile.NIMSPFile(filepath)._hdr.series.series_uid == self.pfile._hdr.series.series_uid)
+            except nimspfile.NIMSPFileError:
                 return False
 
         def reap(self):
@@ -402,9 +457,19 @@ class PFileReaper(Reaper):
                 for auxpath in auxpaths:
                     os.symlink(auxpath, os.path.join(reap_path, os.path.basename(auxpath)))
                 try:
-                    log.info('Reaping.tgz %s [%s%s]' % (self.basename, self.size, ' + aux files' if auxpaths else ''))
-                    with tarfile.open(reap_path+'.tgz', 'w:gz', dereference=True, compresslevel=4) as archive:
-                        archive.add(reap_path, arcname=os.path.basename(reap_path))
+                    log.info('Reaping.tgz %s [%s%s]' % (self.basename, self.size, ' + %d aux files' % len(auxpaths) if auxpaths else ''))
+                    metadata = {
+                            'filetype': nimspfile.NIMSPFile.filetype,
+                            'header': {
+                                'group': self.pfile.nims_group_id,
+                                'experiment': self.pfile.nims_experiment,
+                                'session': self.pfile.nims_session_id,
+                                'epoch': self.pfile.nims_epoch_id,
+                                'timestamp': self.pfile.nims_timestamp,
+                                },
+                            }
+                    write_json_file(os.path.join(reap_path, 'metadata.json'), metadata)
+                    create_archive(reap_path+'.tgz', reap_path, os.path.basename(reap_path), dereference=True, compresslevel=4)
                     shutil.rmtree(reap_path)
                 except (IOError):
                     log.warning('Error while reaping %s%s' % (self.basename, ' or aux files' if auxpaths else ''))
@@ -431,7 +496,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-p', '--peripheral', nargs=2, action='append', default=[], help='path to peripheral data')
     arg_parser.add_argument('-s', '--sleeptime', type=int, default=30, help='time to sleep before checking for new data')
     arg_parser.add_argument('-t', '--tempdir', help='directory to use for temporary files')
-    arg_parser.add_argument('-u', '--upload_url', help='upload URL')
+    arg_parser.add_argument('-u', '--upload_url', action='append', help='upload URL')
     args = arg_parser.parse_args()
 
     config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
@@ -444,8 +509,8 @@ if __name__ == '__main__':
         log.error(args.cls + ' is not a valid Reaper class')
         sys.exit(1)
 
-    url = args.upload_url or config.get('nims', 'api_uri')
-    reaper = reaper_cls(url, args.class_args, args.patid, args.discard.split(), dict(args.peripheral), args.sleeptime, args.tempdir, args.anonymize)
+    urls = args.upload_url or config.get('nims', 'api_uri').split()
+    reaper = reaper_cls(urls, args.class_args, args.patid, args.discard.split(), dict(args.peripheral), args.sleeptime, args.tempdir, args.anonymize)
 
     def term_handler(signum, stack):
         reaper.halt()

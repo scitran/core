@@ -16,7 +16,7 @@ import shlex
 import logging
 import subprocess
 
-log = logging.getLogger('nimsproc.reaper.scu')
+log = logging.getLogger('nimsapi.reaper.scu')
 
 RESPONSE_RE = re.compile("""
 W: # Dicom-Data-Set

@@ -43,7 +43,6 @@ else:
 site_id = config.get('nims', 'site_id')
 site_name = config.get('nims', 'site_name')
 application = api.app
-application.config['stage_path'] = config.get('nims', 'stage_path')
 application.config['store_path'] = config.get('nims', 'store_path')
 application.config['log_path'] = config.get('nims', 'log_path')
 application.config['site_name'] = site_name

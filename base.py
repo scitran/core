@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('nimsapi')
 logging.getLogger('urllib3').setLevel(logging.WARNING) # silence Requests library logging
 
+import copy
 import json
 import base64
 import webapp2
@@ -67,7 +68,7 @@ class RequestHandler(webapp2.RequestHandler):
         'title': 'File',
         'type': 'object',
         'properties': {
-            'type': {
+            'datatype': {
                 'title': 'Type',
                 'type': 'array',
             },
@@ -202,10 +203,13 @@ class RequestHandler(webapp2.RequestHandler):
         self.response.headers['Access-Control-Allow-Headers'] = 'Authorization'
         self.response.headers['Access-Control-Max-Age'] = '151200'
 
-    def schema(self):
+    def schema(self, updates={}):
         if self.request.method == 'OPTIONS':
             return self.options()
-        return self.json_schema
+        json_schema = copy.deepcopy(self.json_schema)
+        json_schema['properties'].update(updates)
+        return json_schema
+
 
     def get_collection(self, cid, min_role=None):
         collection = self.app.db.collections.find_one({'_id': cid})

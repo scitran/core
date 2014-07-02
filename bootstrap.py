@@ -57,10 +57,9 @@ def dbinit(args):
     db_client = pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)
     db = db_client.get_default_database()
 
-    db.experiments.create_index([('group', 1), ('name', 1)])
+    db.experiments.create_index([('gid', 1), ('name', 1)])
     db.sessions.create_index('experiment')
     db.sessions.create_index('uid')
-    db.sessions.create_index('exam')
     db.epochs.create_index('session')
     db.epochs.create_index('uid')
 
@@ -96,12 +95,15 @@ def sort(args):
     file_cnt = len(files)
     print 'found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt
     for i, filepath in enumerate(files):
-        print 'sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), hrsize(os.path.getsize(filepath)), i, file_cnt)
+        print 'sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), hrsize(os.path.getsize(filepath)), i+1, file_cnt)
         hash_ = hashlib.sha1()
-        with open(filepath, 'rb') as fd:
-            for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
-                hash_.update(chunk)
-        core.sort_file(db, filepath, hash_.hexdigest(), args.sort_path)
+        if not args.quick:
+            with open(filepath, 'rb') as fd:
+                for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
+                    hash_.update(chunk)
+        status, detail = core.sort_file(db, filepath, hash_.hexdigest(), args.sort_path)
+        if status != 200:
+            print detail
 
 sort_desc = """
 example:
@@ -188,6 +190,7 @@ sort_parser = subparsers.add_parser(
         description=sort_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
+sort_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
 sort_parser.add_argument('db_uri', help='database URI')
 sort_parser.add_argument('path', help='filesystem path to data')
 sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
