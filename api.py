@@ -81,45 +81,39 @@ def dispatcher(router, request, response):
 
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)
-app.config = dict(store_path='', site_id='local', site_name='Local', ssl_key=None, insecure=False, log_path='')
+app.config = {
+        'store_path':   '.',
+        'site_id':      'local',
+        'site_name':    'Local',
+        'ssl_cert':     None,
+        'insecure':     False,
+        'log_path':     None,
+        }
 
 
 if __name__ == '__main__':
     import os
-    import sys
     import pymongo
     import argparse
     import ConfigParser
     import paste.httpserver
-    import Crypto.PublicKey.RSA
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('config_file', help='path to config file')
     arg_parser.add_argument('--db_uri', help='NIMS DB URI')
     arg_parser.add_argument('--store_path', help='path to staging area')
     arg_parser.add_argument('--log_path', help='path to API log file')
-    arg_parser.add_argument('--ssl_key', help='path to private SSL key file')
+    arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain')
     arg_parser.add_argument('--site_id', help='InterNIMS site ID')
     arg_parser.add_argument('--site_name', help='InterNIMS site name')
     arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint')
     args = arg_parser.parse_args()
 
-    config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
+    app.config['here'] = os.path.dirname(os.path.abspath(args.config_file))
+    config = ConfigParser.ConfigParser(app.config)
     config.read(args.config_file)
     logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
     logging.getLogger('paste.httpserver').setLevel(logging.INFO) # silence paste logging
-
-    if args.ssl_key:
-        try:
-            ssl_key = Crypto.PublicKey.RSA.importKey(open(args.ssl_key).read())
-        except:
-            log.error(args.ssl_key + ' is not a valid private SSL key file, bailing out')
-            sys.exit(1)
-        else:
-            log.debug('successfully loaded private SSL key from ' + args.ssl_key)
-            app.config['ssl_key'] = ssl_key
-    else:
-        log.warning('private SSL key not specified, InterNIMS functionality disabled')
 
     app.config['site_id'] = args.site_id or app.config['site_id']
     app.config['site_name'] = args.site_name or app.config['site_name']
@@ -127,6 +121,10 @@ if __name__ == '__main__':
     app.config['log_path'] = args.log_path or app.config['log_path']
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
     app.config['insecure'] = config.getboolean('nims', 'insecure')
+    app.config['ssl_cert'] = args.ssl_cert or config.get('nims', 'ssl_cert')     # to give to requests
+
+    if not app.config['ssl_cert']:
+        log.warning('SSL certificate not specified, interNIMS functionality disabled')
 
     kwargs = dict(tz_aware=True)
     db_uri = args.db_uri or config.get('nims', 'db_uri')

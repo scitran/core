@@ -128,8 +128,8 @@ class RequestHandler(webapp2.RequestHandler):
 
             if not self.app.config['site_id']:
                 self.abort(500, 'api site_id is not configured')
-            if not self.app.config['ssl_key']:
-                self.abort(500, 'api ssl_key is not configured')
+            if not self.app.config['ssl_cert']:
+                self.abort(500, 'api ssl_cert is not configured')
 
             target = self.app.db.remotes.find_one({'_id': self.target_site}, {'_id': False, 'api_uri': True})
             if not target:
@@ -138,9 +138,9 @@ class RequestHandler(webapp2.RequestHandler):
             # adjust headers
             self.headers = self.request.headers
             self.headers['User-Agent'] = 'NIMS Instance ' + self.app.config['site_id']
-            self.headers['X-From'] = (self.uid + '#' + self.app.config['site_id']) if self.uid != '@public' else self.uid
+            self.headers['X-User'] = self.uid
+            self.headers['X-Site'] = self.app.config['site_id']
             self.headers['Content-Length'] = len(self.request.body)
-            self.headers['Date'] = str(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S'))   # Nonce for msg
             del self.headers['Host']
             if self.headers.get('Authorization'): del self.headers['Authorization']
 
@@ -149,32 +149,24 @@ class RequestHandler(webapp2.RequestHandler):
             if self.params.get('user'): del self.params['user']
             del self.params['site']
 
-            # assemble msg, hash, and signature
-            msg = self.request.method + self.request.path + str(self.params) + self.request.body + self.headers.get('Date')
-            signature = Crypto.Signature.PKCS1_v1_5.new(self.app.config['ssl_key']).sign(Crypto.Hash.SHA.new(msg))
-            self.headers['X-Signature'] = base64.b64encode(signature)
-
-            # prepare delegated request URI
             self.target_uri = target['api_uri'] + self.request.path.split('/nimsapi')[1]
+            self.cert = self.app.config['ssl_cert']
 
         elif self.request.user_agent.startswith('NIMS Instance'):
             self.rtype = 'from_remote'
+            self.uid = self.request.headers.get('X-User')
+            self.source_site = self.request.headers.get('X-Site')
+            log.debug('%s %s' % (self.uid, self.source_site))
 
-            # store remote user info into self.uid and self.source_site
-            self.uid, self.source_site = self.request.headers.get('X-From').split('#')
             self.user_is_superuser = False
+            if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
+                self.abort(401, 'no valid SSL client certificate')
 
             remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
             requester = self.app.db.remotes.find_one({'_id': remote_instance})
             if not requester:
                 self.abort(402, remote_instance + ' is not authorized')
 
-            # assemble msg, hash, and verify received signature
-            signature = base64.b64decode(self.request.headers.get('X-Signature'))
-            msg = self.request.method + self.request.path + str(self.request.params.mixed()) + self.request.body + self.request.headers.get('Date')
-            verifier = Crypto.Signature.PKCS1_v1_5.new(Crypto.PublicKey.RSA.importKey(requester['pubkey']))
-            if not verifier.verify(Crypto.Hash.SHA.new(msg), signature):
-                self.abort(402, 'remote message/signature is not authentic')
         else:
             self.rtype = 'local'
 
@@ -186,7 +178,7 @@ class RequestHandler(webapp2.RequestHandler):
         else:
             if self.request.method == 'OPTIONS':
                 return self.options()
-            r = requests.request(self.request.method, self.target_uri, params=self.params, data=self.request.body, headers=self.headers)
+            r = requests.request(self.request.method, self.target_uri, params=self.params, data=self.request.body, headers=self.headers, cert=self.cert)
             if r.status_code != 200:
                 self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
             self.response.write(r.content)

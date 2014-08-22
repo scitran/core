@@ -309,7 +309,7 @@ class Core(base.RequestHandler):
                                     },
                                     {
                                         'title': 'Last',
-                                        'type': 'String',
+                                        'type': 'string',
                                         'field': 'session.subject.lastname',
                                     },
                                 ],

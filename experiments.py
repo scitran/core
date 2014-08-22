@@ -6,7 +6,7 @@ log = logging.getLogger('nimsapi')
 import bson.json_util
 
 import nimsdata
-import nimsdata.nimsdicom
+import nimsdata.medimg.medimg
 
 import base
 
@@ -129,7 +129,7 @@ class Experiment(base.RequestHandler):
     }
 
     def schema(self, *args, **kwargs):
-        return super(Experiment, self).schema(nimsdata.nimsdicom.NIMSDicom.experiment_properties)
+        return super(Experiment, self).schema(nimsdata.medimg.medimg.MedImgReader.experiment_properties)
 
     def get(self, xid):
         """Return one Experiment, conditionally with details."""
@@ -145,10 +145,13 @@ class Experiment(base.RequestHandler):
         """Update an existing Experiment."""
         _id = bson.ObjectId(xid)
         self.get_experiment(_id, 'read-write') # ensure permissions
-        updates = {'$set': {}, '$unset': {'__null__': ''}}
+        updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
-                updates['$set'][k] = v # FIXME: do appropriate type conversion
+                if v:
+                    updates['$set'][k] = v # FIXME: do appropriate type conversion
+                else:
+                    updates['$unset'][k] = None
         self.app.db.experiments.update({'_id': _id}, updates)
 
     def delete(self, xid):
@@ -240,7 +243,7 @@ class Session(base.RequestHandler):
     }
 
     def schema(self, *args, **kwargs):
-        return super(Session, self).schema(nimsdata.nimsdicom.NIMSDicom.session_properties)
+        return super(Session, self).schema(nimsdata.medimg.medimg.MedImgReader.session_properties)
 
     def get(self, sid):
         """Return one Session, conditionally with details."""
@@ -254,10 +257,13 @@ class Session(base.RequestHandler):
         """Update an existing Session."""
         _id = bson.ObjectId(sid)
         self.get_session(_id, 'read-write') # ensure permissions
-        updates = {'$set': {}, '$unset': {'__null__': ''}}
+        updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
-                updates['$set'][k] = v # FIXME: do appropriate type conversion
+                if v:
+                    updates['$set'][k] = v # FIXME: do appropriate type conversion
+                else:
+                    updates['$unset'][k] = None
         self.app.db.sessions.update({'_id': _id}, updates)
 
     def delete(self, sid):
@@ -348,7 +354,7 @@ class Epoch(base.RequestHandler):
     }
 
     def schema(self, *args, **kwargs):
-        return super(Epoch, self).schema(nimsdata.nimsdicom.NIMSDicom.epoch_properties)
+        return super(Epoch, self).schema(nimsdata.medimg.medimg.MedImgReader.epoch_properties)
 
     def get(self, eid):
         """Return one Epoch, conditionally with details."""
@@ -359,10 +365,13 @@ class Epoch(base.RequestHandler):
         """Update an existing Epoch."""
         _id = bson.ObjectId(eid)
         self.get_epoch(_id, 'read-write') # ensure permissions
-        updates = {'$set': {}, '$unset': {'__null__': ''}}
+        updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
-                updates['$set'][k] = v # FIXME: do appropriate type conversion
+                if v:
+                    updates['$set'][k] = v # FIXME: do appropriate type conversion
+                else:
+                    updates['$unset'][k] = None
         self.app.db.epochs.update({'_id': _id}, updates)
 
     def delete(self, eid):
