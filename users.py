@@ -3,6 +3,9 @@
 import logging
 log = logging.getLogger('nimsapi')
 
+import hashlib
+import pymongo
+import jsonschema
 import bson.json_util
 
 import base
@@ -12,65 +15,38 @@ class Users(base.RequestHandler):
 
     """/nimsapi/users """
 
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'User List',
-        'type': 'array',
-        'items': {
-            'title': 'User',
-            'type': 'object',
-            'properties': {
-                '_id': {
-                    'title': 'Database ID',
-                    'type': 'string',
-                },
-                'firstname': {
-                    'title': 'First Name',
-                    'type': 'string',
-                    'default': '',
-                },
-                'lastname': {
-                    'title': 'Last Name',
-                    'type': 'string',
-                    'default': '',
-                },
-                'email': {
-                    'title': 'Email',
-                    'type': 'string',
-                    'format': 'email',
-                    'default': '',
-                },
-                'email_hash': {
-                    'type': 'string',
-                    'default': '',
-                },
-            }
-        }
-    }
+    def __init__(self, request=None, response=None):
+        super(Users, self).__init__(request, response)
+        self.dbc = self.app.db.users
 
     def count(self):
         """Return the number of Users."""
         if self.request.method == 'OPTIONS':
             return self.options()
-        self.response.write(self.app.db.users.count())
+        self.response.write(self.dbc.count())
 
     def post(self):
         """Create a new User"""
-        self.response.write('users post\n')
+        # FIXME: who is allowed to create a new user?
+        json_body = self.request.json_body
+        try:
+            jsonschema.validate(json_body, User.json_schema)
+            json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
+            self.dbc.insert(json_body)
+        except jsonschema.ValidationError as e:
+            self.abort(400, str(e))
+        except pymongo.errors.DuplicateKeyError as e:
+            self.abort(400, 'User ID %s already exists' % json_body['_id'])
 
     def get(self):
         """Return the list of Users."""
         if self.uid == '@public':
             self.abort(403, 'must be logged in to retrieve User list')
-        users = list(self.app.db.users.find({}, ['firstname', 'lastname', 'email_hash']))
+        users = list(self.dbc.find({}, ['firstname', 'lastname', 'email_hash', 'superuser']))
         if self.debug:
             for user in users:
-                user['metadata'] = self.uri_for('user', _id=str(user['_id']), _full=True) + '?' + self.request.query_string
+                user['details'] = self.uri_for('user', _id=str(user['_id']), _full=True) + '?' + self.request.query_string
         return users
-
-    def put(self):
-        """Update many Users."""
-        self.response.write('users put\n')
 
 
 class User(base.RequestHandler):
@@ -83,36 +59,37 @@ class User(base.RequestHandler):
         'type': 'object',
         'properties': {
             '_id': {
-                'title': 'Database ID',
+                'title': 'User ID',
                 'type': 'string',
             },
             'firstname': {
                 'title': 'First Name',
                 'type': 'string',
-                'default': '',
             },
             'lastname': {
                 'title': 'Last Name',
                 'type': 'string',
-                'default': '',
             },
             'email': {
                 'title': 'Email',
                 'type': 'string',
                 'format': 'email',
-                'default': '',
             },
             'email_hash': {
                 'type': 'string',
-                'default': '',
             },
             'superuser': {
                 'title': 'Superuser',
                 'type': 'boolean',
             },
         },
-        'required': ['_id'],
+        'required': ['_id', 'email'],
+        'additionalProperties': False,
     }
+
+    def __init__(self, request=None, response=None):
+        super(User, self).__init__(request, response)
+        self.dbc = self.app.db.users
 
     def get(self, _id):
         """Return User details."""
@@ -123,7 +100,7 @@ class User(base.RequestHandler):
             projection += ['remotes']
         if self.request.get('status') in ('1', 'true'):
             projection += ['status']
-        user = self.app.db.users.find_one({'_id': _id}, projection or None)
+        user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:
             self.abort(404, 'no such User')
         if self.debug:
@@ -132,7 +109,7 @@ class User(base.RequestHandler):
 
     def put(self, _id):
         """Update an existing User."""
-        user = self.app.db.users.find_one({'_id': _id})
+        user = self.dbc.find_one({'_id': _id})
         if not user:
             self.abort(404)
         if _id == self.uid or self.user_is_superuser: # users can only update their own info
@@ -147,34 +124,20 @@ class User(base.RequestHandler):
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
                         updates['$unset'][k] = ''
-            self.app.db.users.update({'_id': _id}, updates)
+            self.dbc.update({'_id': _id}, updates)
         else:
             self.abort(403)
 
     def delete(self, _id):
-        """Delete an User."""
-        self.response.write('user %s delete, %s\n' % (_id, self.request.params))
+        """Delete a User."""
+        if not self.user_is_superuser:
+            self.abort(403, 'must be superuser to delete a User')
+        self.dbc.remove({'_id': _id})
 
 
 class Groups(base.RequestHandler):
 
     """/nimsapi/groups """
-
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'Group List',
-        'type': 'array',
-        'items': {
-            'title': 'Group',
-            'type': 'object',
-            'properties': {
-                '_id': {
-                    'title': 'Database ID',
-                    'type': 'string',
-                },
-            }
-        }
-    }
 
     def count(self):
         """Return the number of Groups."""
@@ -195,19 +158,15 @@ class Groups(base.RequestHandler):
             query = {'roles.uid': _id}
         else:
             if not self.user_is_superuser:
-                if self.request.get('admin').lower() in ('1', 'true'):
-                    query = {'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}}
+                if self.request.get('share').lower() in ('1', 'true'):
+                    query = {'roles': {'$elemMatch': {'uid': self.uid, 'share': True}}}
                 else:
                     query = {'roles.uid': self.uid}
         groups = list(self.app.db.groups.find(query, ['name']))
         if self.debug:
             for group in groups:
-                group['metadata'] = self.uri_for('group', _id=str(group['_id']), _full=True) + '?' + self.request.query_string
+                group['details'] = self.uri_for('group', _id=str(group['_id']), _full=True) + '?' + self.request.query_string
         return groups
-
-    def put(self):
-        """Update many Groups."""
-        self.response.write('groups put\n')
 
 
 class Group(base.RequestHandler):
@@ -256,9 +215,9 @@ class Group(base.RequestHandler):
         if not group:
             self.abort(404, 'no such Group: ' + _id)
         if not self.user_is_superuser:
-            group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'role': 'admin'}}})
+            group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'share': True}}})
             if not group:
-                self.abort(403, 'User ' + self.uid + ' is not an admin on Group ' + _id)
+                self.abort(403, 'User ' + self.uid + ' is not allowed to see membership of Group ' + _id)
         return group
 
     def put(self, _id):

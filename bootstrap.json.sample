@@ -1,0 +1,24 @@
+{
+  "groups": [
+    {
+      "_id": "unknown",
+      "name": "Unknown",
+      "roles": [
+        {
+          "access": "read-write",
+          "share": true,
+          "uid": "user1@example.com"
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "_id": "user1@example.com",
+      "email": "user1@example.com",
+      "firstname": "First",
+      "lastname": "User",
+      "superuser": true
+    }
+  ]
+}

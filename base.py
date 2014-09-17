@@ -33,29 +33,9 @@ ROLES = [
             'name': 'Read-Write',
             'sort': 2,
             },
-        {
-            'rid': 'admin',
-            'name': 'Admin',
-            'sort': 3,
-            },
         ]
 
 INTEGER_ROLES = {r['rid']: r['sort'] for r in ROLES}
-
-
-class NoNoneDict(dict):
-
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-        for key in self.keys():
-            if self[key] is None:
-                del self[key]
-
-    def __setitem__(self, key, val):
-        if val is not None:
-            dict.__setitem__(self, key, val)
-        elif key in self:
-            dict.__delitem__(self, key)
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -65,30 +45,41 @@ class RequestHandler(webapp2.RequestHandler):
     json_schema = None
 
     file_schema = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
         'title': 'File',
         'type': 'object',
         'properties': {
-            'datatype': {
-                'title': 'Type',
-                'type': 'array',
-            },
-            'filename': {
-                'title': 'File Name',
+            'name': {
+                'title': 'Name',
                 'type': 'string',
             },
             'ext': {
-                'title': 'File Name Extension',
-                'type': 'string',
-            },
-            'md5': {
-                'title': 'MD5',
+                'title': 'Extension',
                 'type': 'string',
             },
             'size': {
                 'title': 'Size',
                 'type': 'integer',
             },
-        }
+            'sha1': {
+                'title': 'SHA-1',
+                'type': 'string',
+            },
+            'type': {
+                'title': 'Type',
+                'type': 'string',
+            },
+            'kind': {
+                'title': 'Kind',
+                'type': 'array',
+            },
+            'state': {
+                'title': 'State',
+                'type': 'array',
+            },
+        },
+        'required': ['state', 'datatype', 'filetype'], #FIXME
+        'additionalProperties': False
     }
 
     def __init__(self, request=None, response=None):
@@ -203,73 +194,55 @@ class RequestHandler(webapp2.RequestHandler):
         return json_schema
 
 
-    def get_collection(self, cid, min_role=None):
-        collection = self.app.db.collections.find_one({'_id': cid})
-        if not collection:
-            self.abort(404, 'no such Collection')
-        if not self.user_is_superuser:
-            coll = self.app.db.collections.find_one({'_id': cid, 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
-            if not coll:
-                self.abort(403, self.uid + ' does not have permissions on this Collection')
-            if min_role and INTEGER_ROLES[coll['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Collection')
-            if coll['permissions'][0]['role'] != 'admin': # if not admin, mask permissions of other users
-                collection['permissions'] = coll['permissions']
-        for i, perm in enumerate(collection['permissions']):
-            if perm['uid'] == '@public':
-                collection['public'] = perm['role']
-                collection['permissions'].pop(i)
-                break
-        return collection
+class Container(RequestHandler):
 
-    def get_experiment(self, xid, min_role=None):
-        experiment = self.app.db.experiments.find_one({'_id': xid})
-        if not experiment:
-            self.abort(404, 'no such Experiment')
+    def _get(self, _id, min_role=None): # TODO: take projection arg for added effiency; use empty projection for access checks
+        container = self.dbc.find_one({'_id': _id})
+        if not container:
+            self.abort(404, 'no such ' + self.__class__.__name__)
         if not self.user_is_superuser:
-            exp = self.app.db.experiments.find_one({'_id': xid, 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
-            if not exp:
-                self.abort(403, self.uid + ' does not have permissions on this Experiment')
-            if min_role and INTEGER_ROLES[exp['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Experiment')
-            if exp['permissions'][0]['role'] != 'admin': # if not admin, mask permissions of other users
-                experiment['permissions'] = exp['permissions']
-        for i, perm in enumerate(experiment['permissions']):
-            if perm['uid'] == '@public':
-                experiment['public'] = perm['role']
-                experiment['permissions'].pop(i)
-                break
-        return experiment
+            pub_idx = -1
+            user_perm = None
+            for i, perm in enumerate(container['permissions']):
+                if perm['uid'] == self.uid and perm.get('site') == self.source_site:
+                    user_perm = perm
+                if perm['uid'] == '@public':
+                    container['public'] = perm['access']
+                    pub_idx = i
+            if pub_idx != -1:
+                container['permissions'].pop(pub_idx)
+            if not user_perm:
+                self.abort(403, self.uid + ' does not have permissions on this ' + self.__class__.__name__)
+            if min_role and INTEGER_ROLES[user_perm['access']] < INTEGER_ROLES[min_role]:
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
+            if not user_perm.get('share', False): # if user not allowed to share, mask permissions of other users
+                container['permissions'] = user_perm
+        else:
+            pub_idx = -1
+            for i, perm in enumerate(container['permissions']):
+                if perm['uid'] == '@public':
+                    container['public'] = perm['access']
+                    pub_idx = i
+                    break
+            if pub_idx != -1:
+                container['permissions'].pop(pub_idx)
+        return container
 
-    def get_session(self, sid, min_role=None):
-        session = self.app.db.sessions.find_one({'_id': sid})
-        if not session:
-            self.abort(404, 'no such Session')
+
+class AcquisitionAccessChecker(object):
+
+    def check_acq_list(self, acq_ids):
         if not self.user_is_superuser:
-            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
-            if not experiment:
-                if not self.app.db.experiments.find_one({'_id': session['experiment']}, []):
-                    self.abort(500)
+            for a_id in acq_ids:
+                agg_res = self.app.db.acquisitions.aggregate([
+                        {'$match': {'_id': a_id}},
+                        {'$project': {'permissions': 1}},
+                        {'$unwind': '$permissions'},
+                        ])['result']
+                if not agg_res:
+                    self.abort(404, 'Acquisition %s does not exist' % a_id)
+                for perm_doc in agg_res:
+                    if perm_doc['permissions']['uid'] == self.uid:
+                        break
                 else:
-                    self.abort(403, self.uid + ' does not have permissions to this Session')
-            if min_role and INTEGER_ROLES[experiment['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Session')
-        return session
-
-    def get_epoch(self, eid, min_role=None):
-        epoch = self.app.db.epochs.find_one({'_id': eid})
-        if not epoch:
-            self.abort(404, 'no such Epoch')
-        if not self.user_is_superuser:
-            session = self.app.db.sessions.find_one({'_id': epoch['session']}, ['experiment'])
-            if not session:
-                self.abort(500)
-            experiment = self.app.db.experiments.find_one({'_id': session['experiment'], 'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}, ['permissions.$'])
-            if not experiment:
-                if not self.app.db.experiments.find_one({'_id': session['experiment']}, []):
-                    self.abort(500)
-                else:
-                    self.abort(403, self.uid + ' does not have permissions on this Epoch')
-            if min_role and INTEGER_ROLES[experiment['permissions'][0]['role']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this Epoch')
-        return epoch
+                    self.abort(403, self.uid + ' does not have permissions on Acquisition %s' % a_id)

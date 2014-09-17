@@ -57,11 +57,14 @@ def dbinit(args):
     db_client = pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)
     db = db_client.get_default_database()
 
-    db.experiments.create_index([('gid', 1), ('name', 1)])
-    db.sessions.create_index('experiment')
+    if args.force:
+        db_client.drop_database(db)
+
+    db.projects.create_index([('gid', 1), ('name', 1)])
+    db.sessions.create_index('project')
     db.sessions.create_index('uid')
-    db.epochs.create_index('session')
-    db.epochs.create_index('uid')
+    db.acquisitions.create_index('session')
+    db.acquisitions.create_index('uid')
 
     if args.json:
         with open(args.json) as json_dump:
@@ -72,6 +75,8 @@ def dbinit(args):
             db.groups.insert(input_data['groups'])
         for u in db.users.find():
             db.users.update({'_id': u['_id']}, {'$set': {'email_hash': hashlib.md5(u['email']).hexdigest()}})
+
+    db.groups.update({'_id': 'unknown'}, {'$set': {'_id': 'unknown'}}, upsert=True)
 
 dbinit_desc = """
 example:
@@ -180,6 +185,7 @@ dbinit_parser = subparsers.add_parser(
         description=dbinit_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
+dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
 dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
 dbinit_parser.add_argument('uri', help='DB URI')
 dbinit_parser.set_defaults(func=dbinit)

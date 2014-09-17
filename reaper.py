@@ -30,9 +30,9 @@ import bson.json_util
 import scu
 import tempdir as tempfile
 
-from nimsdata import nimsdicom
-from nimsdata import nimspfile
-from nimsdata import nimsgephysio
+from nimsdata.medimg import nimsdicom
+from nimsdata.medimg import nimspfile
+from nimsdata.medimg import nimsgephysio
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -120,9 +120,9 @@ class Reaper(object):
                         'filetype': nimsgephysio.NIMSGEPhysio.filetype,
                         'header': {
                             'group': reap_data.nims_group_id,
-                            'experiment': reap_data.nims_experiment,
+                            'project': reap_data.nims_project,
                             'session': reap_data.nims_session_id,
-                            'epoch': reap_data.nims_epoch_id,
+                            'acquisition': reap_data.nims_acquisition_id,
                             'timestamp': reap_data.nims_timestamp,
                             },
                         }
@@ -207,7 +207,7 @@ class DicomReaper(Reaper):
             if not monitored_exam and out_ex_cnt > 0:
                 next_exam = outstanding_exams[0]
             elif monitored_exam and out_ex_cnt > 1:
-                if not any([series.needs_reaping for series in monitored_exam.series_dict.itervalues()]):
+                if not monitored_exam.needs_reaping:
                     next_exam = outstanding_exams[1]
                     out_ex_cnt -= 1 # adjust for conditional sleep below
 
@@ -240,6 +240,10 @@ class DicomReaper(Reaper):
 
         def __str__(self):
             return 'e%s %s [%s]' % (self.id_, self.timestamp, self.pat_id)
+
+        @property
+        def needs_reaping(self):
+            return any([series.needs_reaping for series in self.series_dict.itervalues()])
 
         def reap(self):
             """An exam must be reaped at least twice, since newly encountered series are not immediately reaped."""
@@ -288,10 +292,11 @@ class DicomReaper(Reaper):
                 return '%s [%di] %s' % (self.log_info, self.image_count, self.timestamp)
 
             def reap(self, new_image_count):
-                success = False
+                success = False # TODO: maybe this should default to True to avoid unnecessary delays
                 if new_image_count != self.image_count:
                     self.image_count = new_image_count
                     self.needs_reaping = True
+                    self.fail_count = 0
                     log.info('Monitoring  %s' % self)
                 elif self.needs_reaping and self.image_count == 0:
                     self.needs_reaping = False
@@ -440,10 +445,10 @@ class PFileReaper(Reaper):
                 self.name_prefix = '%s_%s_%s' % (self.pfile.exam_no, self.pfile.series_no, self.pfile.acq_no)
 
         def is_auxfile(self, filepath):
-            if open(filepath).read(32) == self.pfile._hdr.series.series_uid: # use GE-compacted UID
+            if open(filepath).read(32) == self.pfile.series_uid:
                 return True
             try:
-                return (nimspfile.NIMSPFile(filepath)._hdr.series.series_uid == self.pfile._hdr.series.series_uid)
+                return (nimspfile.NIMSPFile(filepath).series_uid == self.pfile.series_uid)
             except nimspfile.NIMSPFileError:
                 return False
 
@@ -462,9 +467,9 @@ class PFileReaper(Reaper):
                             'filetype': nimspfile.NIMSPFile.filetype,
                             'header': {
                                 'group': self.pfile.nims_group_id,
-                                'experiment': self.pfile.nims_experiment,
+                                'project': self.pfile.nims_project,
                                 'session': self.pfile.nims_session_id,
-                                'epoch': self.pfile.nims_epoch_id,
+                                'acquisition': self.pfile.nims_acquisition_id,
                                 'timestamp': self.pfile.nims_timestamp,
                                 },
                             }

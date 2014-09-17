@@ -21,11 +21,11 @@ import requests
 
 def update(db, api_uri, site_name, site_id, ssl_cert, internims_url):
     """Send is-alive signal to central peer registry."""
-    exp_userlist = [e['permissions'] for e in db.experiments.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
+    proj_userlist = [p['permissions'] for p in db.projects.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
     col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
     grp_userlist = [g['roles'] for g in db.groups.find(None, {'_id': False, 'roles.uid': True, 'roles.site': True})]
     # cannot hash on dictionary; temporarily use tuple
-    remote_users = set([(user['uid'], user['site']) for container in exp_userlist+col_userlist+grp_userlist for user in container if user.get('site') is not None])
+    remote_users = set([(user['uid'], user['site']) for container in proj_userlist+col_userlist+grp_userlist for user in container if user.get('site') is not None])
     remote_users = [{'user': user[0], 'site': user[1]} for user in remote_users]
 
     payload = json.dumps({'_id': site_id, 'api_uri': api_uri, 'users': remote_users, 'name': site_name})

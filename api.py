@@ -13,7 +13,9 @@ import webapp2_extras.routes
 
 import core
 import users
-import experiments
+import projects
+import sessions
+import acquisitions
 import collections_
 
 
@@ -30,7 +32,6 @@ routes = [
     webapp2.Route(r'/nimsapi/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/users', [
         webapp2.Route(r'/count',                                        users.Users, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/listschema',                                   users.Users, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/schema',                                       users.User, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/<_id>',                                        users.User, name='user'),
         webapp2.Route(r'/<_id>/groups',                                 users.Groups, name='groups'),
@@ -38,39 +39,34 @@ routes = [
     webapp2.Route(r'/nimsapi/groups',                                   users.Groups),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/groups', [
         webapp2.Route(r'/count',                                        users.Groups, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/listschema',                                   users.Groups, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/schema',                                       users.Group, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/<_id>',                                        users.Group, name='group'),
     ]),
-    webapp2.Route(r'/nimsapi/experiments',                              experiments.Experiments),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/experiments', [
-        webapp2.Route(r'/count',                                        experiments.Experiments, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/listschema',                                   experiments.Experiments, handler_method='schema', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       experiments.Experiment, handler_method='schema', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/<xid:[0-9a-f]{24}>',                           experiments.Experiment, name='experiment'),
-        webapp2.Route(r'/<xid:[0-9a-f]{24}>/sessions',                  experiments.Sessions, name='sessions'),
+    webapp2.Route(r'/nimsapi/projects',                                 projects.Projects),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/projects', [
+        webapp2.Route(r'/count',                                        projects.Projects, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       projects.Project, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<pid:[0-9a-f]{24}>',                           projects.Project, name='project'),
+        webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',                  sessions.Sessions, name='sessions'),
     ]),
     webapp2.Route(r'/nimsapi/collections',                              collections_.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/collections', [
         webapp2.Route(r'/count',                                        collections_.Collections, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/listschema',                                   collections_.Collections, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/schema',                                       collections_.Collection, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/<cid:[0-9a-f]{24}>',                           collections_.Collection, name='collection'),
-        webapp2.Route(r'/<cid:[0-9a-f]{24}>/sessions',                  collections_.Sessions, name='vp_sessions'),
-        webapp2.Route(r'/<cid:[0-9a-f]{24}>/epochs',                    collections_.Epochs, name='vp_epochs'),
+        webapp2.Route(r'/<cid:[0-9a-f]{24}>/sessions',                  collections_.CollectionSessions, name='coll_sessions'),
+        webapp2.Route(r'/<cid:[0-9a-f]{24}>/acquisitions',              collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/sessions', [
-        webapp2.Route(r'/count',                                        experiments.Sessions, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/listschema',                                   experiments.Sessions, handler_method='schema', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       experiments.Session, handler_method='schema', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/<sid:[0-9a-f]{24}>',                           experiments.Session, name='session'),
-        webapp2.Route(r'/<sid:[0-9a-f]{24}>/epochs',                    experiments.Epochs, name='epochs'),
+        webapp2.Route(r'/count',                                        sessions.Sessions, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       sessions.Session, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<sid:[0-9a-f]{24}>',                           sessions.Session, name='session'),
+        webapp2.Route(r'/<sid:[0-9a-f]{24}>/acquisitions',              acquisitions.Acquisitions, name='acquisitions'),
     ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/epochs', [
-        webapp2.Route(r'/count',                                        experiments.Epochs, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/listschema',                                   experiments.Epochs, handler_method='schema', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       experiments.Epoch, handler_method='schema', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/<eid:[0-9a-f]{24}>',                           experiments.Epoch, name='epoch'),
+    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/acquisitions', [
+        webapp2.Route(r'/count',                                        acquisitions.Acquisitions, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/schema',                                       acquisitions.Acquisition, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/<aid:[0-9a-f]{24}>',                           acquisitions.Acquisition, name='acquisition'),
     ]),
 ]
 
@@ -100,6 +96,8 @@ if __name__ == '__main__':
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('config_file', help='path to config file')
+    arg_parser.add_argument('--host', default='127.0.0.1', help='IP address to bind to')
+    arg_parser.add_argument('--port', default='8080', help='TCP port to listen on')
     arg_parser.add_argument('--db_uri', help='NIMS DB URI')
     arg_parser.add_argument('--store_path', help='path to staging area')
     arg_parser.add_argument('--log_path', help='path to API log file')
@@ -131,5 +129,5 @@ if __name__ == '__main__':
     db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
     app.db = db_client.get_default_database()
 
-    app.debug = True
-    paste.httpserver.serve(app, port='8080')
+    app.debug = True # raise uncaught exceptions instead of using HTTPInternalServerError
+    paste.httpserver.serve(app, host=args.host, port=args.port)
