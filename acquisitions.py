@@ -35,9 +35,12 @@ class Acquisitions(base.RequestHandler):
         if not self.app.db.sessions.find_one({'_id': _id}):
             self.abort(404, 'no such Session')
         query = {'session': _id}
-        if not self.user_is_superuser:
+        projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1}
+        if self.public_request:
+            query['public'] = True
+        elif not self.superuser:
             query['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-        projection = ['label', 'description', 'types', 'notes']
+            projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
         if self.debug:
             for acquisition in acquisitions:

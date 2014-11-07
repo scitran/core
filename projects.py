@@ -31,7 +31,10 @@ class Projects(base.RequestHandler):
 
     def _get(self, projection):
         query = None
-        if not self.user_is_superuser:
+        if self.public_request:
+            query = {'public': True}
+        elif not self.superuser:
+            projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
             if self.request.get('admin').lower() in ('1', 'true'):
                 query = {'permissions': {'$elemMatch': {'uid': self.uid, 'share': True, 'site': self.source_site}}}
             else:
@@ -40,10 +43,7 @@ class Projects(base.RequestHandler):
 
     def get(self):
         """Return the list of Projects."""
-        projection = {
-                'gid': 1, 'group': 1, 'name': 1, 'notes': 1,
-                'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}},
-                }
+        projection = {'group': 1, 'group_name': 1, 'name': 1, 'notes': 1}
         projects = self._get(projection)
         for proj in projects:
             proj['site'] = self.app.config['site_id']

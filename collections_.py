@@ -39,11 +39,7 @@ class Collections(base.AcquisitionAccessChecker, projects.Projects):
 
     def get(self):
         """Return the list of Collections."""
-
-        projection = {
-                'curator': 1, 'name': 1, 'notes': 1,
-                'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}},
-                }
+        projection = {'curator': 1, 'name': 1, 'notes': 1}
         collections = self._get(projection)
         for coll in collections:
             coll['site'] = self.app.config['site_id']

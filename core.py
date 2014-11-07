@@ -74,10 +74,10 @@ def update_db(db, dataset):
         group_id = 'unknown'
         project_name = dataset.nims_group_id + ('/' + dataset.nims_project if dataset.nims_project else '')
     group = db.groups.find_one({'_id': group_id})
-    project_spec = {'gid': group['_id'], 'name': project_name}
+    project_spec = {'group': group['_id'], 'name': project_name}
     project = db.projects.find_and_modify(
             project_spec,
-            {'$setOnInsert': dict(group=group.get('name'), permissions=group['roles'], files=[])},
+            {'$setOnInsert': dict(group_name=group.get('name'), permissions=group['roles'], public=False, files=[])},
             upsert=True,
             new=True,
             )
@@ -88,7 +88,7 @@ def update_db(db, dataset):
     session = db.sessions.find_and_modify(
             session_spec,
             {
-                '$setOnInsert': dict(project=project['_id'], permissions=project['permissions'], files=[]),
+                '$setOnInsert': dict(project=project['_id'], permissions=project['permissions'], public=project['public'], files=[]),
                 '$set': entity_metadata(dataset, dataset.session_properties, session_spec), # session_spec ensures non-empty $set
                 '$addToSet': {'domains': dataset.nims_file_domain},
                 },
@@ -102,7 +102,7 @@ def update_db(db, dataset):
     acquisition = db.acquisitions.find_and_modify(
             acquisition_spec,
             {
-                '$setOnInsert': dict(session=session['_id'], permissions=session['permissions'], files=[]),
+                '$setOnInsert': dict(session=session['_id'], permissions=session['permissions'], public=project['public'], files=[]),
                 '$set': entity_metadata(dataset, dataset.acquisition_properties, acquisition_spec), # acquisition_spec ensures non-empty $set
                 '$addToSet': {'types': {'$each': [{'domain': dataset.nims_file_domain, 'kind': kind} for kind in dataset.nims_file_kinds]}},
                 },
@@ -175,7 +175,7 @@ class Core(base.RequestHandler):
             nimsapi/collections/*<cid>*/acquisitions?session=*<sid>* | list of acquisitions for collection *<cid>*, optionally restricted to session *<sid>*
             """
 
-        if self.debug:
+        if self.debug and self.uid:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1?user=%s)' % self.uid, resources)
         else:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resources)
@@ -244,6 +244,7 @@ class Core(base.RequestHandler):
         """Return details for the current User."""
         if self.request.method == 'OPTIONS':
             return self.options()
+        #if self.uid is not None:
         log.debug(self.uid + ' has logged in')
         return self.app.db.users.find_and_modify({'_id': self.uid}, {'$inc': {'logins': 1}}, fields=['firstname', 'lastname', 'superuser'])
 

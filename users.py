@@ -27,7 +27,8 @@ class Users(base.RequestHandler):
 
     def post(self):
         """Create a new User"""
-        # FIXME: who is allowed to create a new user?
+        if self.public_request: # FIXME: who is allowed to create a new user?
+            self.abort(403, 'must be logged in to create new user')
         json_body = self.request.json_body
         try:
             jsonschema.validate(json_body, User.json_schema)
@@ -40,7 +41,7 @@ class Users(base.RequestHandler):
 
     def get(self):
         """Return the list of Users."""
-        if self.uid == '@public':
+        if self.public_request:
             self.abort(403, 'must be logged in to retrieve User list')
         users = list(self.dbc.find({}, ['firstname', 'lastname', 'email_hash', 'superuser']))
         if self.debug:
@@ -93,7 +94,7 @@ class User(base.RequestHandler):
 
     def get(self, _id):
         """Return User details."""
-        if self.uid == '@public':
+        if self.public_request:
             self.abort(403, 'must be logged in to retrieve User info')
         projection = []
         if self.request.get('remotes') in ('1', 'true'):
@@ -112,14 +113,14 @@ class User(base.RequestHandler):
         user = self.dbc.find_one({'_id': _id})
         if not user:
             self.abort(404)
-        if _id == self.uid or self.user_is_superuser: # users can only update their own info
+        if _id == self.uid or self.superuser: # users can only update their own info
             updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
             for k, v in self.request.params.iteritems():
                 if k != 'superuser' and k in []:#user_fields:
                     updates['$set'][k] = v # FIXME: do appropriate type conversion
-                elif k == 'superuser' and _id == self.uid and self.user_is_superuser is not None: # toggle superuser for requesting user
+                elif k == 'superuser' and _id == self.uid and self.superuser is not None: # toggle superuser for requesting user
                     updates['$set'][k] = v.lower() in ('1', 'true')
-                elif k == 'superuser' and _id != self.uid and self.user_is_superuser:             # enable/disable superuser for other user
+                elif k == 'superuser' and _id != self.uid and self.superuser:             # enable/disable superuser for other user
                     if v.lower() in ('1', 'true') and user.get('superuser') is None:
                         updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
                     elif v.lower() not in ('1', 'true'):
@@ -130,7 +131,7 @@ class User(base.RequestHandler):
 
     def delete(self, _id):
         """Delete a User."""
-        if not self.user_is_superuser:
+        if not self.superuser:
             self.abort(403, 'must be superuser to delete a User')
         self.dbc.remove({'_id': _id})
 
@@ -153,11 +154,11 @@ class Groups(base.RequestHandler):
         """Return the list of Groups."""
         query = None
         if _id is not None:
-            if _id != self.uid and not self.user_is_superuser:
+            if _id != self.uid and not self.superuser:
                 self.abort(403, 'User ' + self.uid + ' may not see the Groups of User ' + _id)
             query = {'roles.uid': _id}
         else:
-            if not self.user_is_superuser:
+            if not self.superuser:
                 if self.request.get('share').lower() in ('1', 'true'):
                     query = {'roles': {'$elemMatch': {'uid': self.uid, 'share': True}}}
                 else:
@@ -214,7 +215,7 @@ class Group(base.RequestHandler):
         group = self.app.db.groups.find_one({'_id': _id})
         if not group:
             self.abort(404, 'no such Group: ' + _id)
-        if not self.user_is_superuser:
+        if not self.superuser:
             group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'share': True}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not allowed to see membership of Group ' + _id)

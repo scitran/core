@@ -35,9 +35,12 @@ class Sessions(base.RequestHandler):
         if not self.app.db.projects.find_one({'_id': _id}):
             self.abort(404, 'no such Project')
         query = {'project': _id}
-        if not self.user_is_superuser:
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1}
+        if self.public_request:
+            query['public'] = True
+        elif not self.superuser:
             query['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-        projection = ['label', 'subject.code', 'notes']
+            projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
         sessions =  list(self.dbc.find(query, projection))
         if self.debug:
             for sess in sessions:

@@ -11,9 +11,6 @@ import webapp2
 import datetime
 import requests
 import bson.json_util
-import Crypto.Hash.SHA
-import Crypto.PublicKey.RSA
-import Crypto.Signature.PKCS1_v1_5
 
 ROLES = [
         {
@@ -86,13 +83,14 @@ class RequestHandler(webapp2.RequestHandler):
         self.initialize(request, response)
         self.target_site = self.request.get('site', None)
         self.access_token = self.request.headers.get('Authorization', None)
-        self.source_site = None       # requesting remote site; gets set if request from remote
+        self.source_site = None # requesting remote site
         self.debug = self.app.config['insecure']
 
         # CORS header
         if 'Origin' in self.request.headers and self.request.headers['Origin'].startswith('https://'):
             self.response.headers['Access-Control-Allow-Origin'] = self.request.headers['Origin']
 
+        # set uid, public_request, and user_is_superuser
         if self.access_token and self.app.config['oauth2_id_endpoint']:
             r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + self.access_token})
             if r.status_code == 200:
@@ -104,28 +102,24 @@ class RequestHandler(webapp2.RequestHandler):
         elif self.debug and self.request.get('user', None):
             self.uid = self.request.get('user')
         else:
-            self.uid = '@public'
+            self.uid = None
+        self.public_request = not bool(self.uid)
+        if not self.public_request:
+            user = self.app.db.users.find_one({'_id': self.uid}, ['superuser'])
+            if not user:
+                self.abort(403, 'user ' + self.uid + ' does not exist')
+        self.superuser = not self.public_request and user.get('superuser')
 
-        user = self.app.db.users.find_one({'_id': self.uid}, ['superuser'])
-        if user:
-            self.user_is_superuser = user.get('superuser', None)
-        elif self.uid == '@public':
-            self.user_is_superuser = False
-        else:
-            self.abort(403, 'user ' + self.uid + ' does not exist')
-
+        # set request type: to_remote, from_remote, local
         if self.target_site not in [None, self.app.config['site_id']]:
             self.rtype = 'to_remote'
-
             if not self.app.config['site_id']:
                 self.abort(500, 'api site_id is not configured')
             if not self.app.config['ssl_cert']:
                 self.abort(500, 'api ssl_cert is not configured')
-
             target = self.app.db.remotes.find_one({'_id': self.target_site}, {'_id': False, 'api_uri': True})
             if not target:
                 self.abort(402, 'remote host ' + self.target_site + ' is not an authorized remote')
-
             # adjust headers
             self.headers = self.request.headers
             self.headers['User-Agent'] = 'NIMS Instance ' + self.app.config['site_id']
@@ -133,38 +127,31 @@ class RequestHandler(webapp2.RequestHandler):
             self.headers['X-Site'] = self.app.config['site_id']
             self.headers['Content-Length'] = len(self.request.body)
             del self.headers['Host']
-            if self.headers.get('Authorization'): del self.headers['Authorization']
-
+            if 'Authorization' in self.headers: del self.headers['Authorization']
             # adjust params
             self.params = self.request.params.mixed()
-            if self.params.get('user'): del self.params['user']
+            if 'user' in self.params: del self.params['user']
             del self.params['site']
-
             self.target_uri = target['api_uri'] + self.request.path.split('/nimsapi')[1]
             self.cert = self.app.config['ssl_cert']
-
         elif self.request.user_agent.startswith('NIMS Instance'):
             self.rtype = 'from_remote'
             self.uid = self.request.headers.get('X-User')
             self.source_site = self.request.headers.get('X-Site')
             log.debug('%s %s' % (self.uid, self.source_site))
-
-            self.user_is_superuser = False
             if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
                 self.abort(401, 'no valid SSL client certificate')
-
             remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
             requester = self.app.db.remotes.find_one({'_id': remote_instance})
             if not requester:
                 self.abort(402, remote_instance + ' is not authorized')
-
         else:
             self.rtype = 'local'
 
     def dispatch(self):
         """dispatching and request forwarding"""
         log.debug('%s %s %s %s %s %s' % (self.rtype, self.uid, self.source_site, self.request.method, self.request.path, str(self.request.params.mixed())))
-        if self.rtype in ['local', 'from_remote']:
+        if self.rtype in ('local', 'from_remote'):
             return super(RequestHandler, self).dispatch()
         else:
             if self.request.method == 'OPTIONS':
@@ -200,39 +187,29 @@ class Container(RequestHandler):
         container = self.dbc.find_one({'_id': _id})
         if not container:
             self.abort(404, 'no such ' + self.__class__.__name__)
-        if not self.user_is_superuser:
-            pub_idx = -1
+        if self.uid is None:
+            if not container.get('public', False):
+                self.abort(403, 'this ' + self.__class__.__name__ + 'is not public')
+            del container['permissions']
+        elif not self.superuser:
             user_perm = None
-            for i, perm in enumerate(container['permissions']):
+            for perm in container['permissions']:
                 if perm['uid'] == self.uid and perm.get('site') == self.source_site:
                     user_perm = perm
-                if perm['uid'] == '@public':
-                    container['public'] = perm['access']
-                    pub_idx = i
-            if pub_idx != -1:
-                container['permissions'].pop(pub_idx)
-            if not user_perm:
+                    break
+            else:
                 self.abort(403, self.uid + ' does not have permissions on this ' + self.__class__.__name__)
             if min_role and INTEGER_ROLES[user_perm['access']] < INTEGER_ROLES[min_role]:
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
             if not user_perm.get('share', False): # if user not allowed to share, mask permissions of other users
                 container['permissions'] = user_perm
-        else:
-            pub_idx = -1
-            for i, perm in enumerate(container['permissions']):
-                if perm['uid'] == '@public':
-                    container['public'] = perm['access']
-                    pub_idx = i
-                    break
-            if pub_idx != -1:
-                container['permissions'].pop(pub_idx)
         return container
 
 
 class AcquisitionAccessChecker(object):
 
     def check_acq_list(self, acq_ids):
-        if not self.user_is_superuser:
+        if not self.superuser:
             for a_id in acq_ids:
                 agg_res = self.app.db.acquisitions.aggregate([
                         {'$match': {'_id': a_id}},
