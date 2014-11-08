@@ -456,13 +456,13 @@ class PFileReaper(Reaper):
             with tempfile.TemporaryDirectory(dir=self.reaper.tempdir) as tempdir_path:
                 reap_path = '%s/%s_pfile' % (tempdir_path, self.name_prefix)
                 os.mkdir(reap_path)
-                auxpaths = [auxpath for auxpath in glob.glob(self.path + '_*') if self.is_auxfile(auxpath)]
-                log.debug('Staging     %s' % ', '.join([os.path.basename(path) for path in [self.path] + auxpaths]))
+                auxfiles = [(ap, self.basename + '_' + ap.rsplit('_', 1)[-1]) for ap in glob.glob(self.path + '_' + self.pfile.series_uid + '_*')]
+                log.debug('Staging     %s, %s' % (self.basename, ', '.join([af[1] for af in auxfiles])))
                 os.symlink(self.path, os.path.join(reap_path, self.basename))
-                for auxpath in auxpaths:
-                    os.symlink(auxpath, os.path.join(reap_path, os.path.basename(auxpath)))
+                for af in auxfiles:
+                    os.symlink(af[0], os.path.join(reap_path, af[1]))
                 try:
-                    log.info('Reaping.tgz %s [%s%s]' % (self.basename, self.size, ' + %d aux files' % len(auxpaths) if auxpaths else ''))
+                    log.info('Reaping.tgz %s [%s%s]' % (self.basename, self.size, ' + %d aux files' % len(auxfiles) if auxfiles else ''))
                     metadata = {
                             'filetype': nimspfile.NIMSPFile.filetype,
                             'header': {
@@ -477,7 +477,7 @@ class PFileReaper(Reaper):
                     create_archive(reap_path+'.tgz', reap_path, os.path.basename(reap_path), dereference=True, compresslevel=4)
                     shutil.rmtree(reap_path)
                 except (IOError):
-                    log.warning('Error while reaping %s%s' % (self.basename, ' or aux files' if auxpaths else ''))
+                    log.warning('Error while reaping %s%s' % (self.basename, ' or aux files' if auxfiles else ''))
                 else:
                     self.reaper.retrieve_peripheral_data(tempdir_path, self.pfile, self.name_prefix, self.basename)
                     if self.reaper.upload(tempdir_path, self.basename):
