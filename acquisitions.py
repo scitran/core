@@ -21,8 +21,6 @@ class Acquisitions(base.RequestHandler):
 
     def count(self):
         """Return the number of Acquisitions."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         self.response.write(self.dbc.count())
 
     def post(self):

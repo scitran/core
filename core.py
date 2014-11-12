@@ -230,8 +230,6 @@ class Core(base.RequestHandler):
                 self.abort(status, detail)
 
     def download(self):
-        if self.request.method == 'OPTIONS':
-            return self.options()
         paths = []
         symlinks = []
         for js_id in self.request.get('id', allow_multiple=True):
@@ -242,16 +240,12 @@ class Core(base.RequestHandler):
 
     def login(self):
         """Return details for the current User."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         #if self.uid is not None:
         log.debug(self.uid + ' has logged in')
         return self.app.db.users.find_and_modify({'_id': self.uid}, {'$inc': {'logins': 1}}, fields=['firstname', 'lastname', 'superuser'])
 
     def sites(self):
         """Return local and remote sites."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         if self.request.get('all').lower() in ('1', 'true'):
             remotes = list(self.app.db.remotes.find(None, ['name']))
         else:
@@ -260,14 +254,10 @@ class Core(base.RequestHandler):
 
     def roles(self):
         """Return the list of user roles."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         return base.ROLES
 
     def log(self):
         """Return logs."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         try:
             logs = open(self.app.config['log_path']).readlines()
         except IOError as e:
@@ -380,9 +370,7 @@ class Core(base.RequestHandler):
 
     def search(self):
         """Search."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
-        elif self.request.method == 'GET':
+        if self.request.method == 'GET':
             return self.search_schema
         else:
             pass

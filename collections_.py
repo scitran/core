@@ -24,8 +24,6 @@ class Collections(base.AcquisitionAccessChecker, projects.Projects):
 
     def count(self):
         """Return the number of Collections."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         self.response.write(self.dbc.count())
 
     def post(self):

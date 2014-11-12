@@ -21,8 +21,6 @@ class Users(base.RequestHandler):
 
     def count(self):
         """Return the number of Users."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         self.response.write(self.dbc.count())
 
     def post(self):
@@ -142,8 +140,6 @@ class Groups(base.RequestHandler):
 
     def count(self):
         """Return the number of Groups."""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         self.response.write(self.app.db.groups.count())
 
     def post(self):

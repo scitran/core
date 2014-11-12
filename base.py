@@ -81,16 +81,16 @@ class RequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.target_site = self.request.get('site', None)
         self.access_token = self.request.headers.get('Authorization', None)
-        self.source_site = None # requesting remote site
         self.debug = self.app.config['insecure']
 
         # CORS header
         if 'Origin' in self.request.headers and self.request.headers['Origin'].startswith('https://'):
             self.response.headers['Access-Control-Allow-Origin'] = self.request.headers['Origin']
 
-        # set uid, public_request, and user_is_superuser
+        # set uid, source_site, public_request, and superuser
+        self.uid = None
+        self.source_site = None
         if self.access_token and self.app.config['oauth2_id_endpoint']:
             r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + self.access_token})
             if r.status_code == 200:
@@ -98,28 +98,42 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 # TODO: add handlers for bad tokens
                 # inform app of expired token, app will try to get new token, or ask user to log in again
-                log.debug('ERR: ' + str(r.status_code) + r.reason + ' bad token')
-        elif self.debug and self.request.get('user', None):
+                # requst should probably return here
+                self.uid = None # should not be needed if the above is done
+                log.debug('ERR: ' + str(r.status_code) + ' ' + r.reason + ': bad token')
+        elif self.debug and self.request.get('user'):
             self.uid = self.request.get('user')
-        else:
-            self.uid = None
+        elif self.request.user_agent.startswith('NIMS Instance'):
+            self.uid = self.request.headers.get('X-User')
+            self.source_site = self.request.headers.get('X-Site')
+            if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
+                self.abort(401, 'no valid SSL client certificate')
+            remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
+            if not self.app.db.remotes.find_one({'_id': remote_instance}):
+                self.abort(402, remote_instance + ' is not authorized')
         self.public_request = not bool(self.uid)
         if not self.public_request:
             user = self.app.db.users.find_one({'_id': self.uid}, ['superuser'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
-        self.superuser = not self.public_request and user.get('superuser')
+        self.superuser = not self.public_request and not self.source_site and user.get('superuser')
 
-        # set request type: to_remote, from_remote, local
-        if self.target_site not in [None, self.app.config['site_id']]:
-            self.rtype = 'to_remote'
+    def dispatch(self):
+        """dispatching and request forwarding"""
+        if self.request.method == 'OPTIONS':
+            return self.options()
+        target_site = self.request.get('site', self.app.config['site_id'])
+        if target_site == self.app.config['site_id']:
+            log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
+            return super(RequestHandler, self).dispatch()
+        else:
             if not self.app.config['site_id']:
                 self.abort(500, 'api site_id is not configured')
             if not self.app.config['ssl_cert']:
                 self.abort(500, 'api ssl_cert is not configured')
-            target = self.app.db.remotes.find_one({'_id': self.target_site}, {'_id': False, 'api_uri': True})
+            target = self.app.db.remotes.find_one({'_id': target_site}, ['api_uri'])
             if not target:
-                self.abort(402, 'remote host ' + self.target_site + ' is not an authorized remote')
+                self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers
             self.headers = self.request.headers
             self.headers['User-Agent'] = 'NIMS Instance ' + self.app.config['site_id']
@@ -132,31 +146,10 @@ class RequestHandler(webapp2.RequestHandler):
             self.params = self.request.params.mixed()
             if 'user' in self.params: del self.params['user']
             del self.params['site']
-            self.target_uri = target['api_uri'] + self.request.path.split('/nimsapi')[1]
-            self.cert = self.app.config['ssl_cert']
-        elif self.request.user_agent.startswith('NIMS Instance'):
-            self.rtype = 'from_remote'
-            self.uid = self.request.headers.get('X-User')
-            self.source_site = self.request.headers.get('X-Site')
-            log.debug('%s %s' % (self.uid, self.source_site))
-            if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
-                self.abort(401, 'no valid SSL client certificate')
-            remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
-            requester = self.app.db.remotes.find_one({'_id': remote_instance})
-            if not requester:
-                self.abort(402, remote_instance + ' is not authorized')
-        else:
-            self.rtype = 'local'
-
-    def dispatch(self):
-        """dispatching and request forwarding"""
-        log.debug('%s %s %s %s %s %s' % (self.rtype, self.uid, self.source_site, self.request.method, self.request.path, str(self.request.params.mixed())))
-        if self.rtype in ('local', 'from_remote'):
-            return super(RequestHandler, self).dispatch()
-        else:
-            if self.request.method == 'OPTIONS':
-                return self.options()
-            r = requests.request(self.request.method, self.target_uri, params=self.params, data=self.request.body, headers=self.headers, cert=self.cert)
+            log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
+            target_uri = target['api_uri'] + self.request.path.split('/nimsapi')[1]
+            r = requests.request(self.request.method, target_uri,
+                    params=self.params, data=self.request.body, headers=self.headers, cert=self.app.config['ssl_cert'])
             if r.status_code != 200:
                 self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
             self.response.write(r.content)
@@ -174,8 +167,6 @@ class RequestHandler(webapp2.RequestHandler):
         self.response.headers['Access-Control-Max-Age'] = '151200'
 
     def schema(self, updates={}):
-        if self.request.method == 'OPTIONS':
-            return self.options()
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(updates)
         return json_schema
