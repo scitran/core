@@ -155,8 +155,8 @@ class Groups(base.RequestHandler):
             query = {'roles.uid': _id}
         else:
             if not self.superuser:
-                if self.request.get('share').lower() in ('1', 'true'):
-                    query = {'roles': {'$elemMatch': {'uid': self.uid, 'share': True}}}
+                if self.request.get('admin').lower() in ('1', 'true'):
+                    query = {'roles': {'$elemMatch': {'uid': self.uid, 'access': 'admin'}}}
                 else:
                     query = {'roles.uid': self.uid}
         groups = list(self.app.db.groups.find(query, ['name']))
@@ -212,9 +212,9 @@ class Group(base.RequestHandler):
         if not group:
             self.abort(404, 'no such Group: ' + _id)
         if not self.superuser:
-            group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'share': True}}})
+            group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'access': 'admin'}}})
             if not group:
-                self.abort(403, 'User ' + self.uid + ' is not allowed to see membership of Group ' + _id)
+                self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
         return group
 
     def put(self, _id):

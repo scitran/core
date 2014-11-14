@@ -5,8 +5,7 @@
       "name": "Unknown",
       "roles": [
         {
-          "access": "read-write",
-          "share": true,
+          "access": "admin",
           "uid": "user1@example.com"
         }
       ]

@@ -14,21 +14,24 @@ import bson.json_util
 
 ROLES = [
         {
-            'rid': 'anon-read',
-            'name': 'Anonymized',
+            'rid': 'view',
+            'name': 'View-Only',
             'sort': 0,
-            'public': True,
             },
         {
-            'rid': 'read-only',
-            'name': 'Read-Only',
+            'rid': 'download',
+            'name': 'Download',
             'sort': 1,
-            'public': True,
             },
         {
-            'rid': 'read-write',
-            'name': 'Read-Write',
+            'rid': 'modify',
+            'name': 'Modify',
             'sort': 2,
+            },
+        {
+            'rid': 'admin',
+            'name': 'Admin',
+            'sort': 3,
             },
         ]
 
@@ -192,7 +195,7 @@ class Container(RequestHandler):
                 self.abort(403, self.uid + ' does not have permissions on this ' + self.__class__.__name__)
             if min_role and INTEGER_ROLES[user_perm['access']] < INTEGER_ROLES[min_role]:
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
-            if not user_perm.get('share', False): # if user not allowed to share, mask permissions of other users
+            if not user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = user_perm
         return container
 

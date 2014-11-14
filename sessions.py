@@ -93,7 +93,7 @@ class Session(base.Container):
     def put(self, sid):
         """Update an existing Session."""
         _id = bson.ObjectId(sid)
-        self._get(_id, 'read-write')
+        self._get(_id, 'modify')
         updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
                 if v is not None and v != '':

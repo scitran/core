@@ -31,7 +31,7 @@ class Collections(base.AcquisitionAccessChecker, projects.Projects):
         name = self.request.get('name') or 'innominate'
         acq_ids = [bson.ObjectId(aid) for aid in self.request.get_all('acquisitions[]', [])]
         self.check_acq_list(acq_ids)
-        _id = self.dbc.insert({'curator': self.uid, 'name': name, 'permissions': [{'uid': self.uid, 'access': 'read-write', 'share': True}]})
+        _id = self.dbc.insert({'curator': self.uid, 'name': name, 'permissions': [{'uid': self.uid, 'access': 'admin'}]})
         for a_id in acq_ids:
             self.app.db.acquisitions.update({'_id': a_id}, {'$push': {'collections': _id}})
 
@@ -111,7 +111,7 @@ class Collection(base.AcquisitionAccessChecker, base.Container):
     def put(self, cid):
         """Update an existing Collection."""
         _id = bson.ObjectId(cid)
-        self._get(_id, 'read-write')
+        self._get(_id, 'modify')
         add_acq_ids = [bson.ObjectId(aid) for aid in self.request.get_all('add_acquisitions[]', [])]
         del_acq_ids = [bson.ObjectId(aid) for aid in self.request.get_all('del_acquisitions[]', [])]
         self.check_acq_list(add_acq_ids)
@@ -124,7 +124,7 @@ class Collection(base.AcquisitionAccessChecker, base.Container):
     def delete(self, cid):
         """Delete a Collection."""
         _id = bson.ObjectId(cid)
-        self._get(_id, 'read-write')
+        self._get(_id, 'modify')
         self.app.db.acquisitions.update({'collections': _id}, {'$pull': {'collections': _id}}, multi=True)
         self.dbc.remove({'_id': _id})
 

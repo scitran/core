@@ -92,7 +92,7 @@ class Acquisition(base.Container):
     def put(self, aid):
         """Update an existing Acquisition."""
         _id = bson.ObjectId(aid)
-        self._get(_id, 'read-write')
+        self._get(_id, 'modify')
         updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
                 if v is not None and v != '':

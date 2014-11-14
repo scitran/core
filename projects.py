@@ -34,7 +34,7 @@ class Projects(base.RequestHandler):
         elif not self.superuser:
             projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
             if self.request.get('admin').lower() in ('1', 'true'):
-                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'share': True, 'site': self.source_site}}}
+                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site, 'access': 'admin'}}}
             else:
                 query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
         return list(self.dbc.find(query, projection))
@@ -111,7 +111,7 @@ class Project(base.Container):
     def put(self, pid):
         """Update an existing Project."""
         _id = bson.ObjectId(pid)
-        self._get(_id, 'read-write')
+        self._get(_id, 'modify')
         updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
         for k, v in self.request.params.iteritems():
             if k in ['notes']:
