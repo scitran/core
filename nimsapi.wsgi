@@ -27,13 +27,19 @@ import internimsclient
 
 # configure uwsgi application
 application = api.app
-application.config['store_path'] = config.get('nims', 'store_path')
+application.config['data_path'] = os.path.join(config.get('nims', 'data_path'), 'nims')
+application.config['quarantine_path'] = os.path.join(config.get('nims', 'data_path'), 'quarantine')
 application.config['log_path'] = config.get('nims', 'log_path')
 application.config['site_name'] = config.get('nims', 'site_name')
 application.config['site_id'] = config.get('nims', 'site_id')
 application.config['ssl_cert'] = config.get('nims', 'ssl_cert')
 application.config['oauth2_id_endpoint'] = config.get('oauth2', 'id_endpoint')
 application.config['insecure'] = config.getboolean('nims', 'insecure')
+
+if not os.path.exists(application.config['data_path']):
+    os.makedirs(application.config['data_path'])
+if not os.path.exists(application.config['quarantine_path']):
+    os.makedirs(application.config['quarantine_path'])
 
 # connect to db
 kwargs = dict(tz_aware=True)

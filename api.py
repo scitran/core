@@ -6,6 +6,7 @@ import logging
 import logging.config
 log = logging.getLogger('nimsapi')
 
+import os
 import json
 import webapp2
 import bson.json_util
@@ -78,12 +79,13 @@ def dispatcher(router, request, response):
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)
 app.config = {
-        'store_path':   '.',
-        'site_id':      'local',
-        'site_name':    'Local',
-        'ssl_cert':     None,
-        'insecure':     False,
-        'log_path':     None,
+        'data_path':        'nims',
+        'quarantine_path':  'quarantine',
+        'site_id':          'local',
+        'site_name':        'Local',
+        'ssl_cert':         None,
+        'insecure':         False,
+        'log_path':         None,
         }
 
 
@@ -99,7 +101,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--host', default='127.0.0.1', help='IP address to bind to')
     arg_parser.add_argument('--port', default='8080', help='TCP port to listen on')
     arg_parser.add_argument('--db_uri', help='NIMS DB URI')
-    arg_parser.add_argument('--store_path', help='path to staging area')
+    arg_parser.add_argument('--data_path', help='path to storage area')
     arg_parser.add_argument('--log_path', help='path to API log file')
     arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain')
     arg_parser.add_argument('--site_id', help='InterNIMS site ID')
@@ -115,7 +117,8 @@ if __name__ == '__main__':
 
     app.config['site_id'] = args.site_id or app.config['site_id']
     app.config['site_name'] = args.site_name or app.config['site_name']
-    app.config['store_path'] = args.store_path or config.get('nims', 'store_path')
+    app.config['data_path'] = os.path.join(args.data_path or config.get('nims', 'data_path'), 'nims')
+    app.config['quarantine_path'] = os.path.join(args.data_path or config.get('nims', 'data_path'), 'quarantine')
     app.config['log_path'] = args.log_path or app.config['log_path']
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
     app.config['insecure'] = config.getboolean('nims', 'insecure')
@@ -123,6 +126,11 @@ if __name__ == '__main__':
 
     if not app.config['ssl_cert']:
         log.warning('SSL certificate not specified, interNIMS functionality disabled')
+
+    if not os.path.exists(app.config['data_path']):
+        os.makedirs(app.config['data_path'])
+    if not os.path.exists(app.config['quarantine_path']):
+        os.makedirs(app.config['quarantine_path'])
 
     kwargs = dict(tz_aware=True)
     db_uri = args.db_uri or config.get('nims', 'db_uri')
