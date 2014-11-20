@@ -3,6 +3,7 @@
 import logging
 log = logging.getLogger('nimsapi')
 
+import copy
 import hashlib
 import pymongo
 import jsonschema
@@ -27,9 +28,11 @@ class Users(base.RequestHandler):
         """Create a new User"""
         if self.public_request: # FIXME: who is allowed to create a new user?
             self.abort(403, 'must be logged in to create new user')
+        schema = copy.deepcopy(User.json_schema)
+        schema['required'] += ['email', 'firstname', 'lastname']
         json_body = self.request.json_body
         try:
-            jsonschema.validate(json_body, User.json_schema)
+            jsonschema.validate(json_body, schema)
             json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
             self.dbc.insert(json_body)
         except jsonschema.ValidationError as e:
@@ -81,8 +84,18 @@ class User(base.RequestHandler):
                 'title': 'Superuser',
                 'type': 'boolean',
             },
+            'preferences': {
+                'title': 'Preferences',
+                'type': 'object',
+                'properties': {
+                    'data-layout': {
+                        'title': 'Data Layout',
+                        'type': 'string',
+                    },
+                },
+            },
         },
-        'required': ['_id', 'email'],
+        'required': ['_id'],
         'additionalProperties': False,
     }
 
@@ -90,8 +103,12 @@ class User(base.RequestHandler):
         super(User, self).__init__(request, response)
         self.dbc = self.app.db.users
 
+    def self(self):
+        """Return details for the current User."""
+        return self.dbc.find_one({'_id': self.uid}, ['firstname', 'lastname', 'superuser', 'preferences'])
+
     def get(self, _id):
-        """Return User details."""
+        """ Return User details."""
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User info')
         projection = []
@@ -102,7 +119,7 @@ class User(base.RequestHandler):
         user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:
             self.abort(404, 'no such User')
-        if self.debug:
+        if self.debug and (self.superuser or _id == self.uid):
             user['groups'] = self.uri_for('groups', _id=_id, _full=True) + '?' + self.request.query_string
         return user
 

@@ -24,7 +24,6 @@ routes = [
     webapp2.Route(r'/nimsapi',                                          core.Core),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
         webapp2.Route(r'/download',                                     core.Core, handler_method='download', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/login',                                        core.Core, handler_method='login', methods=['OPTIONS', 'GET', 'POST']),
         webapp2.Route(r'/sites',                                        core.Core, handler_method='sites', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/roles',                                        core.Core, handler_method='roles', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/log',                                          core.Core, handler_method='log', methods=['OPTIONS', 'GET']),
@@ -33,6 +32,7 @@ routes = [
     webapp2.Route(r'/nimsapi/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/users', [
         webapp2.Route(r'/count',                                        users.Users, handler_method='count', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/self',                                         users.User, handler_method='self', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/schema',                                       users.User, handler_method='schema', methods=['OPTIONS', 'GET']),
         webapp2.Route(r'/<_id>',                                        users.User, name='user'),
         webapp2.Route(r'/<_id>/groups',                                 users.Groups, name='groups'),
