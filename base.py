@@ -84,7 +84,6 @@ class RequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.access_token = self.request.headers.get('Authorization', None)
         self.debug = self.app.config['insecure']
 
         # CORS header
@@ -94,16 +93,14 @@ class RequestHandler(webapp2.RequestHandler):
         # set uid, source_site, public_request, and superuser
         self.uid = None
         self.source_site = None
-        if self.access_token and self.app.config['oauth2_id_endpoint']:
-            r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + self.access_token})
+        access_token = self.request.headers.get('Authorization', None)
+        if access_token and self.app.config['oauth2_id_endpoint']:
+            r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
             if r.status_code == 200:
                 self.uid = json.loads(r.content)['email']
             else:
-                # TODO: add handlers for bad tokens
-                # inform app of expired token, app will try to get new token, or ask user to log in again
-                # requst should probably return here
-                self.uid = None # should not be needed if the above is done
-                log.debug('ERR: ' + str(r.status_code) + ' ' + r.reason + ': bad token')
+                headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
+                self.abort(401, 'invalid oauth2 token', headers=headers)
         elif self.debug and self.request.get('user'):
             self.uid = self.request.get('user')
         elif self.request.user_agent.startswith('NIMS Instance'):
