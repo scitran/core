@@ -36,7 +36,7 @@ class Acquisitions(base.RequestHandler):
         projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1}
         if self.public_request:
             query['public'] = True
-        elif not self.superuser:
+        elif not self.superuser_request:
             query['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
             projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))

@@ -31,7 +31,7 @@ class Projects(base.RequestHandler):
         query = None
         if self.public_request:
             query = {'public': True}
-        elif not self.superuser:
+        elif not self.superuser_request:
             projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
             if self.request.get('admin').lower() in ('1', 'true'):
                 query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site, 'access': 'admin'}}}

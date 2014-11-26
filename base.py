@@ -38,6 +38,13 @@ ROLES = [
 INTEGER_ROLES = {r['rid']: r['sort'] for r in ROLES}
 
 
+def mongo_dict(d):
+    def _mongo_list(d, pk=''):
+        pk = pk and pk + '.'
+        return sum([_mongo_list(v, pk+k) if isinstance(v, dict) else [(pk+k, v)] for k, v in d.iteritems()], [])
+    return dict(_mongo_list(d))
+
+
 class RequestHandler(webapp2.RequestHandler):
 
     """fetches pubkey from own self.db.remotes. needs to be aware of OWN site uid"""
@@ -112,11 +119,13 @@ class RequestHandler(webapp2.RequestHandler):
             if not self.app.db.remotes.find_one({'_id': remote_instance}):
                 self.abort(402, remote_instance + ' is not authorized')
         self.public_request = not bool(self.uid)
-        if not self.public_request:
-            user = self.app.db.users.find_one({'_id': self.uid}, ['superuser'])
+        if self.public_request or self.source_site:
+            self.superuser_request = False
+        else:
+            user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
-        self.superuser = not self.public_request and not self.source_site and user.get('superuser')
+            self.superuser_request = user.get('root') and user.get('wheel')
 
     def dispatch(self):
         """dispatching and request forwarding"""
@@ -161,9 +170,12 @@ class RequestHandler(webapp2.RequestHandler):
             headers['Access-Control-Allow-Origin'] = self.response.headers['Access-Control-Allow-Origin']
         webapp2.abort(code, *args, **kwargs)
 
+    def handle_exception(self, exception, debug):
+        self.abort(500, exception.message)
+
     def options(self, *args, **kwargs):
         self.response.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PUT, DELETE, OPTIONS'
-        self.response.headers['Access-Control-Allow-Headers'] = 'Authorization'
+        self.response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
         self.response.headers['Access-Control-Max-Age'] = '151200'
 
     def schema(self, updates={}):
@@ -182,7 +194,7 @@ class Container(RequestHandler):
             if not container.get('public', False):
                 self.abort(403, 'this ' + self.__class__.__name__ + 'is not public')
             del container['permissions']
-        elif not self.superuser:
+        elif not self.superuser_request:
             user_perm = None
             for perm in container['permissions']:
                 if perm['uid'] == self.uid and perm.get('site') == self.source_site:
@@ -200,7 +212,7 @@ class Container(RequestHandler):
 class AcquisitionAccessChecker(object):
 
     def check_acq_list(self, acq_ids):
-        if not self.superuser:
+        if not self.superuser_request:
             for a_id in acq_ids:
                 agg_res = self.app.db.acquisitions.aggregate([
                         {'$match': {'_id': a_id}},

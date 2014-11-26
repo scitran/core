@@ -28,14 +28,12 @@ class Users(base.RequestHandler):
         """Create a new User"""
         if self.public_request: # FIXME: who is allowed to create a new user?
             self.abort(403, 'must be logged in to create new user')
-        schema = copy.deepcopy(User.json_schema)
-        schema['required'] += ['email', 'firstname', 'lastname']
-        json_body = self.request.json_body
         try:
-            jsonschema.validate(json_body, schema)
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, User.json_schema)
             json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
             self.dbc.insert(json_body)
-        except jsonschema.ValidationError as e:
+        except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         except pymongo.errors.DuplicateKeyError as e:
             self.abort(400, 'User ID %s already exists' % json_body['_id'])
@@ -44,7 +42,7 @@ class Users(base.RequestHandler):
         """Return the list of Users."""
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User list')
-        users = list(self.dbc.find({}, ['firstname', 'lastname', 'email_hash', 'superuser']))
+        users = list(self.dbc.find({}, ['firstname', 'lastname', 'email_hash', 'wheel']))
         if self.debug:
             for user in users:
                 user['details'] = self.uri_for('user', _id=str(user['_id']), _full=True) + '?' + self.request.query_string
@@ -80,8 +78,12 @@ class User(base.RequestHandler):
             'email_hash': {
                 'type': 'string',
             },
-            'superuser': {
-                'title': 'Superuser',
+            'root': {
+                'title': 'Root',
+                'type': 'boolean',
+            },
+            'wheel': {
+                'title': 'Wheel',
                 'type': 'boolean',
             },
             'preferences': {
@@ -95,7 +97,7 @@ class User(base.RequestHandler):
                 },
             },
         },
-        'required': ['_id'],
+        'required': ['_id', 'email', 'firstname', 'lastname'],
         'additionalProperties': False,
     }
 
@@ -105,7 +107,9 @@ class User(base.RequestHandler):
 
     def self(self):
         """Return details for the current User."""
-        return self.dbc.find_one({'_id': self.uid}, ['firstname', 'lastname', 'superuser', 'preferences'])
+        user = self.dbc.find_one({'_id': self.uid}, ['firstname', 'lastname', 'root', 'wheel', 'preferences', 'email_hash'])
+        user.setdefault('preferences', {})
+        return user
 
     def get(self, _id):
         """ Return User details."""
@@ -119,7 +123,7 @@ class User(base.RequestHandler):
         user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:
             self.abort(404, 'no such User')
-        if self.debug and (self.superuser or _id == self.uid):
+        if self.debug and (self.superuser_request or _id == self.uid):
             user['groups'] = self.uri_for('groups', _id=_id, _full=True) + '?' + self.request.query_string
         return user
 
@@ -127,26 +131,23 @@ class User(base.RequestHandler):
         """Update an existing User."""
         user = self.dbc.find_one({'_id': _id})
         if not user:
-            self.abort(404)
-        if _id == self.uid or self.superuser: # users can only update their own info
-            updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
-            for k, v in self.request.params.iteritems():
-                if k != 'superuser' and k in []:#user_fields:
-                    updates['$set'][k] = v # FIXME: do appropriate type conversion
-                elif k == 'superuser' and _id == self.uid and self.superuser is not None: # toggle superuser for requesting user
-                    updates['$set'][k] = v.lower() in ('1', 'true')
-                elif k == 'superuser' and _id != self.uid and self.superuser:             # enable/disable superuser for other user
-                    if v.lower() in ('1', 'true') and user.get('superuser') is None:
-                        updates['$set'][k] = False # superuser is tri-state: False indicates granted, but disabled, superuser privileges
-                    elif v.lower() not in ('1', 'true'):
-                        updates['$unset'][k] = ''
-            self.dbc.update({'_id': _id}, updates)
-        else:
-            self.abort(403)
+            self.abort(404, 'no such User')
+        if not self.superuser_request and _id != self.uid:
+            self.abort(403, 'must be superuser to update another User')
+        schema = copy.deepcopy(self.json_schema)
+        del schema['required']
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, schema)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+        if 'wheel' in json_body and _id == self.uid:
+            self.abort(400, 'user cannot alter own superuser privilege')
+        self.dbc.update({'_id': _id}, {'$set': base.mongo_dict(json_body)})
 
     def delete(self, _id):
         """Delete a User."""
-        if not self.superuser:
+        if not self.superuser_request:
             self.abort(403, 'must be superuser to delete a User')
         self.dbc.remove({'_id': _id})
 
@@ -167,11 +168,11 @@ class Groups(base.RequestHandler):
         """Return the list of Groups."""
         query = None
         if _id is not None:
-            if _id != self.uid and not self.superuser:
+            if _id != self.uid and not self.superuser_request:
                 self.abort(403, 'User ' + self.uid + ' may not see the Groups of User ' + _id)
             query = {'roles.uid': _id}
         else:
-            if not self.superuser:
+            if not self.superuser_request:
                 if self.request.get('admin').lower() in ('1', 'true'):
                     query = {'roles': {'$elemMatch': {'uid': self.uid, 'access': 'admin'}}}
                 else:
@@ -228,7 +229,7 @@ class Group(base.RequestHandler):
         group = self.app.db.groups.find_one({'_id': _id})
         if not group:
             self.abort(404, 'no such Group: ' + _id)
-        if not self.superuser:
+        if not self.superuser_request:
             group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'access': 'admin'}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)

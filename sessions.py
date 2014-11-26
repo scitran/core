@@ -36,7 +36,7 @@ class Sessions(base.RequestHandler):
         projection = {'label': 1, 'subject.code': 1, 'notes': 1}
         if self.public_request:
             query['public'] = True
-        elif not self.superuser:
+        elif not self.superuser_request:
             query['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
             projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
         sessions =  list(self.dbc.find(query, projection))
