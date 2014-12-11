@@ -74,10 +74,16 @@ routes = [
 def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
-        return response.write(json.dumps(rv, default=bson.json_util.default))
+        response.write(json.dumps(rv, default=bson.json_util.default))
+
+def handle_404(request, response, exception):
+    if request.scheme == 'https' and 'Origin' in request.headers:
+        exception.headers['Access-Control-Allow-Origin'] = request.headers['Origin']
+    raise
 
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)
+app.error_handlers[404] = handle_404
 app.config = {
         'data_path':        'nims',
         'quarantine_path':  'quarantine',
@@ -137,5 +143,5 @@ if __name__ == '__main__':
     db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
     app.db = db_client.get_default_database()
 
-    app.debug = True # raise uncaught exceptions instead of using HTTPInternalServerError
-    paste.httpserver.serve(app, host=args.host, port=args.port)
+    app.debug = True # send stack trace for uncaught exceptions to client
+    paste.httpserver.serve(app, host=args.host, port=args.port, ssl_pem=args.ssl_cert)

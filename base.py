@@ -94,7 +94,7 @@ class RequestHandler(webapp2.RequestHandler):
         self.debug = self.app.config['insecure']
 
         # CORS header
-        if 'Origin' in self.request.headers and self.request.headers['Origin'].startswith('https://'):
+        if request.scheme == 'https' and 'Origin' in request.headers:
             self.response.headers['Access-Control-Allow-Origin'] = self.request.headers['Origin']
 
         # set uid, source_site, public_request, and superuser
@@ -171,6 +171,9 @@ class RequestHandler(webapp2.RequestHandler):
         webapp2.abort(code, *args, **kwargs)
 
     def handle_exception(self, exception, debug):
+        if self.debug:
+            html_traceback = webapp2.cgi.escape(''.join(webapp2.traceback.format_exc()).strip())
+            self.abort(500, html_traceback, body_template='<style>body{padding: 20px; font-family: arial, sans-serif; font-size: 14px;} pre{background: #F2F2F2; padding: 10px;}</style><pre>${detail}</pre>')
         self.abort(500, exception.message)
 
     def options(self, *args, **kwargs):
