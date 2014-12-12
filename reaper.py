@@ -23,9 +23,9 @@ import dicom
 import shutil
 import hashlib
 import tarfile
+import calendar
 import datetime
 import requests
-import bson.json_util
 
 import scu
 import tempdir as tempfile
@@ -58,9 +58,17 @@ def create_archive(path, content, arcname, **kwargs):
         add_to_archive(archive, content, arcname)
 
 
+def datetime_encoder(o):
+    if isinstance(o, datetime.datetime):
+        if o.utcoffset() is not None:
+            o = o - o.utcoffset()
+        return {"$date": int(calendar.timegm(o.timetuple()) * 1000 + o.microsecond / 1000)}
+    raise TypeError(repr(o) + " is not JSON serializable")
+
+
 def write_json_file(path, json_document):
     with open(path, 'w') as json_file:
-        json.dump(json_document, json_file, default=bson.json_util.default)
+        json.dump(json_document, json_file, default=datetime_encoder)
 
 
 class Reaper(object):
