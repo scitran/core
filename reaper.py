@@ -404,31 +404,32 @@ class PFileReaper(Reaper):
                 reap_files = sorted(filter(lambda f: f.mod_time >= current_file_datetime, reap_files), key=lambda f: f.mod_time)
                 for rf in reap_files:
                     rf.parse_pfile()
-                    if rf.path in monitored_files:
-                        mf = monitored_files[rf.path]
-                        if mf.needs_reaping and rf.size == mf.size:
-                            rf.reap()
-                            if not rf.needs_reaping:
-                                self.reference_datetime = current_file_datetime = rf.mod_time
-                        elif mf.needs_reaping:
-                            log.info('Monitoring  %s' % rf)
-                        elif rf.size == mf.size:
-                            rf.needs_reaping = False
-                    elif rf.pfile is None:
+                    if rf.pfile is None:
                         rf.needs_reaping = False
-                        log.warning('Skipping    %s (unparsable)' % rf.basename)
+                        if rf.path not in monitored_files:
+                            log.warning('Skipping    %s (unparsable)' % rf.basename)
                     elif rf.pfile.patient_id.strip('/').lower() in self.discard_ids:
                         rf.needs_reaping = False
-                        log.info('Discarding  %s' % rf)
+                        if rf.path not in monitored_files:
+                            log.info('Discarding  %s' % rf)
                     elif self.pat_id and not re.match(self.pat_id.replace('*','.*'), rf.pfile.patient_id):
                         rf.needs_reaping = False
-                        log.info('Ignoring    %s' % rf)
-                    else:
+                        if rf.path not in monitored_files:
+                            log.info('Ignoring    %s' % rf)
+                    elif rf.path not in monitored_files:
                         log.info('Discovered  %s' % rf)
+                    else:
+                        mf = monitored_files[rf.path]
+                        if mf.needs_reaping and rf.size == mf.size:
+                            if rf.reap(): # returns True, if successful
+                                self.reference_datetime = current_file_datetime = rf.mod_time
+                        elif rf.size == mf.size:
+                            rf.needs_reaping = False
+                        else:
+                            log.info('Monitoring  %s' % rf)
                 monitored_files = dict(zip([rf.path for rf in reap_files], reap_files))
-            finally:
-                if len(monitored_files) < 2:
-                    time.sleep(self.sleep_time)
+            if len([rf for rf in monitored_files.itervalues() if rf.needs_reaping and not rf.error]) < 2: # sleep, if there is no queue of files that need reaping
+                time.sleep(self.sleep_time)
 
 
     class ReapPFile(object):
@@ -440,6 +441,7 @@ class PFileReaper(Reaper):
             self.mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
             self.size = hrsize(os.path.getsize(path))
             self.needs_reaping = True
+            self.error = False
 
         def __str__(self):
             return '%s [%s] e%s s%s a%s %s [%s]' % (self.basename, self.size, self.pfile.exam_no, self.pfile.series_no, self.pfile.acq_no, self.mod_time.strftime(DATE_FORMAT), self.pfile.patient_id)
@@ -485,12 +487,17 @@ class PFileReaper(Reaper):
                     create_archive(reap_path+'.tgz', reap_path, os.path.basename(reap_path), dereference=True, compresslevel=4)
                     shutil.rmtree(reap_path)
                 except (IOError):
+                    self.error = True
                     log.warning('Error while reaping %s%s' % (self.basename, ' or aux files' if auxfiles else ''))
                 else:
                     self.reaper.retrieve_peripheral_data(tempdir_path, self.pfile, self.name_prefix, self.basename)
                     if self.reaper.upload(tempdir_path, self.basename):
                         self.needs_reaping = False
+                        self.error = False
                         log.info('Done        %s' % self.basename)
+                    else:
+                        self.error = True
+            return not self.needs_reaping
 
 
 if __name__ == '__main__':
