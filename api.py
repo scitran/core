@@ -5,6 +5,7 @@
 import logging
 import logging.config
 log = logging.getLogger('nimsapi')
+logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown library logging
 
 import os
 import json
@@ -23,50 +24,50 @@ import collections_
 routes = [
     webapp2.Route(r'/nimsapi',                                          core.Core),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
-        webapp2.Route(r'/download',                                     core.Core, handler_method='download', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/sites',                                        core.Core, handler_method='sites', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/roles',                                        core.Core, handler_method='roles', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/log',                                          core.Core, handler_method='log', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/search',                                       core.Core, handler_method='search', methods=['OPTIONS', 'GET', 'POST']),
+        webapp2.Route(r'/download',                                     core.Core, handler_method='download', methods=['GET']),
+        webapp2.Route(r'/sites',                                        core.Core, handler_method='sites', methods=['GET']),
+        webapp2.Route(r'/roles',                                        core.Core, handler_method='roles', methods=['GET']),
+        webapp2.Route(r'/log',                                          core.Core, handler_method='log', methods=['GET']),
+        webapp2.Route(r'/search',                                       core.Core, handler_method='search', methods=['GET', 'POST']),
     ]),
     webapp2.Route(r'/nimsapi/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/users', [
-        webapp2.Route(r'/count',                                        users.Users, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/self',                                         users.User, handler_method='self', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       users.User, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/count',                                        users.Users, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/self',                                         users.User, handler_method='self', methods=['GET']),
+        webapp2.Route(r'/schema',                                       users.User, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<_id>',                                        users.User, name='user'),
         webapp2.Route(r'/<_id>/groups',                                 users.Groups, name='groups'),
     ]),
     webapp2.Route(r'/nimsapi/groups',                                   users.Groups),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/groups', [
-        webapp2.Route(r'/count',                                        users.Groups, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       users.Group, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/count',                                        users.Groups, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                       users.Group, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<_id>',                                        users.Group, name='group'),
     ]),
     webapp2.Route(r'/nimsapi/projects',                                 projects.Projects),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/projects', [
-        webapp2.Route(r'/count',                                        projects.Projects, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       projects.Project, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/count',                                        projects.Projects, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                       projects.Project, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<pid:[0-9a-f]{24}>',                           projects.Project, name='project'),
         webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',                  sessions.Sessions, name='sessions'),
     ]),
     webapp2.Route(r'/nimsapi/collections',                              collections_.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/collections', [
-        webapp2.Route(r'/count',                                        collections_.Collections, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       collections_.Collection, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/count',                                        collections_.Collections, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                       collections_.Collection, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<cid:[0-9a-f]{24}>',                           collections_.Collection, name='collection'),
         webapp2.Route(r'/<cid:[0-9a-f]{24}>/sessions',                  collections_.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<cid:[0-9a-f]{24}>/acquisitions',              collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/sessions', [
-        webapp2.Route(r'/count',                                        sessions.Sessions, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       sessions.Session, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/count',                                        sessions.Sessions, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                       sessions.Session, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<sid:[0-9a-f]{24}>',                           sessions.Session, name='session'),
         webapp2.Route(r'/<sid:[0-9a-f]{24}>/acquisitions',              acquisitions.Acquisitions, name='acquisitions'),
     ]),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/acquisitions', [
-        webapp2.Route(r'/count',                                        acquisitions.Acquisitions, handler_method='count', methods=['OPTIONS', 'GET']),
-        webapp2.Route(r'/schema',                                       acquisitions.Acquisition, handler_method='schema', methods=['OPTIONS', 'GET']),
+        webapp2.Route(r'/count',                                        acquisitions.Acquisitions, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                       acquisitions.Acquisition, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<aid:[0-9a-f]{24}>',                           acquisitions.Acquisition, name='acquisition'),
     ]),
 ]
@@ -76,14 +77,8 @@ def dispatcher(router, request, response):
     if rv is not None:
         response.write(json.dumps(rv, default=bson.json_util.default))
 
-def handle_404(request, response, exception):
-    if request.scheme == 'https' and 'Origin' in request.headers:
-        exception.headers['Access-Control-Allow-Origin'] = request.headers['Origin']
-    raise
-
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)
-app.error_handlers[404] = handle_404
 app.config = {
         'data_path':        'nims',
         'quarantine_path':  'quarantine',

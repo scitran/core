@@ -2,7 +2,7 @@
 
 import logging
 log = logging.getLogger('nimsapi')
-logging.getLogger('urllib3').setLevel(logging.WARNING) # silence Requests library logging
+logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library logging
 
 import copy
 import json
@@ -76,8 +76,8 @@ class RequestHandler(webapp2.RequestHandler):
                 'title': 'Type',
                 'type': 'string',
             },
-            'kind': {
-                'title': 'Kind',
+            'kinds': {
+                'title': 'Kinds',
                 'type': 'array',
             },
             'state': {
@@ -92,10 +92,6 @@ class RequestHandler(webapp2.RequestHandler):
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
         self.debug = self.app.config['insecure']
-
-        # CORS header
-        if request.scheme == 'https' and 'Origin' in request.headers:
-            self.response.headers['Access-Control-Allow-Origin'] = self.request.headers['Origin']
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
@@ -129,8 +125,6 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        if self.request.method == 'OPTIONS':
-            return self.options()
         target_site = self.request.get('site', self.app.config['site_id'])
         if target_site == self.app.config['site_id']:
             log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
@@ -165,21 +159,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def abort(self, code, *args, **kwargs):
         log.warning(str(code) + ' ' + '; '.join(args))
-        if 'Access-Control-Allow-Origin' in self.response.headers:
-            headers = kwargs.setdefault('headers', {})
-            headers['Access-Control-Allow-Origin'] = self.response.headers['Access-Control-Allow-Origin']
         webapp2.abort(code, *args, **kwargs)
-
-    def handle_exception(self, exception, debug):
-        if self.debug:
-            html_traceback = webapp2.cgi.escape(''.join(webapp2.traceback.format_exc()).strip())
-            self.abort(500, html_traceback, body_template='<style>body{padding: 20px; font-family: arial, sans-serif; font-size: 14px;} pre{background: #F2F2F2; padding: 10px;}</style><pre>${detail}</pre>')
-        self.abort(500, exception.message)
-
-    def options(self, *args, **kwargs):
-        self.response.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PUT, DELETE, OPTIONS'
-        self.response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
-        self.response.headers['Access-Control-Max-Age'] = '151200'
 
     def schema(self, updates={}):
         json_schema = copy.deepcopy(self.json_schema)
