@@ -189,6 +189,9 @@ class Container(RequestHandler):
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
             if not user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = user_perm
+        if self.request.get('paths').lower() in ('1', 'true'):
+            for file_info in container['files']:
+                file_info['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + file_info['name'] + file_info['ext']
         return container
 
 
