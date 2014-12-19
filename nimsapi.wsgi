@@ -6,7 +6,7 @@ import site
 import ConfigParser
 
 configfile = '../production.ini'
-config = ConfigParser.ConfigParser()
+config = ConfigParser.ConfigParser(allow_no_value=True)
 config.read(configfile)
 
 site.addsitedir(os.path.join(config.get('nims', 'virtualenv'), 'lib/python2.7/site-packages'))
@@ -53,17 +53,23 @@ site_id = config.get('nims', 'site_id')
 site_name = config.get('nims', 'site_name')
 ssl_cert = config.get('nims', 'ssl_cert')
 api_uri = config.get('nims', 'api_uri')
-internims_url = config.get('nims', 'internims_url')
+try:
+    internims_url = config.get('nims', 'internims_url')
+except ConfigParser.NoOptionError:
+    internims_url = None
 fail_count = 0
 
-@uwsgidecorators.timer(60)
-def internimsclient_timer(signum):
-    global fail_count
-    if not internimsclient.update(application.db, api_uri, site_name, site_id, ssl_cert, internims_url):
-        fail_count += 1
-    else:
-        fail_count = 0
+if not internims_url or internims_url == u'':
+    log.debug('internims url not configured. internims disabled.')
+else:
+    @uwsgidecorators.timer(60)
+    def internimsclient_timer(signum):
+        global fail_count
+        if not internimsclient.update(application.db, api_uri, site_name, site_id, ssl_cert, internims_url):
+            fail_count += 1
+        else:
+            fail_count = 0
 
-    if fail_count == 3:
-        log.debug('InterNIMS unreachable, purging all remotes info')
-        internimsclient.clean_remotes(application.db)
+        if fail_count == 3:
+            log.debug('InterNIMS unreachable, purging all remotes info')
+            internimsclient.clean_remotes(application.db)
