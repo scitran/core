@@ -11,7 +11,7 @@ import nimsdata.medimg
 import base
 
 
-class Acquisitions(base.RequestHandler):
+class Acquisitions(base.ContainerList):
 
     """/nimsapi/acquisitions """
 
@@ -34,12 +34,7 @@ class Acquisitions(base.RequestHandler):
             self.abort(404, 'no such Session')
         query = {'session': _id}
         projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1}
-        if self.public_request:
-            query['public'] = True
-        elif not self.superuser_request:
-            query['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-            projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-        acquisitions = list(self.dbc.find(query, projection))
+        acquisitions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for acquisition in acquisitions:
                 aid = str(acquisition['_id'])

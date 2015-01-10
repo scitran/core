@@ -6,7 +6,7 @@
       "roles": [
         {
           "access": "admin",
-          "uid": "user1@example.com"
+          "_id": "user1@example.com"
         }
       ]
     }

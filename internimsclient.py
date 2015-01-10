@@ -21,11 +21,11 @@ import requests
 
 def update(db, api_uri, site_name, site_id, ssl_cert, internims_url):
     """Send is-alive signal to central peer registry."""
-    proj_userlist = [p['permissions'] for p in db.projects.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
-    col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions.uid': True, 'permissions.site': True})]
-    grp_userlist = [g['roles'] for g in db.groups.find(None, {'_id': False, 'roles.uid': True, 'roles.site': True})]
+    proj_userlist = [p['permissions'] for p in db.projects.find(None, {'_id': False, 'permissions._id': True, 'permissions.site': True})]
+    col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions._id': True, 'permissions.site': True})]
+    grp_userlist = [g['roles'] for g in db.groups.find(None, {'_id': False, 'roles._id': True, 'roles.site': True})]
     # cannot hash on dictionary; temporarily use tuple
-    remote_users = set([(user['uid'], user['site']) for container in proj_userlist+col_userlist+grp_userlist for user in container if user.get('site') is not None])
+    remote_users = set([(user['_id'], user['site']) for container in proj_userlist+col_userlist+grp_userlist for user in container if user.get('site') is not None])
     remote_users = [{'user': user[0], 'site': user[1]} for user in remote_users]
 
     payload = json.dumps({'_id': site_id, 'api_uri': api_uri, 'users': remote_users, 'name': site_name})
@@ -46,8 +46,8 @@ def update(db, api_uri, site_name, site_id, ssl_cert, internims_url):
             log.debug('recieved sites: %s ' % ', '.join(s['_id'] for s in sites))
             log.debug('recieved users: %s' % ', '.join([key for key in users]))
             if response.get('users'):
-                for uid, remotes in response['users'].iteritems():
-                    db.users.update({'_id': uid}, {'$set': {'remotes': remotes}})
+                for _id, remotes in response['users'].iteritems():
+                    db.users.update({'_id': _id}, {'$set': {'remotes': remotes}})
             if sites:
                 db.remotes.remove({'_id': {'$nin': [site['_id'] for site in response['sites']]}})
                 [db.remotes.update({'_id': site['_id']}, site, upsert=True) for site in sites]

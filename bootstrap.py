@@ -65,6 +65,7 @@ def dbinit(args):
     db.sessions.create_index('uid')
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
+    db.acquisitions.create_index('collections')
 
     if args.json:
         with open(args.json) as json_dump:

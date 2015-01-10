@@ -13,29 +13,63 @@ import requests
 import bson.json_util
 
 ROLES = [
-        {
-            'rid': 'view',
-            'name': 'View-Only',
-            'sort': 0,
-            },
-        {
-            'rid': 'download',
-            'name': 'Download',
-            'sort': 1,
-            },
-        {
-            'rid': 'modify',
-            'name': 'Modify',
-            'sort': 2,
-            },
-        {
-            'rid': 'admin',
-            'name': 'Admin',
-            'sort': 3,
-            },
-        ]
+    {
+        'rid': 'view',
+        'name': 'View-Only',
+    },
+    {
+        'rid': 'download',
+        'name': 'Download',
+    },
+    {
+        'rid': 'modify',
+        'name': 'Modify',
+    },
+    {
+        'rid': 'admin',
+        'name': 'Admin',
+    },
+]
 
-INTEGER_ROLES = {r['rid']: r['sort'] for r in ROLES}
+INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
+
+FILE_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'File',
+    'type': 'object',
+    'properties': {
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+        },
+        'ext': {
+            'title': 'Extension',
+            'type': 'string',
+        },
+        'size': {
+            'title': 'Size',
+            'type': 'integer',
+        },
+        'sha1': {
+            'title': 'SHA-1',
+            'type': 'string',
+        },
+        'type': {
+            'title': 'Type',
+            'type': 'string',
+        },
+        'kinds': {
+            'title': 'Kinds',
+            'type': 'array',
+        },
+        'state': {
+            'title': 'State',
+            'type': 'array',
+        },
+    },
+    'required': ['name', 'ext', 'size', 'sha1', 'type', 'kinds', 'state'],
+    'additionalProperties': False
+}
 
 
 def mongo_dict(d):
@@ -167,6 +201,24 @@ class RequestHandler(webapp2.RequestHandler):
         return json_schema
 
 
+class ContainerList(RequestHandler):
+
+    def _get(self, query, projection, admin_only=False):
+        if self.public_request:
+            query['public'] = True
+        else:
+            projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
+            if not self.superuser_request:
+                if admin_only:
+                    query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site, 'access': 'admin'}}
+                else:
+                    query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
+        containers = list(self.dbc.find(query, projection))
+        for container in containers:
+            container['_id'] = str(container['_id'])
+        return containers
+
+
 class Container(RequestHandler):
 
     def _get(self, _id, min_role=None): # TODO: take projection arg for added effiency; use empty projection for access checks
@@ -180,18 +232,19 @@ class Container(RequestHandler):
         elif not self.superuser_request:
             user_perm = None
             for perm in container['permissions']:
-                if perm['uid'] == self.uid and perm.get('site') == self.source_site:
+                if perm['_id'] == self.uid and perm.get('site') == self.source_site:
                     user_perm = perm
                     break
             else:
                 self.abort(403, self.uid + ' does not have permissions on this ' + self.__class__.__name__)
             if min_role and INTEGER_ROLES[user_perm['access']] < INTEGER_ROLES[min_role]:
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
-            if not user_perm['access'] != 'admin': # if not admin, mask permissions of other users
-                container['permissions'] = user_perm
+            if user_perm['access'] not in ['admin', 'modify']: # if not admin or modify, mask permissions of other users
+                container['permissions'] = [user_perm]
         if self.request.get('paths').lower() in ('1', 'true'):
             for file_info in container['files']:
                 file_info['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + file_info['name'] + file_info['ext']
+        container['_id'] = str(container['_id'])
         return container
 
 
@@ -208,7 +261,7 @@ class AcquisitionAccessChecker(object):
                 if not agg_res:
                     self.abort(404, 'Acquisition %s does not exist' % a_id)
                 for perm_doc in agg_res:
-                    if perm_doc['permissions']['uid'] == self.uid:
+                    if perm_doc['permissions']['_id'] == self.uid:
                         break
                 else:
                     self.abort(403, self.uid + ' does not have permissions on Acquisition %s' % a_id)

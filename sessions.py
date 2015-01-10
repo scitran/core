@@ -11,7 +11,7 @@ import nimsdata.medimg
 import base
 
 
-class Sessions(base.RequestHandler):
+class Sessions(base.ContainerList):
 
     """/sessions """
 
@@ -34,12 +34,7 @@ class Sessions(base.RequestHandler):
             self.abort(404, 'no such Project')
         query = {'project': _id}
         projection = {'label': 1, 'subject.code': 1, 'notes': 1}
-        if self.public_request:
-            query['public'] = True
-        elif not self.superuser_request:
-            query['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-            projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-        sessions =  list(self.dbc.find(query, projection))
+        sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])

@@ -79,19 +79,16 @@ class User(base.RequestHandler):
                 'type': 'string',
             },
             'root': {
-                'title': 'Root',
                 'type': 'boolean',
             },
             'wheel': {
-                'title': 'Wheel',
                 'type': 'boolean',
             },
             'preferences': {
                 'title': 'Preferences',
                 'type': 'object',
                 'properties': {
-                    'data-layout': {
-                        'title': 'Data Layout',
+                    'data_layout': {
                         'type': 'string',
                     },
                 },
@@ -108,6 +105,8 @@ class User(base.RequestHandler):
     def self(self):
         """Return details for the current User."""
         user = self.dbc.find_one({'_id': self.uid}, ['firstname', 'lastname', 'root', 'wheel', 'preferences', 'email_hash'])
+        if not user:
+            self.abort(400, 'no user is logged in')
         user.setdefault('preferences', {})
         return user
 
@@ -170,13 +169,13 @@ class Groups(base.RequestHandler):
         if _id is not None:
             if _id != self.uid and not self.superuser_request:
                 self.abort(403, 'User ' + self.uid + ' may not see the Groups of User ' + _id)
-            query = {'roles.uid': _id}
+            query = {'roles._id': _id}
         else:
             if not self.superuser_request:
                 if self.request.get('admin').lower() in ('1', 'true'):
-                    query = {'roles': {'$elemMatch': {'uid': self.uid, 'access': 'admin'}}}
+                    query = {'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}}
                 else:
-                    query = {'roles.uid': self.uid}
+                    query = {'roles._id': self.uid}
         groups = list(self.app.db.groups.find(query, ['name']))
         if self.debug:
             for group in groups:
@@ -209,10 +208,10 @@ class Group(base.RequestHandler):
                 'items': {
                     'type': 'object',
                     'properties': {
-                        'uid': {
+                        '_id': {
                             'type': 'string',
                         },
-                        'role': {
+                        'access': {
                             'type': 'string',
                             'enum': [k for k, v in sorted(base.INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
                         },
@@ -230,7 +229,7 @@ class Group(base.RequestHandler):
         if not group:
             self.abort(404, 'no such Group: ' + _id)
         if not self.superuser_request:
-            group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'uid': self.uid, 'access': 'admin'}}})
+            group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
         return group

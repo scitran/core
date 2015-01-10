@@ -3,6 +3,7 @@
 import logging
 log = logging.getLogger('nimsapi')
 
+import jsonschema
 import bson.json_util
 
 import nimsdata
@@ -13,8 +14,171 @@ import projects
 import sessions
 import acquisitions
 
+COLLECTION_POST_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Collection',
+    'type': 'object',
+    'properties': {
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+        'permissions': {
+            'title': 'Permissions',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'access': {
+                        'type': 'string',
+                        'enum': [role['rid'] for role in base.ROLES],
+                    },
+                    '_id': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['access', '_id'],
+                'additionalProperties': False,
+            },
+        },
+    },
+    'required': ['name'],
+    'additionalProperties': False,
+}
 
-class Collections(base.AcquisitionAccessChecker, projects.Projects):
+COLLECTION_PUT_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Collection',
+    'type': 'object',
+    'properties': {
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+        'permissions': {
+            'title': 'Permissions',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'access': {
+                        'type': 'string',
+                        'enum': [role['rid'] for role in base.ROLES],
+                    },
+                    '_id': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['access', '_id'],
+                'additionalProperties': False,
+            },
+        },
+        'files': {
+            'title': 'Files',
+            'type': 'array',
+            'items': base.FILE_SCHEMA,
+            'uniqueItems': True,
+        },
+        'contents': {
+            'type': 'object',
+            'properties': {
+                'operation': {
+                    'type': 'string',
+                    'enum': ['add', 'remove'],
+                },
+                'nodes': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'level': {
+                                'type': 'string',
+                                'enum': ['project', 'session', 'acquisition'],
+                            },
+                            '_id': {
+                                'type': 'string',
+                                'pattern': '^[0-9a-f]{24}$',
+                            },
+                        },
+                        'required': ['level', '_id'],
+                        'additionalProperties': False,
+                    },
+                },
+            },
+            'required': ['operation', 'nodes'],
+            'additionalProperties': False,
+        },
+    },
+    'additionalProperties': False,
+}
+
+COLLECTION_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Collection',
+    'type': 'object',
+    'properties': {
+        '_id': {
+        },
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'curator': {
+            'title': 'Curator',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+        'site': {
+            'type': 'string',
+        },
+        'site_name': {
+            'title': 'Site',
+            'type': 'string',
+        },
+        'permissions': {
+            'title': 'Permissions',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'access': {
+                        'type': 'string',
+                        'enum': [role['rid'] for role in base.ROLES],
+                    },
+                    '_id': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['access', '_id'],
+                'additionalProperties': False,
+            },
+        },
+        'files': {
+            'title': 'Files',
+            'type': 'array',
+            'items': base.FILE_SCHEMA,
+            'uniqueItems': True,
+        },
+    },
+}
+
+
+class Collections(base.AcquisitionAccessChecker, base.ContainerList):
 
     """/collections """
 
@@ -28,20 +192,24 @@ class Collections(base.AcquisitionAccessChecker, projects.Projects):
 
     def post(self):
         """Create a new Collection."""
-        name = self.request.get('name') or 'innominate'
-        acq_ids = [bson.ObjectId(aid) for aid in self.request.get_all('acquisitions[]', [])]
-        self.check_acq_list(acq_ids)
-        _id = self.dbc.insert({'curator': self.uid, 'name': name, 'permissions': [{'uid': self.uid, 'access': 'admin'}]})
-        for a_id in acq_ids:
-            self.app.db.acquisitions.update({'_id': a_id}, {'$push': {'collections': _id}})
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, COLLECTION_POST_SCHEMA)
+            json_body['curator'] = self.app.db.users.find_one({'_id': self.uid}, ['firstname', 'lastname'])
+            return {'_id': str(self.dbc.insert(json_body))}
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
 
     def get(self):
         """Return the list of Collections."""
         projection = {'curator': 1, 'name': 1, 'notes': 1}
-        collections = self._get(projection)
+        collections = self._get({}, projection, self.request.get('admin').lower() in ('1', 'true'))
         for coll in collections:
-            coll['site'] = self.app.config['site_id']
-            coll['site_name'] = self.app.config['site_name']
+            coll['_id'] = str(coll['_id'])
+        if self.public_request:
+            users = {u['_id']: u for u in self.app.db.users.find()}
+            for coll in collections:
+                coll['curator'] = users[coll['curator']].get('firstname')
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])
@@ -50,59 +218,32 @@ class Collections(base.AcquisitionAccessChecker, projects.Projects):
                 coll['acquisitions'] = self.uri_for('coll_acquisitions', cid=cid, _full=True) + '?' + self.request.query_string
         return collections
 
-    def put(self):
-        """Update many Collections."""
-        self.response.write('collections put\n')
-
 
 class Collection(base.AcquisitionAccessChecker, base.Container):
 
     """/collections/<cid> """
 
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'Collection',
-        'type': 'object',
-        'properties': {
-            '_id': {
-                'title': 'Database ID',
-            },
-            'site': {
-                'title': 'Site',
-                'type': 'string',
-            },
-            'group': {
-                'title': 'Group',
-                'type': 'string',
-            },
-            'name': {
-                'title': 'Name',
-                'type': 'string',
-                'maxLength': 32,
-            },
-            'permissions': {
-                'title': 'Permissions',
-                'type': 'object',
-                'minProperties': 1,
-            },
-            'files': {
-                'title': 'Files',
-                'type': 'array',
-                'items': base.Container.file_schema,
-                'uniqueItems': True,
-            },
-        },
-        'required': ['_id', 'group', 'name'], #FIXME
-    }
-
     def __init__(self, request=None, response=None):
         super(Collection, self).__init__(request, response)
         self.dbc = self.app.db.collections
+        self.json_schema = COLLECTION_SCHEMA
+
+    def schema(self):
+        method =self.request.get('method').lower()
+        if method == 'get':
+            return COLLECTION_SCHEMA
+        elif method == 'post':
+            return COLLECTION_POST_SCHEMA
+        elif method == 'put':
+            return COLLECTION_PUT_SCHEMA
+        else:
+            self.abort(404, 'no schema for method ' + method)
 
     def get(self, cid):
         """Return one Collection, conditionally with details."""
         _id = bson.ObjectId(cid)
         coll = self._get(_id)
+        coll['_id'] = str(coll['_id'])
         if self.debug:
             coll['sessions'] = self.uri_for('coll_sessions', cid=cid, _full=True) + '?' + self.request.query_string
             coll['acquisitions'] = self.uri_for('coll_acquisitions', cid=cid, _full=True) + '?' + self.request.query_string
@@ -111,20 +252,36 @@ class Collection(base.AcquisitionAccessChecker, base.Container):
     def put(self, cid):
         """Update an existing Collection."""
         _id = bson.ObjectId(cid)
-        self._get(_id, 'modify')
-        add_acq_ids = [bson.ObjectId(aid) for aid in self.request.get_all('add_acquisitions[]', [])]
-        del_acq_ids = [bson.ObjectId(aid) for aid in self.request.get_all('del_acquisitions[]', [])]
-        self.check_acq_list(add_acq_ids)
-        self.check_acq_list(del_acq_ids)
-        for a_id in add_acq_ids:
-            self.app.db.acquisitions.update({'_id': a_id}, {'$addToSet': {'collections': _id}})
-        for a_id in del_acq_ids:
-            self.app.db.acquisitions.update({'_id': a_id}, {'$pull': {'collections': _id}})
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, COLLECTION_PUT_SCHEMA)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+        if 'permissions' in json_body:
+            self._get(_id, 'admin')
+        else:
+            self._get(_id, 'modify')
+        contents = json_body.pop('contents', None)
+        if json_body:
+            self.dbc.update({'_id': _id}, {'$set': base.mongo_dict(json_body)})
+        if contents:
+            acq_ids = []
+            for item in contents['nodes']:
+                item_id = bson.ObjectId(item['_id'])
+                if item['level'] == 'project':
+                    sess_ids = [s['_id'] for s in self.app.db.sessions.find({'project': item_id}, [])]
+                    acq_ids += [a['_id'] for a in self.app.db.acquisitions.find({'session': {'$in': sess_ids}}, [])]
+                elif item['level'] == 'session':
+                    acq_ids += [a['_id'] for a in self.app.db.acquisitions.find({'session': item_id}, [])]
+                elif item['level'] == 'acquisition':
+                    acq_ids += [item_id]
+            operator = '$addToSet' if contents['operation'] == 'add' else '$pull'
+            self.app.db.acquisitions.update({'_id': {'$in': acq_ids}}, {operator: {'collections': _id}}, multi=True)
 
     def delete(self, cid):
         """Delete a Collection."""
         _id = bson.ObjectId(cid)
-        self._get(_id, 'modify')
+        self._get(_id, 'admin')
         self.app.db.acquisitions.update({'collections': _id}, {'$pull': {'collections': _id}}, multi=True)
         self.dbc.remove({'_id': _id})
 
@@ -147,10 +304,12 @@ class CollectionSessions(sessions.Sessions):
                 {'$group': {'_id': '$session'}},
                 ])['result']
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
-        projection = ['label', 'subject', 'notes']
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1}
+        projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection))
         for sess in sessions:
             sess['site'] = self.app.config['site_id']
+            sess['_id'] = str(sess['_id'])
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -182,12 +341,16 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = ['label', 'description', 'types', 'notes']
+        projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1}
+        projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
+        for acq in acquisitions:
+            acq['site'] = self.app.config['site_id']
+            acq['_id'] = str(acq['_id'])
         if self.debug:
-            for acquisition in acquisitions:
-                aid = str(acquisition['_id'])
-                acquisition['details'] = self.uri_for('acquisition', aid=aid, _full=True) + '?user=' + self.request.get('user')
+            for acq in acquisitions:
+                aid = str(acq['_id'])
+                acq['details'] = self.uri_for('acquisition', aid=aid, _full=True) + '?user=' + self.request.get('user')
         return acquisitions
 
     def put(self):

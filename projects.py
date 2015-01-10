@@ -11,7 +11,7 @@ import nimsdata.medimg
 import base
 
 
-class Projects(base.RequestHandler):
+class Projects(base.ContainerList):
 
     """/projects """
 
@@ -27,25 +27,10 @@ class Projects(base.RequestHandler):
         """Create a new Project."""
         self.response.write('projects post\n')
 
-    def _get(self, projection):
-        query = None
-        if self.public_request:
-            query = {'public': True}
-        elif not self.superuser_request:
-            projection['permissions'] = {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}
-            if self.request.get('admin').lower() in ('1', 'true'):
-                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site, 'access': 'admin'}}}
-            else:
-                query = {'permissions': {'$elemMatch': {'uid': self.uid, 'site': self.source_site}}}
-        return list(self.dbc.find(query, projection))
-
     def get(self):
         """Return the list of Projects."""
         projection = {'group': 1, 'group_name': 1, 'name': 1, 'notes': 1}
-        projects = self._get(projection)
-        for proj in projects:
-            proj['site'] = self.app.config['site_id']
-            proj['site_name'] = self.app.config['site_name']
+        projects = self._get({}, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
