@@ -13,7 +13,7 @@ import tarfile
 import datetime
 import markdown
 
-import nimsdata
+import data
 
 import base
 import tempdir as tempfile
@@ -37,8 +37,8 @@ def sort_file(db, filepath, digest, data_path, quarantine_path):
     filename = os.path.basename(filepath)
     try:
         log.info('Parsing     %s' % filename)
-        dataset = nimsdata.parse(filepath)
-    except nimsdata.NIMSDataError:
+        dataset = data.parse(filepath)
+    except data.NIMSDataError:
         q_path = tempfile.mkdtemp(prefix=datetime.datetime.now().strftime('%Y%m%d_%H%M%S_'), dir=quarantine_path)
         shutil.move(filepath, q_path)
         return 202, 'Quarantining %s (unparsable)' % filename
@@ -84,10 +84,10 @@ def update_db(db, dataset):
             group_id = 'unknown'
             project_name = dataset.nims_group_id + ('/' + dataset.nims_project if dataset.nims_project else '')
         group = db.groups.find_one({'_id': group_id})
-        project_spec = {'group': group['_id'], 'name': project_name}
+        project_spec = {'group._id': group['_id'], 'name': project_name}
         project = db.projects.find_and_modify(
                 project_spec,
-                {'$setOnInsert': dict(group_name=group.get('name'), permissions=group['roles'], public=False, files=[])},
+                {'$setOnInsert': {'group.name': group.get('name'), 'permissions': group['roles'], 'public': False, 'files': []}},
                 upsert=True,
                 new=True,
                 fields=PROJECTION_FIELDS,

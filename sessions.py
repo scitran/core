@@ -5,8 +5,8 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-import nimsdata
-import nimsdata.medimg
+import data
+import data.medimg
 
 import base
 
@@ -75,7 +75,7 @@ class Session(base.Container):
         self.dbc = self.app.db.sessions
 
     def schema(self, *args, **kwargs):
-        return super(Session, self).schema(nimsdata.medimg.medimg.MedImgReader.session_properties)
+        return super(Session, self).schema(data.medimg.medimg.MedImgReader.session_properties)
 
     def get(self, sid):
         """Return one Session, conditionally with details."""

@@ -6,8 +6,8 @@ log = logging.getLogger('nimsapi')
 import jsonschema
 import bson.json_util
 
-import nimsdata
-import nimsdata.medimg
+import data
+import data.medimg
 
 import base
 import projects
@@ -202,8 +202,9 @@ class Collections(base.AcquisitionAccessChecker, base.ContainerList):
 
     def get(self):
         """Return the list of Collections."""
+        query = {'curator._id': self.request.get('curator')} if self.request.get('curator') else {}
         projection = {'curator': 1, 'name': 1, 'notes': 1}
-        collections = self._get({}, projection, self.request.get('admin').lower() in ('1', 'true'))
+        collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for coll in collections:
             coll['_id'] = str(coll['_id'])
         if self.public_request:
@@ -217,6 +218,10 @@ class Collections(base.AcquisitionAccessChecker, base.ContainerList):
                 coll['sessions'] = self.uri_for('coll_sessions', cid=cid, _full=True) + '?' + self.request.query_string
                 coll['acquisitions'] = self.uri_for('coll_acquisitions', cid=cid, _full=True) + '?' + self.request.query_string
         return collections
+
+    def curators(self):
+        """Return the User's list of Project Groups."""
+        return {c['curator']['_id']: c['curator'] for c in self.get()}.values()
 
 
 class Collection(base.AcquisitionAccessChecker, base.Container):

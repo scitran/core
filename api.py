@@ -47,6 +47,7 @@ routes = [
     webapp2.Route(r'/nimsapi/projects',                                 projects.Projects),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/projects', [
         webapp2.Route(r'/count',                                        projects.Projects, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/groups',                                       projects.Projects, handler_method='groups', methods=['GET']),
         webapp2.Route(r'/schema',                                       projects.Project, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<pid:[0-9a-f]{24}>',                           projects.Project, name='project'),
         webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',                  sessions.Sessions, name='sessions'),
@@ -54,6 +55,7 @@ routes = [
     webapp2.Route(r'/nimsapi/collections',                              collections_.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/collections', [
         webapp2.Route(r'/count',                                        collections_.Collections, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/curators',                                     collections_.Collections, handler_method='curators', methods=['GET']),
         webapp2.Route(r'/schema',                                       collections_.Collection, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<cid:[0-9a-f]{24}>',                           collections_.Collection, name='collection'),
         webapp2.Route(r'/<cid:[0-9a-f]{24}>/sessions',                  collections_.CollectionSessions, name='coll_sessions'),

@@ -5,8 +5,8 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-import nimsdata
-import nimsdata.medimg
+import data
+import data.medimg
 
 import base
 
@@ -28,9 +28,10 @@ class Projects(base.ContainerList):
         self.response.write('projects post\n')
 
     def get(self):
-        """Return the list of Projects."""
-        projection = {'group': 1, 'group_name': 1, 'name': 1, 'notes': 1}
-        projects = self._get({}, projection, self.request.get('admin').lower() in ('1', 'true'))
+        """Return the User's list of Projects."""
+        query = {'group._id': self.request.get('group')} if self.request.get('group') else {}
+        projection = {'group': 1, 'name': 1, 'notes': 1}
+        projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
@@ -38,9 +39,9 @@ class Projects(base.ContainerList):
                 proj['sessions'] = self.uri_for('sessions', pid=pid, _full=True) + '?' + self.request.query_string
         return projects
 
-    def put(self):
-        """Update many Projects."""
-        self.response.write('projects put\n')
+    def groups(self):
+        """Return the User's list of Project Groups."""
+        return {p['group']['_id']: p['group'] for p in self.get()}.values()
 
 
 class Project(base.Container):
@@ -81,7 +82,7 @@ class Project(base.Container):
         self.dbc = self.app.db.projects
 
     def schema(self, *args, **kwargs):
-        return super(Project, self).schema(nimsdata.medimg.medimg.MedImgReader.project_properties)
+        return super(Project, self).schema(data.medimg.medimg.MedImgReader.project_properties)
 
     def get(self, pid):
         """Return one Project, conditionally with details."""

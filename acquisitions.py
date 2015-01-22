@@ -5,8 +5,8 @@ log = logging.getLogger('nimsapi')
 
 import bson.json_util
 
-import nimsdata
-import nimsdata.medimg
+import data
+import data.medimg
 
 import base
 
@@ -74,10 +74,10 @@ class Acquisition(base.Container):
         self.dbc = self.app.db.acquisitions
 
     def schema(self, *args, **kwargs):
-        return super(Acquisition, self).schema(nimsdata.medimg.medimg.MedImgReader.acquisition_properties)
-        nimsdata.project_properties(ds_dict['project_type'])
-        nimsdata.session_properties(ds_dict['session_type'])
-        nimsdata.acquisition_properties(ds_dict['acquisition_type'])
+        return super(Acquisition, self).schema(data.medimg.medimg.MedImgReader.acquisition_properties)
+        data.project_properties(ds_dict['project_type'])
+        data.session_properties(ds_dict['session_type'])
+        data.acquisition_properties(ds_dict['acquisition_type'])
 
     def get(self, aid):
         """Return one Acquisition, conditionally with details."""
