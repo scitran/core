@@ -1,17 +1,60 @@
 # @author:  Gunnar Schaefer
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 
 import bson.json_util
 
-import data
-import data.medimg
+import scitran.data.medimg
 
-import base
+import util
+import users
+import containers
+
+PROJECT_PUT_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Project',
+    'type': 'object',
+    'properties': {
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+        'permissions': {
+            'title': 'Permissions',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'access': {
+                        'type': 'string',
+                        'enum': [role['rid'] for role in users.ROLES],
+                    },
+                    '_id': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['access', '_id'],
+                'additionalProperties': False,
+            },
+        },
+        'files': {
+            'title': 'Files',
+            'type': 'array',
+            'items': containers.FILE_SCHEMA,
+            'uniqueItems': True,
+        },
+    },
+    'additionalProperties': False,
+}
 
 
-class Projects(base.ContainerList):
+class Projects(containers.ContainerList):
 
     """/projects """
 
@@ -35,8 +78,8 @@ class Projects(base.ContainerList):
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
-                proj['details'] = self.uri_for('project', pid=pid, _full=True) + '?' + self.request.query_string
-                proj['sessions'] = self.uri_for('sessions', pid=pid, _full=True) + '?' + self.request.query_string
+                proj['details'] = self.uri_for('project', pid, _full=True) + '?' + self.request.query_string
+                proj['sessions'] = self.uri_for('sessions', pid, _full=True) + '?' + self.request.query_string
         return projects
 
     def groups(self):
@@ -44,7 +87,7 @@ class Projects(base.ContainerList):
         return {p['group']['_id']: p['group'] for p in self.get()}.values()
 
 
-class Project(base.Container):
+class Project(containers.Container):
 
     """/projects/<pid> """
 
@@ -70,19 +113,21 @@ class Project(base.Container):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': base.Container.file_schema,
+                'items': containers.FILE_SCHEMA,
                 'uniqueItems': True,
             },
         },
         'required': ['_id', 'group', 'name'], #FIXME
     }
 
+    put_schema = PROJECT_PUT_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Project, self).__init__(request, response)
         self.dbc = self.app.db.projects
 
     def schema(self, *args, **kwargs):
-        return super(Project, self).schema(data.medimg.medimg.MedImgReader.project_properties)
+        return super(Project, self).schema(scitran.data.medimg.medimg.MedImgReader.project_properties)
 
     def get(self, pid):
         """Return one Project, conditionally with details."""
@@ -91,21 +136,17 @@ class Project(base.Container):
         proj['site'] = self.app.config['site_id']
         proj['site_name'] = self.app.config['site_name']
         if self.debug:
-            proj['sessions'] = self.uri_for('sessions', pid=pid, _full=True) + '?' + self.request.query_string
+            proj['sessions'] = self.uri_for('sessions', pid, _full=True) + '?' + self.request.query_string
         return proj
 
     def put(self, pid):
         """Update an existing Project."""
         _id = bson.ObjectId(pid)
-        self._get(_id, 'modify')
-        updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
-        for k, v in self.request.params.iteritems():
-            if k in ['notes']:
-                if v is not None and v != '':
-                    updates['$set'][k] = v # FIXME: do appropriate type conversion
-                else:
-                    updates['$unset'][k] = None
-        self.dbc.update({'_id': _id}, updates)
+        json_body = self._put(_id)
+        if 'permissions' in json_body:
+            session_ids = [s['_id'] for s in self.app.db.sessions.find({'project': _id}, [])]
+            self.app.db.sessions.update({'project': _id}, {'$set': {'permissions': json_body['permissions']}}, multi=True)
+            self.app.db.acquisitions.update({'session': {'$in': session_ids}}, {'$set': {'permissions': json_body['permissions']}}, multi=True)
 
     def delete(self, pid):
         """Delete an Project."""

@@ -1,17 +1,41 @@
 # @author:  Gunnar Schaefer
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 
 import bson.json_util
 
-import data
-import data.medimg
+import scitran.data
+import scitran.data.medimg
 
-import base
+import containers
+
+ACQUISITION_PUT_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Acquisition',
+    'type': 'object',
+    'properties': {
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+        'files': {
+            'title': 'Files',
+            'type': 'array',
+            'items': containers.FILE_SCHEMA,
+            'uniqueItems': True,
+        },
+    },
+    'additionalProperties': False,
+}
 
 
-class Acquisitions(base.ContainerList):
+class Acquisitions(containers.ContainerList):
 
     """/nimsapi/acquisitions """
 
@@ -38,7 +62,7 @@ class Acquisitions(base.ContainerList):
         if self.debug:
             for acquisition in acquisitions:
                 aid = str(acquisition['_id'])
-                acquisition['details'] = self.uri_for('acquisition', aid=aid, _full=True) + '?' + self.request.query_string
+                acquisition['details'] = self.uri_for('acquisition', aid, _full=True) + '?' + self.request.query_string
         return acquisitions
 
     def put(self):
@@ -46,7 +70,7 @@ class Acquisitions(base.ContainerList):
         self.response.write('acquisitions put\n')
 
 
-class Acquisition(base.Container):
+class Acquisition(containers.Container):
 
     """/nimsapi/acquisitions/<aid> """
 
@@ -62,39 +86,35 @@ class Acquisition(base.Container):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': base.Container.file_schema,
+                'items': containers.FILE_SCHEMA,
                 'uniqueItems': True,
             },
         },
         'required': ['_id'], #FIXME
     }
 
+    put_schema = ACQUISITION_PUT_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Acquisition, self).__init__(request, response)
         self.dbc = self.app.db.acquisitions
 
     def schema(self, *args, **kwargs):
-        return super(Acquisition, self).schema(data.medimg.medimg.MedImgReader.acquisition_properties)
-        data.project_properties(ds_dict['project_type'])
-        data.session_properties(ds_dict['session_type'])
-        data.acquisition_properties(ds_dict['acquisition_type'])
+        return super(Acquisition, self).schema(scitran.data.medimg.medimg.MedImgReader.acquisition_properties)
+        scitran.data.project_properties(ds_dict['project_type'])
+        scitran.data.session_properties(ds_dict['session_type'])
+        scitran.data.acquisition_properties(ds_dict['acquisition_type'])
 
     def get(self, aid):
         """Return one Acquisition, conditionally with details."""
         _id = bson.ObjectId(aid)
-        return self._get(_id)
+        acq = self._get(_id)
+        return acq
 
     def put(self, aid):
         """Update an existing Acquisition."""
         _id = bson.ObjectId(aid)
-        self._get(_id, 'modify')
-        updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
-        for k, v in self.request.params.iteritems():
-                if v is not None and v != '':
-                    updates['$set'][k] = v # FIXME: do appropriate type conversion
-                else:
-                    updates['$unset'][k] = None
-        self.dbc.update({'_id': _id}, updates)
+        self._put(_id)
 
     def delete(self, aid):
         """Delete an Acquisition."""

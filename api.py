@@ -4,7 +4,8 @@
 
 import logging
 import logging.config
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
+logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown library logging
 
 import os
@@ -22,55 +23,63 @@ import collections_
 
 
 routes = [
-    webapp2.Route(r'/nimsapi',                                          core.Core),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi', [
-        webapp2.Route(r'/download',                                     core.Core, handler_method='download', methods=['GET']),
-        webapp2.Route(r'/sites',                                        core.Core, handler_method='sites', methods=['GET']),
-        webapp2.Route(r'/roles',                                        core.Core, handler_method='roles', methods=['GET']),
-        webapp2.Route(r'/log',                                          core.Core, handler_method='log', methods=['GET']),
-        webapp2.Route(r'/search',                                       core.Core, handler_method='search', methods=['GET', 'POST']),
+    webapp2.Route(r'/api',                                          core.Core),
+    webapp2_extras.routes.PathPrefixRoute(r'/api', [
+        webapp2.Route(r'/download',                                 core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
+        webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET']),
+        webapp2.Route(r'/log',                                      core.Core, handler_method='log', methods=['GET']),
+        webapp2.Route(r'/search',                                   core.Core, handler_method='search', methods=['GET', 'POST']),
     ]),
-    webapp2.Route(r'/nimsapi/users',                                    users.Users),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/users', [
-        webapp2.Route(r'/count',                                        users.Users, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/self',                                         users.User, handler_method='self', methods=['GET']),
-        webapp2.Route(r'/schema',                                       users.User, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<_id>',                                        users.User, name='user'),
-        webapp2.Route(r'/<_id>/groups',                                 users.Groups, name='groups'),
+    webapp2.Route(r'/api/users',                                    users.Users),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
+        webapp2.Route(r'/count',                                    users.Users, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/self',                                     users.User, handler_method='self', methods=['GET']),
+        webapp2.Route(r'/roles',                                    users.User, handler_method='roles', methods=['GET']),
+        webapp2.Route(r'/schema',                                   users.User, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<_id>',                                    users.User, name='user'),
+        webapp2.Route(r'/<_id>/groups',                             users.Groups, name='groups'),
     ]),
-    webapp2.Route(r'/nimsapi/groups',                                   users.Groups),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/groups', [
-        webapp2.Route(r'/count',                                        users.Groups, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/schema',                                       users.Group, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<_id>',                                        users.Group, name='group'),
+    webapp2.Route(r'/api/groups',                                   users.Groups),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/groups', [
+        webapp2.Route(r'/count',                                    users.Groups, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                   users.Group, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<_id>',                                    users.Group, name='group'),
     ]),
-    webapp2.Route(r'/nimsapi/projects',                                 projects.Projects),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/projects', [
-        webapp2.Route(r'/count',                                        projects.Projects, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/groups',                                       projects.Projects, handler_method='groups', methods=['GET']),
-        webapp2.Route(r'/schema',                                       projects.Project, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<pid:[0-9a-f]{24}>',                           projects.Project, name='project'),
-        webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',                  sessions.Sessions, name='sessions'),
+    webapp2.Route(r'/api/projects',                                 projects.Projects),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
+        webapp2.Route(r'/count',                                    projects.Projects, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/groups',                                   projects.Projects, handler_method='groups', methods=['GET']),
+        webapp2.Route(r'/schema',                                   projects.Project, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>',                          projects.Project, name='project'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     projects.Project, handler_method='get_file', methods=['GET', 'POST']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     projects.Project, handler_method='put_file', methods=['PUT']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 sessions.Sessions, name='sessions'),
     ]),
-    webapp2.Route(r'/nimsapi/collections',                              collections_.Collections),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/collections', [
-        webapp2.Route(r'/count',                                        collections_.Collections, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/curators',                                     collections_.Collections, handler_method='curators', methods=['GET']),
-        webapp2.Route(r'/schema',                                       collections_.Collection, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<cid:[0-9a-f]{24}>',                           collections_.Collection, name='collection'),
-        webapp2.Route(r'/<cid:[0-9a-f]{24}>/sessions',                  collections_.CollectionSessions, name='coll_sessions'),
-        webapp2.Route(r'/<cid:[0-9a-f]{24}>/acquisitions',              collections_.CollectionAcquisitions, name='coll_acquisitions'),
+    webapp2.Route(r'/api/collections',                              collections_.Collections),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/collections', [
+        webapp2.Route(r'/count',                                    collections_.Collections, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/curators',                                 collections_.Collections, handler_method='curators', methods=['GET']),
+        webapp2.Route(r'/schema',                                   collections_.Collection, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>',                          collections_.Collection, name='collection'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     collections_.Collection, handler_method='get_file', methods=['GET', 'POST']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     collections_.Collection, handler_method='put_file', methods=['PUT']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections_.CollectionSessions, name='coll_sessions'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/sessions', [
-        webapp2.Route(r'/count',                                        sessions.Sessions, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/schema',                                       sessions.Session, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<sid:[0-9a-f]{24}>',                           sessions.Session, name='session'),
-        webapp2.Route(r'/<sid:[0-9a-f]{24}>/acquisitions',              acquisitions.Acquisitions, name='acquisitions'),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/sessions', [
+        webapp2.Route(r'/count',                                    sessions.Sessions, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                   sessions.Session, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>',                          sessions.Session, name='session'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     sessions.Session, handler_method='get_file', methods=['GET', 'POST']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     sessions.Session, handler_method='put_file', methods=['PUT']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             acquisitions.Acquisitions, name='acquisitions'),
     ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/nimsapi/acquisitions', [
-        webapp2.Route(r'/count',                                        acquisitions.Acquisitions, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/schema',                                       acquisitions.Acquisition, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<aid:[0-9a-f]{24}>',                           acquisitions.Acquisition, name='acquisition'),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/acquisitions', [
+        webapp2.Route(r'/count',                                    acquisitions.Acquisitions, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/schema',                                   acquisitions.Acquisition, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='get_file', methods=['GET', 'POST']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='put_file', methods=['PUT']),
     ]),
 ]
 
@@ -94,7 +103,6 @@ app.config = {
 
 
 if __name__ == '__main__':
-    import os
     import pymongo
     import argparse
     import ConfigParser

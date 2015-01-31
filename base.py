@@ -1,82 +1,14 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library logging
 
 import copy
 import json
-import base64
 import webapp2
 import datetime
 import requests
-import bson.json_util
-
-ROLES = [
-    {
-        'rid': 'view',
-        'name': 'View-Only',
-    },
-    {
-        'rid': 'download',
-        'name': 'Download',
-    },
-    {
-        'rid': 'modify',
-        'name': 'Modify',
-    },
-    {
-        'rid': 'admin',
-        'name': 'Admin',
-    },
-]
-
-INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
-
-FILE_SCHEMA = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
-    'title': 'File',
-    'type': 'object',
-    'properties': {
-        'name': {
-            'title': 'Name',
-            'type': 'string',
-        },
-        'ext': {
-            'title': 'Extension',
-            'type': 'string',
-        },
-        'size': {
-            'title': 'Size',
-            'type': 'integer',
-        },
-        'sha1': {
-            'title': 'SHA-1',
-            'type': 'string',
-        },
-        'type': {
-            'title': 'Type',
-            'type': 'string',
-        },
-        'kinds': {
-            'title': 'Kinds',
-            'type': 'array',
-        },
-        'state': {
-            'title': 'State',
-            'type': 'array',
-        },
-    },
-    'required': ['name', 'ext', 'size', 'sha1', 'type', 'kinds', 'state'],
-    'additionalProperties': False
-}
-
-
-def mongo_dict(d):
-    def _mongo_list(d, pk=''):
-        pk = pk and pk + '.'
-        return sum([_mongo_list(v, pk+k) if isinstance(v, dict) else [(pk+k, v)] for k, v in d.iteritems()], [])
-    return dict(_mongo_list(d))
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -84,44 +16,6 @@ class RequestHandler(webapp2.RequestHandler):
     """fetches pubkey from own self.db.remotes. needs to be aware of OWN site uid"""
 
     json_schema = None
-
-    file_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'File',
-        'type': 'object',
-        'properties': {
-            'name': {
-                'title': 'Name',
-                'type': 'string',
-            },
-            'ext': {
-                'title': 'Extension',
-                'type': 'string',
-            },
-            'size': {
-                'title': 'Size',
-                'type': 'integer',
-            },
-            'sha1': {
-                'title': 'SHA-1',
-                'type': 'string',
-            },
-            'type': {
-                'title': 'Type',
-                'type': 'string',
-            },
-            'kinds': {
-                'title': 'Kinds',
-                'type': 'array',
-            },
-            'state': {
-                'title': 'State',
-                'type': 'array',
-            },
-        },
-        'required': ['state', 'datatype', 'filetype'], #FIXME
-        'additionalProperties': False
-    }
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
@@ -132,12 +26,20 @@ class RequestHandler(webapp2.RequestHandler):
         self.source_site = None
         access_token = self.request.headers.get('Authorization', None)
         if access_token and self.app.config['oauth2_id_endpoint']:
-            r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
-            if r.status_code == 200:
-                self.uid = json.loads(r.content)['email']
+            token_request_time = datetime.datetime.now()
+            cached_token = self.app.db.tokens.find_one({'_id': access_token})
+            if cached_token:
+                self.uid = cached_token['uid']
+                log.debug('looked up cached token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
             else:
-                headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
-                self.abort(401, 'invalid oauth2 token', headers=headers)
+                r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
+                if r.status_code == 200:
+                    self.uid = json.loads(r.content)['email']
+                    self.app.db.tokens.insert({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
+                    log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
+                else:
+                    headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
+                    self.abort(401, 'invalid oauth2 token', headers=headers)
         elif self.debug and self.request.get('user'):
             self.uid = self.request.get('user')
         elif self.request.user_agent.startswith('NIMS Instance'):
@@ -184,7 +86,7 @@ class RequestHandler(webapp2.RequestHandler):
             if 'user' in self.params: del self.params['user']
             del self.params['site']
             log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
-            target_uri = target['api_uri'] + self.request.path.split('/nimsapi')[1]
+            target_uri = target['api_uri'] + self.request.path.split('/api')[1]
             r = requests.request(self.request.method, target_uri,
                     params=self.params, data=self.request.body, headers=self.headers, cert=self.app.config['ssl_cert'])
             if r.status_code != 200:
@@ -204,69 +106,3 @@ class RequestHandler(webapp2.RequestHandler):
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(updates)
         return json_schema
-
-
-class ContainerList(RequestHandler):
-
-    def _get(self, query, projection, admin_only=False):
-        if self.public_request:
-            query['public'] = True
-        else:
-            projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
-            if not self.superuser_request:
-                if admin_only:
-                    query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site, 'access': 'admin'}}
-                else:
-                    query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
-        containers = list(self.dbc.find(query, projection))
-        for container in containers:
-            container['_id'] = str(container['_id'])
-        return containers
-
-
-class Container(RequestHandler):
-
-    def _get(self, _id, min_role=None): # TODO: take projection arg for added effiency; use empty projection for access checks
-        container = self.dbc.find_one({'_id': _id})
-        if not container:
-            self.abort(404, 'no such ' + self.__class__.__name__)
-        if self.uid is None:
-            if not container.get('public', False):
-                self.abort(403, 'this ' + self.__class__.__name__ + 'is not public')
-            del container['permissions']
-        elif not self.superuser_request:
-            user_perm = None
-            for perm in container['permissions']:
-                if perm['_id'] == self.uid and perm.get('site') == self.source_site:
-                    user_perm = perm
-                    break
-            else:
-                self.abort(403, self.uid + ' does not have permissions on this ' + self.__class__.__name__)
-            if min_role and INTEGER_ROLES[user_perm['access']] < INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
-            if user_perm['access'] not in ['admin', 'modify']: # if not admin or modify, mask permissions of other users
-                container['permissions'] = [user_perm]
-        if self.request.get('paths').lower() in ('1', 'true'):
-            for file_info in container['files']:
-                file_info['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + file_info['name'] + file_info['ext']
-        container['_id'] = str(container['_id'])
-        return container
-
-
-class AcquisitionAccessChecker(object):
-
-    def check_acq_list(self, acq_ids):
-        if not self.superuser_request:
-            for a_id in acq_ids:
-                agg_res = self.app.db.acquisitions.aggregate([
-                        {'$match': {'_id': a_id}},
-                        {'$project': {'permissions': 1}},
-                        {'$unwind': '$permissions'},
-                        ])['result']
-                if not agg_res:
-                    self.abort(404, 'Acquisition %s does not exist' % a_id)
-                for perm_doc in agg_res:
-                    if perm_doc['permissions']['_id'] == self.uid:
-                        break
-                else:
-                    self.abort(403, self.uid + ' does not have permissions on Acquisition %s' % a_id)

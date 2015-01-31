@@ -1,15 +1,36 @@
 # @author:  Gunnar Schaefer
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 
 import copy
 import hashlib
 import pymongo
 import jsonschema
-import bson.json_util
 
 import base
+import util
+
+ROLES = [
+    {
+        'rid': 'view',
+        'name': 'View-Only',
+    },
+    {
+        'rid': 'download',
+        'name': 'Download',
+    },
+    {
+        'rid': 'modify',
+        'name': 'Modify',
+    },
+    {
+        'rid': 'admin',
+        'name': 'Admin',
+    },
+]
+
+INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
 
 
 class Users(base.RequestHandler):
@@ -31,6 +52,7 @@ class Users(base.RequestHandler):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, User.json_schema)
+            json_body.setdefault('email', json_body['_id'])
             json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
             self.dbc.insert(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
@@ -94,7 +116,7 @@ class User(base.RequestHandler):
                 },
             },
         },
-        'required': ['_id', 'email', 'firstname', 'lastname'],
+        'required': ['_id', 'firstname', 'lastname'],
         'additionalProperties': False,
     }
 
@@ -109,6 +131,10 @@ class User(base.RequestHandler):
             self.abort(400, 'no user is logged in')
         user.setdefault('preferences', {})
         return user
+
+    def roles(self):
+        """Return the list of user roles."""
+        return ROLES
 
     def get(self, _id):
         """ Return User details."""
@@ -142,7 +168,7 @@ class User(base.RequestHandler):
             self.abort(400, str(e))
         if 'wheel' in json_body and _id == self.uid:
             self.abort(400, 'user cannot alter own superuser privilege')
-        self.dbc.update({'_id': _id}, {'$set': base.mongo_dict(json_body)})
+        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
         """Delete a User."""
@@ -213,7 +239,7 @@ class Group(base.RequestHandler):
                         },
                         'access': {
                             'type': 'string',
-                            'enum': [k for k, v in sorted(base.INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
+                            'enum': [k for k, v in sorted(INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
                         },
                     },
                 },

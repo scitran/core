@@ -6,19 +6,8 @@ import os
 import json
 import pymongo
 import hashlib
+import logging
 import argparse
-
-
-def hrsize(size):
-    if size < 1000:
-        return '%d%s' % (size, 'B')
-    for suffix in 'KMGTPEZY':
-        size /= 1024.
-        if size < 10.:
-            return '%.1f%s' % (size, suffix)
-        if size < 1000.:
-            return '%.0f%s' % (size, suffix)
-    return '%.0f%s' % (size, 'Y')
 
 
 def rsinit(args):
@@ -66,6 +55,8 @@ def dbinit(args):
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
+    db.tokens.create_index('timestamp', expireAfterSeconds=600)
+    db.downloads.create_index('timestamp', expireAfterSeconds=60)
 
     if args.json:
         with open(args.json) as json_dump:
@@ -86,7 +77,8 @@ example:
 
 
 def sort(args):
-    import core
+    logging.basicConfig(level=logging.WARNING)
+    import util
     data_path = os.path.join(args.sort_path, 'nims')
     quarantine_path = os.path.join(args.sort_path, 'quarantine')
     if not os.path.exists(data_path):
@@ -107,13 +99,13 @@ def sort(args):
     file_cnt = len(files)
     print 'found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt
     for i, filepath in enumerate(files):
-        print 'sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), hrsize(os.path.getsize(filepath)), i+1, file_cnt)
+        print 'sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt)
         hash_ = hashlib.sha1()
         if not args.quick:
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
                     hash_.update(chunk)
-        status, detail = core.sort_file(db, filepath, hash_.hexdigest(), data_path, quarantine_path)
+        status, detail = util.insert_file(db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path)
         if status != 200:
             print detail
 
@@ -124,6 +116,7 @@ example:
 
 
 def upload(args):
+    import util
     import datetime
     import requests
     print 'inspecting %s' % args.path
@@ -141,7 +134,7 @@ def upload(args):
         with open(filepath, 'rb') as fd:
             for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
                 hash_.update(chunk)
-        print 'uploading   %s [%s]' % (filename, hrsize(os.path.getsize(filepath)))
+        print 'uploading   %s [%s]' % (filename, util.hrsize(os.path.getsize(filepath)))
         with open(filepath, 'rb') as fd:
             headers = {'User-Agent': 'bootstrapper', 'Content-MD5': hash_.hexdigest()}
             try:
@@ -152,7 +145,7 @@ def upload(args):
                 print 'error       %s: %s' % (filename, e)
             else:
                 if r.status_code == 200:
-                    print 'success     %s [%s/s]' % (filename, hrsize(os.path.getsize(filepath)/upload_duration))
+                    print 'success     %s [%s/s]' % (filename, util.hrsize(os.path.getsize(filepath)/upload_duration))
                 else:
                     print 'failure     %s: %s %s, %s' % (log_info, filename, r.status_code, r.reason, r.text)
 

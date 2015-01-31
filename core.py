@@ -1,190 +1,102 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 
 import os
 import re
-import copy
-import shutil
-import difflib
 import hashlib
 import tarfile
-import datetime
 import markdown
-
-import data
+import jsonschema
 
 import base
+import util
 import tempdir as tempfile
 
-PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
-
-
-def hrsize(size):
-    if size < 1000:
-        return '%d%s' % (size, 'B')
-    for suffix in 'KMGTPEZY':
-        size /= 1024.
-        if size < 10.:
-            return '%.1f%s' % (size, suffix)
-        if size < 1000.:
-            return '%.0f%s' % (size, suffix)
-    return '%.0f%s' % (size, 'Y')
-
-
-def sort_file(db, filepath, digest, data_path, quarantine_path):
-    filename = os.path.basename(filepath)
-    try:
-        log.info('Parsing     %s' % filename)
-        dataset = data.parse(filepath)
-    except data.NIMSDataError:
-        q_path = tempfile.mkdtemp(prefix=datetime.datetime.now().strftime('%Y%m%d_%H%M%S_'), dir=quarantine_path)
-        shutil.move(filepath, q_path)
-        return 202, 'Quarantining %s (unparsable)' % filename
-    else:
-        log.info('Sorting     %s' % filename)
-        # TODO: bail, if any required params are not set
-        acquisition_spec, acquisition_id = update_db(db, dataset)
-        acquisition_path = os.path.join(data_path, acquisition_id[-3:] + '/' + acquisition_id)
-        if not os.path.exists(acquisition_path):
-            os.makedirs(acquisition_path)
-        file_spec = copy.deepcopy(acquisition_spec)
-        file_spec['files'] = {'$elemMatch': {'type': dataset.nims_file_type, 'state': dataset.nims_file_state, 'kinds': dataset.nims_file_kinds}}
-        file_info = dict(
-                name=dataset.nims_file_name,
-                ext=dataset.nims_file_ext,
-                size=os.path.getsize(filepath),
-                sha1=digest,
-                #hash=dataset.nims_hash, TODO: datasets should be able to hash themselves (but not here)
-                type=dataset.nims_file_type,
-                kinds=dataset.nims_file_kinds,
-                state=dataset.nims_file_state,
-                )
-        success = db.acquisitions.update(file_spec, {'$set': {'files.$': file_info}})
-        if not success['updatedExisting']:
-            db.acquisitions.update(acquisition_spec, {'$push': {'files': file_info}})
-        shutil.move(filepath, acquisition_path + '/' + dataset.nims_file_name + dataset.nims_file_ext)
-        log.debug('Done        %s' % filename)
-        return 200, 'Success'
-
-
-def update_db(db, dataset):
-    session_spec = {'uid': dataset.nims_session_id}
-    session = db.sessions.find_one(session_spec, ['project'])
-    if session: # skip project creation, if session exists
-        project = db.projects.find_one({'_id': session['project']}, fields=PROJECTION_FIELDS)
-    else:
-        existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
-        group_id_matches = difflib.get_close_matches(dataset.nims_group_id, existing_group_ids, cutoff=0.8)
-        if len(group_id_matches) == 1:
-            group_id = group_id_matches[0]
-            project_name = dataset.nims_project or 'untitled'
-        else:
-            group_id = 'unknown'
-            project_name = dataset.nims_group_id + ('/' + dataset.nims_project if dataset.nims_project else '')
-        group = db.groups.find_one({'_id': group_id})
-        project_spec = {'group._id': group['_id'], 'name': project_name}
-        project = db.projects.find_and_modify(
-                project_spec,
-                {'$setOnInsert': {'group.name': group.get('name'), 'permissions': group['roles'], 'public': False, 'files': []}},
-                upsert=True,
-                new=True,
-                fields=PROJECTION_FIELDS,
-                )
-    # project timestamp and timezone are inherited from latest acquisition
-    if dataset.nims_metadata_status and project.get('timestamp', dataset.nims_timestamp - datetime.timedelta(1)) < dataset.nims_timestamp:
-        db.projects.update({'_id': project['_id']}, {'$set': dict(timestamp=dataset.nims_timestamp, timezone=dataset.nims_timezone)})
-    session = db.sessions.find_and_modify(
-            session_spec,
-            {
-                '$setOnInsert': dict(project=project['_id'], permissions=project['permissions'], public=project['public'], files=[]),
-                '$set': entity_metadata(dataset, dataset.session_properties, session_spec), # session_spec ensures non-empty $set
-                '$addToSet': {'domains': dataset.nims_file_domain},
+DOWNLOAD_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Download',
+    'type': 'object',
+    'properties': {
+        'optional': {
+            'type': 'boolean',
+        },
+        'nodes': {
+            'type': 'array',
+            'minItems': 1,
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'level': {
+                        'type': 'string',
+                        'enum': ['project', 'session', 'acquisition'],
+                    },
+                    '_id': {
+                        'type': 'string',
+                        'pattern': '^[0-9a-f]{24}$',
+                    },
                 },
-            upsert=True,
-            new=True,
-            fields=PROJECTION_FIELDS,
-            )
-    # session timestamp and timezone are inherited from earliest acquisition
-    if dataset.nims_metadata_status and session.get('timestamp', dataset.nims_timestamp + datetime.timedelta(1)) > dataset.nims_timestamp:
-        db.sessions.update({'_id': session['_id']}, {'$set': dict(timestamp=dataset.nims_timestamp, timezone=dataset.nims_timezone)})
-    acquisition_spec = {'uid': dataset.nims_acquisition_id}
-    acquisition = db.acquisitions.find_and_modify(
-            acquisition_spec,
-            {
-                '$setOnInsert': dict(session=session['_id'], permissions=session['permissions'], public=session['public'], files=[]),
-                '$set': entity_metadata(dataset, dataset.acquisition_properties, acquisition_spec), # acquisition_spec ensures non-empty $set
-                '$addToSet': {'types': {'$each': [{'domain': dataset.nims_file_domain, 'kind': kind} for kind in dataset.nims_file_kinds]}},
-                },
-            upsert=True,
-            new=True,
-            fields=[],
-            )
-    return acquisition_spec, str(acquisition['_id'])
-
-
-def entity_metadata(dataset, properties, metadata={}, parent_key=''):
-    metadata = copy.deepcopy(metadata)
-    if dataset.nims_metadata_status is not None:
-        parent_key = parent_key and parent_key + '.'
-        for key, attributes in properties.iteritems():
-            if attributes['type'] == 'object':
-                metadata.update(entity_metadata(dataset, attributes['properties'], parent_key=key))
-            else:
-                value = getattr(dataset, attributes['field']) if 'field' in attributes else None
-                if value or value == 0: # drop Nones and empty iterables
-                    metadata[parent_key + key] = value
-    return metadata
-
+                'required': ['level', '_id'],
+                'additionalProperties': False
+            },
+        },
+    },
+    'required': ['optional', 'nodes'],
+    'additionalProperties': False
+}
 
 class Core(base.RequestHandler):
 
-    """/nimsapi """
+    """/api """
 
     def head(self):
         """Return 200 OK."""
-        self.response.set_status(200)
+        pass
+
+    def post(self):
+        log.error(self.request.body)
 
     def get(self):
         """Return API documentation"""
         resources = """
             Resource                                                 | Description
             :--------------------------------------------------------|:-----------------------
-            nimsapi/login                                            | user login
-            [(nimsapi/sites)]                                        | local and remote sites
-            [(nimsapi/roles)]                                        | user roles
-            nimsapi/upload                                           | upload
-            nimsapi/download                                         | download
-            [(nimsapi/log)]                                          | log messages
-            [(nimsapi/search)]                                       | search
-            [(nimsapi/users)]                                        | list of users
-            [(nimsapi/users/count)]                                  | count of users
-            [(nimsapi/users/schema)]                                 | schema for single user
-            nimsapi/users/*<uid>*                                    | details for user *<uid>*
-            [(nimsapi/groups)]                                       | list of groups
-            [(nimsapi/groups/count)]                                 | count of groups
-            [(nimsapi/groups/schema)]                                | schema for single group
-            nimsapi/groups/*<gid>*                                   | details for group *<gid>*
-            [(nimsapi/projects)]                                     | list of projects
-            [(nimsapi/projects/count)]                               | count of projects
-            [(nimsapi/projects/schema)]                              | schema for single project
-            nimsapi/projects/*<pid>*                                 | details for project *<pid>*
-            nimsapi/projects/*<pid>*/sessions                        | list sessions for project *<pid>*
-            [(nimsapi/sessions/count)]                               | count of sessions
-            [(nimsapi/sessions/schema)]                              | schema for single session
-            nimsapi/sessions/*<sid>*                                 | details for session *<sid>*
-            nimsapi/sessions/*<sid>*/move                            | move session *<sid>* to a different project
-            nimsapi/sessions/*<sid>*/acquisitions                    | list acquisitions for session *<sid>*
-            [(nimsapi/acquisitions/count)]                           | count of acquisitions
-            [(nimsapi/acquisitions/schema)]                          | schema for single acquisition
-            nimsapi/acquisitions/*<aid>*                             | details for acquisition *<aid>*
-            [(nimsapi/collections)]                                  | list of collections
-            [(nimsapi/collections/count)]                            | count of collections
-            [(nimsapi/collections/schema)]                           | schema for single collection
-            nimsapi/collections/*<cid>*                              | details for collection *<cid>*
-            nimsapi/collections/*<cid>*/sessions                     | list of sessions for collection *<cid>*
-            nimsapi/collections/*<cid>*/acquisitions?session=*<sid>* | list of acquisitions for collection *<cid>*, optionally restricted to session *<sid>*
+            api/login                                            | user login
+            [(api/sites)]                                        | local and remote sites
+            api/upload                                           | upload
+            api/download                                         | download
+            [(api/log)]                                          | log messages
+            [(api/search)]                                       | search
+            [(api/users)]                                        | list of users
+            [(api/users/count)]                                  | count of users
+            [(api/users/self)]                                   | user identity
+            [(api/users/roles)]                                  | user roles
+            [(api/users/schema)]                                 | schema for single user
+            api/users/*<uid>*                                    | details for user *<uid>*
+            [(api/groups)]                                       | list of groups
+            [(api/groups/count)]                                 | count of groups
+            [(api/groups/schema)]                                | schema for single group
+            api/groups/*<gid>*                                   | details for group *<gid>*
+            [(api/projects)]                                     | list of projects
+            [(api/projects/count)]                               | count of projects
+            [(api/projects/schema)]                              | schema for single project
+            api/projects/*<pid>*                                 | details for project *<pid>*
+            api/projects/*<pid>*/sessions                        | list sessions for project *<pid>*
+            [(api/sessions/count)]                               | count of sessions
+            [(api/sessions/schema)]                              | schema for single session
+            api/sessions/*<sid>*                                 | details for session *<sid>*
+            api/sessions/*<sid>*/move                            | move session *<sid>* to a different project
+            api/sessions/*<sid>*/acquisitions                    | list acquisitions for session *<sid>*
+            [(api/acquisitions/count)]                           | count of acquisitions
+            [(api/acquisitions/schema)]                          | schema for single acquisition
+            api/acquisitions/*<aid>*                             | details for acquisition *<aid>*
+            [(api/collections)]                                  | list of collections
+            [(api/collections/count)]                            | count of collections
+            [(api/collections/schema)]                           | schema for single collection
+            api/collections/*<cid>*                              | details for collection *<cid>*
+            api/collections/*<cid>*/sessions                     | list of sessions for collection *<cid>*
+            api/collections/*<cid>*/acquisitions?session=*<sid>* | list of acquisitions for collection *<cid>*, optionally restricted to session *<sid>*
             """
 
         if self.debug and self.uid:
@@ -196,7 +108,7 @@ class Core(base.RequestHandler):
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
         self.response.write('<html>\n')
         self.response.write('<head>\n')
-        self.response.write('<title>NIMSAPI</title>\n')
+        self.response.write('<title>SciTran API</title>\n')
         self.response.write('<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">\n')
         self.response.write('<style type="text/css">\n')
         self.response.write('table {width:0%; border-width:1px; padding: 0;border-collapse: collapse;}\n')
@@ -221,11 +133,13 @@ class Core(base.RequestHandler):
         self.response.write('</html>\n')
 
     def put(self):
-        # TODO add security: either authenticated user or machine-to-machine CRAM
+        """Receive a sortable reaper or user upload."""
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         filename = self.request.get('filename', 'upload')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
+        data_path = self.app.config['data_path']
+        quarantine_path = self.app.config['quarantine_path']
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=data_path) as tempdir_path:
             hash_ = hashlib.sha1()
             filepath = os.path.join(tempdir_path, filename)
             with open(filepath, 'wb') as fd:
@@ -236,19 +150,39 @@ class Core(base.RequestHandler):
                 self.abort(400, 'Content-MD5 mismatch.')
             if not tarfile.is_tarfile(filepath):
                 self.abort(415, 'Only tar files are accepted.')
-            log.info('Received    %s [%s] from %s' % (filename, hrsize(self.request.content_length), self.request.user_agent))
-            status, detail = sort_file(self.app.db, filepath, hash_.hexdigest(), self.app.config['data_path'], self.app.config['quarantine_path'])
+            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(self.request.content_length), self.request.user_agent))
+            status, detail = util.insert_file(self.app.db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path)
             if status != 200:
                 self.abort(status, detail)
 
+    def _preflight_archivestream(self, req_spec):
+        # check permissions of everything
+        # allow downloads of permitted items only
+        pass
+
+    def _archivestream(self, tkt_spec):
+        pass
+
     def download(self):
-        paths = []
-        symlinks = []
-        for js_id in self.request.get('id', allow_multiple=True):
-            type_, _id = js_id.split('_')
-            _idpaths, _idsymlinks = resource_types[type_].download_info(_id)
-            paths += _idpaths
-            symlinks += _idsymlinks
+        ticket_id = self.request.get('ticket')
+        if ticket_id:
+            tkt_spec = self.app.db.downloads.find_one({'_id': ticket_id})
+            if not tkt_spec:
+                self.abort(404, 'no such ticket')
+            if tkt_spec['type'] == 'single':
+                self.response.app_iter = open(tkt_spec['filepath'], 'rb')
+            else:
+                self.response.app_iter = self._archivestream(tkt_spec) # returns iterator
+            self.response.headers['Content-Type'] = 'application/octet-stream'
+            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(tkt_spec['filename'])
+            self.response.headers['Content-Length'] = str(tkt_spec['size']) # must be set after setting app_iter
+        else:
+            try:
+                req_spec = self.request.json_body
+                jsonschema.validate(req_spec, DOWNLOAD_SCHEMA)
+            except (ValueError, jsonschema.ValidationError) as e:
+                self.abort(400, str(e))
+            return self._preflight_archivestream(req_spec)
 
     def sites(self):
         """Return local and remote sites."""
@@ -257,10 +191,6 @@ class Core(base.RequestHandler):
         else:
             sites = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
         return sites + [{'_id': self.app.config['site_id'], 'name': self.app.config['site_name'], 'onload': True}]
-
-    def roles(self):
-        """Return the list of user roles."""
-        return base.ROLES
 
     def log(self):
         """Return logs."""
@@ -277,7 +207,7 @@ class Core(base.RequestHandler):
             n = int(self.request.get('n', 10000))
         except:
             self.abort(400, 'n must be an integer')
-        return [line.strip() for line in reversed(logs) if re.match('[-:0-9 ]{18} +nimsapi:(?!.*[/a-z]*/log )', line)][:n]
+        return [line.strip() for line in reversed(logs) if re.match('[-:0-9 ]{18} +api:(?!.*[/a-z]*/log )', line)][:n]
 
     search_schema = {
         'title': 'Search',

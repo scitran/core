@@ -1,16 +1,14 @@
 # @author:  Gunnar Schaefer
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 
 import jsonschema
 import bson.json_util
 
-import data
-import data.medimg
-
-import base
-import projects
+import util
+import users
+import containers
 import sessions
 import acquisitions
 
@@ -36,7 +34,7 @@ COLLECTION_POST_SCHEMA = {
                 'properties': {
                     'access': {
                         'type': 'string',
-                        'enum': [role['rid'] for role in base.ROLES],
+                        'enum': [role['rid'] for role in users.ROLES],
                     },
                     '_id': {
                         'type': 'string',
@@ -73,7 +71,7 @@ COLLECTION_PUT_SCHEMA = {
                 'properties': {
                     'access': {
                         'type': 'string',
-                        'enum': [role['rid'] for role in base.ROLES],
+                        'enum': [role['rid'] for role in users.ROLES],
                     },
                     '_id': {
                         'type': 'string',
@@ -86,7 +84,7 @@ COLLECTION_PUT_SCHEMA = {
         'files': {
             'title': 'Files',
             'type': 'array',
-            'items': base.FILE_SCHEMA,
+            'items': containers.FILE_SCHEMA,
             'uniqueItems': True,
         },
         'contents': {
@@ -158,7 +156,7 @@ COLLECTION_SCHEMA = {
                 'properties': {
                     'access': {
                         'type': 'string',
-                        'enum': [role['rid'] for role in base.ROLES],
+                        'enum': [role['rid'] for role in users.ROLES],
                     },
                     '_id': {
                         'type': 'string',
@@ -171,14 +169,14 @@ COLLECTION_SCHEMA = {
         'files': {
             'title': 'Files',
             'type': 'array',
-            'items': base.FILE_SCHEMA,
+            'items': containers.FILE_SCHEMA,
             'uniqueItems': True,
         },
     },
 }
 
 
-class Collections(base.AcquisitionAccessChecker, base.ContainerList):
+class Collections(containers.ContainerList):
 
     """/collections """
 
@@ -214,9 +212,9 @@ class Collections(base.AcquisitionAccessChecker, base.ContainerList):
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])
-                coll['details'] = self.uri_for('collection', cid=cid, _full=True) + '?' + self.request.query_string
-                coll['sessions'] = self.uri_for('coll_sessions', cid=cid, _full=True) + '?' + self.request.query_string
-                coll['acquisitions'] = self.uri_for('coll_acquisitions', cid=cid, _full=True) + '?' + self.request.query_string
+                coll['details'] = self.uri_for('collection', cid, _full=True) + '?' + self.request.query_string
+                coll['sessions'] = self.uri_for('coll_sessions', cid, _full=True) + '?' + self.request.query_string
+                coll['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?' + self.request.query_string
         return collections
 
     def curators(self):
@@ -224,7 +222,7 @@ class Collections(base.AcquisitionAccessChecker, base.ContainerList):
         return {c['curator']['_id']: c['curator'] for c in self.get()}.values()
 
 
-class Collection(base.AcquisitionAccessChecker, base.Container):
+class Collection(containers.Container):
 
     """/collections/<cid> """
 
@@ -250,8 +248,8 @@ class Collection(base.AcquisitionAccessChecker, base.Container):
         coll = self._get(_id)
         coll['_id'] = str(coll['_id'])
         if self.debug:
-            coll['sessions'] = self.uri_for('coll_sessions', cid=cid, _full=True) + '?' + self.request.query_string
-            coll['acquisitions'] = self.uri_for('coll_acquisitions', cid=cid, _full=True) + '?' + self.request.query_string
+            coll['sessions'] = self.uri_for('coll_sessions', cid, _full=True) + '?' + self.request.query_string
+            coll['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?' + self.request.query_string
         return coll
 
     def put(self, cid):
@@ -263,12 +261,12 @@ class Collection(base.AcquisitionAccessChecker, base.Container):
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         if 'permissions' in json_body:
-            self._get(_id, 'admin')
+            self._get(_id, 'admin', access_check_only=True)
         else:
-            self._get(_id, 'modify')
+            self._get(_id, 'modify', access_check_only=True)
         contents = json_body.pop('contents', None)
         if json_body:
-            self.dbc.update({'_id': _id}, {'$set': base.mongo_dict(json_body)})
+            self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
         if contents:
             acq_ids = []
             for item in contents['nodes']:
@@ -286,7 +284,7 @@ class Collection(base.AcquisitionAccessChecker, base.Container):
     def delete(self, cid):
         """Delete a Collection."""
         _id = bson.ObjectId(cid)
-        self._get(_id, 'admin')
+        self._get(_id, 'admin', access_check_only=True)
         self.app.db.acquisitions.update({'collections': _id}, {'$pull': {'collections': _id}}, multi=True)
         self.dbc.remove({'_id': _id})
 
@@ -318,8 +316,8 @@ class CollectionSessions(sessions.Sessions):
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
-                sess['details'] = self.uri_for('session', sid=sid, _full=True) + '?user=' + self.request.get('user')
-                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.get('user'))
+                sess['details'] = self.uri_for('session', sid, _full=True) + '?user=' + self.request.get('user')
+                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.get('user'))
         return sessions
 
     def put(self):
@@ -355,7 +353,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
-                acq['details'] = self.uri_for('acquisition', aid=aid, _full=True) + '?user=' + self.request.get('user')
+                acq['details'] = self.uri_for('acquisition', aid, _full=True) + '?user=' + self.request.get('user')
         return acquisitions
 
     def put(self):

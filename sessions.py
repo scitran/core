@@ -1,17 +1,40 @@
 # @author:  Gunnar Schaefer
 
 import logging
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran.api')
 
 import bson.json_util
 
-import data
-import data.medimg
+import scitran.data.medimg
 
-import base
+import containers
+
+SESSION_PUT_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Session',
+    'type': 'object',
+    'properties': {
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+        'files': {
+            'title': 'Files',
+            'type': 'array',
+            'items': containers.FILE_SCHEMA,
+            'uniqueItems': True,
+        },
+    },
+    'additionalProperties': False,
+}
 
 
-class Sessions(base.ContainerList):
+class Sessions(containers.ContainerList):
 
     """/sessions """
 
@@ -38,8 +61,8 @@ class Sessions(base.ContainerList):
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
-                sess['details'] = self.uri_for('session', sid=sid, _full=True) + '?' + self.request.query_string
-                sess['acquisitions'] = self.uri_for('acquisitions', sid=sid, _full=True) + '?' + self.request.query_string
+                sess['details'] = self.uri_for('session', sid, _full=True) + '?' + self.request.query_string
+                sess['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
         return sessions
 
     def put(self):
@@ -47,7 +70,7 @@ class Sessions(base.ContainerList):
         self.response.write('sessions put\n')
 
 
-class Session(base.Container):
+class Session(containers.Container):
 
     """/sessions/<sid> """
 
@@ -63,39 +86,34 @@ class Session(base.Container):
             'files': {
                 'title': 'Files',
                 'type': 'array',
-                'items': base.Container.file_schema,
+                'items': containers.FILE_SCHEMA,
                 'uniqueItems': True,
             },
         },
         'required': ['_id', 'project', 'uid', 'patient_id', 'subject'], #FIXME
     }
 
+    put_schema = SESSION_PUT_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Session, self).__init__(request, response)
         self.dbc = self.app.db.sessions
 
     def schema(self, *args, **kwargs):
-        return super(Session, self).schema(data.medimg.medimg.MedImgReader.session_properties)
+        return super(Session, self).schema(scitran.data.medimg.medimg.MedImgReader.session_properties)
 
     def get(self, sid):
         """Return one Session, conditionally with details."""
         _id = bson.ObjectId(sid)
         sess = self._get(_id)
         if self.debug:
-            sess['acquisitions'] = self.uri_for('acquisitions', sid=sid, _full=True) + '?' + self.request.query_string
+            sess['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
         return sess
 
     def put(self, sid):
         """Update an existing Session."""
         _id = bson.ObjectId(sid)
-        self._get(_id, 'modify')
-        updates = {'$set': {'_id': _id}, '$unset': {'__null__': ''}}
-        for k, v in self.request.params.iteritems():
-                if v is not None and v != '':
-                    updates['$set'][k] = v # FIXME: do appropriate type conversion
-                else:
-                    updates['$unset'][k] = None
-        self.dbc.update({'_id': _id}, updates)
+        self._put(_id)
 
     def delete(self, sid):
         """Delete a Session."""
