@@ -78,6 +78,7 @@ def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
         response.write(json.dumps(rv, default=bson.json_util.default))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
 
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)

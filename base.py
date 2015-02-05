@@ -193,7 +193,12 @@ class RequestHandler(webapp2.RequestHandler):
 
     def abort(self, code, *args, **kwargs):
         log.warning(str(code) + ' ' + '; '.join(args))
-        webapp2.abort(code, *args, **kwargs)
+        json_body = {
+                'uid': self.uid,
+                'code': code,
+                'detail': '; '.join(args),
+                }
+        webapp2.abort(code, *args, json_body=json_body, **kwargs)
 
     def schema(self, updates={}):
         json_schema = copy.deepcopy(self.json_schema)
