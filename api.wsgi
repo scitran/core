@@ -7,7 +7,7 @@ import time
 
 import ConfigParser
 
-configfile = '../production.ini'
+configfile = '/service/config/production.ini'
 config = ConfigParser.ConfigParser(allow_no_value=True)
 config.read(configfile)
 
