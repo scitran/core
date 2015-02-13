@@ -3,6 +3,8 @@
 import os
 import sys
 import site
+import time
+
 import ConfigParser
 
 configfile = '../production.ini'
@@ -44,8 +46,20 @@ if not os.path.exists(application.config['quarantine_path']):
 # connect to db
 kwargs = dict(tz_aware=True)
 db_uri = config.get('nims', 'db_uri')
-db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
-application.db = db_client.get_default_database()
+db_client = None
+application.db = None
+
+for x in range(0, 30):
+    try:
+        db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+        application.db = db_client.get_default_database()
+    except:
+        time.sleep(1)
+        pass
+    else:
+        break
+else:
+    raise Exception("Could not connect to MongoDB")
 
 
 # internims, send is-alive signals
