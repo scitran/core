@@ -11,7 +11,7 @@ import argparse
 
 
 def rsinit(args):
-    db_client = pymongo.MongoClient(args.uri)
+    db_client = pymongo.MongoClient(args.db_uri)
     repl_conf = eval(args.config)
     db_client.admin.command('replSetInitiate', repl_conf)
 
@@ -27,10 +27,10 @@ example:
 
 
 def authinit(args):
-    db_client = pymongo.MongoClient(args.uri)
+    db_client = pymongo.MongoClient(args.db_uri)
     db_client['admin'].add_user(name='admin', password=args.password, roles=['userAdminAnyDatabase'])
     db_client['nims'].add_user(name=args.username, password=args.password, roles=['readWrite', 'dbAdmin'])
-    uri_parts = args.uri.partition('://')
+    uri_parts = args.db_uri.partition('://')
     print 'You must now restart mongod with the "--auth" parameter and modify your URI as follows:'
     print '    %s%s:%s@%s' % (uri_parts[0] + uri_parts[1], args.username, args.password, uri_parts[2])
 
@@ -43,7 +43,7 @@ example:
 
 
 def dbinit(args):
-    db_client = pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)
+    db_client = pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)
     db = db_client.get_default_database()
 
     if args.force:
@@ -173,7 +173,7 @@ rsinit_parser = subparsers.add_parser(
         description=rsinit_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-rsinit_parser.add_argument('uri', help='DB URI')
+rsinit_parser.add_argument('db_uri', help='DB URI')
 rsinit_parser.add_argument('config', help='replication set config')
 rsinit_parser.set_defaults(func=rsinit)
 
@@ -185,7 +185,7 @@ authinit_parser = subparsers.add_parser(
         )
 authinit_parser.add_argument('username', help='DB username')
 authinit_parser.add_argument('password', help='DB password')
-authinit_parser.add_argument('uri', help='DB URI')
+authinit_parser.add_argument('db_uri', help='DB URI')
 authinit_parser.set_defaults(func=authinit)
 
 dbinit_parser = subparsers.add_parser(
@@ -196,7 +196,7 @@ dbinit_parser = subparsers.add_parser(
         )
 dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
 dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
-dbinit_parser.add_argument('uri', help='DB URI')
+dbinit_parser.add_argument('db_uri', help='DB URI')
 dbinit_parser.set_defaults(func=dbinit)
 
 sort_parser = subparsers.add_parser(
