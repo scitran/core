@@ -220,6 +220,7 @@ dbinitsort_parser = subparsers.add_parser(
 dbinitsort_parser.add_argument('db_uri', help='database URI')
 dbinitsort_parser.add_argument('path', help='filesystem path to data')
 dbinitsort_parser.add_argument('sort_path', help='filesystem path to sorted data')
+dbinitsort_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
 dbinitsort_parser.add_argument('-j', '--json', help='JSON file container users and groups')
 dbinitsort_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing db data')
 dbinitsort_parser.set_defaults(func=dbinitsort)
