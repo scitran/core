@@ -4,10 +4,25 @@
 
 import os
 import json
+import time
 import pymongo
 import hashlib
 import logging
 import argparse
+
+
+def connect_db(db_uri, **kwargs):
+    for x in range(0, 30):
+        try:
+            db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+        except:
+            time.sleep(1)
+            pass
+        else:
+            break
+    else:
+        raise Exception("Could not connect to MongoDB")
+    return db_client
 
 
 def rsinit(args):
@@ -43,7 +58,7 @@ example:
 
 
 def dbinit(args):
-    db_client = pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)
+    db_client = connect_db(args.db_uri)
     db = db_client.get_default_database()
 
     if args.force:
@@ -87,7 +102,7 @@ def sort(args):
         os.makedirs(quarantine_path)
     print 'initializing DB'
     kwargs = dict(tz_aware=True)
-    db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
+    db_client = connect_db(args.db_uri, **kwargs)
     db = db_client.get_default_database()
     print 'inspecting %s' % args.path
     files = []
