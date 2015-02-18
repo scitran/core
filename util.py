@@ -8,6 +8,7 @@ import copy
 import shutil
 import difflib
 import datetime
+import tempdir as tempfile
 
 import scitran.data
 
