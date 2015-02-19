@@ -120,7 +120,7 @@ def sort(args):
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
                     hash_.update(chunk)
-        status, detail = util.insert_file(db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path, args.keep)
+        status, detail = util.insert_file(db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path)
         if status != 200:
             print detail
 
@@ -132,11 +132,11 @@ example:
 def dbinitsort(args):
     logging.basicConfig(level=logging.WARNING)
     dbinit(args)
-    sort(args)
+    upload(args)
 
 dbinitsort_desc = """
 example:
-./scripts/bootstrap.py dbinitsort mongodb://localhost/nims -j bootstrap.json /tmp/data /tmp/sorted
+./scripts/bootstrap.py dbinitsort mongodb://localhost/nims -j bootstrap.json /tmp/data https://example.com/api/upload
 """
 
 def upload(args):
@@ -221,7 +221,6 @@ sort_parser = subparsers.add_parser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 sort_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
-sort_parser.add_argument('-k', '--keep', action='store_true', help='do not remove the files after sorting')
 sort_parser.add_argument('db_uri', help='database URI')
 sort_parser.add_argument('path', help='filesystem path to data')
 sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
@@ -235,9 +234,7 @@ dbinitsort_parser = subparsers.add_parser(
     )
 dbinitsort_parser.add_argument('db_uri', help='database URI')
 dbinitsort_parser.add_argument('path', help='filesystem path to data')
-dbinitsort_parser.add_argument('sort_path', help='filesystem path to sorted data')
-dbinitsort_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
-dbinitsort_parser.add_argument('-k', '--keep', action='store_true', help='do not remove the files after sorting')
+dbinitsort_parser.add_argument('url', help='upload URL')
 dbinitsort_parser.add_argument('-j', '--json', help='JSON file container users and groups')
 dbinitsort_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing db data')
 dbinitsort_parser.set_defaults(func=dbinitsort)

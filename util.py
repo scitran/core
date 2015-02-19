@@ -15,7 +15,7 @@ import scitran.data
 PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
 
 
-def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path, keep=False):
+def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path):
     filename = os.path.basename(filepath)
     if _id is None:
         try:
@@ -62,10 +62,7 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
     success = dbc.update(file_spec, {'$set': {'files.$': file_info}})
     if not success['updatedExisting']:
         dbc.update({'_id': _id}, {'$push': {'files': file_info}})
-    if not keep:
-        shutil.move(filepath, container_path + '/' + filename)
-    else:
-        shutil.copy(filepath, container_path + '/' + filename)
+    shutil.move(filepath, container_path + '/' + filename)
     log.debug('Done        %s' % os.path.basename(filepath)) # must use filepath, since filename is updated for sorted files
     return 200, 'Success'
 
