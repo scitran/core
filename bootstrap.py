@@ -163,7 +163,7 @@ def upload(args):
             headers = {'User-Agent': 'bootstrapper', 'Content-MD5': hash_.hexdigest()}
             try:
                 start = datetime.datetime.now()
-                r = requests.put(args.url + '?filename=%s' % filename, data=fd, headers=headers)
+                r = requests.put(args.url + '?filename=%s' % filename, data=fd, headers=headers, verify=not args.no_verify)
                 upload_duration = (datetime.datetime.now() - start).total_seconds()
             except requests.exceptions.ConnectionError as e:
                 print 'error       %s: %s' % (filename, e)
@@ -171,7 +171,7 @@ def upload(args):
                 if r.status_code == 200:
                     print 'success     %s [%s/s]' % (filename, util.hrsize(os.path.getsize(filepath)/upload_duration))
                 else:
-                    print 'failure     %s: %s %s, %s' % (log_info, filename, r.status_code, r.reason, r.text)
+                    print 'failure     %s: %s %s, %s' % (filename, r.status_code, r.reason, r.text)
 
 upload_desc = """
 example:
@@ -237,6 +237,7 @@ dbinitsort_parser.add_argument('path', help='filesystem path to data')
 dbinitsort_parser.add_argument('url', help='upload URL')
 dbinitsort_parser.add_argument('-j', '--json', help='JSON file container users and groups')
 dbinitsort_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing db data')
+dbinitsort_parser.add_argument('-n', '--no_verify', help='disable SSL verification', action='store_true')
 dbinitsort_parser.set_defaults(func=dbinitsort)
 
 upload_parser = subparsers.add_parser(
@@ -247,6 +248,7 @@ upload_parser = subparsers.add_parser(
         )
 upload_parser.add_argument('path', help='filesystem path to data')
 upload_parser.add_argument('url', help='upload URL')
+upload_parser.add_argument('-n', '--no_verify', help='disable SSL verification', action='store_true')
 upload_parser.set_defaults(func=upload)
 
 args = parser.parse_args()
