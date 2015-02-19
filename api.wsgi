@@ -37,6 +37,7 @@ application.config['site_id'] = config.get('nims', 'site_id')
 application.config['ssl_cert'] = config.get('nims', 'ssl_cert')
 application.config['oauth2_id_endpoint'] = config.get('oauth2', 'id_endpoint')
 application.config['insecure'] = config.getboolean('nims', 'insecure')
+application.config['demo'] = config.getboolean('nims', 'demo')
 
 if not os.path.exists(application.config['data_path']):
     os.makedirs(application.config['data_path'])
