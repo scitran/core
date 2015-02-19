@@ -6,6 +6,7 @@ logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests libra
 
 import copy
 import json
+import hashlib
 import webapp2
 import datetime
 import requests
@@ -23,6 +24,8 @@ class RequestHandler(webapp2.RequestHandler):
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
+        firstname = None
+        lastname = None
         self.source_site = None
         access_token = self.request.headers.get('Authorization', None)
         if access_token and self.app.config['oauth2_id_endpoint']:
@@ -34,7 +37,10 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
                 if r.status_code == 200:
-                    self.uid = json.loads(r.content)['email']
+                    identity = json.loads(r.content)
+                    self.uid = identity['email']
+                    firstname = identity['given_name']
+                    lastname = identity['family_name']
                     self.app.db.tokens.insert({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
                 else:
@@ -56,7 +62,19 @@ class RequestHandler(webapp2.RequestHandler):
         else:
             user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
             if not user:
-                self.abort(403, 'user ' + self.uid + ' does not exist')
+                if self.app.config['demo']:
+                    self.app.db.users.insert({
+                        '_id': self.uid,
+                        'email': self.uid,
+                        'email_hash': hashlib.md5(self.uid).hexdigest(),
+                        'firstname': firstname or 'DEMO',
+                        'lastname': lastname or 'DEMO',
+                        'wheel': True,
+                        'root': True,
+                    })
+                    user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
+                else:
+                    self.abort(403, 'user ' + self.uid + ' does not exist')
             self.superuser_request = user.get('root') and user.get('wheel')
 
     def dispatch(self):

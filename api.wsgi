@@ -3,9 +3,11 @@
 import os
 import sys
 import site
+import time
+
 import ConfigParser
 
-configfile = '../production.ini'
+configfile = '/service/config/production.ini'
 config = ConfigParser.ConfigParser(allow_no_value=True)
 config.read(configfile)
 
@@ -35,6 +37,7 @@ application.config['site_id'] = config.get('nims', 'site_id')
 application.config['ssl_cert'] = config.get('nims', 'ssl_cert')
 application.config['oauth2_id_endpoint'] = config.get('oauth2', 'id_endpoint')
 application.config['insecure'] = config.getboolean('nims', 'insecure')
+application.config['demo'] = config.getboolean('nims', 'demo')
 
 if not os.path.exists(application.config['data_path']):
     os.makedirs(application.config['data_path'])
@@ -44,8 +47,20 @@ if not os.path.exists(application.config['quarantine_path']):
 # connect to db
 kwargs = dict(tz_aware=True)
 db_uri = config.get('nims', 'db_uri')
-db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
-application.db = db_client.get_default_database()
+db_client = None
+application.db = None
+
+for x in range(0, 30):
+    try:
+        db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+        application.db = db_client.get_default_database()
+    except:
+        time.sleep(1)
+        pass
+    else:
+        break
+else:
+    raise Exception("Could not connect to MongoDB")
 
 
 # internims, send is-alive signals

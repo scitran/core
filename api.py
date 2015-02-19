@@ -99,6 +99,7 @@ app.config = {
         'ssl_cert':         None,
         'insecure':         False,
         'log_path':         None,
+        'demo':             False,
         }
 
 
@@ -119,6 +120,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--site_id', help='InterNIMS site ID')
     arg_parser.add_argument('--site_name', help='InterNIMS site name')
     arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint')
+    arg_parser.add_argument('--demo', help='demo mode, enables auto user creation')
     args = arg_parser.parse_args()
 
     app.config['here'] = os.path.dirname(os.path.abspath(args.config_file))
@@ -135,6 +137,7 @@ if __name__ == '__main__':
     app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
     app.config['insecure'] = config.getboolean('nims', 'insecure')
     app.config['ssl_cert'] = args.ssl_cert or config.get('nims', 'ssl_cert')     # to give to requests
+    app.config['demo'] = arg.demo or config.getboolean('nims', 'demo')
 
     if not app.config['ssl_cert']:
         log.warning('SSL certificate not specified, interNIMS functionality disabled')

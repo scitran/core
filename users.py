@@ -181,13 +181,26 @@ class Groups(base.RequestHandler):
 
     """/nimsapi/groups """
 
+    def __init__(self, request=None, response=None):
+        super(Groups, self).__init__(request, response)
+        self.dbc = self.app.db.groups
+
     def count(self):
         """Return the number of Groups."""
         self.response.write(self.app.db.groups.count())
 
     def post(self):
         """Create a new Group"""
-        self.response.write('groups post\n')
+        if not self.superuser_request:
+            self.abort(403, 'must be superuser to create new group')
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, Group.json_schema)
+            self.dbc.insert(json_body)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+        except pymongo.errors.DuplicateKeyError as e:
+            self.abort(400, 'Groups ID %s already exists' % json_body['_id'])
 
     def get(self, _id=None):
         """Return the list of Groups."""
@@ -219,7 +232,7 @@ class Group(base.RequestHandler):
         'type': 'object',
         'properties': {
             '_id': {
-                'title': 'Database ID',
+                'title': 'Group ID',
                 'type': 'string',
             },
             'name': {
@@ -234,20 +247,26 @@ class Group(base.RequestHandler):
                 'items': {
                     'type': 'object',
                     'properties': {
+                        'access': {
+                            'type': 'string',
+                            'enum': [role['rid'] for role in ROLES],
+                        },
                         '_id': {
                             'type': 'string',
                         },
-                        'access': {
-                            'type': 'string',
-                            'enum': [k for k, v in sorted(INTEGER_ROLES.iteritems(), key=lambda (k, v): v)],
-                        },
                     },
+                    'required': ['access', '_id'],
+                    'additionalProperties': False,
                 },
                 'uniqueItems': True,
             },
         },
         'required': ['_id'],
     }
+
+    def __init__(self, request=None, response=None):
+        super(Group, self).__init__(request, response)
+        self.dbc = self.app.db.groups
 
     def get(self, _id):
         """Return Group details."""
@@ -266,3 +285,7 @@ class Group(base.RequestHandler):
 
     def delete(self, _id):
         """Delete an Group."""
+        if not self.superuser_request:
+            self.abort(403, 'must be superuser to delete a Group')
+        # TODO: block deletion, if group is referenced by any projects
+        self.dbc.remove({'_id': _id})

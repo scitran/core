@@ -4,14 +4,29 @@
 
 import os
 import json
+import time
 import pymongo
 import hashlib
 import logging
 import argparse
 
 
+def connect_db(db_uri, **kwargs):
+    for x in range(0, 30):
+        try:
+            db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+        except:
+            time.sleep(1)
+            pass
+        else:
+            break
+    else:
+        raise Exception("Could not connect to MongoDB")
+    return db_client
+
+
 def rsinit(args):
-    db_client = pymongo.MongoClient(args.uri)
+    db_client = pymongo.MongoClient(args.db_uri)
     repl_conf = eval(args.config)
     db_client.admin.command('replSetInitiate', repl_conf)
 
@@ -27,10 +42,10 @@ example:
 
 
 def authinit(args):
-    db_client = pymongo.MongoClient(args.uri)
+    db_client = pymongo.MongoClient(args.db_uri)
     db_client['admin'].add_user(name='admin', password=args.password, roles=['userAdminAnyDatabase'])
     db_client['nims'].add_user(name=args.username, password=args.password, roles=['readWrite', 'dbAdmin'])
-    uri_parts = args.uri.partition('://')
+    uri_parts = args.db_uri.partition('://')
     print 'You must now restart mongod with the "--auth" parameter and modify your URI as follows:'
     print '    %s%s:%s@%s' % (uri_parts[0] + uri_parts[1], args.username, args.password, uri_parts[2])
 
@@ -43,7 +58,7 @@ example:
 
 
 def dbinit(args):
-    db_client = pymongo.MongoReplicaSetClient(args.uri) if 'replicaSet' in args.uri else pymongo.MongoClient(args.uri)
+    db_client = connect_db(args.db_uri)
     db = db_client.get_default_database()
 
     if args.force:
@@ -87,7 +102,7 @@ def sort(args):
         os.makedirs(quarantine_path)
     print 'initializing DB'
     kwargs = dict(tz_aware=True)
-    db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
+    db_client = connect_db(args.db_uri, **kwargs)
     db = db_client.get_default_database()
     print 'inspecting %s' % args.path
     files = []
@@ -114,6 +129,15 @@ example:
 ./scripts/bootstrap.py sort mongodb://localhost/nims /tmp/data /tmp/sorted
 """
 
+def dbinitsort(args):
+    logging.basicConfig(level=logging.WARNING)
+    dbinit(args)
+    upload(args)
+
+dbinitsort_desc = """
+example:
+./scripts/bootstrap.py dbinitsort mongodb://localhost/nims -j bootstrap.json /tmp/data https://example.com/api/upload
+"""
 
 def upload(args):
     import util
@@ -139,7 +163,7 @@ def upload(args):
             headers = {'User-Agent': 'bootstrapper', 'Content-MD5': hash_.hexdigest()}
             try:
                 start = datetime.datetime.now()
-                r = requests.put(args.url + '?filename=%s' % filename, data=fd, headers=headers)
+                r = requests.put(args.url + '?filename=%s' % filename, data=fd, headers=headers, verify=not args.no_verify)
                 upload_duration = (datetime.datetime.now() - start).total_seconds()
             except requests.exceptions.ConnectionError as e:
                 print 'error       %s: %s' % (filename, e)
@@ -147,7 +171,7 @@ def upload(args):
                 if r.status_code == 200:
                     print 'success     %s [%s/s]' % (filename, util.hrsize(os.path.getsize(filepath)/upload_duration))
                 else:
-                    print 'failure     %s: %s %s, %s' % (log_info, filename, r.status_code, r.reason, r.text)
+                    print 'failure     %s: %s %s, %s' % (filename, r.status_code, r.reason, r.text)
 
 upload_desc = """
 example:
@@ -164,7 +188,7 @@ rsinit_parser = subparsers.add_parser(
         description=rsinit_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-rsinit_parser.add_argument('uri', help='DB URI')
+rsinit_parser.add_argument('db_uri', help='DB URI')
 rsinit_parser.add_argument('config', help='replication set config')
 rsinit_parser.set_defaults(func=rsinit)
 
@@ -176,7 +200,7 @@ authinit_parser = subparsers.add_parser(
         )
 authinit_parser.add_argument('username', help='DB username')
 authinit_parser.add_argument('password', help='DB password')
-authinit_parser.add_argument('uri', help='DB URI')
+authinit_parser.add_argument('db_uri', help='DB URI')
 authinit_parser.set_defaults(func=authinit)
 
 dbinit_parser = subparsers.add_parser(
@@ -187,7 +211,7 @@ dbinit_parser = subparsers.add_parser(
         )
 dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
 dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
-dbinit_parser.add_argument('uri', help='DB URI')
+dbinit_parser.add_argument('db_uri', help='DB URI')
 dbinit_parser.set_defaults(func=dbinit)
 
 sort_parser = subparsers.add_parser(
@@ -202,6 +226,20 @@ sort_parser.add_argument('path', help='filesystem path to data')
 sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
 sort_parser.set_defaults(func=sort)
 
+dbinitsort_parser = subparsers.add_parser(
+    name='dbinitsort',
+    help='initialize database, then sort all files in a directory tree',
+    description=dbinitsort_desc,
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+dbinitsort_parser.add_argument('db_uri', help='database URI')
+dbinitsort_parser.add_argument('path', help='filesystem path to data')
+dbinitsort_parser.add_argument('url', help='upload URL')
+dbinitsort_parser.add_argument('-j', '--json', help='JSON file container users and groups')
+dbinitsort_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing db data')
+dbinitsort_parser.add_argument('-n', '--no_verify', help='disable SSL verification', action='store_true')
+dbinitsort_parser.set_defaults(func=dbinitsort)
+
 upload_parser = subparsers.add_parser(
         name='upload',
         help='upload all files in a directory tree',
@@ -210,6 +248,7 @@ upload_parser = subparsers.add_parser(
         )
 upload_parser.add_argument('path', help='filesystem path to data')
 upload_parser.add_argument('url', help='upload URL')
+upload_parser.add_argument('-n', '--no_verify', help='disable SSL verification', action='store_true')
 upload_parser.set_defaults(func=upload)
 
 args = parser.parse_args()
