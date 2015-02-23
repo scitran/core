@@ -43,6 +43,10 @@ PROJECT_PUT_SCHEMA = {
                 'additionalProperties': False,
             },
         },
+        'public': {
+            'title': 'Public',
+            'type': 'boolean',
+        },
         'files': {
             'title': 'Files',
             'type': 'array',
@@ -50,6 +54,7 @@ PROJECT_PUT_SCHEMA = {
             'uniqueItems': True,
         },
     },
+    'minProperties': 1,
     'additionalProperties': False,
 }
 
@@ -132,7 +137,7 @@ class Project(containers.Container):
     def get(self, pid):
         """Return one Project, conditionally with details."""
         _id = bson.ObjectId(pid)
-        proj = self._get(_id)
+        proj, _ = self._get(_id)
         proj['site'] = self.app.config['site_id']
         proj['site_name'] = self.app.config['site_name']
         if self.debug:
@@ -142,11 +147,16 @@ class Project(containers.Container):
     def put(self, pid):
         """Update an existing Project."""
         _id = bson.ObjectId(pid)
-        json_body = self._put(_id)
-        if 'permissions' in json_body:
+        json_body = super(Project, self).put(_id)
+        if 'permissions' in json_body or 'public' in json_body:
+            updates = {}
+            if 'permissions' in json_body:
+                updates['permissions'] = json_body['permissions']
+            if 'public' in json_body:
+                updates['public'] = json_body['public']
             session_ids = [s['_id'] for s in self.app.db.sessions.find({'project': _id}, [])]
-            self.app.db.sessions.update({'project': _id}, {'$set': {'permissions': json_body['permissions']}}, multi=True)
-            self.app.db.acquisitions.update({'session': {'$in': session_ids}}, {'$set': {'permissions': json_body['permissions']}}, multi=True)
+            self.app.db.sessions.update({'project': _id}, {'$set': updates}, multi=True)
+            self.app.db.acquisitions.update({'session': {'$in': session_ids}}, {'$set': updates}, multi=True)
 
     def delete(self, pid):
         """Delete an Project."""

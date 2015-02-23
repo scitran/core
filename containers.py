@@ -127,14 +127,16 @@ class ContainerList(base.RequestHandler):
 
 class Container(base.RequestHandler):
 
-    def _get(self, _id, min_role=None, access_check_only=False):
+    def _get(self, _id, min_role=None, perm_only=False, dbc=None, dbc_name=None):
+        dbc = dbc or self.dbc
+        dbc_name = dbc_name or self.__class__.__name__
         user_perm = None
-        container = self.dbc.find_one({'_id': _id}, ['permissions'] if access_check_only else None)
+        container = dbc.find_one({'_id': _id}, ['permissions'] if perm_only else None)
         if not container:
-            self.abort(404, 'no such ' + self.__class__.__name__)
+            self.abort(404, 'no such ' + dbc_name)
         if self.public_request:
             if not container.get('public', False):
-                self.abort(403, 'this ' + self.__class__.__name__ + 'is not public')
+                self.abort(403, 'this ' + dbc_name + 'is not public')
             del container['permissions']
         elif not self.superuser_request:
             user_perm = None
@@ -143,18 +145,24 @@ class Container(base.RequestHandler):
                     user_perm = perm
                     break
             else:
-                self.abort(403, self.uid + ' does not have permissions on this ' + self.__class__.__name__)
+                self.abort(403, self.uid + ' does not have permissions on this ' + dbc_name)
             if min_role and users.INTEGER_ROLES[user_perm['access']] < users.INTEGER_ROLES[min_role]:
-                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + self.__class__.__name__)
+                self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + dbc_name)
             if user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = [user_perm]
         if self.request.get('paths').lower() in ('1', 'true'):
             for file_info in container['files']:
                 file_info['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + file_info['name'] + file_info['ext']
         container['_id'] = str(container['_id'])
-        return container
+        return container, user_perm
 
-    def _put(self, _id):
+    def put(self, _id):
+        json_body = self.validate_json_body(_id, ['project'])
+        self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
+        self.update_db(_id, json_body)
+        return json_body
+
+    def validate_json_body(self, _id, oid_keys=[]):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, self.put_schema)
@@ -162,12 +170,13 @@ class Container(base.RequestHandler):
             self.abort(400, str(e))
         if 'permissions' in json_body and json_body['permissions'] is None:
             json_body.pop('permissions')
-        if 'permissions' in json_body:
-            self._get(_id, 'admin', access_check_only=True)
-        else:
-            self._get(_id, 'modify', access_check_only=True)
-        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
+        for key in oid_keys:
+            if key in json_body:
+                json_body[key] = bson.ObjectId(json_body[key])
         return json_body
+
+    def update_db(self, _id, json_body):
+        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def get_file(self, cid):
         try:
@@ -176,7 +185,7 @@ class Container(base.RequestHandler):
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         _id = bson.ObjectId(cid)
-        container = self._get(_id, 'download')
+        container, _ = self._get(_id, 'download')
         for file_info in container['files']:
             if 'name' in file_spec:
                 if file_info['name'] == file_spec['name'] and file_info['ext'] == file_spec['ext']:
@@ -240,7 +249,7 @@ class Container(base.RequestHandler):
             # FIXME check that processor is legit
         elif cid is not None:   # targeted user upload
             _id = bson.ObjectId(cid)
-            container = self._get(_id, 'modify')
+            container, _ = self._get(_id, 'admin')
         else:                   # sortable user upload
             pass
             # FIXME: pre-parse file, reject if unparsable

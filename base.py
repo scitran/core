@@ -41,7 +41,7 @@ class RequestHandler(webapp2.RequestHandler):
                     self.uid = identity['email']
                     firstname = identity['given_name']
                     lastname = identity['family_name']
-                    self.app.db.tokens.insert({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
+                    self.app.db.tokens.save({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}

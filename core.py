@@ -62,7 +62,6 @@ class Core(base.RequestHandler):
         resources = """
             Resource                                                 | Description
             :--------------------------------------------------------|:-----------------------
-            api/login                                            | user login
             [(api/sites)]                                        | local and remote sites
             api/upload                                           | upload
             api/download                                         | download
@@ -80,6 +79,7 @@ class Core(base.RequestHandler):
             api/groups/*<gid>*                                   | details for group *<gid>*
             [(api/projects)]                                     | list of projects
             [(api/projects/count)]                               | count of projects
+            [(api/projects/groups)]                              | groups for projects
             [(api/projects/schema)]                              | schema for single project
             api/projects/*<pid>*                                 | details for project *<pid>*
             api/projects/*<pid>*/sessions                        | list sessions for project *<pid>*
@@ -186,7 +186,7 @@ class Core(base.RequestHandler):
 
     def sites(self):
         """Return local and remote sites."""
-        if not self.uid or self.request.get('all').lower() in ('1', 'true'):
+        if self.public_request or self.request.get('all').lower() in ('1', 'true'):
             sites = list(self.app.db.remotes.find(None, ['name']))
         else:
             sites = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])

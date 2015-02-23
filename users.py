@@ -13,16 +13,12 @@ import util
 
 ROLES = [
     {
-        'rid': 'view',
-        'name': 'View-Only',
+        'rid': 'ro',
+        'name': 'Read-Only',
     },
     {
-        'rid': 'download',
-        'name': 'Download',
-    },
-    {
-        'rid': 'modify',
-        'name': 'Modify',
+        'rid': 'rw',
+        'name': 'Read-Write',
     },
     {
         'rid': 'admin',

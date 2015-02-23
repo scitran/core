@@ -31,6 +31,7 @@ ACQUISITION_PUT_SCHEMA = {
             'uniqueItems': True,
         },
     },
+    'minProperties': 1,
     'additionalProperties': False,
 }
 
@@ -108,13 +109,13 @@ class Acquisition(containers.Container):
     def get(self, aid):
         """Return one Acquisition, conditionally with details."""
         _id = bson.ObjectId(aid)
-        acq = self._get(_id)
+        acq, _ = self._get(_id)
         return acq
 
     def put(self, aid):
         """Update an existing Acquisition."""
         _id = bson.ObjectId(aid)
-        self._put(_id)
+        json_body = super(Acquisition, self).put(_id)
 
     def delete(self, aid):
         """Delete an Acquisition."""

@@ -117,6 +117,7 @@ COLLECTION_PUT_SCHEMA = {
             'additionalProperties': False,
         },
     },
+    'minProperties': 1,
     'additionalProperties': False,
 }
 
@@ -226,6 +227,8 @@ class Collection(containers.Container):
 
     """/collections/<cid> """
 
+    put_schema = COLLECTION_PUT_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Collection, self).__init__(request, response)
         self.dbc = self.app.db.collections
@@ -245,7 +248,7 @@ class Collection(containers.Container):
     def get(self, cid):
         """Return one Collection, conditionally with details."""
         _id = bson.ObjectId(cid)
-        coll = self._get(_id)
+        coll, _ = self._get(_id)
         coll['_id'] = str(coll['_id'])
         if self.debug:
             coll['sessions'] = self.uri_for('coll_sessions', cid, _full=True) + '?' + self.request.query_string
@@ -255,18 +258,11 @@ class Collection(containers.Container):
     def put(self, cid):
         """Update an existing Collection."""
         _id = bson.ObjectId(cid)
-        try:
-            json_body = self.request.json_body
-            jsonschema.validate(json_body, COLLECTION_PUT_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
-        if 'permissions' in json_body:
-            self._get(_id, 'admin', access_check_only=True)
-        else:
-            self._get(_id, 'modify', access_check_only=True)
+        json_body = self.validate_json_body(_id)
+        self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
         contents = json_body.pop('contents', None)
         if json_body:
-            self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
+            self.update_db(_id, json_body)
         if contents:
             acq_ids = []
             for item in contents['nodes']:
@@ -284,7 +280,7 @@ class Collection(containers.Container):
     def delete(self, cid):
         """Delete a Collection."""
         _id = bson.ObjectId(cid)
-        self._get(_id, 'admin', access_check_only=True)
+        self._get(_id, 'admin', perm_only=True)
         self.app.db.acquisitions.update({'collections': _id}, {'$pull': {'collections': _id}}, multi=True)
         self.dbc.remove({'_id': _id})
 

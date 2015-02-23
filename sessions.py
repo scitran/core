@@ -23,6 +23,10 @@ SESSION_PUT_SCHEMA = {
             'title': 'Notes',
             'type': 'string',
         },
+        'project': {
+            'type': 'string',
+            'pattern': '^[0-9a-f]{24}$',
+        },
         'files': {
             'title': 'Files',
             'type': 'array',
@@ -30,6 +34,7 @@ SESSION_PUT_SCHEMA = {
             'uniqueItems': True,
         },
     },
+    'minProperties': 1,
     'additionalProperties': False,
 }
 
@@ -105,7 +110,8 @@ class Session(containers.Container):
     def get(self, sid):
         """Return one Session, conditionally with details."""
         _id = bson.ObjectId(sid)
-        sess = self._get(_id)
+        sess, _ = self._get(_id)
+        sess['project'] = str(sess['project'])
         if self.debug:
             sess['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
         return sess
@@ -113,7 +119,17 @@ class Session(containers.Container):
     def put(self, sid):
         """Update an existing Session."""
         _id = bson.ObjectId(sid)
-        self._put(_id)
+        json_body = self.validate_json_body(_id, ['project'])
+        if 'project' in json_body:
+            session, user_perm = self._get(_id, 'admin', perm_only=False)
+            self._get(session['project'], 'admin', perm_only=True, dbc=self.app.db.projects, dbc_name='Project')
+            destination, dest_user_perm = self._get(json_body['project'], 'admin', perm_only=True, dbc=self.app.db.projects, dbc_name='Project')
+            json_body['permissions'] = destination['permissions']
+            self.update_db(_id, json_body)
+            self.app.db.acquisitions.update({'session': _id}, {'$set': {'permissions': destination['permissions']}}, multi=True)
+        else:
+            self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
+            self.update_db(_id, json_body)
 
     def delete(self, sid):
         """Delete a Session."""
