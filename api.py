@@ -106,41 +106,42 @@ app.config = {
 if __name__ == '__main__':
     import pymongo
     import argparse
-    import ConfigParser
     import paste.httpserver
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('config_file', help='path to config file')
     arg_parser.add_argument('--host', default='127.0.0.1', help='IP address to bind to')
     arg_parser.add_argument('--port', default='8080', help='TCP port to listen on')
-    arg_parser.add_argument('--db_uri', help='NIMS DB URI')
-    arg_parser.add_argument('--data_path', help='path to storage area')
-    arg_parser.add_argument('--log_path', help='path to API log file')
-    arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain')
-    arg_parser.add_argument('--site_id', help='InterNIMS site ID')
-    arg_parser.add_argument('--site_name', help='InterNIMS site name')
-    arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint')
-    arg_parser.add_argument('--demo', help='demo mode, enables auto user creation')
+    arg_parser.add_argument('--db_uri', help='NIMS DB URI', required=True)
+    arg_parser.add_argument('--data_path', help='path to storage area', required=True)
+    arg_parser.add_argument('--log_path', help='path to API log file', required=True)
+    arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
+    arg_parser.add_argument('--site_id', help='site ID for Scitran Central')
+    arg_parser.add_argument('--site_name', help='site name for Scitran Central', nargs='+')
+    arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
+    arg_parser.add_argument('--demo', help='demo mode, enables auto user creation', action='store_true', default=False)
+    arg_parser.add_argument('--insecure', help='insecure mode, allow user info as urlencoded param', action='store_true', default=False)
+    arg_parser.add_argument('--log_level', help='log level [info]', default='info')
     args = arg_parser.parse_args()
+    args.site_name = ' '.join(args.site_name) if args.site_name else None  # site_name as string
 
-    app.config['here'] = os.path.dirname(os.path.abspath(args.config_file))
-    config = ConfigParser.ConfigParser(app.config)
-    config.read(args.config_file)
-    logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
+    logging.basicConfig()
     logging.getLogger('paste.httpserver').setLevel(logging.INFO) # silence paste logging
+    log.setLevel(getattr(logging, args.log_level.upper()))
 
-    app.config['site_id'] = args.site_id or app.config['site_id']
-    app.config['site_name'] = args.site_name or app.config['site_name']
-    app.config['data_path'] = os.path.join(args.data_path or config.get('nims', 'data_path'), 'nims')
-    app.config['quarantine_path'] = os.path.join(args.data_path or config.get('nims', 'data_path'), 'quarantine')
-    app.config['log_path'] = args.log_path or app.config['log_path']
-    app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint or config.get('oauth2', 'id_endpoint')
-    app.config['insecure'] = config.getboolean('nims', 'insecure')
-    app.config['ssl_cert'] = args.ssl_cert or config.get('nims', 'ssl_cert')     # to give to requests
-    app.config['demo'] = arg.demo or config.getboolean('nims', 'demo')
+    app.config['site_id'] = args.site_id
+    app.config['site_name'] = args.site_name
+    app.config['data_path'] = os.path.join(args.data_path, 'nims')
+    app.config['quarantine_path'] = os.path.join(args.data_path, 'quarantine')
+    app.config['log_path'] = args.log_path
+    app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint
+    app.config['insecure'] = args.insecure
+    app.config['ssl_cert'] = args.ssl_cert
+    app.config['demo'] = args.demo
 
     if not app.config['ssl_cert']:
         log.warning('SSL certificate not specified, interNIMS functionality disabled')
+    elif not app.config['site_id']:
+        log.warning('site_id not configured, interNIMS functionality disabled')
 
     if not os.path.exists(app.config['data_path']):
         os.makedirs(app.config['data_path'])
@@ -148,8 +149,7 @@ if __name__ == '__main__':
         os.makedirs(app.config['quarantine_path'])
 
     kwargs = dict(tz_aware=True)
-    db_uri = args.db_uri or config.get('nims', 'db_uri')
-    db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+    db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
     app.db = db_client.get_default_database()
 
     app.debug = True # send stack trace for uncaught exceptions to client
