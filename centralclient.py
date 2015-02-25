@@ -29,9 +29,10 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
     remote_users = set([(user['_id'], user['site']) for container in proj_userlist+col_userlist+grp_userlist for user in container if user.get('site') is not None])
     remote_users = [{'user': user[0], 'site': user[1]} for user in remote_users]
 
-    payload = json.dumps({'_id': site_id, 'api_uri': api_uri, 'users': remote_users, 'name': site_name})
+    payload = json.dumps({'api_uri': api_uri, 'users': remote_users, 'name': site_name})
+    route = '%s/%s/%s' % (central_url, 'instances', site_id)
     try:
-        r = requests.post(central_url, data=payload, cert=ssl_cert)
+        r = requests.put(route, data=payload, cert=ssl_cert)
     except requests.exceptions.ConnectionError:
         log.debug('SDMC is not reachable')
     else:
@@ -89,7 +90,7 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('--central_url', help='Scitran Central API URL', default='https://sdmc.scitran.io')
     arg_parser.add_argument('--db_uri', help='DB URI', required=True)
-    arg_parser.add_argument('--api_uri', help='API URL, without http:// or https://', required=True)
+    arg_parser.add_argument('--api_uri', help='API URL, with https:// prefix', required=True)
     arg_parser.add_argument('--site_id', help='instance hostname (used as unique ID)', required=True)
     arg_parser.add_argument('--site_name', help='instance name', nargs='+', required=True)
     arg_parser.add_argument('--ssl_cert', help='path to server ssl certificate file', required=True)

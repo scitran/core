@@ -18,7 +18,7 @@ ap.add_argument('--db_uri', help='mongodb uri', required=True)
 ap.add_argument('--data_path', help='path to data', required=True)
 ap.add_argument('--log_path', help='path to log', required=True)     # for SHOWING the log, not where to write
 ap.add_argument('--ssl_cert', help='path to ssl cert in pem format, key+cert', required=True)
-ap.add_argument('--api_uri', help='api uri')
+ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site id')
 ap.add_argument('--site_name', help='site name', nargs='+')
 ap.add_argument('--oauth2_id_endpoint', help='oauth2 id endpoint url', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
