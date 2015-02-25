@@ -1,43 +1,48 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import os
-import sys
-import site
 import time
-
-import ConfigParser
-
-configfile = '/service/config/production.ini'
-config = ConfigParser.ConfigParser(allow_no_value=True)
-config.read(configfile)
-
-site.addsitedir(os.path.join(config.get('nims', 'virtualenv'), 'lib/python2.7/site-packages'))
-sys.path.append(config.get('nims', 'here'))
-os.environ['PYTHON_EGG_CACHE'] = config.get('nims', 'python_egg_cache')
-os.umask(0o022)
-
-import pymongo
-import uwsgidecorators
-
 import logging
-import logging.config
-logging.config.fileConfig(configfile, disable_existing_loggers=False)
-log = logging.getLogger('nimsapi')
+import pymongo
+import argparse
+import uwsgidecorators
 
 import api
 import internimsclient
 
+os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
+os.umask(0o022)
+
+ap = argparse.ArgumentParser()
+ap.add_argument('--db_uri', help='mongodb uri', required=True)
+ap.add_argument('--data_path', help='path to data', required=True)
+ap.add_argument('--log_path', help='path to log', required=True)     # for SHOWING the log, not where to write
+ap.add_argument('--ssl_cert', help='path to ssl cert in pem format, key+cert', required=True)
+ap.add_argument('--api_uri', help='api uri')
+ap.add_argument('--site_id', help='site id')
+ap.add_argument('--site_name', help='site name', nargs='+')
+ap.add_argument('--oauth2_id_endpoint', help='oauth2 id endpoint url', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
+ap.add_argument('--demo', help='demo mode, enables auto user creation', action='store_true', default=False)
+ap.add_argument('--insecure', help='insecure mode', action='store_true', default=False)
+ap.add_argument('--central_uri', help='scitran central api', default='https://sdmc.scitran.io/api')
+ap.add_argument('--log_level', help='log level [info]', default='info')
+args = ap.parse_args()
+args.site_name = ' '.join(args.site_name) if args.site_name else None  # site_name as string
+
+logging.basicConfig(level=getattr(logging, args.log_level.upper()))
+log = logging.getLogger('nimsapi')
+
 # configure uwsgi application
 application = api.app
-application.config['data_path'] = os.path.join(config.get('nims', 'data_path'), 'nims')
-application.config['quarantine_path'] = os.path.join(config.get('nims', 'data_path'), 'quarantine')
-application.config['log_path'] = config.get('nims', 'log_path')
-application.config['site_name'] = config.get('nims', 'site_name')
-application.config['site_id'] = config.get('nims', 'site_id')
-application.config['ssl_cert'] = config.get('nims', 'ssl_cert')
-application.config['oauth2_id_endpoint'] = config.get('oauth2', 'id_endpoint')
-application.config['insecure'] = config.getboolean('nims', 'insecure')
-application.config['demo'] = config.getboolean('nims', 'demo')
+application.config['site_id'] = args.site_id
+application.config['site_name'] = args.site_name
+application.config['data_path'] = os.path.join(args.data_path, 'nims')
+application.config['quarantine_path'] = os.path.join(args.data_path, 'quarantine')
+application.config['log_path'] = args.log_path
+application.config['ssl_cert'] = args.ssl_cert
+application.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint
+application.config['insecure'] = args.insecure
+application.config['demo'] = args.demo
 
 if not os.path.exists(application.config['data_path']):
     os.makedirs(application.config['data_path'])
@@ -46,13 +51,10 @@ if not os.path.exists(application.config['quarantine_path']):
 
 # connect to db
 kwargs = dict(tz_aware=True)
-db_uri = config.get('nims', 'db_uri')
-db_client = None
 application.db = None
-
 for x in range(0, 30):
     try:
-        db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+        db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
         application.db = db_client.get_default_database()
     except:
         time.sleep(1)
@@ -60,27 +62,25 @@ for x in range(0, 30):
     else:
         break
 else:
-    raise Exception("Could not connect to MongoDB")
+    raise Exception('Could not connect to MongoDB')
 
-
-# internims, send is-alive signals
-site_id = config.get('nims', 'site_id')
-site_name = config.get('nims', 'site_name')
-ssl_cert = config.get('nims', 'ssl_cert')
-api_uri = config.get('nims', 'api_uri')
-try:
-    internims_url = config.get('nims', 'internims_url')
-except ConfigParser.NoOptionError:
-    internims_url = None
-fail_count = 0
-
-if not internims_url or internims_url == u'':
-    log.debug('internims url not configured. internims disabled.')
+if not args.ssl_cert:
+    log.warning('SSL certificate not specified, Scitran Central functionality disabled')
+elif not args.api_uri:
+    log.warning('api_uri not configured. scitran central functionality disabled.')
+elif not args.site_name:
+    log.warning('site_name not configured. scitran central functionality disabled.')
+elif not args.site_id:
+    log.warning('site_id not configured. scitran central functionality disabled.')
+elif not args.central_uri:
+    log.warning('central_uri not configured. scitran central functionality disabled.')
 else:
+    fail_count = 0
+
     @uwsgidecorators.timer(60)
     def internimsclient_timer(signum):
         global fail_count
-        if not internimsclient.update(application.db, api_uri, site_name, site_id, ssl_cert, internims_url):
+        if not internimsclient.update(application.db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_uri):
             fail_count += 1
         else:
             fail_count = 0
