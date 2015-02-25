@@ -12,7 +12,7 @@ local users are permitted to access data in other instances.
 import logging
 import logging.config
 logging.basicConfig()
-log = logging.getLogger('internims')
+log = logging.getLogger('centralclient')
 logging.getLogger('requests').setLevel(logging.WARNING)  # silence Requests library logging
 
 import re
@@ -20,7 +20,7 @@ import json
 import requests
 
 
-def update(db, api_uri, site_name, site_id, ssl_cert, internims_url):
+def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
     """Send is-alive signal to central peer registry."""
     proj_userlist = [p['permissions'] for p in db.projects.find(None, {'_id': False, 'permissions._id': True, 'permissions.site': True})]
     col_userlist = [c['permissions'] for c in db.collections.find(None, {'_id': False, 'permissions._id': True, 'permissions.site': True})]
@@ -31,7 +31,7 @@ def update(db, api_uri, site_name, site_id, ssl_cert, internims_url):
 
     payload = json.dumps({'_id': site_id, 'api_uri': api_uri, 'users': remote_users, 'name': site_name})
     try:
-        r = requests.post(internims_url, data=payload, cert=ssl_cert)
+        r = requests.post(central_url, data=payload, cert=ssl_cert)
     except requests.exceptions.ConnectionError:
         log.debug('SDMC is not reachable')
     else:
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     import argparse
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--internims_url', help='Scitran Central API URL', default='https://sdmc.scitran.io')
+    arg_parser.add_argument('--central_url', help='Scitran Central API URL', default='https://sdmc.scitran.io')
     arg_parser.add_argument('--db_uri', help='DB URI', required=True)
     arg_parser.add_argument('--api_uri', help='API URL, without http:// or https://', required=True)
     arg_parser.add_argument('--site_id', help='instance hostname (used as unique ID)', required=True)
@@ -106,11 +106,11 @@ if __name__ == '__main__':
 
     fail_count = 0
     while True:
-        if not update(db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.internims_url):
+        if not update(db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_url):
             fail_count += 1
         else:
             fail_count = 0
         if fail_count == 3:
-            log.debug('InterNIMS unreachable, purging all remotes info')
+            log.debug('scitran central unreachable, purging all remotes info')
             clean_remotes(db)
         time.sleep(args.sleeptime)

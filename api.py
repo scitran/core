@@ -139,9 +139,9 @@ if __name__ == '__main__':
     app.config['demo'] = args.demo
 
     if not app.config['ssl_cert']:
-        log.warning('SSL certificate not specified, interNIMS functionality disabled')
+        log.warning('SSL certificate not specified, scitran central functionality disabled')
     elif not app.config['site_id']:
-        log.warning('site_id not configured, interNIMS functionality disabled')
+        log.warning('site_id not configured, scitran central functionality disabled')
 
     if not os.path.exists(app.config['data_path']):
         os.makedirs(app.config['data_path'])

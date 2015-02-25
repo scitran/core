@@ -8,7 +8,7 @@ import argparse
 import uwsgidecorators
 
 import api
-import internimsclient
+import centralclient
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)
@@ -78,13 +78,13 @@ else:
     fail_count = 0
 
     @uwsgidecorators.timer(60)
-    def internimsclient_timer(signum):
+    def centralclient_timer(signum):
         global fail_count
-        if not internimsclient.update(application.db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_uri):
+        if not centralclient.update(application.db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_uri):
             fail_count += 1
         else:
             fail_count = 0
 
         if fail_count == 3:
-            log.debug('InterNIMS unreachable, purging all remotes info')
-            internimsclient.clean_remotes(application.db)
+            log.debug('scitran central unreachable, purging all remotes info')
+            centralclient.clean_remotes(application.db)
