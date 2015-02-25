@@ -11,6 +11,7 @@ local users are permitted to access data in other instances.
 
 import logging
 import logging.config
+logging.basicConfig()
 log = logging.getLogger('internims')
 logging.getLogger('requests').setLevel(logging.WARNING)  # silence Requests library logging
 
@@ -81,42 +82,31 @@ def clean_remotes(db):
 
 
 if __name__ == '__main__':
-    import os
     import time
     import pymongo
     import argparse
-    import ConfigParser
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('configfile',  help='path to configuration file')
-    arg_parser.add_argument('--internims_url', help='https://internims.appspot.com')
-    arg_parser.add_argument('--db_uri', help='DB URI')
-    arg_parser.add_argument('--api_uri', help='API URL, without http:// or https://')
-    arg_parser.add_argument('--site_id', help='instance hostname (used as unique ID)')
-    arg_parser.add_argument('--site_name', help='instance name')
+    arg_parser.add_argument('--internims_url', help='Scitran Central API URL', default='https://sdmc.scitran.io')
+    arg_parser.add_argument('--db_uri', help='DB URI', required=True)
+    arg_parser.add_argument('--api_uri', help='API URL, without http:// or https://', required=True)
+    arg_parser.add_argument('--site_id', help='instance hostname (used as unique ID)', required=True)
+    arg_parser.add_argument('--site_name', help='instance name', nargs='+', required=True)
+    arg_parser.add_argument('--ssl_cert', help='path to server ssl certificate file', required=True)
     arg_parser.add_argument('--sleeptime', default=60, type=int, help='time to sleep between is alive signals')
-    arg_parser.add_argument('--ssl_cert', help='path to server ssl certificate file')
     arg_parser.add_argument('--debug', help='enable default mode', action='store_true', default=False)
+    arg_parser.add_argument('--log_level', help='log level [info]', default='info')
     args = arg_parser.parse_args()
+    args.site_name = ' '.join(args.site_name) if args.site_name else None  # site_name as string
 
-    config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.configfile))})
-    config.read(args.configfile)
-    logging.config.fileConfig(args.configfile, disable_existing_loggers=False)
+    logging.basicConfig()
+    log.setLevel(getattr(logging, args.log_level.upper()))
 
-    ssl_cert = args.ssl_cert or config.get('nims', 'ssl_cert')
+    db = (pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)).get_default_database()
 
-    db_uri = args.db_uri or config.get('nims', 'db_uri')
-    db = (pymongo.MongoReplicaSetClient(db_uri) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri)).get_default_database()
-
-    site_name = args.site_name or config.get('nims', 'site_name')
-    site_id = args.site_id or config.get('nims', 'site_id')
-    api_uri = args.api_uri or config.get('nims', 'api_uri')
-    internims_url = args.internims_url or config.get('nims', 'internims_url')
-    debug = args.debug or config.get('nims', 'insecure')
     fail_count = 0
-
     while True:
-        if not update(db, api_uri, site_name, site_id, ssl_cert, internims_url):
+        if not update(db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.internims_url):
             fail_count += 1
         else:
             fail_count = 0
