@@ -8,7 +8,7 @@ import argparse
 import uwsgidecorators
 
 import api
-import internimsclient
+import centralclient
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)
@@ -18,7 +18,7 @@ ap.add_argument('--db_uri', help='mongodb uri', required=True)
 ap.add_argument('--data_path', help='path to data', required=True)
 ap.add_argument('--log_path', help='path to log', required=True)     # for SHOWING the log, not where to write
 ap.add_argument('--ssl_cert', help='path to ssl cert in pem format, key+cert', required=True)
-ap.add_argument('--api_uri', help='api uri')
+ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site id')
 ap.add_argument('--site_name', help='site name', nargs='+')
 ap.add_argument('--oauth2_id_endpoint', help='oauth2 id endpoint url', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
@@ -78,13 +78,13 @@ else:
     fail_count = 0
 
     @uwsgidecorators.timer(60)
-    def internimsclient_timer(signum):
+    def centralclient_timer(signum):
         global fail_count
-        if not internimsclient.update(application.db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_uri):
+        if not centralclient.update(application.db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_uri):
             fail_count += 1
         else:
             fail_count = 0
 
         if fail_count == 3:
-            log.debug('InterNIMS unreachable, purging all remotes info')
-            internimsclient.clean_remotes(application.db)
+            log.debug('scitran central unreachable, purging all remotes info')
+            centralclient.clean_remotes(application.db)
