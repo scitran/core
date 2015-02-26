@@ -3,7 +3,11 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import logging
-import logging.config
+logging.basicConfig(
+        format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.DEBUG,
+        )
 log = logging.getLogger('scitran.api')
 logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown library logging
@@ -90,16 +94,6 @@ def dispatcher(router, request, response):
 
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)
-app.config = {
-        'data_path':        'nims',
-        'quarantine_path':  'quarantine',
-        'site_id':          'local',
-        'site_name':        'Local',
-        'ssl_cert':         None,
-        'insecure':         False,
-        'log_path':         None,
-        'demo':             False,
-        }
 
 
 if __name__ == '__main__':
@@ -108,39 +102,29 @@ if __name__ == '__main__':
     import paste.httpserver
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--host', default='127.0.0.1', help='IP address to bind to')
-    arg_parser.add_argument('--port', default='8080', help='TCP port to listen on')
-    arg_parser.add_argument('--db_uri', help='NIMS DB URI', required=True)
+    arg_parser.add_argument('--host', default='127.0.0.1', help='IP address to bind to [127.0.0.1]')
+    arg_parser.add_argument('--port', default='8080', help='TCP port to listen on [8080]')
+    arg_parser.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
     arg_parser.add_argument('--data_path', help='path to storage area', required=True)
-    arg_parser.add_argument('--log_path', help='path to API log file', required=True)
-    arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
-    arg_parser.add_argument('--site_id', help='site ID for Scitran Central')
-    arg_parser.add_argument('--site_name', help='site name for Scitran Central', nargs='+')
-    arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
-    arg_parser.add_argument('--demo', help='demo mode, enables auto user creation', action='store_true', default=False)
-    arg_parser.add_argument('--insecure', help='insecure mode, allow user info as urlencoded param', action='store_true', default=False)
     arg_parser.add_argument('--log_level', help='log level [info]', default='info')
+    arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
+    arg_parser.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
+    arg_parser.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
+    arg_parser.add_argument('--demo', help='enable automatic user creation', action='store_true', default=False)
+    arg_parser.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
     args = arg_parser.parse_args()
-    args.site_name = ' '.join(args.site_name) if args.site_name else None  # site_name as string
 
-    logging.basicConfig()
+    args.data_path = os.path.join(args.data_path, 'scitran')
+    args.quarantine_path = os.path.join(args.data_path, 'quarantine')
+    app.config = vars(args)
+
     logging.getLogger('paste.httpserver').setLevel(logging.INFO) # silence paste logging
     log.setLevel(getattr(logging, args.log_level.upper()))
 
-    app.config['site_id'] = args.site_id
-    app.config['site_name'] = args.site_name
-    app.config['data_path'] = os.path.join(args.data_path, 'nims')
-    app.config['quarantine_path'] = os.path.join(args.data_path, 'quarantine')
-    app.config['log_path'] = args.log_path
-    app.config['oauth2_id_endpoint'] = args.oauth2_id_endpoint
-    app.config['insecure'] = args.insecure
-    app.config['ssl_cert'] = args.ssl_cert
-    app.config['demo'] = args.demo
-
     if not app.config['ssl_cert']:
-        log.warning('SSL certificate not specified, scitran central functionality disabled')
-    elif not app.config['site_id']:
-        log.warning('site_id not configured, scitran central functionality disabled')
+        log.warning('SSL certificate not specified, SciTran Central functionality disabled')
+    if app.config['site_id'] == 'local':
+        log.warning('site_id not configured, SciTran Central functionality disabled')
 
     if not os.path.exists(app.config['data_path']):
         os.makedirs(app.config['data_path'])

@@ -186,28 +186,14 @@ class Core(base.RequestHandler):
 
     def sites(self):
         """Return local and remote sites."""
+        if self.app.config['site_id'] == 'local':
+            return [{'_id': 'local', 'name': 'Local', 'onload': True}]
         if self.public_request or self.request.get('all').lower() in ('1', 'true'):
-            sites = list(self.app.db.remotes.find(None, ['name']))
+            sites = list(self.app.db.sites.find(None, ['name']))
         else:
-            sites = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
-        return sites + [{'_id': self.app.config['site_id'], 'name': self.app.config['site_name'], 'onload': True}]
-
-    def log(self):
-        """Return logs."""
-        try:
-            logs = open(self.app.config['log_path']).readlines()
-        except IOError as e:
-            if 'Permission denied' in e:
-                body_template = '${explanation}<br /><br />${detail}<br /><br />${comment}'
-                comment = 'To fix permissions, run the following command: chmod o+r ' + self.app.config['log_path']
-                self.abort(500, detail=str(e), comment=comment, body_template=body_template)
-            else: # file does not exist
-                self.abort(500, 'log_path variable misconfigured or not set')
-        try:
-            n = int(self.request.get('n', 10000))
-        except:
-            self.abort(400, 'n must be an integer')
-        return [line.strip() for line in reversed(logs) if re.match('[-:0-9 ]{18} +api:(?!.*[/a-z]*/log )', line)][:n]
+            remote_ids = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', []) + [self.app.config['site_id']]
+            sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, ['name']))
+        return sites
 
     search_schema = {
         'title': 'Search',

@@ -14,8 +14,6 @@ import requests
 
 class RequestHandler(webapp2.RequestHandler):
 
-    """fetches pubkey from own self.db.remotes. needs to be aware of OWN site uid"""
-
     json_schema = None
 
     def __init__(self, request=None, response=None):
@@ -54,7 +52,7 @@ class RequestHandler(webapp2.RequestHandler):
             if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
                 self.abort(401, 'no valid SSL client certificate')
             remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
-            if not self.app.db.remotes.find_one({'_id': remote_instance}):
+            if not self.app.db.sites.find_one({'_id': remote_instance}):
                 self.abort(402, remote_instance + ' is not authorized')
         self.public_request = not bool(self.uid)
         if self.public_request or self.source_site:
@@ -88,7 +86,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(500, 'api site_id is not configured')
             if not self.app.config['ssl_cert']:
                 self.abort(500, 'api ssl_cert is not configured')
-            target = self.app.db.remotes.find_one({'_id': target_site}, ['api_uri'])
+            target = self.app.db.sites.find_one({'_id': target_site}, ['api_uri'])
             if not target:
                 self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers

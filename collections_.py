@@ -145,10 +145,6 @@ COLLECTION_SCHEMA = {
         'site': {
             'type': 'string',
         },
-        'site_name': {
-            'title': 'Site',
-            'type': 'string',
-        },
         'permissions': {
             'title': 'Permissions',
             'type': 'array',
