@@ -51,8 +51,8 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
                 for _id, remotes in response['users'].iteritems():
                     db.users.update({'_id': _id}, {'$set': {'remotes': remotes}})
             if sites:
-                db.remotes.remove({'_id': {'$nin': [site['_id'] for site in response['sites']]}})
-                [db.remotes.update({'_id': site['_id']}, site, upsert=True) for site in sites]
+                db.sites.remove({'_id': {'$nin': [site['_id'] for site in response['sites']]}})
+                [db.sites.update({'_id': site['_id']}, site, upsert=True) for site in sites]
                 db.users.update(   # clean users who no longer have remotes
                         {'remotes': {'$exists': True}, '_id': {'$nin': users.keys()}},
                         {'$unset': {'remotes': ''}},
@@ -60,7 +60,7 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
                         )
             log.info('%3d users with remote data, %3d remotes' % (
                     len([u['_id'] for u in db.users.find({'remotes': {'$exists': True}}, {'_id': True})]),
-                    len([s['_id'] for s in db.remotes.find({}, {'_id': True})])
+                    len([s['_id'] for s in db.sites.find({}, {'_id': True})])
                     ))
             return True
         else:
@@ -76,9 +76,9 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
 
 
 def clean_remotes(db):
-    """Remove db.remotes, and removes remotes field from all db.users."""
+    """Remove db.sites, and removes remotes field from all db.users."""
     log.debug('removing remotes from users, and remotes collection')
-    db.remotes.remove({})
+    db.sites.remove({})
     db.users.update({'remotes': {'$exists': True}}, {'$unset': {'remotes': ''}}, multi=True)
 
 
