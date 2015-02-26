@@ -103,13 +103,6 @@ class Project(containers.Container):
         'properties': {
             '_id': {
             },
-            'site': {
-                'type': 'string',
-            },
-            'site_name': {
-                'title': 'Site',
-                'type': 'string',
-            },
             'permissions': {
                 'title': 'Permissions',
                 'type': 'object',
@@ -138,8 +131,6 @@ class Project(containers.Container):
         """Return one Project, conditionally with details."""
         _id = bson.ObjectId(pid)
         proj, _ = self._get(_id)
-        proj['site'] = self.app.config['site_id']
-        proj['site_name'] = self.app.config['site_name']
         if self.debug:
             proj['sessions'] = self.uri_for('sessions', pid, _full=True) + '?' + self.request.query_string
         return proj
