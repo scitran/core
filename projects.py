@@ -78,7 +78,7 @@ class Projects(containers.ContainerList):
     def get(self):
         """Return the User's list of Projects."""
         query = {'group._id': self.request.get('group')} if self.request.get('group') else {}
-        projection = {'group': 1, 'name': 1, 'notes': 1}
+        projection = {'group_id': 1, 'name': 1, 'notes': 1}
         projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for proj in projects:
@@ -89,7 +89,8 @@ class Projects(containers.ContainerList):
 
     def groups(self):
         """Return the User's list of Project Groups."""
-        return {p['group']['_id']: p['group'] for p in self.get()}.values()
+        group_ids = list(set((p['group_id'] for p in self.get())))
+        return list(self.app.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
 
 
 class Project(containers.Container):

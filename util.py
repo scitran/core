@@ -85,7 +85,7 @@ def _update_db(db, dataset):
             group_id = 'unknown'
             project_name = dataset.nims_group_id + ('/' + dataset.nims_project if dataset.nims_project else '')
         group = db.groups.find_one({'_id': group_id})
-        project_spec = {'group._id': group['_id'], 'name': project_name}
+        project_spec = {'group_id': group['_id'], 'name': project_name}
         project = db.projects.find_and_modify(
                 project_spec,
                 {'$setOnInsert': {'group.name': group.get('name'), 'permissions': group['roles'], 'public': False, 'files': []}},

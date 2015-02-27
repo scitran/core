@@ -114,7 +114,6 @@ if __name__ == '__main__':
     arg_parser.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
     args = arg_parser.parse_args()
 
-    args.data_path = os.path.join(args.data_path, 'scitran')
     args.quarantine_path = os.path.join(args.data_path, 'quarantine')
     app.config = vars(args)
 

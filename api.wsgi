@@ -27,7 +27,6 @@ ap.add_argument('--central_uri', help='scitran central api', default='https://sd
 ap.add_argument('--log_level', help='log level [info]', default='info')
 args = ap.parse_args()
 
-args.data_path = os.path.join(args.data_path, 'scitran')
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 
 logging.basicConfig(level=getattr(logging, args.log_level.upper())) #FIXME probably not necessary, because done in api.py
