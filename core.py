@@ -60,49 +60,48 @@ class Core(base.RequestHandler):
     def get(self):
         """Return API documentation"""
         resources = """
-            Resource                                                 | Description
-            :--------------------------------------------------------|:-----------------------
-            [(api/sites)]                                        | local and remote sites
-            api/upload                                           | upload
-            api/download                                         | download
-            [(api/log)]                                          | log messages
-            [(api/search)]                                       | search
-            [(api/users)]                                        | list of users
-            [(api/users/count)]                                  | count of users
-            [(api/users/self)]                                   | user identity
-            [(api/users/roles)]                                  | user roles
-            [(api/users/schema)]                                 | schema for single user
-            api/users/*<uid>*                                    | details for user *<uid>*
-            [(api/groups)]                                       | list of groups
-            [(api/groups/count)]                                 | count of groups
-            [(api/groups/schema)]                                | schema for single group
-            api/groups/*<gid>*                                   | details for group *<gid>*
-            [(api/projects)]                                     | list of projects
-            [(api/projects/count)]                               | count of projects
-            [(api/projects/groups)]                              | groups for projects
-            [(api/projects/schema)]                              | schema for single project
-            api/projects/*<pid>*                                 | details for project *<pid>*
-            api/projects/*<pid>*/sessions                        | list sessions for project *<pid>*
-            [(api/sessions/count)]                               | count of sessions
-            [(api/sessions/schema)]                              | schema for single session
-            api/sessions/*<sid>*                                 | details for session *<sid>*
-            api/sessions/*<sid>*/move                            | move session *<sid>* to a different project
-            api/sessions/*<sid>*/acquisitions                    | list acquisitions for session *<sid>*
-            [(api/acquisitions/count)]                           | count of acquisitions
-            [(api/acquisitions/schema)]                          | schema for single acquisition
-            api/acquisitions/*<aid>*                             | details for acquisition *<aid>*
-            [(api/collections)]                                  | list of collections
-            [(api/collections/count)]                            | count of collections
-            [(api/collections/schema)]                           | schema for single collection
-            api/collections/*<cid>*                              | details for collection *<cid>*
-            api/collections/*<cid>*/sessions                     | list of sessions for collection *<cid>*
-            api/collections/*<cid>*/acquisitions?session=*<sid>* | list of acquisitions for collection *<cid>*, optionally restricted to session *<sid>*
+            Resource                            | Description
+            :-----------------------------------|:-----------------------
+            [(/sites)]                          | local and remote sites
+            /upload                             | upload
+            /download                           | download
+            [(/search)]                         | search
+            [(/users)]                          | list of users
+            [(/users/count)]                    | count of users
+            [(/users/self)]                     | user identity
+            [(/users/roles)]                    | user roles
+            [(/users/schema)]                   | schema for single user
+            /users/*<uid>*                      | details for user *<uid>*
+            [(/groups)]                         | list of groups
+            [(/groups/count)]                   | count of groups
+            [(/groups/schema)]                  | schema for single group
+            /groups/*<gid>*                     | details for group *<gid>*
+            [(/projects)]                       | list of projects
+            [(/projects/count)]                 | count of projects
+            [(/projects/groups)]                | groups for projects
+            [(/projects/schema)]                | schema for single project
+            /projects/*<pid>*                   | details for project *<pid>*
+            /projects/*<pid>*/sessions          | list sessions for project *<pid>*
+            [(/sessions/count)]                 | count of sessions
+            [(/sessions/schema)]                | schema for single session
+            /sessions/*<sid>*                   | details for session *<sid>*
+            /sessions/*<sid>*/move              | move session *<sid>* to a different project
+            /sessions/*<sid>*/acquisitions      | list acquisitions for session *<sid>*
+            [(/acquisitions/count)]             | count of acquisitions
+            [(/acquisitions/schema)]            | schema for single acquisition
+            /acquisitions/*<aid>*               | details for acquisition *<aid>*
+            [(/collections)]                    | list of collections
+            [(/collections/count)]              | count of collections
+            [(/collections/schema)]             | schema for single collection
+            /collections/*<cid>*                | details for collection *<cid>*
+            /collections/*<cid>*/sessions       | list of sessions for collection *<cid>*
+            /collections/*<cid>*/acquisitions   | list of acquisitions for collection *<cid>*
             """
 
         if self.debug and self.uid:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1?user=%s)' % self.uid, resources)
+            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s)' % self.uid, resources)
         else:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](\1)', resources)
+            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
         resources = resources.replace('<', '&lt;').replace('>', '&gt;').strip()
 
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'

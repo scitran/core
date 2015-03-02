@@ -188,7 +188,7 @@ class Groups(base.RequestHandler):
     def post(self):
         """Create a new Group"""
         if not self.superuser_request:
-            self.abort(403, 'must be superuser to create new group')
+            self.abort(403, 'must be logged in and superuser to create new group')
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, Group.json_schema)

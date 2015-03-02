@@ -190,22 +190,18 @@ class Collections(containers.ContainerList):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, COLLECTION_POST_SCHEMA)
-            json_body['curator'] = self.app.db.users.find_one({'_id': self.uid}, ['firstname', 'lastname'])
-            return {'_id': str(self.dbc.insert(json_body))}
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
+        json_body['curator_id'] = self.uid
+        return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):
         """Return the list of Collections."""
-        query = {'curator._id': self.request.get('curator')} if self.request.get('curator') else {}
-        projection = {'curator': 1, 'name': 1, 'notes': 1}
+        query = {'curator_id': self.request.get('curator')} if self.request.get('curator') else {}
+        projection = {'curator_id': 1, 'name': 1, 'notes': 1}
         collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for coll in collections:
             coll['_id'] = str(coll['_id'])
-        if self.public_request:
-            users = {u['_id']: u for u in self.app.db.users.find()}
-            for coll in collections:
-                coll['curator'] = users[coll['curator']].get('firstname')
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])
@@ -215,8 +211,9 @@ class Collections(containers.ContainerList):
         return collections
 
     def curators(self):
-        """Return the User's list of Project Groups."""
-        return {c['curator']['_id']: c['curator'] for c in self.get()}.values()
+        """Return the User's list of Collection Curators."""
+        curator_ids = list(set((c['curator_id'] for c in self.get())))
+        return list(self.app.db.users.find({'_id': {'$in': curator_ids}}, ['firstname', 'lastname']))
 
 
 class Collection(containers.Container):

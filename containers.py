@@ -130,21 +130,16 @@ class Container(base.RequestHandler):
     def _get(self, _id, min_role=None, perm_only=False, dbc=None, dbc_name=None):
         dbc = dbc or self.dbc
         dbc_name = dbc_name or self.__class__.__name__
-        user_perm = None
         container = dbc.find_one({'_id': _id}, ['permissions'] if perm_only else None)
         if not container:
             self.abort(404, 'no such ' + dbc_name)
+        user_perm = util.user_perm(container['permissions'], self.uid, self.source_site)
         if self.public_request:
             if not container.get('public', False):
                 self.abort(403, 'this ' + dbc_name + 'is not public')
             del container['permissions']
-        elif not self.superuser_request:
-            user_perm = None
-            for perm in container['permissions']:
-                if perm['_id'] == self.uid and perm.get('site') == self.source_site:
-                    user_perm = perm
-                    break
-            else:
+        if not self.superuser_request:
+            if not user_perm:
                 self.abort(403, self.uid + ' does not have permissions on this ' + dbc_name)
             if min_role and users.INTEGER_ROLES[user_perm['access']] < users.INTEGER_ROLES[min_role]:
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + dbc_name)

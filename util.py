@@ -88,7 +88,7 @@ def _update_db(db, dataset):
         project_spec = {'group_id': group['_id'], 'name': project_name}
         project = db.projects.find_and_modify(
                 project_spec,
-                {'$setOnInsert': {'group.name': group.get('name'), 'permissions': group['roles'], 'public': False, 'files': []}},
+                {'$setOnInsert': {'permissions': group['roles'], 'public': False, 'files': []}},
                 upsert=True,
                 new=True,
                 fields=PROJECTION_FIELDS,
@@ -153,3 +153,11 @@ def mongo_dict(d):
         pk = pk and pk + '.'
         return sum([_mongo_list(v, pk+k) if isinstance(v, dict) else [(pk+k, v)] for k, v in d.iteritems()], [])
     return dict(_mongo_list(d))
+
+
+def user_perm(permissions, _id, site=None):
+    for perm in permissions:
+        if perm['_id'] == _id and perm.get('site') == site:
+            return perm
+    else:
+        return {}

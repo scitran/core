@@ -117,7 +117,7 @@ if __name__ == '__main__':
     args.quarantine_path = os.path.join(args.data_path, 'quarantine')
     app.config = vars(args)
 
-    logging.getLogger('paste.httpserver').setLevel(logging.INFO) # silence paste logging
+    logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence paste logging
     log.setLevel(getattr(logging, args.log_level.upper()))
 
     if not app.config['ssl_cert']:

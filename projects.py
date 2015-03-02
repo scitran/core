@@ -3,6 +3,7 @@
 import logging
 log = logging.getLogger('scitran.api')
 
+import jsonschema
 import bson.json_util
 
 import scitran.data.medimg
@@ -10,6 +11,28 @@ import scitran.data.medimg
 import util
 import users
 import containers
+
+PROJECT_POST_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Project',
+    'type': 'object',
+    'properties': {
+        'group_id': {
+            'type': 'string',
+        },
+        'name': {
+            'title': 'Name',
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'notes': {
+            'title': 'Notes',
+            'type': 'string',
+        },
+    },
+    'required': ['group_id', 'name'],
+    'additionalProperties': False,
+}
 
 PROJECT_PUT_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -73,11 +96,22 @@ class Projects(containers.ContainerList):
 
     def post(self):
         """Create a new Project."""
-        self.response.write('projects post\n')
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, PROJECT_POST_SCHEMA)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+        group = self.app.db.groups.find_one({'_id': json_body['group_id']}, ['roles'])
+        if not group:
+            self.abort(400, 'invalid group id')
+        if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
+            self.abort(400, 'must be group admin to create project')
+        json_body['permissions'] = group['roles']
+        return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):
         """Return the User's list of Projects."""
-        query = {'group._id': self.request.get('group')} if self.request.get('group') else {}
+        query = {'group_id': self.request.get('group')} if self.request.get('group') else {}
         projection = {'group_id': 1, 'name': 1, 'notes': 1}
         projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
