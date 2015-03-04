@@ -186,7 +186,7 @@ class Core(base.RequestHandler):
     def sites(self):
         """Return local and remote sites."""
         if self.app.config['site_id'] == 'local':
-            return [{'_id': 'local', 'name': 'Local', 'onload': True}]
+            return self.app.db.sites.find_one({'_id': 'local'}, {'_id': 1, 'name': 1, 'onload': 1})
         if self.public_request or self.request.get('all').lower() in ('1', 'true'):
             sites = list(self.app.db.sites.find(None, ['name']))
         else:
