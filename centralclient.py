@@ -75,10 +75,10 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
             return False
 
 
-def clean_remotes(db):
+def clean_remotes(db, site_id):
     """Remove db.sites, and removes remotes field from all db.users."""
     log.debug('removing remotes from users, and remotes collection')
-    db.sites.remove({})
+    db.sites.remove({'_id': {'$ne': [site_id]}})
     db.users.update({'remotes': {'$exists': True}}, {'$unset': {'remotes': ''}}, multi=True)
 
 

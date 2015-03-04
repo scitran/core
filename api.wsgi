@@ -73,6 +73,8 @@ elif not args.central_uri:
 else:
     fail_count = 0
 
+    application.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri, 'onload': True}, upsert=True)
+
     @uwsgidecorators.timer(60)
     def centralclient_timer(signum):
         global fail_count
@@ -83,4 +85,4 @@ else:
 
         if fail_count == 3:
             log.debug('scitran central unreachable, purging all remotes info')
-            centralclient.clean_remotes(application.db)
+            centralclient.clean_remotes(application.db, args.site_id)
