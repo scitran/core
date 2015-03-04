@@ -30,7 +30,7 @@ args = ap.parse_args()
 
 # HACK to allow setting the --site_name in the same way as api.py
 # --site_name 'Example Site' or --site_name "Example Site"
-args.site_name = re.sub(r'^[\'"]|[\'"]$','', " ".join(args.site_name)) if args.site_name else args.site_name
+args.site_name = ' '.join(args.site_name).strip('"\'') if args.site_name else args.site_name
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 
 logging.basicConfig(level=getattr(logging, args.log_level.upper())) #FIXME probably not necessary, because done in api.py
