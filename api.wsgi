@@ -1,6 +1,7 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import os
+import re
 import time
 import logging
 import pymongo
@@ -19,7 +20,7 @@ ap.add_argument('--data_path', help='path to storage area', required=True)
 ap.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
 ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
-ap.add_argument('--site_name', help='site name')
+ap.add_argument('--site_name', help='site name', nargs='+')  # hack for uwsgi --pyargv
 ap.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
 ap.add_argument('--demo', help='enable automatic user creation', action='store_true', default=False)
 ap.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
@@ -27,6 +28,9 @@ ap.add_argument('--central_uri', help='scitran central api', default='https://sd
 ap.add_argument('--log_level', help='log level [info]', default='info')
 args = ap.parse_args()
 
+# HACK to allow setting the --site_name in the same way as api.py
+# --site_name 'Example Site' or --site_name "Example Site"
+args.site_name = re.sub(r'^[\'"]|[\'"]$','', " ".join(args.site_name)) if args.site_name else args.site_name
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 
 logging.basicConfig(level=getattr(logging, args.log_level.upper())) #FIXME probably not necessary, because done in api.py
