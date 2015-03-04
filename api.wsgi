@@ -66,8 +66,8 @@ elif not args.api_uri:
     log.warning('api_uri not configured. scitran central functionality disabled.')
 elif not args.site_name:
     log.warning('site_name not configured. scitran central functionality disabled.')
-elif not args.site_id:
-    log.warning('site_id not configured. scitran central functionality disabled.')
+elif args.site_id == 'local':
+    log.warning('site_id is local. scitran central functionality disabled.')
 elif not args.central_uri:
     log.warning('central_uri not configured. scitran central functionality disabled.')
 else:
