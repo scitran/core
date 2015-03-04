@@ -24,7 +24,7 @@ ap.add_argument('--site_name', help='site name', nargs='+')  # hack for uwsgi --
 ap.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
 ap.add_argument('--demo', help='enable automatic user creation', action='store_true', default=False)
 ap.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
-ap.add_argument('--central_uri', help='scitran central api', default='https://sdmc.scitran.io/api')
+ap.add_argument('--central_uri', help='scitran central api')
 ap.add_argument('--log_level', help='log level [info]', default='info')
 args = ap.parse_args()
 
