@@ -60,6 +60,9 @@ for x in range(0, 30):
 else:
     raise Exception('Could not connect to MongoDB')
 
+# TODO: make api_uri a required arg?
+application.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name or 'Local', 'api_uri': args.api_uri, 'onload': True}, upsert=True)
+
 if not args.ssl_cert:
     log.warning('SSL certificate not specified, Scitran Central functionality disabled')
 elif not args.api_uri:
@@ -72,8 +75,6 @@ elif not args.central_uri:
     log.warning('central_uri not configured. scitran central functionality disabled.')
 else:
     fail_count = 0
-
-    application.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri, 'onload': True}, upsert=True)
 
     @uwsgidecorators.timer(60)
     def centralclient_timer(signum):
