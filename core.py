@@ -185,13 +185,18 @@ class Core(base.RequestHandler):
 
     def sites(self):
         """Return local and remote sites."""
-        if self.app.config['site_id'] == 'local':
-            return [self.app.db.sites.find_one({'_id': 'local'}, {'_id': 1, 'name': 1, 'onload': 1})]
+        projection = ['name', 'onload']
+        # TODO onload for local is true
         if self.public_request or self.request.get('all').lower() in ('1', 'true'):
-            sites = list(self.app.db.sites.find(None, ['name']))
+            sites = list(self.app.db.sites.find(None, projection))
         else:
+            # TODO onload based on user prefs
             remote_ids = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', []) + [self.app.config['site_id']]
-            sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, ['name']))
+            sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, projection))
+        for s in sites:  # TODO: this for loop will eventually move to public case
+            if s['_id'] == self.app.config['site_id']:
+                s['onload'] = True
+                break
         return sites
 
     search_schema = {
