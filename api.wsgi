@@ -1,6 +1,7 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import os
+import re
 import time
 import logging
 import pymongo
@@ -19,7 +20,7 @@ ap.add_argument('--data_path', help='path to storage area', required=True)
 ap.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
 ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
-ap.add_argument('--site_name', help='site name')
+ap.add_argument('--site_name', help='site name', nargs='*', default=['Local'])  # hack for uwsgi --pyargv
 ap.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
 ap.add_argument('--demo', help='enable automatic user creation', action='store_true', default=False)
 ap.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
@@ -27,6 +28,9 @@ ap.add_argument('--central_uri', help='scitran central api', default='https://sd
 ap.add_argument('--log_level', help='log level [info]', default='info')
 args = ap.parse_args()
 
+# HACK to allow setting the --site_name in the same way as api.py
+# --site_name 'Example Site' or --site_name "Example Site"
+args.site_name = ' '.join(args.site_name).strip('"\'')
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 
 logging.basicConfig(level=getattr(logging, args.log_level.upper())) #FIXME probably not necessary, because done in api.py
@@ -56,14 +60,17 @@ for x in range(0, 30):
 else:
     raise Exception('Could not connect to MongoDB')
 
+# TODO: make api_uri a required arg?
+application.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
+
 if not args.ssl_cert:
     log.warning('SSL certificate not specified, Scitran Central functionality disabled')
 elif not args.api_uri:
     log.warning('api_uri not configured. scitran central functionality disabled.')
 elif not args.site_name:
     log.warning('site_name not configured. scitran central functionality disabled.')
-elif not args.site_id:
-    log.warning('site_id not configured. scitran central functionality disabled.')
+elif args.site_id == 'local':
+    log.warning('site_id is local. scitran central functionality disabled.')
 elif not args.central_uri:
     log.warning('central_uri not configured. scitran central functionality disabled.')
 else:
@@ -79,4 +86,4 @@ else:
 
         if fail_count == 3:
             log.debug('scitran central unreachable, purging all remotes info')
-            centralclient.clean_remotes(application.db)
+            centralclient.clean_remotes(application.db, args.site_id)
