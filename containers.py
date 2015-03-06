@@ -10,6 +10,8 @@ import datetime
 import jsonschema
 import bson.json_util
 
+import tempdir as tempfile
+
 import base
 import util
 import users
@@ -232,7 +234,7 @@ class Container(base.RequestHandler):
             pass
         else:           # targeted upload
             pass
-        if self.request.content_type != 'multipart/form-data':
+        if self.request.content_type != 'multipart/form-data':  # do not accept the OTHER sort of multipart
             self.abort(400, 'content-type must be "multipart/form-data"')
         try:
             metadata = json.loads(self.request.get('metadata'))
