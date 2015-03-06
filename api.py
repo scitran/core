@@ -18,7 +18,9 @@ import webapp2
 import bson.json_util
 import webapp2_extras.routes
 
+import apps
 import core
+import jobs
 import users
 import projects
 import sessions
@@ -32,6 +34,17 @@ routes = [
         webapp2.Route(r'/download',                                 core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
         webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/search',                                   core.Core, handler_method='search', methods=['GET', 'POST']),
+    ]),
+    webapp2.Route(r'/api/jobs',                                     jobs.Jobs),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
+        webapp2.Route(r'/next',                                     jobs.Jobs, handler_method='next', methods=['GET']),
+        webapp2.Route(r'/count',                                    jobs.Jobs, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/<_id>',                                    jobs.Job,  name='job'),
+    ]),
+    webapp2.Route(r'/api/apps',                                     apps.Apps),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/apps', [
+        webapp2.Route(r'/count',                                    apps.Apps, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/<_id>',                                    apps.App,  name='job'),
     ]),
     webapp2.Route(r'/api/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
