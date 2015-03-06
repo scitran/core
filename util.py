@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
+import bson
 import copy
 import shutil
 import difflib
@@ -123,7 +124,79 @@ def _update_db(db, dataset):
     if dataset.nims_timestamp:
         db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=dataset.nims_timestamp)})
         db.sessions.update({'_id': session['_id']}, {'$min': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
+    # create a job, if necessary
+    create_job(db, dataset)
     return acquisition['_id']
+
+def create_job(db, dataset):
+        # TODO: this should search the 'apps' db collection.
+        # each 'app' must define it's expected inputs's type, state and kind
+        # some apps are special defaults. one default per data specific triple.
+        # allow apps to have set-able 'state', that is appended to the file at the
+        # end of processing
+        #
+        # desired query to find default app, for a specific data variety would be:
+        # app_id = self.app.db.apps.find({
+        #       'default': True,
+        #       'type': ftype,  # string
+        #       'kinds': fkinds,  # list
+        #       'state_': fstate[-1],  # string
+        #   })
+        # apps specify the last state of their desired input file.
+        type_ = dataset.nims_file_type
+        kinds_ = dataset.nims_file_kinds
+        state_ = dataset.nims_file_state
+        app_id = None
+
+        if type_ == 'dicom' and state_ == ['orig']:
+            if kinds_ != ['screenshot']:
+                # could ship a script that gets mounted into the container.
+                # but then the script would also need to specify what base image it needs.
+                app_id = 'scitran/dcm2nii:latest'
+        # TODO: determine job specifications
+
+        if not app_id:
+            log.info('no app for type=%s, state=%s, kinds=%s, default=True. no job created.' % (type_, state_, kinds_))
+        else:
+            # TODO: check if there are 'default apps' set for this project/session/acquisition
+            acquisition = db.acquisitions.find_one({'uid': dataset.nims_acquisition_id})
+            session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
+            project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
+            aid = acquisition.get('_id')
+            # TODO: job description needs more metadata to be searchable in a useful way
+            job = db.jobs.find_and_modify(
+                {
+                    '_id': db.jobs.count() + 1,
+                },
+                {
+                    '_id': db.jobs.count() + 1,
+                    'group': project.get('group_id'),
+                    'project': project.get('_id'),
+                    'app_id': app_id,
+                    'inputs': [
+                        {
+                            'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                            'payload': {
+                                'type': dataset.nims_file_type,
+                                'state': dataset.nims_file_state,
+                                'kinds': dataset.nims_file_kinds,
+                            },
+                        }
+                    ],
+                    'outputs': [
+                        {
+                            'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                        },
+                    ],
+                    'status': 'pending',     # queued
+                    'activity': None,
+                    'added': datetime.datetime.now(),
+                    'timestamp': datetime.datetime.now(),
+                },
+                upsert=True,
+                new=True,
+            )
+            log.info('created job %d, group: %s, project %s' % (job['_id'], job['group'], job['project']))
 
 
 def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
