@@ -19,5 +19,10 @@
       "lastname": "User",
       "wheel": true
     }
+  ],
+  "engines": [
+    {
+      "_id": "local"
+    }
   ]
 }

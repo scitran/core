@@ -72,6 +72,7 @@ def dbinit(args):
     db.acquisitions.create_index('collections')
     db.tokens.create_index('timestamp', expireAfterSeconds=600)
     db.downloads.create_index('timestamp', expireAfterSeconds=60)
+    # TODO: apps and jobs indexes (indicies?)
 
     if args.json:
         with open(args.json) as json_dump:
@@ -80,6 +81,8 @@ def dbinit(args):
             db.users.insert(input_data['users'])
         if 'groups' in input_data:
             db.groups.insert(input_data['groups'])
+        if 'engines' in input_data:
+            db.engines.insert(input_data['engines'])
         for u in db.users.find():
             db.users.update({'_id': u['_id']}, {'$set': {'email_hash': hashlib.md5(u['email']).hexdigest()}})
 
