@@ -107,6 +107,10 @@ def jobsinit(args):
     counter = db.jobs.count() + 1   # where to start creating jobs
 
     for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1, 'series': 1, 'acquisition': 1}):
+        if a.get('files')[0].get('kinds')[0] == 'screenshot':
+            print 'no default app set for screenshots. skipping...'
+            continue
+
         aid = a.get('_id')
         session = db.sessions.find_one({'_id': bson.ObjectId(a.get('session'))})
         project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
