@@ -147,12 +147,18 @@ def create_job(db, dataset):
         kinds_ = dataset.nims_file_kinds
         state_ = dataset.nims_file_state
         app_id = None
+        output_state = None
+        output_type = None
+        output_kinds = None
 
         if type_ == 'dicom' and state_ == ['orig']:
             if kinds_ != ['screenshot']:
                 # could ship a script that gets mounted into the container.
                 # but then the script would also need to specify what base image it needs.
                 app_id = 'scitran/dcm2nii:latest'
+                output_state = ['derived', ]
+                output_type = 'nifti'
+                output_kind = dataset.nims_file_kinds   # from input file
         # TODO: determine job specifications
 
         if not app_id:
@@ -186,6 +192,11 @@ def create_job(db, dataset):
                     'outputs': [
                         {
                             'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                            'payload': {
+                                'type': output_type,
+                                'state': output_state,             # TODO defined in app
+                                'kinds': output_kinds,
+                            },
                         },
                     ],
                     'status': 'pending',     # queued
