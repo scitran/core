@@ -102,16 +102,16 @@ def jobsinit(args):
     db = db_client.get_default_database()
     counter = db.jobs.count() + 1   # where to start creating jobs
 
-    for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1}):
+    for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1, 'series': 1, 'acquisition': 1}):
         aid = a.get('_id')
-        session = db.session.find_one({'_id': bson.ObjectId(a.get('session'))})
+        session = db.sessions.find_one({'_id': bson.ObjectId(a.get('session'))})
         project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
         db.jobs.insert({
             '_id': counter,
             'group': project.get('group_id'),
             'project': project.get('_id'),
             'exam': session.get('exam'),
-            'app_id': 'scitran/dmc2nii:latest',
+            'app_id': 'scitran/dcm2nii:latest',
             'inputs': [
                 {
                     'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
@@ -137,8 +137,8 @@ def jobsinit(args):
             'added': datetime.datetime.now(),
             'timestamp': datetime.datetime.now(),
         })
+        print 'created job %d, group: %s, project %s, exam %s, %s.%s' % (counter, project.get('group_id'), project.get('_id'), session.get('exam'), a.get('series'), a.get('acquisition'))
         counter += 1
-        print 'created job %d, group: %s, project %s' % (counter, project.get('group_id'), project.get('_id'))
 
 jobinit_desc = """
 example:
