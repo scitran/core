@@ -100,6 +100,10 @@ def jobsinit(args):
     """Create a job entry for every acquisition's orig dataset."""
     db_client = connect_db(args.db_uri)
     db = db_client.get_default_database()
+
+    if args.force:
+        db_client.drop_database(db)
+
     counter = db.jobs.count() + 1   # where to start creating jobs
 
     for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1, 'series': 1, 'acquisition': 1}):
@@ -274,6 +278,7 @@ jobsinit_parser = subparsers.add_parser(
         description=dbinit_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
+jobsinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing jobs')
 jobsinit_parser.add_argument('db_uri', help='DB URI')
 jobsinit_parser.set_defaults(func=jobsinit)
 
