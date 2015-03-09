@@ -178,6 +178,7 @@ def create_job(db, dataset):
                     '_id': db.jobs.count() + 1,
                     'group': project.get('group_id'),
                     'project': project.get('_id'),
+                    'exam': session.get('exam'),
                     'app_id': app_id,
                     'inputs': [
                         {

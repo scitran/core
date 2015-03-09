@@ -110,6 +110,7 @@ def jobsinit(args):
             '_id': counter,
             'group': project.get('group_id'),
             'project': project.get('_id'),
+            'exam': session.get('exam'),
             'app_id': 'scitran/dmc2nii:latest',
             'inputs': [
                 {
