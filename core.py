@@ -5,13 +5,18 @@ log = logging.getLogger('scitran.api')
 
 import os
 import re
+import json
 import hashlib
 import tarfile
+import datetime
 import markdown
 import jsonschema
+import collections
+import bson.json_util
 
 import base
 import util
+import zipstream
 import tempdir as tempfile
 
 DOWNLOAD_SCHEMA = {
@@ -155,30 +160,90 @@ class Core(base.RequestHandler):
                 self.abort(status, detail)
 
     def _preflight_archivestream(self, req_spec):
-        # check permissions of everything
-        # allow downloads of permitted items only
-        pass
+        # FIXME: check permissions of everything
+        data_path = self.app.config['data_path']
+        def tree():
+            return collections.defaultdict(tree)
+        def add_to_target_tree(t, container, prefix, size, cnt):
+            for f in container['files']:
+                filename = f['name'] + f['ext']
+                filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), filename)
+                if not os.path.exists(filepath): # silently skip missing files
+                    continue
+                size += f['size']
+                cnt += 1
+                t_ = t
+                for node in prefix:
+                    t_ = t_[node]
+                t_[filename] = (filepath, f['size'])
+            return size, cnt
+        file_cnt = 0
+        total_size = 0
+        targets = tree()
+        for item in req_spec['nodes']:
+            item_id = bson.ObjectId(item['_id'])
+            if item['level'] == 'project':
+                project = self.app.db.projects.find_one({'_id': item_id}, ['name', 'group_id', 'files'])
+                total_size, file_cnt = add_to_target_tree(targets, project, [project['group_id']], total_size, file_cnt)
+                sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
+                for session in sessions:
+                    total_size, file_cnt = add_to_target_tree(targets, session, [project['group_id'], project['name'], session['label']], total_size, file_cnt)
+                    acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
+                    for acq in acquisitions:
+                        total_size, file_cnt = add_to_target_tree(targets, acq, [project['group_id'], project['name'], session['label'], acq.get('label', 'None')], total_size, file_cnt)
+            elif item['level'] == 'session':
+                session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['name', 'group_id'])
+                total_size, file_cnt = add_to_target_tree(targets, session, [project['group_id'], project['name'], session['label']], total_size, file_cnt)
+                acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
+                for acq in acquisitions:
+                    total_size, file_cnt = add_to_target_tree(targets, acq, [project['group_id'], project['name'], session['label'], acq.get('label', 'None')], total_size, file_cnt)
+            elif item['level'] == 'acquisition':
+                acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
+                session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['name', 'group_id'])
+                total_size, file_cnt = add_to_target_tree(targets, acq, [project['group_id'], project['name'], session['label'], acq['label']], total_size, file_cnt)
+        log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
+        filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
+        ticket = util.download_ticket('batch', json.dumps(targets), filename, total_size)
+        tkt_id = self.app.db.downloads.insert(ticket)
+        return {'url': self.uri_for('download', _full=True, ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
 
-    def _archivestream(self, tkt_spec):
-        pass
+    def _archivestream(self, ticket):
+        def zipwalk(z, tree, path):
+            for k, v in tree.iteritems():
+                if isinstance(v, dict):
+                    newpath = path + '/' + k
+                    #z.write('/', newpath) # if we add directories, we create zipfiles that Finder can't handle
+                    zipwalk(z, v, newpath)
+                else:
+                    z.write(v[0], path + '/' + os.path.basename(v[0]))
+        length = None
+        z = zipstream.ZipFile()
+        targets = json.loads(ticket['target'])
+        #z.write('/', 'sdm') # if we add directories, we create zipfiles that Finder can't handle
+        zipwalk(z, targets, 'sdm')
+        return z, length
 
     def download(self):
         ticket_id = self.request.get('ticket')
         if ticket_id:
-            tkt_spec = self.app.db.downloads.find_one({'_id': ticket_id})
-            if not tkt_spec:
+            ticket = self.app.db.downloads.find_one({'_id': ticket_id})
+            if not ticket:
                 self.abort(404, 'no such ticket')
-            if tkt_spec['type'] == 'single':
-                self.response.app_iter = open(tkt_spec['filepath'], 'rb')
+            if ticket['type'] == 'single':
+                self.response.app_iter = open(ticket['target'], 'rb')
+                self.response.headers['Content-Length'] = str(ticket['size']) # must be set after setting app_iter
             else:
-                self.response.app_iter = self._archivestream(tkt_spec) # returns iterator
+                self.response.app_iter, length = self._archivestream(ticket)
+                self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
             self.response.headers['Content-Type'] = 'application/octet-stream'
-            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(tkt_spec['filename'])
-            self.response.headers['Content-Length'] = str(tkt_spec['size']) # must be set after setting app_iter
+            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
             try:
                 req_spec = self.request.json_body
                 jsonschema.validate(req_spec, DOWNLOAD_SCHEMA)
+                print req_spec
             except (ValueError, jsonschema.ValidationError) as e:
                 self.abort(400, str(e))
             return self._preflight_archivestream(req_spec)

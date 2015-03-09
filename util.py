@@ -161,3 +161,15 @@ def user_perm(permissions, _id, site=None):
             return perm
     else:
         return {}
+
+
+def download_ticket(type_, target, filename, size):
+    import bson.json_util
+    return {
+            '_id': str(bson.ObjectId()), # FIXME: use better ticket ID
+            'timestamp': datetime.datetime.utcnow(),
+            'type': type_,
+            'target': target,
+            'filename': filename,
+            'size': size,
+            }

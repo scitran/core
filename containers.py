@@ -192,15 +192,8 @@ class Container(base.RequestHandler):
             self.abort(404, 'no such file')
         filename = file_info['name'] + file_info['ext']
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
-        tkt_spec = {
-                '_id': str(bson.ObjectId()), # FIXME: use better ticket ID
-                'timestamp': datetime.datetime.utcnow(),
-                'type': 'single',
-                'filepath': filepath,
-                'filename': filename,
-                'size': file_info['size'],
-                }
-        tkt_id = self.app.db.downloads.insert(tkt_spec)
+        ticket = util.download_ticket('single', filepath, filename, file_info['size'])
+        tkt_id = self.app.db.downloads.insert(ticket)
         if self.request.method == 'GET':
             self.redirect_to('download', _abort=True, ticket=tkt_id)
         return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
