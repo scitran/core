@@ -3,12 +3,14 @@
 # @author:  Gunnar Schaefer
 
 import os
+import bson
 import json
 import time
 import pymongo
 import hashlib
 import logging
 import argparse
+import datetime
 
 
 def connect_db(db_uri, **kwargs):
@@ -91,6 +93,55 @@ def dbinit(args):
 dbinit_desc = """
 example:
 ./scripts/bootstrap.py dbinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni -j nims_users_and_groups.json
+"""
+
+
+def jobsinit(args):
+    """Create a job entry for every acquisition's orig dataset."""
+    db_client = connect_db(args.db_uri)
+    db = db_client.get_default_database()
+    counter = db.jobs.count() + 1   # where to start creating jobs
+
+    for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1}):
+        aid = a.get('_id')
+        session = db.session.find_one({'_id': bson.ObjectId(a.get('session'))})
+        project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
+        db.jobs.insert({
+            '_id': counter,
+            'group': project.get('group_id'),
+            'project': project.get('_id'),
+            'app_id': 'scitran/dmc2nii:latest',
+            'inputs': [
+                {
+                    'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                    'payload': {
+                        'type': a['files'][0]['type'],
+                        'state': a['files'][0]['state'],
+                        'kinds': a['files'][0]['kinds'],
+                    },
+                }
+            ],
+            'outputs': [
+                {
+                    'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                    'payload': {
+                        'type': 'nifti',
+                        'state': ['derived', ],
+                        'kinds': a['files'][0]['kinds'],
+                    },
+                },
+            ],
+            'status': 'pending',     # queued
+            'activity': None,
+            'added': datetime.datetime.now(),
+            'timestamp': datetime.datetime.now(),
+        })
+        counter += 1
+        print 'created job %d, group: %s, project %s' % (counter, project.get('group_id'), project.get('_id'))
+
+jobinit_desc = """
+example:
+    ./scripts/bootstrap.py jobsinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni
 """
 
 
@@ -215,6 +266,15 @@ dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out 
 dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
 dbinit_parser.add_argument('db_uri', help='DB URI')
 dbinit_parser.set_defaults(func=dbinit)
+
+jobsinit_parser = subparsers.add_parser(
+        name='jobsinit',
+        help='initalize jobs collection from existing acquisitions',
+        description=dbinit_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+jobsinit_parser.add_argument('db_uri', help='DB URI')
+jobsinit_parser.set_defaults(func=jobsinit)
 
 sort_parser = subparsers.add_parser(
         name='sort',
