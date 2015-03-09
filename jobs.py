@@ -6,9 +6,6 @@ API request handlers for process-job-handling.
 represents the /nimsapi/jobs route
 """
 
-import os
-import bson
-import json
 import logging
 import datetime
 log = logging.getLogger('nimsapi.jobs')
