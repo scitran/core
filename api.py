@@ -133,6 +133,7 @@ if __name__ == '__main__':
     kwargs = dict(tz_aware=True)
     db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
     app.db = db_client.get_default_database()
+    app.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': 'Local'}, upsert=True)
 
     app.debug = True # send stack trace for uncaught exceptions to client
     paste.httpserver.serve(app, host=args.host, port=args.port, ssl_pem=args.ssl_cert)
