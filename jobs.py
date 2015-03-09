@@ -133,4 +133,4 @@ class Job(base.RequestHandler):
         payload = self.request.json
         # TODO: validate the json before updating the db
         log.debug(payload)
-        self.app.db.jobs.update({'_id': int(_id)}, {'$set': {'status': payload.get('status')}})
+        self.app.db.jobs.update({'_id': int(_id)}, {'$set': {'status': payload.get('status'), 'activity': payload.get('activity')}})
