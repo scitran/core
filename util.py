@@ -158,7 +158,7 @@ def create_job(db, dataset):
                 app_id = 'scitran/dcm2nii:latest'
                 output_state = ['derived', ]
                 output_type = 'nifti'
-                output_kind = dataset.nims_file_kinds   # from input file
+                output_kinds = dataset.nims_file_kinds   # from input file
         # TODO: determine job specifications
 
         if not app_id:
