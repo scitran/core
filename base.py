@@ -22,8 +22,6 @@ class RequestHandler(webapp2.RequestHandler):
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
-        firstname = None
-        lastname = None
         self.source_site = None
         access_token = self.request.headers.get('Authorization', None)
         if access_token and self.app.config['oauth2_id_endpoint']:
@@ -37,8 +35,6 @@ class RequestHandler(webapp2.RequestHandler):
                 if r.status_code == 200:
                     identity = json.loads(r.content)
                     self.uid = identity['email']
-                    firstname = identity['given_name']
-                    lastname = identity['family_name']
                     self.app.db.tokens.save({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
                 else:
@@ -65,8 +61,8 @@ class RequestHandler(webapp2.RequestHandler):
                         '_id': self.uid,
                         'email': self.uid,
                         'email_hash': hashlib.md5(self.uid).hexdigest(),
-                        'firstname': firstname or 'DEMO',
-                        'lastname': lastname or 'DEMO',
+                        'firstname': identity.get('given_name', 'Firstname'),
+                        'lastname': identity.get('family_name', 'Lastname'),
                         'wheel': True,
                         'root': True,
                     })
