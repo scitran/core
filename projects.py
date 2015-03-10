@@ -106,6 +106,7 @@ class Projects(containers.ContainerList):
             self.abort(400, 'invalid group id')
         if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
             self.abort(400, 'must be group admin to create project')
+        json_body['files'] = []
         json_body['permissions'] = group['roles']
         return {'_id': str(self.dbc.insert(json_body))}
 

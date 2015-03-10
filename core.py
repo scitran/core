@@ -160,69 +160,66 @@ class Core(base.RequestHandler):
                 self.abort(status, detail)
 
     def _preflight_archivestream(self, req_spec):
-        # FIXME: check permissions of everything
         data_path = self.app.config['data_path']
-        def tree():
-            return collections.defaultdict(tree)
-        def add_to_target_tree(t, container, prefix, size, cnt):
+        arc_prefix = 'sdm'
+
+        def append_targets(targets, container, prefix, total_size, total_cnt):
+            prefix = arc_prefix + '/' + prefix
             for f in container['files']:
-                filename = f['name'] + f['ext']
-                filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), filename)
-                if not os.path.exists(filepath): # silently skip missing files
-                    continue
-                size += f['size']
-                cnt += 1
-                t_ = t
-                for node in prefix:
-                    t_ = t_[node]
-                t_[filename] = (filepath, f['size'])
-            return size, cnt
+                if req_spec['optional'] or not f.get('optional', False):
+                    filename = f['name'] + f['ext']
+                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), filename)
+                    if os.path.exists(filepath): # silently skip missing files
+                        targets.append((filepath, prefix + '/' + filename, f['size']))
+                        total_size += f['size']
+                        total_cnt += 1
+            return total_size, total_cnt
+
         file_cnt = 0
         total_size = 0
-        targets = tree()
+        targets = []
+        # FIXME: check permissions of everything
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
-                project = self.app.db.projects.find_one({'_id': item_id}, ['name', 'group_id', 'files'])
-                total_size, file_cnt = add_to_target_tree(targets, project, [project['group_id']], total_size, file_cnt)
+                project = self.app.db.projects.find_one({'_id': item_id}, ['group_id', 'name', 'files'])
+                prefix = project['group_id'] + '/' + project['name']
+                total_size, file_cnt = append_targets(targets, project, prefix, total_size, file_cnt)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
                 for session in sessions:
-                    total_size, file_cnt = add_to_target_tree(targets, session, [project['group_id'], project['name'], session['label']], total_size, file_cnt)
+                    session_prefix = prefix + '/' + session.get('label', 'untitled')
+                    total_size, file_cnt = append_targets(targets, session, session_prefix, total_size, file_cnt)
                     acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
                     for acq in acquisitions:
-                        total_size, file_cnt = add_to_target_tree(targets, acq, [project['group_id'], project['name'], session['label'], acq.get('label', 'None')], total_size, file_cnt)
+                        acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
+                        total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['name', 'group_id'])
-                total_size, file_cnt = add_to_target_tree(targets, session, [project['group_id'], project['name'], session['label']], total_size, file_cnt)
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['group_id', 'name'])
+                prefix = project['group_id'] + '/' + project['name'] + '/' + session.get('label', 'untitled')
+                total_size, file_cnt = append_targets(targets, session, prefix, total_size, file_cnt)
                 acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
-                    total_size, file_cnt = add_to_target_tree(targets, acq, [project['group_id'], project['name'], session['label'], acq.get('label', 'None')], total_size, file_cnt)
+                    acq_prefix = prefix + '/' + acq.get('label', 'untitled')
+                    total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'acquisition':
                 acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
                 session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['name', 'group_id'])
-                total_size, file_cnt = add_to_target_tree(targets, acq, [project['group_id'], project['name'], session['label'], acq['label']], total_size, file_cnt)
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['group_id', 'name'])
+                prefix = project['group_id'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
-        ticket = util.download_ticket('batch', json.dumps(targets), filename, total_size)
+        ticket = util.download_ticket('batch', targets, filename, total_size)
         tkt_id = self.app.db.downloads.insert(ticket)
         return {'url': self.uri_for('download', _full=True, ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
-        def zipwalk(z, tree, path):
-            for k, v in tree.iteritems():
-                if isinstance(v, dict):
-                    newpath = path + '/' + k
-                    #z.write('/', newpath) # if we add directories, we create zipfiles that Finder can't handle
-                    zipwalk(z, v, newpath)
-                else:
-                    z.write(v[0], path + '/' + os.path.basename(v[0]))
-        length = None
-        z = zipstream.ZipFile()
-        targets = json.loads(ticket['target'])
-        #z.write('/', 'sdm') # if we add directories, we create zipfiles that Finder can't handle
-        zipwalk(z, targets, 'sdm')
+        length = None # FIXME compute actual length
+        z = zipstream.ZipFile(allowZip64=True)
+        targets = ticket['target']
+        for filepath, acrpath, _ in targets:
+            z.write(filepath, acrpath)
         return z, length
 
     def download(self):
@@ -243,9 +240,9 @@ class Core(base.RequestHandler):
             try:
                 req_spec = self.request.json_body
                 jsonschema.validate(req_spec, DOWNLOAD_SCHEMA)
-                print req_spec
             except (ValueError, jsonschema.ValidationError) as e:
                 self.abort(400, str(e))
+            log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
             return self._preflight_archivestream(req_spec)
 
     def sites(self):
