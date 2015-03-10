@@ -20,6 +20,7 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
     flavor += 's'
+    dataset = None
     if _id is None:
         try:
             log.info('Parsing     %s' % filename)
@@ -68,7 +69,8 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
     if not success['updatedExisting']:
         dbc.update({'_id': _id}, {'$push': {flavor: file_info}})
     shutil.move(filepath, container_path + '/' + filename)
-    create_job(dbc, dataset)
+    if dataset:  # only create jobs if dataset is parseable
+        create_job(dbc, dataset)
     log.debug('Done        %s' % os.path.basename(filepath)) # must use filepath, since filename is updated for sorted files
     return 200, 'Success'
 
