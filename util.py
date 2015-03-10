@@ -68,6 +68,7 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
     if not success['updatedExisting']:
         dbc.update({'_id': _id}, {'$push': {flavor: file_info}})
     shutil.move(filepath, container_path + '/' + filename)
+    create_job(dbc, dataset)
     log.debug('Done        %s' % os.path.basename(filepath)) # must use filepath, since filename is updated for sorted files
     return 200, 'Success'
 
@@ -125,10 +126,9 @@ def _update_db(db, dataset):
         db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=dataset.nims_timestamp)})
         db.sessions.update({'_id': session['_id']}, {'$min': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
     # create a job, if necessary
-    create_job(db, dataset)
     return acquisition['_id']
 
-def create_job(db, dataset):
+def create_job(dbc, dataset):
         # TODO: this should search the 'apps' db collection.
         # each 'app' must define it's expected inputs's type, state and kind
         # some apps are special defaults. one default per data specific triple.
@@ -143,6 +143,9 @@ def create_job(db, dataset):
         #       'state_': fstate[-1],  # string
         #   })
         # apps specify the last state of their desired input file.
+
+        db = dbc.database
+
         type_ = dataset.nims_file_type
         kinds_ = dataset.nims_file_kinds
         state_ = dataset.nims_file_state
@@ -160,6 +163,12 @@ def create_job(db, dataset):
                 output_type = 'nifti'
                 output_kinds = dataset.nims_file_kinds   # from input file
         # TODO: determine job specifications
+
+        # force acquisition dicom file to be marked as 'optional = True'
+        db.acquisitions.find_and_modify(
+            {'uid': dataset.nims_acquisition_id, 'files.type': 'dicom'},
+            {'$set': {'files.$.optional': True}},
+            )
 
         if not app_id:
             log.info('no app for type=%s, state=%s, kinds=%s, default=True. no job created.' % (type_, state_, kinds_))
