@@ -152,19 +152,33 @@ def create_job(dbc, dataset):
         kinds_ = dataset.nims_file_kinds
         state_ = dataset.nims_file_state
         app_id = None
-        output_state = None
-        output_type = None
-        output_kinds = None
 
         if type_ == 'dicom' and state_ == ['orig']:
             if kinds_ != ['screenshot']:
                 # could ship a script that gets mounted into the container.
                 # but then the script would also need to specify what base image it needs.
                 app_id = 'scitran/dcm2nii:latest'
-                output_state = ['derived', ]
-                output_type = 'nifti'
-                output_kinds = dataset.nims_file_kinds   # from input file
-        # TODO: determine job specifications
+                # app_input is implied; type = 'dicom', state =['orig',] and kinds != 'screenshot'
+                app_outputs = [
+                    {
+                        'fext': '.nii.gz',
+                        'state': ['derived', ],
+                        'type': 'nifti',
+                        'kinds': dataset.nims_file_kinds,  # there should be someway to indicate 'from parent file'
+                    },
+                    {
+                        'fext': '.bvec',
+                        'state': ['derived', ],
+                        'type': 'text',
+                        'kinds': ['bvec', ],
+                    },
+                    {
+                        'fext': '.bval',
+                        'state': ['derived', ],
+                        'type': 'text',
+                        'kinds': ['bval', ],
+                    },
+                ]
 
         # force acquisition dicom file to be marked as 'optional = True'
         db.acquisitions.find_and_modify(
@@ -181,6 +195,7 @@ def create_job(dbc, dataset):
             project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
             aid = acquisition.get('_id')
             # TODO: job description needs more metadata to be searchable in a useful way
+            output_url = '%s/%s/%s' % ('acquisitions', aid, 'file')
             job = db.jobs.find_and_modify(
                 {
                     '_id': db.jobs.count() + 1,
@@ -188,9 +203,15 @@ def create_job(dbc, dataset):
                 {
                     '_id': db.jobs.count() + 1,
                     'group': project.get('group_id'),
-                    'project': project.get('_id'),
+                    'project': {
+                        '_id': project.get('_id'),
+                        'name': project.get('name'),
+                    },
                     'exam': session.get('exam'),
-                    'app_id': app_id,
+                    'app': {
+                        '_id': app_id,
+                        'type': 'docker',
+                    },
                     'inputs': [
                         {
                             'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
@@ -201,16 +222,7 @@ def create_job(dbc, dataset):
                             },
                         }
                     ],
-                    'outputs': [
-                        {
-                            'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
-                            'payload': {
-                                'type': output_type,
-                                'state': output_state,             # TODO defined in app
-                                'kinds': output_kinds,
-                            },
-                        },
-                    ],
+                    'outputs': [{'url': output_url, 'payload': i} for i in app_outputs],
                     'status': 'pending',     # queued
                     'activity': None,
                     'added': datetime.datetime.now(),
