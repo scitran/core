@@ -258,7 +258,7 @@ class Container(base.RequestHandler):
                 filename = file_info['name'] + file_info['ext']
                 filepath = os.path.join(tempdir_path, filename)
                 field_storage_obj = self.request.POST.get(filename)
-                with open(filepaths[-1], 'wb') as fd:
+                with open(filepath, 'wb') as fd:
                     for chunk in iter(lambda: field_storage_obj.file.read(2**20), ''):
                         hash_.update(chunk)
                         fd.write(chunk)
