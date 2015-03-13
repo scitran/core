@@ -130,6 +130,7 @@ def _update_db(db, dataset):
     # create a job, if necessary
     return acquisition['_id']
 
+# TODO: create job should be use-able from bootstrap.py with only database information
 def create_job(dbc, dataset):
         # TODO: this should search the 'apps' db collection.
         # each 'app' must define it's expected inputs's type, state and kind

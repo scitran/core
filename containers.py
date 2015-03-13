@@ -253,11 +253,10 @@ class Container(base.RequestHandler):
         data_path = self.app.config['data_path']
         quarantine_path = self.app.config['quarantine_path']
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=data_path) as tempdir_path:
-            filepaths = []
             for file_info in metadata['files']:
                 hash_ = hashlib.sha1()
                 filename = file_info['name'] + file_info['ext']
-                filepaths.append(os.path.join(tempdir_path, filename))
+                filepath = os.path.join(tempdir_path, filename)
                 field_storage_obj = self.request.POST.get(filename)
                 with open(filepaths[-1], 'wb') as fd:
                     for chunk in iter(lambda: field_storage_obj.file.read(2**20), ''):
@@ -266,7 +265,6 @@ class Container(base.RequestHandler):
                 if hash_.hexdigest() != file_info['sha1']:
                     self.abort(400, 'Content-MD5 mismatch.')
                 log.info('Received    %s [%s] from %s' % (filename, util.hrsize(file_info['size']), self.request.user_agent)) # FIXME: user_agent or uid
-            for filepath in filepaths:
                 status, detail = util.insert_file(self.dbc, _id, file_info, filepath, file_info['sha1'], data_path, quarantine_path)
                 if status != 200:
                     self.abort(status, detail)
