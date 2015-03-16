@@ -46,11 +46,10 @@ if not os.path.exists(application.config['quarantine_path']):
     os.makedirs(application.config['quarantine_path'])
 
 # connect to db
-kwargs = dict(tz_aware=True)
 application.db = None
 for x in range(0, 30):
     try:
-        db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
+        db_client = pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)
         application.db = db_client.get_default_database()
     except:
         time.sleep(1)

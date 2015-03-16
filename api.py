@@ -130,8 +130,7 @@ if __name__ == '__main__':
     if not os.path.exists(app.config['quarantine_path']):
         os.makedirs(app.config['quarantine_path'])
 
-    kwargs = dict(tz_aware=True)
-    db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
+    db_client = pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)
     app.db = db_client.get_default_database()
     app.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': 'Local'}, upsert=True)
 
