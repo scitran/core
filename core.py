@@ -138,6 +138,8 @@ class Core(base.RequestHandler):
 
     def put(self):
         """Receive a sortable reaper or user upload."""
+        #if not self.uid and not self.drone_request:
+        #    self.abort(402, 'uploads must be from an authorized user or drone')
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         filename = self.request.get('filename', 'upload')

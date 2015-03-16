@@ -23,6 +23,7 @@ class RequestHandler(webapp2.RequestHandler):
         # set uid, source_site, public_request, and superuser
         self.uid = None
         self.source_site = None
+        self.drone_request = False
         access_token = self.request.headers.get('Authorization', None)
         if access_token and self.app.config['oauth2_id_endpoint']:
             token_request_time = datetime.datetime.now()
@@ -42,14 +43,19 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(401, 'invalid oauth2 token', headers=headers)
         elif self.debug and self.request.get('user'):
             self.uid = self.request.get('user')
-        elif self.request.user_agent.startswith('NIMS Instance'):
-            self.uid = self.request.headers.get('X-User')
-            self.source_site = self.request.headers.get('X-Site')
+        elif self.request.user_agent.startswith('SciTran'):
             if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
                 self.abort(401, 'no valid SSL client certificate')
-            remote_instance = self.request.user_agent.replace('NIMS Instance', '').strip()
-            if not self.app.db.sites.find_one({'_id': remote_instance}):
-                self.abort(402, remote_instance + ' is not authorized')
+            if self.request.user_agent.startswith('SciTran Instance'):
+                self.uid = self.request.headers.get('X-User')
+                self.source_site = self.request.headers.get('X-Site')
+                remote_instance = self.request.user_agent.replace('SciTran Instance', '').strip()
+                if not self.app.db.sites.find_one({'_id': remote_instance}):
+                    self.abort(402, remote_instance + ' is not an authorized remote instance')
+            else:
+                if not self.app.db.drones.find_one({'_id': remote_instance}):
+                    self.abort(402, remote_instance + ' is not an authorized drone')
+                self.drone_request = True
         self.public_request = not bool(self.uid)
         if self.public_request or self.source_site:
             self.superuser_request = False
@@ -87,7 +93,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers
             self.headers = self.request.headers
-            self.headers['User-Agent'] = 'NIMS Instance ' + self.app.config['site_id']
+            self.headers['User-Agent'] = 'SciTran Instance ' + self.app.config['site_id']
             self.headers['X-User'] = self.uid
             self.headers['X-Site'] = self.app.config['site_id']
             self.headers['Content-Length'] = len(self.request.body)
