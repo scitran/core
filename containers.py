@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
+import json
 import hashlib
 import datetime
 import jsonschema
@@ -12,6 +13,8 @@ import bson.json_util
 import base
 import util
 import users
+
+import tempdir as tempfile
 
 FILE_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -261,3 +264,116 @@ class Container(base.RequestHandler):
                 status, detail = util.insert_file(self.dbc, _id, file_info, filepath, file_info['sha1'], data_path, quarantine_path)
                 if status != 200:
                     self.abort(status, detail)
+
+    def put_attachment(self, cid):
+        """
+        Recieve a targetted user upload of an attachment.
+
+        Attachments are different from files, in that they are not 'research ready'.  Attachments
+        represent other documents that are generally not useable by the engine; documents like
+        consent forms, pen/paper questionnaires, study recruiting materials, etc.
+
+        Internally, attachments are distinguished from files because of what metadata is
+        required.  Attachments really only need a 'kinds' and 'type'.  We don't expect iteration over
+        an attachment in a way that would require tracking 'state'.
+        """
+        # todo need write acess to add attachment
+        log.info('starting put attachment')
+        log.debug(self.request.content_type)
+        log.debug(self.request.POST)
+        data_path = self.app.config['data_path']
+        quarantine_path = self.app.config['quarantine_path']
+        _id = bson.ObjectId(cid)
+        hashes = []
+        with tempfile.TemporaryDirectory(prefix='tmp', dir=self.app.config['data_path']) as tempdir_path:
+            # get and hash the metadata
+            metahash = hashlib.sha1()
+            metastr = self.request.POST.get('metadata').file.read()  # returns a string?
+            metadata = json.loads(metastr)
+            metahash.update(metastr)
+            hashes.append({'name': 'metadata', 'sha1': metahash.hexdigest()})
+
+            sha1s = json.loads(self.request.POST.get('sha').file.read())
+
+            # get and hash the files
+            for finfo in metadata:
+                fname = finfo.get('name') + finfo.get('ext')
+                fhash = hashlib.sha1()
+                fobj = self.request.POST.get(fname).file  # returns a file?
+                filepath = os.path.join(tempdir_path, fname)
+                with open(filepath, 'wb') as fd:
+                    for chunk in iter(lambda: fobj.read(2**20), ''):
+                        fhash.update(chunk)
+                        fd.write(chunk)
+                for s in sha1s:
+                    if fname == s.get('name'):
+                        if fhash.hexdigest() != s.get('sha1'):
+                            self.abort(400, 'Content-MD5 mismatch %s vs %s' % (fhash.hexdigest(), s.get('sha1')))
+                        else:
+                            status, detail = util.insert_attachment(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path)
+                        if status != 200:
+                            self.abort(400, 'upload failed')
+                        break
+                else:
+                    self.abort(400, '%s is not listed in the sha1s' % fname)
+
+    def get_attachment(self, cid):
+        """Download one attachment."""
+        fname = self.request.get('name')
+        _id = bson.ObjectId(cid)
+        container, _ = self._get(_id, 'download')
+
+        for a_info in container['attachments']:
+            if (a_info['name'] + a_info['ext']) == fname:
+                break
+        else:
+            self.abort(404, 'no such file')
+        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
+        ticket = util.download_ticket('single', fpath, fname, a_info['size'])
+        tkt_id = self.app.db.downloads.insert(ticket)
+        if self.request.method == 'GET':
+            self.redirect_to('download', _abort=True, ticket=tkt_id)
+        return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+
+        # try:
+        #     attachment_spec = self.request.json_body
+        #     jsonschema.validate(attachment_spec, FILE_DOWNLOAD_SCHEMA)
+        # except (ValueError, jsonschema.ValidationError) as e:
+        #     self.abort(400, str(e))
+        # _id = bson.ObjectId(cid)
+        # container, _ = self._get(_id, 'download')  # need read access to get attachment
+        # for attachment_info in container['attachments']:
+        #     if 'name' in attachment_spec:
+        #         if attachment_info['name'] == attachment_spec['name'] and attachment_info['ext'] == attachment_spec['ext']:
+        #             break
+        # else:
+        #     self.abort(404, 'no such file')
+        # filename = attachment_info['name'] + attachment_info['ext']
+        # filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
+        # ticket = util.download_ticket('single', filepath, filename, attachment_info['size'])
+        # tkt_id = self.app.db.downloads.insert(ticket)
+        # if self.request.method == 'GET':
+        #     self.redirect_to('download', _abort=True, ticket=tkt_id)
+        # return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+
+    def delete_attachment(self, cid):
+        """Delete one attachment."""
+        fname = self.request.get('name')
+        _id = bson.ObjectId(cid)
+        container, _ = self._get(_id, 'download')
+
+        for a_info in container['attachments']:
+            if (a_info['name'] + a_info['ext']) == fname:
+                break
+        else:
+            self.abort(404, 'no such file')
+        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
+        name, ext = os.path.splitext(fname)
+        success = self.dbc.update({'_id': _id, 'attachments.name': name}, {'$pull': {'attachments': {'name': name}}})
+        if not success['updatedExisting']:
+            log.info('could not remove database entry.')  # this shouldn't happen...
+        if os.path.exists(fpath):
+            os.remove(fpath)
+            log.info('removed file %s' % fpath)
+        else:
+            log.info('could not remove file, file %s does not exist' % fpath)

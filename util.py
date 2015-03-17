@@ -66,6 +66,33 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
     log.debug('Done        %s' % os.path.basename(filepath)) # must use filepath, since filename is updated for sorted files
     return 200, 'Success'
 
+def insert_attachment(dbc, _id, attachment_info, filepath, digest, data_path, quarantine_path):
+    filename = os.path.basename(filepath)
+    if _id is None:
+        log.warning('cannot parse _id from an attachment. quarantining')
+    else:
+        fname, fext = os.path.splitext(filename)
+        attachment_info = {
+            'name': fname,
+            'ext': fext,
+            'size': attachment_info.get('size'),
+            'sha1': digest,
+            'type': 'attachment',
+            'kinds': [attachment_info.get('kind')],
+            'state': ['upload'],
+        }
+    container_path = os.path.join(data_path, str(_id)[-3:], str(_id))
+    if not os.path.exists(container_path):
+        os.makedirs(container_path)
+    success = dbc.update({'_id': _id, 'attachments': {'$elemMatch': {'name': fname, 'ext': fext}}}, {'$set': {'attachments.$': attachment_info}})
+    if not success['updatedExisting']:
+        dbc.update({'_id': _id}, {'$push': {'attachments': attachment_info}})
+    else:
+        log.info('overwriting %s' % (container_path + '/' + filename))
+    shutil.move(filepath, container_path + '/' + filename)
+    log.debug('Done     %s' % os.path.basename(filepath))
+    return 200, 'Success'
+
 
 def _update_db(db, dataset):
     #TODO: possibly try to keep a list of session IDs on the project, instead of having the session point to the project
