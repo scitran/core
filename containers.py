@@ -281,6 +281,7 @@ class Container(base.RequestHandler):
         log.info('starting put attachment')
         log.debug(self.request.content_type)
         log.debug(self.request.POST)
+        log.debug(self.request.content)
         data_path = self.app.config['data_path']
         quarantine_path = self.app.config['quarantine_path']
         _id = bson.ObjectId(cid)
@@ -322,56 +323,35 @@ class Container(base.RequestHandler):
         fname = self.request.get('name')
         _id = bson.ObjectId(cid)
         container, _ = self._get(_id, 'download')
-
+        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
         for a_info in container['attachments']:
             if (a_info['name'] + a_info['ext']) == fname:
                 break
         else:
             self.abort(404, 'no such file')
-        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
+
         ticket = util.download_ticket('single', fpath, fname, a_info['size'])
         tkt_id = self.app.db.downloads.insert(ticket)
         if self.request.method == 'GET':
             self.redirect_to('download', _abort=True, ticket=tkt_id)
         return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
 
-        # try:
-        #     attachment_spec = self.request.json_body
-        #     jsonschema.validate(attachment_spec, FILE_DOWNLOAD_SCHEMA)
-        # except (ValueError, jsonschema.ValidationError) as e:
-        #     self.abort(400, str(e))
-        # _id = bson.ObjectId(cid)
-        # container, _ = self._get(_id, 'download')  # need read access to get attachment
-        # for attachment_info in container['attachments']:
-        #     if 'name' in attachment_spec:
-        #         if attachment_info['name'] == attachment_spec['name'] and attachment_info['ext'] == attachment_spec['ext']:
-        #             break
-        # else:
-        #     self.abort(404, 'no such file')
-        # filename = attachment_info['name'] + attachment_info['ext']
-        # filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
-        # ticket = util.download_ticket('single', filepath, filename, attachment_info['size'])
-        # tkt_id = self.app.db.downloads.insert(ticket)
-        # if self.request.method == 'GET':
-        #     self.redirect_to('download', _abort=True, ticket=tkt_id)
-        # return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
-
     def delete_attachment(self, cid):
         """Delete one attachment."""
         fname = self.request.get('name')
         _id = bson.ObjectId(cid)
         container, _ = self._get(_id, 'download')
-
+        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
         for a_info in container['attachments']:
             if (a_info['name'] + a_info['ext']) == fname:
                 break
         else:
             self.abort(404, 'no such file')
-        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
+
         name, ext = os.path.splitext(fname)
         success = self.dbc.update({'_id': _id, 'attachments.name': name}, {'$pull': {'attachments': {'name': name}}})
         if not success['updatedExisting']:
-            log.info('could not remove database entry.')  # this shouldn't happen...
+            log.info('could not remove database entry.')
         if os.path.exists(fpath):
             os.remove(fpath)
             log.info('removed file %s' % fpath)
