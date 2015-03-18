@@ -278,10 +278,6 @@ class Container(base.RequestHandler):
         an attachment in a way that would require tracking 'state'.
         """
         # todo need write acess to add attachment
-        log.info('starting put attachment')
-        log.debug(self.request.content_type)
-        log.debug(self.request.POST)
-        log.debug(self.request.content)
         data_path = self.app.config['data_path']
         quarantine_path = self.app.config['quarantine_path']
         _id = bson.ObjectId(cid)
