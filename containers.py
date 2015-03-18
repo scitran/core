@@ -282,7 +282,7 @@ class Container(base.RequestHandler):
         quarantine_path = self.app.config['quarantine_path']
         _id = bson.ObjectId(cid)
         hashes = []
-        with tempfile.TemporaryDirectory(prefix='tmp', dir=self.app.config['data_path']) as tempdir_path:
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
             # get and hash the metadata
             metahash = hashlib.sha1()
             metastr = self.request.POST.get('metadata').file.read()  # returns a string?
