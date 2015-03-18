@@ -277,7 +277,10 @@ class Container(base.RequestHandler):
         required.  Attachments really only need a 'kinds' and 'type'.  We don't expect iteration over
         an attachment in a way that would require tracking 'state'.
         """
-        # todo need write acess to add attachment
+        # TODO read self.request.body, using '------WebKitFormBoundary' as divider
+        # first line is 'content-disposition' line, extract filename
+        # second line is content-type, determine how to write to a file, as bytes or as string
+        # third linedata_path = self.app.config['data_path'], just a separator, useless
         data_path = self.app.config['data_path']
         quarantine_path = self.app.config['quarantine_path']
         _id = bson.ObjectId(cid)
