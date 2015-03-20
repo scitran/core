@@ -15,7 +15,8 @@ import scitran.data
 PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
 
 
-def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path):
+def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path, flavor='file'):
+    """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
     if _id is None:
         try:
@@ -48,49 +49,23 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
                 )
         filename = dataset.nims_file_name + dataset.nims_file_ext
     else:
+        flavor = flavor + 's'
         file_spec = dict(
                 _id=_id,
-                files={'$elemMatch': {
-                    'type': file_info['type'],
-                    'kinds': file_info['kinds'],
-                    'state': file_info['state'],
+                flavor={'$elemMatch': {
+                    'type': file_info.get('type'),
+                    'kinds': file_info.get('kinds'),
+                    'state': file_info.get('state'),
                     }},
                 )
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
     if not os.path.exists(container_path):
         os.makedirs(container_path)
-    success = dbc.update(file_spec, {'$set': {'files.$': file_info}})
+    success = dbc.update(file_spec, {'$set': {flavor + '.$': file_info}})
     if not success['updatedExisting']:
-        dbc.update({'_id': _id}, {'$push': {'files': file_info}})
+        dbc.update({'_id': _id}, {'$push': {flavor: file_info}})
     shutil.move(filepath, container_path + '/' + filename)
     log.debug('Done        %s' % os.path.basename(filepath)) # must use filepath, since filename is updated for sorted files
-    return 200, 'Success'
-
-def insert_attachment(dbc, _id, attachment_info, filepath, digest, data_path, quarantine_path):
-    filename = os.path.basename(filepath)
-    if _id is None:
-        log.warning('cannot parse _id from an attachment. quarantining')
-    else:
-        fname, fext = os.path.splitext(filename)
-        attachment_info = {
-            'name': fname,
-            'ext': fext,
-            'size': attachment_info.get('size'),
-            'sha1': digest,
-            'type': 'attachment',
-            'kinds': [attachment_info.get('kind')],
-            'state': ['upload'],
-        }
-    container_path = os.path.join(data_path, str(_id)[-3:], str(_id))
-    if not os.path.exists(container_path):
-        os.makedirs(container_path)
-    success = dbc.update({'_id': _id, 'attachments': {'$elemMatch': {'name': fname, 'ext': fext}}}, {'$set': {'attachments.$': attachment_info}})
-    if not success['updatedExisting']:
-        dbc.update({'_id': _id}, {'$push': {'attachments': attachment_info}})
-    else:
-        log.info('overwriting %s' % (container_path + '/' + filename))
-    shutil.move(filepath, container_path + '/' + filename)
-    log.debug('Done     %s' % os.path.basename(filepath))
     return 200, 'Success'
 
 

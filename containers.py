@@ -215,6 +215,7 @@ class Container(base.RequestHandler):
         the current container.
 
         """
+        # TODO; revise how engine's upload their data to be compatible with the put_attachment fxn
         def receive_stream_and_validate(stream, digest, filename):
             # FIXME pull this out to also be used from core.Core.put() and also replace the duplicated code below
             hash_ = hashlib.sha1()
@@ -297,12 +298,10 @@ class Container(base.RequestHandler):
             hashes.append({'name': 'metadata', 'sha1': metahash.hexdigest()})
 
             sha1s = json.loads(self.request.POST.get('sha').file.read())
-
-            # get and hash the files
             for finfo in metadata:
-                fname = finfo.get('name') + finfo.get('ext')
+                fname = finfo.get('name') + finfo.get('ext')  # finfo['ext'] will always be empty
                 fhash = hashlib.sha1()
-                fobj = self.request.POST.get(fname).file  # returns a file?
+                fobj = self.request.POST.get(fname).file
                 filepath = os.path.join(tempdir_path, fname)
                 with open(filepath, 'wb') as fd:
                     for chunk in iter(lambda: fobj.read(2**20), ''):
@@ -313,7 +312,8 @@ class Container(base.RequestHandler):
                         if fhash.hexdigest() != s.get('sha1'):
                             self.abort(400, 'Content-MD5 mismatch %s vs %s' % (fhash.hexdigest(), s.get('sha1')))
                         else:
-                            status, detail = util.insert_attachment(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path)
+                            finfo['sha1'] = s.get('sha1')
+                            status, detail = util.insert_file(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path, flavor='attachment')
                         if status != 200:
                             self.abort(400, 'upload failed')
                         break
@@ -353,7 +353,7 @@ class Container(base.RequestHandler):
             self.abort(404, 'no such file')
 
         name, ext = os.path.splitext(fname)
-        success = self.dbc.update({'_id': _id, 'attachments.name': name}, {'$pull': {'attachments': {'name': name}}})
+        success = self.dbc.update({'_id': _id, 'attachments.name': fname}, {'$pull': {'attachments': {'name': fname}}})
         if not success['updatedExisting']:
             log.info('could not remove database entry.')
         if os.path.exists(fpath):
