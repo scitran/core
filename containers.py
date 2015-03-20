@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
+import json
 import hashlib
 import datetime
 import jsonschema
@@ -12,6 +13,8 @@ import bson.json_util
 import base
 import util
 import users
+
+import tempdir as tempfile
 
 FILE_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -192,11 +195,14 @@ class Container(base.RequestHandler):
             self.abort(404, 'no such file')
         filename = file_info['name'] + file_info['ext']
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
-        ticket = util.download_ticket('single', filepath, filename, file_info['size'])
-        tkt_id = self.app.db.downloads.insert(ticket)
         if self.request.method == 'GET':
-            self.redirect_to('download', _abort=True, ticket=tkt_id)
-        return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+            self.response.app_iter = open(filepath, 'rb')
+            self.response.headers['Content-Length'] = str(file_info['size']) # must be set after setting app_iter
+            self.response.headers['Content-Type'] = 'application/octet-stream'
+        else:
+            ticket = util.download_ticket('single', filepath, filename, file_info['size'])
+            tkt_id = self.app.db.downloads.insert(ticket)
+            return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
 
     def put_file(self, cid=None):
         """
@@ -209,6 +215,7 @@ class Container(base.RequestHandler):
         the current container.
 
         """
+        # TODO; revise how engine's upload their data to be compatible with the put_attachment fxn
         def receive_stream_and_validate(stream, digest, filename):
             # FIXME pull this out to also be used from core.Core.put() and also replace the duplicated code below
             hash_ = hashlib.sha1()
@@ -261,3 +268,96 @@ class Container(base.RequestHandler):
                 status, detail = util.insert_file(self.dbc, _id, file_info, filepath, file_info['sha1'], data_path, quarantine_path)
                 if status != 200:
                     self.abort(status, detail)
+
+    def put_attachment(self, cid):
+        """
+        Recieve a targetted user upload of an attachment.
+
+        Attachments are different from files, in that they are not 'research ready'.  Attachments
+        represent other documents that are generally not useable by the engine; documents like
+        consent forms, pen/paper questionnaires, study recruiting materials, etc.
+
+        Internally, attachments are distinguished from files because of what metadata is
+        required.  Attachments really only need a 'kinds' and 'type'.  We don't expect iteration over
+        an attachment in a way that would require tracking 'state'.
+        """
+        # TODO read self.request.body, using '------WebKitFormBoundary' as divider
+        # first line is 'content-disposition' line, extract filename
+        # second line is content-type, determine how to write to a file, as bytes or as string
+        # third linedata_path = self.app.config['data_path'], just a separator, useless
+        data_path = self.app.config['data_path']
+        quarantine_path = self.app.config['quarantine_path']
+        _id = bson.ObjectId(cid)
+        hashes = []
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
+            # get and hash the metadata
+            metahash = hashlib.sha1()
+            metastr = self.request.POST.get('metadata').file.read()  # returns a string?
+            metadata = json.loads(metastr)
+            metahash.update(metastr)
+            hashes.append({'name': 'metadata', 'sha1': metahash.hexdigest()})
+
+            sha1s = json.loads(self.request.POST.get('sha').file.read())
+            for finfo in metadata:
+                fname = finfo.get('name') + finfo.get('ext')  # finfo['ext'] will always be empty
+                fhash = hashlib.sha1()
+                fobj = self.request.POST.get(fname).file
+                filepath = os.path.join(tempdir_path, fname)
+                with open(filepath, 'wb') as fd:
+                    for chunk in iter(lambda: fobj.read(2**20), ''):
+                        fhash.update(chunk)
+                        fd.write(chunk)
+                for s in sha1s:
+                    if fname == s.get('name'):
+                        if fhash.hexdigest() != s.get('sha1'):
+                            self.abort(400, 'Content-MD5 mismatch %s vs %s' % (fhash.hexdigest(), s.get('sha1')))
+                        else:
+                            finfo['sha1'] = s.get('sha1')
+                            status, detail = util.insert_file(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path, flavor='attachment')
+                        if status != 200:
+                            self.abort(400, 'upload failed')
+                        break
+                else:
+                    self.abort(400, '%s is not listed in the sha1s' % fname)
+
+    def get_attachment(self, cid):
+        """Download one attachment."""
+        fname = self.request.get('name')
+        _id = bson.ObjectId(cid)
+        container, _ = self._get(_id, 'download')
+        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
+        for a_info in container['attachments']:
+            if (a_info['name'] + a_info['ext']) == fname:
+                break
+        else:
+            self.abort(404, 'no such file')
+        if self.request.method == 'GET':
+            self.response.app_iter = open(fpath, 'rb')
+            self.response.headers['Content-Length'] = str(a_info['size']) # must be set after setting app_iter
+            self.response.headers['Content-Type'] = 'application/octet-stream'
+        else:
+            ticket = util.download_ticket('single', fpath, fname, a_info['size'])
+            tkt_id = self.app.db.downloads.insert(ticket)
+            return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+
+    def delete_attachment(self, cid):
+        """Delete one attachment."""
+        fname = self.request.get('name')
+        _id = bson.ObjectId(cid)
+        container, _ = self._get(_id, 'download')
+        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
+        for a_info in container['attachments']:
+            if (a_info['name'] + a_info['ext']) == fname:
+                break
+        else:
+            self.abort(404, 'no such file')
+
+        name, ext = os.path.splitext(fname)
+        success = self.dbc.update({'_id': _id, 'attachments.name': fname}, {'$pull': {'attachments': {'name': fname}}})
+        if not success['updatedExisting']:
+            log.info('could not remove database entry.')
+        if os.path.exists(fpath):
+            os.remove(fpath)
+            log.info('removed file %s' % fpath)
+        else:
+            log.info('could not remove file, file %s does not exist' % fpath)
