@@ -18,6 +18,7 @@ PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
 def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path, flavor='file'):
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
+    flavor += 's'
     if _id is None:
         try:
             log.info('Parsing     %s' % filename)
@@ -49,7 +50,6 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
                 )
         filename = dataset.nims_file_name + dataset.nims_file_ext
     else:
-        flavor = flavor + 's'
         file_spec = dict(
                 _id=_id,
                 flavor={'$elemMatch': {

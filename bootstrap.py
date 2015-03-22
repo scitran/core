@@ -94,10 +94,9 @@ example:
 def sort(args):
     logging.basicConfig(level=logging.WARNING)
     import util
-    data_path = os.path.join(args.sort_path, 'nims')
     quarantine_path = os.path.join(args.sort_path, 'quarantine')
-    if not os.path.exists(data_path):
-        os.makedirs(data_path)
+    if not os.path.exists(args.sort_path):
+        os.makedirs(args.sort_path)
     if not os.path.exists(quarantine_path):
         os.makedirs(quarantine_path)
     print 'initializing DB'
@@ -120,7 +119,7 @@ def sort(args):
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
                     hash_.update(chunk)
-        status, detail = util.insert_file(db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path)
+        status, detail = util.insert_file(db.acquisitions, None, None, filepath, hash_.hexdigest(), args.sort_path, quarantine_path)
         if status != 200:
             print detail
 

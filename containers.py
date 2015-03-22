@@ -183,7 +183,7 @@ class Container(base.RequestHandler):
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'download')
+        container, _ = self._get(_id, 'ro')
         for file_info in container['files']:
             if 'name' in file_spec:
                 if file_info['name'] == file_spec['name'] and file_info['ext'] == file_spec['ext']:
@@ -324,7 +324,7 @@ class Container(base.RequestHandler):
         """Download one attachment."""
         fname = self.request.get('name')
         _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'download')
+        container, _ = self._get(_id, 'ro')
         fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
         for a_info in container['attachments']:
             if (a_info['name'] + a_info['ext']) == fname:
@@ -344,7 +344,7 @@ class Container(base.RequestHandler):
         """Delete one attachment."""
         fname = self.request.get('name')
         _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'download')
+        container, _ = self._get(_id, 'rw')
         fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
         for a_info in container['attachments']:
             if (a_info['name'] + a_info['ext']) == fname:
