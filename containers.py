@@ -285,9 +285,13 @@ class Container(base.RequestHandler):
         # first line is 'content-disposition' line, extract filename
         # second line is content-type, determine how to write to a file, as bytes or as string
         # third linedata_path = self.app.config['data_path'], just a separator, useless
+        if self.request.content_type != 'multipart/form-data':
+            self.abort(400, 'content-type must be "multipart/form-data"')
+        # TODO: metadata validation
+        _id = bson.ObjectId(cid)
+        container, _ = self._get(_id, 'rw')
         data_path = self.app.config['data_path']
         quarantine_path = self.app.config['quarantine_path']
-        _id = bson.ObjectId(cid)
         hashes = []
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
             # get and hash the metadata
