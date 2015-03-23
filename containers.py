@@ -244,7 +244,7 @@ class Container(base.RequestHandler):
             # FIXME check that processor is legit
         elif cid is not None:   # targeted user upload
             _id = bson.ObjectId(cid)
-            container, _ = self._get(_id, 'admin')
+            container, _ = self._get(_id, 'rw')
         else:                   # sortable user upload
             pass
             # FIXME: pre-parse file, reject if unparsable
