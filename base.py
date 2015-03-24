@@ -58,10 +58,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.drone_request = True
         self.public_request = not bool(self.uid)
         log.debug('public request: %s' % str(self.public_request))
-        if engine_request:
-            self.superuser_request = True
-            self.public_request = False
-        elif self.public_request or self.source_site:
+        if self.public_request or self.source_site:
             self.superuser_request = False
         else:
             user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
