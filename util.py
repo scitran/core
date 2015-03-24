@@ -58,6 +58,8 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
                     'state': file_info.get('state'),
                     }},
                 }
+        if flavor == 'attachments':
+            file_spec[flavor]['$elemMatch'].update({'name': file_info.get('name'), 'ext': file_info.get('ext')})
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
     if not os.path.exists(container_path):
         os.makedirs(container_path)
