@@ -50,14 +50,16 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
                 )
         filename = dataset.nims_file_name + dataset.nims_file_ext
     else:
-        file_spec = dict(
-                _id=_id,
-                flavor={'$elemMatch': {
+        file_spec = {
+                '_id': _id,
+                flavor: {'$elemMatch': {
                     'type': file_info.get('type'),
                     'kinds': file_info.get('kinds'),
                     'state': file_info.get('state'),
                     }},
-                )
+                }
+        if flavor == 'attachments':
+            file_spec[flavor]['$elemMatch'].update({'name': file_info.get('name'), 'ext': file_info.get('ext')})
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
     if not os.path.exists(container_path):
         os.makedirs(container_path)
