@@ -201,6 +201,7 @@ class Container(base.RequestHandler):
             self.response.app_iter = open(filepath, 'rb')
             self.response.headers['Content-Length'] = str(file_info['size']) # must be set after setting app_iter
             self.response.headers['Content-Type'] = 'application/octet-stream'
+            self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % str(filename)
         else:
             ticket = util.download_ticket('single', filepath, filename, file_info['size'])
             tkt_id = self.app.db.downloads.insert(ticket)
