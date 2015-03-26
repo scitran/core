@@ -84,7 +84,7 @@ def dbinit(args):
         if 'groups' in input_data:
             db.groups.insert(input_data['groups'])
         if 'drones' in input_data:
-            db.engines.insert(input_data['drones'])
+            db.drones.insert(input_data['drones'])
         for u in db.users.find():
             db.users.update({'_id': u['_id']}, {'$set': {'email_hash': hashlib.md5(u['email']).hexdigest()}})
 

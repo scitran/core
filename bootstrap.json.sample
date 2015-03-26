@@ -20,9 +20,10 @@
       "wheel": true
     }
   ],
-  "engines": [
+  "drones": [
     {
-      "_id": "local"
+      "_id": "local",
+      "type": "engine"
     }
   ]
 }
