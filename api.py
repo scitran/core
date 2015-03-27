@@ -105,6 +105,7 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='get_file', methods=['GET', 'POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='put_file', methods=['PUT']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/tile',                     acquisitions.Acquisition, handler_method='get_tile', methods=['GET']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               acquisitions.Acquisition, handler_method='delete_attachment', methods=['DELETE']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               acquisitions.Acquisition, handler_method='get_attachment', methods=['GET', 'POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               acquisitions.Acquisition, handler_method='put_attachment', methods=['PUT']),

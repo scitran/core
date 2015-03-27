@@ -12,6 +12,11 @@ import datetime
 import tempdir as tempfile
 
 import scitran.data
+import scitran.data.medimg.montage
+
+get_info = scitran.data.medimg.montage.get_info
+get_tile = scitran.data.medimg.montage.get_tile
+
 
 PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
 
