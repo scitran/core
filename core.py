@@ -214,7 +214,7 @@ class Core(base.RequestHandler):
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
         ticket = util.download_ticket('batch', targets, filename, total_size)
         tkt_id = self.app.db.downloads.insert(ticket)
-        return {'url': self.uri_for('download', fn=filename, _full=True, ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
+        return {'url': self.uri_for('download', fn=filename, _scheme='https', ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
         length = None # FIXME compute actual length
