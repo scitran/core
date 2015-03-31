@@ -214,7 +214,7 @@ class Core(base.RequestHandler):
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
         ticket = util.download_ticket('batch', targets, filename, total_size)
         tkt_id = self.app.db.downloads.insert(ticket)
-        return {'url': self.uri_for('download', _full=True, ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
+        return {'url': self.uri_for('download', fn=filename, _full=True, ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
         length = None # FIXME compute actual length
@@ -224,7 +224,9 @@ class Core(base.RequestHandler):
             z.write(filepath, acrpath)
         return z, length
 
-    def download(self):
+    def download(self, fn=None):
+        # discard the filename, fn. backend doesn't need it, but
+        # front end makes uses of filename in url.
         ticket_id = self.request.get('ticket')
         # TODO: what's the default? stream or attach?
         attach = self.request.get('attach').lower() in ['1', 'true']

@@ -205,7 +205,7 @@ class Container(base.RequestHandler):
         else:
             ticket = util.download_ticket('single', filepath, filename, file_info['size'])
             tkt_id = self.app.db.downloads.insert(ticket)
-            return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+            return {'url': self.uri_for('download', fn=filename, _full=True, ticket=tkt_id)}
 
     def put_file(self, cid=None):
         """
@@ -371,7 +371,7 @@ class Container(base.RequestHandler):
         else:
             ticket = util.download_ticket('single', fpath, fname, a_info['size'])
             tkt_id = self.app.db.downloads.insert(ticket)
-            return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+            return {'url': self.uri_for('download', fn=fname, _full=True, ticket=tkt_id)}
 
     def delete_attachment(self, cid):
         """Delete one attachment."""
