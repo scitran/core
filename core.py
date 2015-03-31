@@ -226,6 +226,8 @@ class Core(base.RequestHandler):
 
     def download(self):
         ticket_id = self.request.get('ticket')
+        # TODO: what's the default? stream or attach?
+        attach = self.request.get('attach').lower() in ['1', 'true']
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
@@ -236,8 +238,11 @@ class Core(base.RequestHandler):
             else:
                 self.response.app_iter, length = self._archivestream(ticket)
                 self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
-            self.response.headers['Content-Type'] = 'application/octet-stream'
-            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+            if attach:
+                self.response.headers['Content-Type'] = 'application/octet-stream'
+                self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+            else:
+                self.response.headers['Content-Type'] = util.guess_mime(ticket['filename'])
         else:
             try:
                 req_spec = self.request.json_body

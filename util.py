@@ -9,16 +9,30 @@ import copy
 import shutil
 import difflib
 import datetime
+import mimetypes
 import tempdir as tempfile
 
 import scitran.data
 import scitran.data.medimg.montage
 
+mimetypes.types_map.update({'.bvec': 'text/plain'})
+mimetypes.types_map.update({'.bval': 'text/plain'})
+
 get_info = scitran.data.medimg.montage.get_info
 get_tile = scitran.data.medimg.montage.get_tile
 
-
 PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
+
+
+def guess_mime(fn):
+    """Guess mimetype based on filename."""
+    # TODO: could move mime types to scitran.data, but that would only work well if ALL files
+    # went thrugh scitra.data.  We can guarantee that all files go through the API during upload,
+    # or download.  the API seems the right place to determine mime information.
+    mime, enc = mimetypes.guess_type(fn)
+    if not mime:
+        mime = 'application/octet-stream'
+    return mime
 
 
 def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path, flavor='file'):
