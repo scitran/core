@@ -132,6 +132,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--port', default='8080', help='TCP port to listen on [8080]')
     arg_parser.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
     arg_parser.add_argument('--data_path', help='path to storage area', required=True)
+    arg_parser.add_argument('--apps_path', help='path to apps storage', required=True)
     arg_parser.add_argument('--log_level', help='log level [info]', default='info')
     arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
     arg_parser.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
