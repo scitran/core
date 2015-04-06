@@ -45,6 +45,7 @@ routes = [
     webapp2_extras.routes.PathPrefixRoute(r'/api/apps', [
         webapp2.Route(r'/count',                                    apps.Apps, handler_method='count', methods=['GET']),
         webapp2.Route(r'/<_id>',                                    apps.App,  name='job'),
+        webapp2.Route(r'/<_id>/file',                               apps.App,  handler_method='get_file'),
     ]),
     webapp2.Route(r'/api/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
