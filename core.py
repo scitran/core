@@ -365,9 +365,106 @@ class Core(base.RequestHandler):
         ],
     }
 
+    SEARCH_POST_SCHEMA = {
+        '$schema': 'http://json-schema.org/draft-04/schema#',
+        'title': 'File',
+        'type': 'object',
+        'properties': {
+            'subj_code': {
+                'title': 'Subject Code',
+                'type': 'string',
+            },
+            'scan_type': {  # MR SPECIFIC!!!
+                'title': 'Scan Type',
+                'type': 'string',
+            },
+            'date_from': {
+                'title': 'Date From',
+                'type': 'string',
+            },
+            'date_to': {
+                'title': 'Date To',
+                'type': 'string',
+            },
+            'psd': {  # MR SPECIFIC!!!
+                'title': 'PSD Name',
+                'type': 'string',
+            },
+            'subj_age_max': {  # age in years
+                'title': 'Subject Age Max',
+                'type': 'integer',
+            },
+            'subj_age_min': {  # age in years
+                'title': 'Subject Age Min',
+                'type': 'integer',
+            },
+            'exam': {
+                'title': 'Exam Number',
+                'type': 'integer',
+            },
+            'description': {
+                'title': 'Description',
+                'type': 'string',
+            },
+        },
+        # 'required': ['subj_code', 'scan_type', 'date_from', 'date_to', 'psd_name', 'operator', 'subj_age_max', 'subj_age_min', 'exam'],
+        'additionalProperties': False
+    }
+
     def search(self):
         """Search."""
         if self.request.method == 'GET':
-            return self.search_schema
-        else:
+            return self.SEARCH_POST_SCHEMA
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, self.SEARCH_POST_SCHEMA)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+
+        # TODO: search needs to include operator details? do types of datasets have an 'operator'?
+        # TODO: sessions need to have more 'subject' information to be able to do age searching
+        # construct the queries based on the information available
+        # TODO: provide a schema that allows directly using the request data, rather than
+        # requiring construction of the queries....
+        session_query = {}
+        exam = json_body.get('exam')
+        subj_code = json_body.get('subj_code')
+        if exam:
+            session_query.update({'exam': exam})
+        if subj_code:
+            session_query.update({'subject.code': subj_code})
+
+        acq_query = {}
+        psd = json_body.get('psd')
+        types_kind = json_body.get('scan_type')
+        time_fmt = '%Y-%m-%d'  # assume that dates will come in as "2014-01-01"
+        date_to = json_body.get('date_to')  # need to do some datetime conversion
+        description = json_body.get('description')
+        if date_to:
+            date_to = datetime.datetime.strptime(date_to, time_fmt)
+        date_from = json_body.get('date_from')      # need to do some datetime conversion
+        if date_from:
+            date_from = datetime.datetime.strptime(date_from, time_fmt)
+        if psd:
+            acq_query.update({'psd': psd})
+        if types_kind:
+            acq_query.update({'types.kind': types_kind})
+        if date_to and date_from:
+            acq_query.update({'timestamp': {'$gte': date_from, '$lte': date_to}})
+        elif date_to:
+            acq_query.update({'timestamp': {'$lte': date_to}})
+        elif date_from:
+            acq_query.update({'timestamp': {'$gte': date_from}})
+        elif descrption:
+            # glob style matching, whole word must exist within description
             pass
+        # also query sessions
+        sessions = list(self.app.db.sessions.find(session_query))
+        session_ids = [s['_id'] for s in sessions]
+        log.debug(session_ids)
+        # first find the acquisitions that meet the acquisition level query params
+        aquery = {'session': {'$in': session_ids}}
+        aquery.update(acq_query)
+        log.debug(aquery)
+
+        return list(self.app.db.acquisitions.find(aquery))
