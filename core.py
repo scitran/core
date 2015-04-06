@@ -434,6 +434,7 @@ class Core(base.RequestHandler):
         if subj_code:
             session_query.update({'subject.code': subj_code})
 
+        # TODO: don't build these, want to get as close to dump the data from the request
         acq_query = {}
         psd = json_body.get('psd')
         types_kind = json_body.get('scan_type')
@@ -467,4 +468,27 @@ class Core(base.RequestHandler):
         aquery.update(acq_query)
         log.debug(aquery)
 
-        return list(self.app.db.acquisitions.find(aquery))
+        # group the acquisitions by session
+        groups = []
+        projects = []
+        sessions = []
+        acqs = list(self.app.db.acquisitions.find(aquery))
+        for acq in acqs:
+            session = self.app.db.sessions.find_one({'_id': acq['session']})
+            project = self.app.db.projects.find_one({'_id': session['project']})
+            group = project.get('group_id')
+            if session not in sessions:
+                sessions.append(session)
+            if project not in projects:
+                projects.append(project)
+            if group not in groups:
+                groups.append(group)
+
+        results = {
+            'groups': groups,
+            'projects': projects,
+            'sessions': sessions,
+            'acquisitions': acqs,
+        }
+
+        return results
