@@ -151,69 +151,42 @@ def _update_db(db, dataset):
 
 # TODO: create job should be use-able from bootstrap.py with only database information
 def create_job(dbc, dataset):
-        # TODO: this should search the 'apps' db collection.
-        # each 'app' must define it's expected inputs's type, state and kind
-        # some apps are special defaults. one default per data specific triple.
-        # allow apps to have set-able 'state', that is appended to the file at the
-        # end of processing
-        #
-        # desired query to find default app, for a specific data variety would be:
-        # app_id = self.app.db.apps.find({
-        #       'default': True,
-        #       'type': ftype,  # string
-        #       'kinds': fkinds,  # list
-        #       'state_': fstate[-1],  # string
-        #   })
-        # apps specify the last state of their desired input file.
-
         db = dbc.database
-
         type_ = dataset.nims_file_type
         kinds_ = dataset.nims_file_kinds
         state_ = dataset.nims_file_state
-        app_id = None
+        app = None
+        # TODO: check if there are 'default apps' set for this project/session/acquisition
+        acquisition = db.acquisitions.find_one({'uid': dataset.nims_acquisition_id})
+        session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
+        project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
+        aid = acquisition.get('_id')
 
-        if type_ == 'dicom' and state_ == ['orig']:
-            if kinds_ != ['screenshot']:
-                # could ship a script that gets mounted into the container.
-                # but then the script would also need to specify what base image it needs.
-                app_id = 'scitran/dcm2nii:latest'
-                # app_input is implied; type = 'dicom', state =['orig',] and kinds != 'screenshot'
-                app_outputs = [
-                    {
-                        'fext': '.nii.gz',
-                        'state': ['derived', ],
-                        'type': 'nifti',
-                        'kinds': dataset.nims_file_kinds,  # there should be someway to indicate 'from parent file'
-                    },
-                    {
-                        'fext': '.bvec',
-                        'state': ['derived', ],
-                        'type': 'text',
-                        'kinds': ['bvec', ],
-                    },
-                    {
-                        'fext': '.bval',
-                        'state': ['derived', ],
-                        'type': 'text',
-                        'kinds': ['bval', ],
-                    },
-                ]
-
+        # job descriptions have a few special cases
+        # XXX: outputs can specify to __INHERIT__ a value from the parent input file, for ex: kinds
+        # XXX: if an input kinds = None, then that job is meant to work on any file kinds
+        # otherwise, kinds will restrict the app to work on specific kinds only
+        app = db.apps.find_one({
+            '$or': [
+                {'inputs': {'$elemMatch': {'type': type_, 'state': state_, 'kinds': kinds_}}, 'default': True},
+                {'inputs': {'$elemMatch': {'type': type_, 'state': state_, 'kinds': None}}, 'default': True},
+            ],
+        })
+        # TODO: this has to move...
         # force acquisition dicom file to be marked as 'optional = True'
         db.acquisitions.find_and_modify(
             {'uid': dataset.nims_acquisition_id, 'files.type': 'dicom'},
             {'$set': {'files.$.optional': True}},
             )
 
-        if not app_id:
+        if not app:
             log.info('no app for type=%s, state=%s, kinds=%s, default=True. no job created.' % (type_, state_, kinds_))
         else:
-            # TODO: check if there are 'default apps' set for this project/session/acquisition
-            acquisition = db.acquisitions.find_one({'uid': dataset.nims_acquisition_id})
-            session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
-            project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
-            aid = acquisition.get('_id')
+            # replace any special values in the app description
+            for output in app['outputs']:
+                if output['kinds'] == '__INHERIT__':
+                    output['kinds'] = kinds_
+
             # TODO: job description needs more metadata to be searchable in a useful way
             output_url = '%s/%s/%s' % ('acquisitions', aid, 'file')
             job = db.jobs.find_and_modify(
@@ -229,11 +202,12 @@ def create_job(dbc, dataset):
                     },
                     'exam': session.get('exam'),
                     'app': {
-                        '_id': app_id,
+                        '_id': app['_id'],
                         'type': 'docker',
                     },
                     'inputs': [
                         {
+                            'filename': dataset.nims_file_name + dataset.nims_file_ext,
                             'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
                             'payload': {
                                 'type': dataset.nims_file_type,
@@ -242,8 +216,8 @@ def create_job(dbc, dataset):
                             },
                         }
                     ],
-                    'outputs': [{'url': output_url, 'payload': i} for i in app_outputs],
-                    'status': 'pending',     # queued
+                    'outputs': [{'url': output_url, 'payload': i} for i in app['outputs']],
+                    'status': 'pending',
                     'activity': None,
                     'added': datetime.datetime.now(),
                     'timestamp': datetime.datetime.now(),
