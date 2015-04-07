@@ -436,18 +436,26 @@ class Core(base.RequestHandler):
         session_query = {}
         exam = json_body.get('exam')
         subj_code = json_body.get('subj_code')
+        age_max = json_body.get('subj_age_max')
+        age_min = json_body.get('subj_age_min')
         if exam:
             session_query.update({'exam': exam})
         if subj_code:
             session_query.update({'subject.code': subj_code})
+        if age_min and age_max:
+            session_query.update({'subject.age': {'$gte': age_min, '$lte': age_max}})
+        elif age_max:
+            session_query.update({'subject.age': {'$lte': age_max}})
+        elif age_min:
+            session_query.update({'subject.age': {'$gte': age_min}})
 
         # TODO: don't build these, want to get as close to dump the data from the request
         acq_query = {}
         psd = json_body.get('psd')
         types_kind = json_body.get('scan_type')
         time_fmt = '%Y-%m-%d'  # assume that dates will come in as "2014-01-01"
-        date_to = json_body.get('date_to')  # need to do some datetime conversion
         description = json_body.get('description')
+        date_to = json_body.get('date_to')  # need to do some datetime conversion
         if date_to:
             date_to = datetime.datetime.strptime(date_to, time_fmt)
         date_from = json_body.get('date_from')      # need to do some datetime conversion
@@ -463,9 +471,10 @@ class Core(base.RequestHandler):
             acq_query.update({'timestamp': {'$lte': date_to}})
         elif date_from:
             acq_query.update({'timestamp': {'$gte': date_from}})
-        elif descrption:
+        if description:
             # glob style matching, whole word must exist within description
             pass
+
         # also query sessions
         sessions = list(self.app.db.sessions.find(session_query))
         session_ids = [s['_id'] for s in sessions]
