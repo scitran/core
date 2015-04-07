@@ -53,11 +53,16 @@ class RequestHandler(webapp2.RequestHandler):
                 if not self.app.db.sites.find_one({'_id': remote_instance}):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
-                if not self.app.db.drones.find_one({'_id': remote_instance}):
-                    self.abort(402, remote_instance + ' is not an authorized drone')
+                drone_type, drone_id = self.request.user_agent.replace('SciTran', '').strip().split()
+                if not self.app.db.drones.find_one({'_id': drone_id}):
+                    self.abort(402, drone_id + ' is not an authorized drone')
                 self.drone_request = True
         self.public_request = not bool(self.uid)
-        if self.public_request or self.source_site:
+        log.debug('public request: %s' % str(self.public_request))
+        if self.drone_request and not self.source_site:  # engine request
+            self.public_request = False
+            self.superuser_request = True
+        elif self.public_request or self.source_site:
             self.superuser_request = False
         else:
             user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])

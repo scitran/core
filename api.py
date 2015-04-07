@@ -18,7 +18,9 @@ import webapp2
 import bson.json_util
 import webapp2_extras.routes
 
+import apps
 import core
+import jobs
 import users
 import projects
 import sessions
@@ -30,8 +32,21 @@ routes = [
     webapp2.Route(r'/api',                                          core.Core),
     webapp2_extras.routes.PathPrefixRoute(r'/api', [
         webapp2.Route(r'/download',                                 core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
+        webapp2.Route(r'/download/<fn>',                            core.Core, handler_method='download', methods=['GET', 'POST'], name='named_download'),
         webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/search',                                   core.Core, handler_method='search', methods=['GET', 'POST']),
+    ]),
+    webapp2.Route(r'/api/jobs',                                     jobs.Jobs),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
+        webapp2.Route(r'/next',                                     jobs.Jobs, handler_method='next', methods=['GET']),
+        webapp2.Route(r'/count',                                    jobs.Jobs, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/<_id>',                                    jobs.Job,  name='job'),
+    ]),
+    webapp2.Route(r'/api/apps',                                     apps.Apps),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/apps', [
+        webapp2.Route(r'/count',                                    apps.Apps, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/<_id>',                                    apps.App,  name='job'),
+        webapp2.Route(r'/<_id>/file',                               apps.App,  handler_method='get_file'),
     ]),
     webapp2.Route(r'/api/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
@@ -92,6 +107,7 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='get_file', methods=['GET', 'POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='put_file', methods=['PUT']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/tile',                     acquisitions.Acquisition, handler_method='get_tile', methods=['GET']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               acquisitions.Acquisition, handler_method='delete_attachment', methods=['DELETE']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               acquisitions.Acquisition, handler_method='get_attachment', methods=['GET', 'POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               acquisitions.Acquisition, handler_method='put_attachment', methods=['PUT']),
@@ -118,6 +134,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--port', default='8080', help='TCP port to listen on [8080]')
     arg_parser.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
     arg_parser.add_argument('--data_path', help='path to storage area', required=True)
+    arg_parser.add_argument('--apps_path', help='path to apps storage', required=True)
     arg_parser.add_argument('--log_level', help='log level [info]', default='info')
     arg_parser.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
     arg_parser.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')

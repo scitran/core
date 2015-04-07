@@ -10,6 +10,8 @@ import datetime
 import jsonschema
 import bson.json_util
 
+import tempdir as tempfile
+
 import base
 import util
 import users
@@ -199,23 +201,31 @@ class Container(base.RequestHandler):
             self.response.app_iter = open(filepath, 'rb')
             self.response.headers['Content-Length'] = str(file_info['size']) # must be set after setting app_iter
             self.response.headers['Content-Type'] = 'application/octet-stream'
+            self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % str(filename)
         else:
             ticket = util.download_ticket('single', filepath, filename, file_info['size'])
             tkt_id = self.app.db.downloads.insert(ticket)
-            return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+            return {'url': self.uri_for('named_download', fn=filename, _scheme='https', ticket=tkt_id)}
 
-    def put_file(self, cid=None):
+    def _put(self, cid=None, flavor='file'):
         """
-        Receive a targeted processor or user upload.
+        Receive a targeted processor or user upload for an attachment or file.
 
-        Accepts a multipart request that contains json in first part, and data in second part.
-        This POST route is used to add a file to an existing container, not for creating new containers.
-        This upload is different from the main PUT route, because this does not update the primary
-        metadata, nor does it try to determine where to place the file.  It always gets placed in
-        the current container.
+        This PUT route is used to add a file to an existing container, not for creating new containers.
+        This upload is different from the main PUT route, because this does not update the main container
+        metadata, nor does it try to parse the file to determine sorting information. The uploaded file(s)
+        will always get uploaded to the specificied container.
+
+        Accepts a multipart request that contains the following form fields:
+        - 'metadata': list of dicts, each dict contains metadata for a file
+        - filename: file object
+        - 'sha': list of dicts, each dict contains 'name' and 'sha1'.
 
         """
-        # TODO; revise how engine's upload their data to be compatible with the put_attachment fxn
+        # TODO read self.request.body, using '------WebKitFormBoundary' as divider
+        # first line is 'content-disposition' line, extract filename
+        # second line is content-type, determine how to write to a file, as bytes or as string
+        # third linedata_path = self.app.config['data_path'], just a separator, useless
         def receive_stream_and_validate(stream, digest, filename):
             # FIXME pull this out to also be used from core.Core.put() and also replace the duplicated code below
             hash_ = hashlib.sha1()
@@ -228,63 +238,6 @@ class Container(base.RequestHandler):
                 self.abort(400, 'Content-MD5 mismatch.')
             return filepath
 
-        if cid is None: # sortable user upload
-            pass
-        else:           # targeted upload
-            pass
-        if self.request.content_type != 'multipart/form-data':
-            self.abort(400, 'content-type must be "multipart/form-data"')
-        try:
-            metadata = json.loads(self.request.get('metadata'))
-            jsonschema.validate(metadata, FILE_UPLOAD_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
-        if self.public_request: # processor upload
-            _id = None
-            # FIXME check that processor is legit
-        elif cid is not None:   # targeted user upload
-            _id = bson.ObjectId(cid)
-            container, _ = self._get(_id, 'rw')
-        else:                   # sortable user upload
-            pass
-            # FIXME: pre-parse file, reject if unparsable
-        data_path = self.app.config['data_path']
-        quarantine_path = self.app.config['quarantine_path']
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=data_path) as tempdir_path:
-            filepaths = []
-            for file_info in metadata['files']:
-                hash_ = hashlib.sha1()
-                filename = file_info['name'] + file_info['ext']
-                filepaths.append(os.path.join(tempdir_path, filename))
-                field_storage_obj = self.request.POST.get(filename)
-                with open(filepaths[-1], 'wb') as fd:
-                    for chunk in iter(lambda: field_storage_obj.file.read(2**20), ''):
-                        hash_.update(chunk)
-                        fd.write(chunk)
-                if hash_.hexdigest() != file_info['sha1']:
-                    self.abort(400, 'Content-MD5 mismatch.')
-                log.info('Received    %s [%s] from %s' % (filename, util.hrsize(file_info['size']), self.request.user_agent)) # FIXME: user_agent or uid
-            for filepath in filepaths:
-                status, detail = util.insert_file(self.dbc, _id, file_info, filepath, file_info['sha1'], data_path, quarantine_path)
-                if status != 200:
-                    self.abort(status, detail)
-
-    def put_attachment(self, cid):
-        """
-        Recieve a targetted user upload of an attachment.
-
-        Attachments are different from files, in that they are not 'research ready'.  Attachments
-        represent other documents that are generally not useable by the engine; documents like
-        consent forms, pen/paper questionnaires, study recruiting materials, etc.
-
-        Internally, attachments are distinguished from files because of what metadata is
-        required.  Attachments really only need a 'kinds' and 'type'.  We don't expect iteration over
-        an attachment in a way that would require tracking 'state'.
-        """
-        # TODO read self.request.body, using '------WebKitFormBoundary' as divider
-        # first line is 'content-disposition' line, extract filename
-        # second line is content-type, determine how to write to a file, as bytes or as string
-        # third linedata_path = self.app.config['data_path'], just a separator, useless
         if self.request.content_type != 'multipart/form-data':
             self.abort(400, 'content-type must be "multipart/form-data"')
         # TODO: metadata validation
@@ -317,12 +270,48 @@ class Container(base.RequestHandler):
                             self.abort(400, 'Content-MD5 mismatch %s vs %s' % (fhash.hexdigest(), s.get('sha1')))
                         else:
                             finfo['sha1'] = s.get('sha1')
-                            status, detail = util.insert_file(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path, flavor='attachment')
+                            status, detail = util.insert_file(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path, flavor=flavor)
                         if status != 200:
                             self.abort(400, 'upload failed')
                         break
                 else:
                     self.abort(400, '%s is not listed in the sha1s' % fname)
+
+    def put_file(self, cid=None):
+        """Receive a targeted upload of a dataset file."""
+        self._put(cid, flavor='file')
+
+    def put_attachment(self, cid):
+        """Recieve a targetted upload of an attachment file."""
+        self._put(cid, flavor='attachment')
+
+    def get_tile(self, cid):
+        """fetch info about a tiled tiff, or retrieve a specific tile."""
+        _id = bson.ObjectId(cid)
+        montage_info = self.dbc.find_one(
+            {
+                '_id': _id,
+                '$and': [
+                    {'files.kinds': ['montage']},
+                    {'files.ext': '.tiff'},
+                ],
+            },
+            ['files.$'],
+        )
+        if not montage_info:
+            self.abort(404, 'montage tiff not found')
+        fn = montage_info['files'][0]['name'] + montage_info['files'][0]['ext']
+        fp = os.path.join(self.app.config['data_path'], cid[-3:], cid, fn)
+        z = self.request.get('z')
+        x = self.request.get('x')
+        y = self.request.get('y')
+        if not (z and x and y):
+            return util.get_info(fp)
+        else:
+            self.response.content_type = 'image/png'
+            tile = util.get_tile(fp, int(z), int(x), int(y))
+            if tile:
+                self.response.write(tile)
 
     def get_attachment(self, cid):
         """Download one attachment."""
@@ -342,7 +331,7 @@ class Container(base.RequestHandler):
         else:
             ticket = util.download_ticket('single', fpath, fname, a_info['size'])
             tkt_id = self.app.db.downloads.insert(ticket)
-            return {'url': self.uri_for('download', _full=True, ticket=tkt_id)}
+            return {'url': self.uri_for('named_download', fn=fname, _scheme='https', ticket=tkt_id)}
 
     def delete_attachment(self, cid):
         """Delete one attachment."""

@@ -214,7 +214,7 @@ class Core(base.RequestHandler):
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
         ticket = util.download_ticket('batch', targets, filename, total_size)
         tkt_id = self.app.db.downloads.insert(ticket)
-        return {'url': self.uri_for('download', _full=True, ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
+        return {'url': self.uri_for('named_download', fn=filename, _scheme='https', ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
         length = None # FIXME compute actual length
@@ -224,8 +224,12 @@ class Core(base.RequestHandler):
             z.write(filepath, acrpath)
         return z, length
 
-    def download(self):
+    def download(self, fn=None):
+        # discard the filename, fn. backend doesn't need it, but
+        # front end makes uses of filename in url.
         ticket_id = self.request.get('ticket')
+        # TODO: what's the default? stream or attach?
+        attach = self.request.get('attach').lower() in ['1', 'true']
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
@@ -236,8 +240,11 @@ class Core(base.RequestHandler):
             else:
                 self.response.app_iter, length = self._archivestream(ticket)
                 self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
-            self.response.headers['Content-Type'] = 'application/octet-stream'
-            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+            if attach:
+                self.response.headers['Content-Type'] = 'application/octet-stream'
+                self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+            else:
+                self.response.headers['Content-Type'] = util.guess_mime(ticket['filename'])
         else:
             try:
                 req_spec = self.request.json_body
@@ -360,7 +367,151 @@ class Core(base.RequestHandler):
 
     def search(self):
         """Search."""
+        SEARCH_POST_SCHEMA = {
+            '$schema': 'http://json-schema.org/draft-04/schema#',
+            'title': 'File',
+            'type': 'object',
+            'properties': {
+                'subj_code': {
+                    'title': 'Subject Code',
+                    'type': 'string',
+                },
+                'subj_firstname': {
+                    'title': 'Subject First Name',   # hash
+                    'type': 'string',
+                },
+                'subj_lastname': {
+                    'title': 'Subject Last Name',
+                    'type': 'string',
+                },
+                'scan_type': {  # MR SPECIFIC!!!
+                    'title': 'Scan Type',
+                    'enum': self.app.db.acquisitions.distinct('types.kind')
+                },
+                'date_from': {
+                    'title': 'Date From',
+                    'type': 'string',
+                },
+                'date_to': {
+                    'title': 'Date To',
+                    'type': 'string',
+                },
+                'psd': {  # MR SPECIFIC!!!
+                    'title': 'PSD Name',
+                    'type': 'string',   # 'enum': self.app.db.acquisitions.distinct('psd'),
+                },
+                'subj_age_max': {  # age in years
+                    'title': 'Subject Age Max',
+                    'type': 'integer',
+                },
+                'subj_age_min': {  # age in years
+                    'title': 'Subject Age Min',
+                    'type': 'integer',
+                },
+                'exam': {
+                    'title': 'Exam Number',
+                    'type': 'integer',
+                },
+                'description': {
+                    'title': 'Description',
+                    'type': 'string',
+                },
+            },
+            # 'required': ['subj_code', 'scan_type', 'date_from', 'date_to', 'psd_name', 'operator', 'subj_age_max', 'subj_age_min', 'exam'],
+            # 'additionalProperties': False
+        }
         if self.request.method == 'GET':
-            return self.search_schema
-        else:
+            return SEARCH_POST_SCHEMA
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, SEARCH_POST_SCHEMA)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+
+        # TODO: search needs to include operator details? do types of datasets have an 'operator'?
+        # TODO: sessions need to have more 'subject' information to be able to do age searching
+        # construct the queries based on the information available
+        # TODO: provide a schema that allows directly using the request data, rather than
+        # requiring construction of the queries....
+        session_query = {}
+        exam = json_body.get('exam')
+        subj_code = json_body.get('subj_code')
+        age_max = json_body.get('subj_age_max')
+        age_min = json_body.get('subj_age_min')
+        if exam:
+            session_query.update({'exam': exam})
+        if subj_code:
+            session_query.update({'subject.code': subj_code})
+        if age_min and age_max:
+            session_query.update({'subject.age': {'$gte': age_min, '$lte': age_max}})
+        elif age_max:
+            session_query.update({'subject.age': {'$lte': age_max}})
+        elif age_min:
+            session_query.update({'subject.age': {'$gte': age_min}})
+
+        # TODO: don't build these, want to get as close to dump the data from the request
+        acq_query = {}
+        psd = json_body.get('psd')
+        types_kind = json_body.get('scan_type')
+        time_fmt = '%Y-%m-%d'  # assume that dates will come in as "2014-01-01"
+        description = json_body.get('description')
+        date_to = json_body.get('date_to')  # need to do some datetime conversion
+        if date_to:
+            date_to = datetime.datetime.strptime(date_to, time_fmt)
+        date_from = json_body.get('date_from')      # need to do some datetime conversion
+        if date_from:
+            date_from = datetime.datetime.strptime(date_from, time_fmt)
+        if psd:
+            acq_query.update({'psd': psd})
+        if types_kind:
+            acq_query.update({'types.kind': types_kind})
+        if date_to and date_from:
+            acq_query.update({'timestamp': {'$gte': date_from, '$lte': date_to}})
+        elif date_to:
+            acq_query.update({'timestamp': {'$lte': date_to}})
+        elif date_from:
+            acq_query.update({'timestamp': {'$gte': date_from}})
+        if description:
+            # glob style matching, whole word must exist within description
             pass
+
+        # also query sessions
+        sessions = list(self.app.db.sessions.find(session_query))
+        session_ids = [s['_id'] for s in sessions]
+        log.debug(session_ids)
+        # first find the acquisitions that meet the acquisition level query params
+        aquery = {'session': {'$in': session_ids}}
+        aquery.update(acq_query)
+        log.debug(aquery)
+
+        # build a more complex response, and clean out database specifics
+        groups = []
+        projects = []
+        sessions = []
+        acqs = list(self.app.db.acquisitions.find(aquery))
+        for acq in acqs:
+            session = self.app.db.sessions.find_one({'_id': acq['session']})
+            project = self.app.db.projects.find_one({'_id': session['project']})
+            group = project['group_id']
+            del project['group_id']
+            project['group'] = group
+            acq['_id'] = str(acq['_id'])
+            acq['session'] = str(acq['session'])
+            session['_id'] = str(session['_id'])
+            session['project'] = str(session['project'])
+            project['_id'] = str(project['_id'])
+            if session not in sessions:
+                sessions.append(session)
+            if project not in projects:
+                projects.append(project)
+            if group not in groups:
+                groups.append(group)
+
+        results = {
+            'groups': groups,
+            'projects': projects,
+            'sessions': sessions,
+            'acquisitions': acqs,
+        }
+
+        return results

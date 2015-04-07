@@ -19,5 +19,11 @@
       "lastname": "User",
       "wheel": true
     }
+  ],
+  "drones": [
+    {
+      "_id": "local",
+      "type": "engine"
+    }
   ]
 }

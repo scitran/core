@@ -3,13 +3,16 @@
 # @author:  Gunnar Schaefer
 
 import os
+import bson
 import json
 import time
 import pymongo
 import hashlib
 import logging
 import argparse
+import datetime
 
+import util
 
 def connect_db(db_uri, **kwargs):
     for x in range(0, 30):
@@ -72,6 +75,7 @@ def dbinit(args):
     db.acquisitions.create_index('collections')
     db.tokens.create_index('timestamp', expireAfterSeconds=600)
     db.downloads.create_index('timestamp', expireAfterSeconds=60)
+    # TODO: apps and jobs indexes (indicies?)
 
     if args.json:
         with open(args.json) as json_dump:
@@ -80,6 +84,8 @@ def dbinit(args):
             db.users.insert(input_data['users'])
         if 'groups' in input_data:
             db.groups.insert(input_data['groups'])
+        if 'drones' in input_data:
+            db.drones.insert(input_data['drones'])
         for u in db.users.find():
             db.users.update({'_id': u['_id']}, {'$set': {'email_hash': hashlib.md5(u['email']).hexdigest()}})
 
@@ -90,10 +96,107 @@ example:
 ./scripts/bootstrap.py dbinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni -j nims_users_and_groups.json
 """
 
+def appsinit(args):
+    """Upload an app."""
+    import tarfile
+    db_client = connect_db(args.db_uri)
+    db = db_client.get_default_database()
+    app_tgz = args.app_tgz + '.tgz'
+    if not os.path.exists(app_tgz):
+        with tarfile.open(app_tgz, 'w:gz', compresslevel=6) as tf:
+            tf.add(args.app_tgz, arcname=os.path.basename(args.app_tgz))
+    util.insert_app(db, app_tgz, args.apps_path)
+
+appsinit_desc = """
+example:
+./scripts/bootstrap.py appsinit mongodb://cnifs.stanford.edu/nims?repliaceSet=cni  /path/to/app/dir /path/to/apps/storage
+"""
+
+# TODO: this should use util.create_job to eliminate duplicate code
+# TODO: update util.create_job to be useable from this bootstrap script.
+def jobsinit(args):
+    """Create a job entry for every acquisition's orig dataset."""
+    db_client = connect_db(args.db_uri)
+    db = db_client.get_default_database()
+
+    if args.force:
+        db.drop_collection('jobs')
+
+    counter = db.jobs.count() + 1   # where to start creating jobs
+
+    dbc = db.jobs
+
+    for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1, 'series': 1, 'acquisition': 1}):
+        if a.get('files')[0].get('kinds')[0] == 'screenshot':
+            print 'no default app set for screenshots. skipping...'
+            continue
+
+        else:
+            app_id = 'scitran/dcm2nii:latest'
+            app_outputs = [
+                {
+                    'fext': '.nii.gz',
+                    'state': ['derived', ],
+                    'type': 'nifti',
+                    'kinds': a.get('files')[0].get('kinds'),  # there should be someway to indicate 'from parent file'
+                },
+                {
+                    'fext': '.bvec',
+                    'state': ['derived', ],
+                    'type': 'text',
+                    'kinds': ['bvec', ],
+                },
+                {
+                    'fext': '.bval',
+                    'state': ['derived', ],
+                    'type': 'text',
+                    'kinds': ['bval', ],
+                },
+            ]
+
+        aid = a.get('_id')
+        session = db.sessions.find_one({'_id': bson.ObjectId(a.get('session'))})
+        project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
+        output_url = '%s/%s/%s' % ('acquisitions', aid, 'file')
+        db.jobs.insert({
+            '_id': counter,
+            'group': project.get('group_id'),
+            'project': {
+                '_id': project.get('_id'),
+                'name': project.get('name'),
+            },
+            'exam': session.get('exam'),
+            'app': {
+                '_id': 'scitran/dcm2nii:latest',
+                'type': 'docker',
+            },
+            'inputs': [
+                {
+                    'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                    'payload': {
+                        'type': a['files'][0]['type'],
+                        'state': a['files'][0]['state'],
+                        'kinds': a['files'][0]['kinds'],
+                    },
+                }
+            ],
+            'outputs': [{'url': output_url, 'payload': i} for i in app_outputs],
+            'status': 'pending',     # queued
+            'activity': None,
+            'added': datetime.datetime.now(),
+            'timestamp': datetime.datetime.now(),
+        })
+        print 'created job %d, group: %s, project %s, exam %s, %s.%s' % (counter, project.get('group_id'), project.get('_id'), session.get('exam'), a.get('series'), a.get('acquisition'))
+        counter += 1
+
+jobinit_desc = """
+example:
+    ./scripts/bootstrap.py jobsinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni
+"""
+
 
 def sort(args):
     logging.basicConfig(level=logging.WARNING)
-    import util
     quarantine_path = os.path.join(args.sort_path, 'quarantine')
     if not os.path.exists(args.sort_path):
         os.makedirs(args.sort_path)
@@ -212,6 +315,27 @@ dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out 
 dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
 dbinit_parser.add_argument('db_uri', help='DB URI')
 dbinit_parser.set_defaults(func=dbinit)
+
+appsinit_parser = subparsers.add_parser(
+        name='appsinit',
+        help='load an app',
+        description=appsinit_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+appsinit_parser.add_argument('db_uri', help='DB URI')
+appsinit_parser.add_argument('app_tgz', help='filesystem path to tgz of app build context')
+appsinit_parser.add_argument('apps_path', help='filesystem path to loaded apps')
+appsinit_parser.set_defaults(func=appsinit)
+
+jobsinit_parser = subparsers.add_parser(
+        name='jobsinit',
+        help='initalize jobs collection from existing acquisitions',
+        description=dbinit_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+jobsinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing jobs')
+jobsinit_parser.add_argument('db_uri', help='DB URI')
+jobsinit_parser.set_defaults(func=jobsinit)
 
 sort_parser = subparsers.add_parser(
         name='sort',
