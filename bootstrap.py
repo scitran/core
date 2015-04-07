@@ -104,7 +104,7 @@ def appsinit(args):
     app_tgz = args.app_tgz + '.tgz'
     if not os.path.exists(app_tgz):
         with tarfile.open(app_tgz, 'w:gz', compresslevel=6) as tf:
-            tf.add(args.app_tgz)
+            tf.add(args.app_tgz, arcname=os.path.basename(args.app_tgz))
     util.insert_app(db, app_tgz, args.apps_path)
 
 appsinit_desc = """
