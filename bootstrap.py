@@ -12,6 +12,7 @@ import logging
 import argparse
 import datetime
 
+import util
 
 def connect_db(db_uri, **kwargs):
     for x in range(0, 30):
@@ -95,7 +96,24 @@ example:
 ./scripts/bootstrap.py dbinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni -j nims_users_and_groups.json
 """
 
+def appsinit(args):
+    """Upload an app."""
+    import tarfile
+    db_client = connect_db(args.db_uri)
+    db = db_client.get_default_database()
+    app_tgz = args.app_tgz + '.tgz'
+    if not os.path.exists(app_tgz):
+        with tarfile.open(app_tgz, 'w:gz', compresslevel=6) as tf:
+            tf.add(args.app_tgz)
+    util.insert_app(db, app_tgz, args.apps_path)
+
+appsinit_desc = """
+example:
+./scripts/bootstrap.py appsinit mongodb://cnifs.stanford.edu/nims?repliaceSet=cni  /path/to/app/dir /path/to/apps/storage
+"""
+
 # TODO: this should use util.create_job to eliminate duplicate code
+# TODO: update util.create_job to be useable from this bootstrap script.
 def jobsinit(args):
     """Create a job entry for every acquisition's orig dataset."""
     db_client = connect_db(args.db_uri)
@@ -179,7 +197,6 @@ example:
 
 def sort(args):
     logging.basicConfig(level=logging.WARNING)
-    import util
     quarantine_path = os.path.join(args.sort_path, 'quarantine')
     if not os.path.exists(args.sort_path):
         os.makedirs(args.sort_path)
@@ -298,6 +315,17 @@ dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out 
 dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
 dbinit_parser.add_argument('db_uri', help='DB URI')
 dbinit_parser.set_defaults(func=dbinit)
+
+appsinit_parser = subparsers.add_parser(
+        name='appsinit',
+        help='load an app',
+        description=appsinit_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+appsinit_parser.add_argument('db_uri', help='DB URI')
+appsinit_parser.add_argument('app_tgz', help='filesystem path to tgz of app build context')
+appsinit_parser.add_argument('apps_path', help='filesystem path to loaded apps')
+appsinit_parser.set_defaults(func=appsinit)
 
 jobsinit_parser = subparsers.add_parser(
         name='jobsinit',

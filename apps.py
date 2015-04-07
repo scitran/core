@@ -71,8 +71,10 @@ class Apps(base.RequestHandler):
 
     def post(self):
         """Create a new App."""
-        # if self.public_request:  # TODO: how to handle auth during bootstrap?
-        #     self.abort(403, 'must be logged in to upload apps')
+        # this handles receive and writing the file
+        # but the the json validation and database is handled by util.
+        if self.public_request:  # TODO: how to handle auth during bootstrap?
+            self.abort(403, 'must be logged in to upload apps')
         apps_path = self.app.config['apps_path']
         app_meta = None
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=apps_path) as tempdir_path:
@@ -97,14 +99,7 @@ class Apps(base.RequestHandler):
                 jsonschema.validate(app_meta, APP_SCHEMA)
             except (ValueError, jsonschema.ValidationError) as e:
                 self.abort(400, str(e))
-            name, version = app_meta.get('_id').split(':')
-            app_dir = os.path.join(apps_path, name)
-            app_tar = os.path.join(app_dir, '%s-%s.tar' % (name, version))
-            if not os.path.exists(app_dir):
-                os.makedirs(app_dir)
-            shutil.move(app_temp, app_tar)
-            app_meta.update({'asset_url': 'apps/%s/%s' % (name, version)})
-            app_info = self.app.db.apps.find_and_modify(app_meta.get('_id'), app_meta, new=True, upsert=True)
+            util.insert_app(self.app.db, app_temp, apps_path, app_meta=app_meta)  # pass meta info, prevent re-reading
             log.debug('Recieved App: %s' % app_info.get('_id'))
 
 

@@ -227,6 +227,27 @@ def create_job(dbc, dataset):
         log.info('created job %d, group: %s, project %s' % (job['_id'], job['group'], job['project']))
 
 
+def insert_app(db, fp, apps_path, app_meta=None):
+    """Validate and insert an application tar into the filesystem and database."""
+    # download, md-5 check, and json validation are handled elsewhere
+    if not app_meta:
+        with tarfile.open(fp) as tf:
+            for ti in tf:
+                if ti.name.endswith('description.json'):
+                    app_meta = json.load(tf.extractfile(ti))
+                    break
+
+    name, version = app_meta.get('_id').split(':')
+    app_dir = os.path.join(apps_path, name)
+    if not os.path.exists(app_dir):
+        os.makedirs(app_dir)
+    app_tar = os.path.join(app_dir, '%s-%s.tar' % (name, version))
+
+    app_meta.update({'asset_url': 'apps/%s' % app_meta.get('_id')})
+    db.apps.update({'_id': app_meta.get('_id')}, app_meta, new=True, upsert=True)
+    shutil.move(fp, app_tar)
+
+
 def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
     metadata = copy.deepcopy(metadata)
     if dataset.nims_metadata_status is not None:
