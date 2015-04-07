@@ -365,59 +365,66 @@ class Core(base.RequestHandler):
         ],
     }
 
-    SEARCH_POST_SCHEMA = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'File',
-        'type': 'object',
-        'properties': {
-            'subj_code': {
-                'title': 'Subject Code',
-                'type': 'string',
-            },
-            'scan_type': {  # MR SPECIFIC!!!
-                'title': 'Scan Type',
-                'type': 'string',
-            },
-            'date_from': {
-                'title': 'Date From',
-                'type': 'string',
-            },
-            'date_to': {
-                'title': 'Date To',
-                'type': 'string',
-            },
-            'psd': {  # MR SPECIFIC!!!
-                'title': 'PSD Name',
-                'type': 'string',
-            },
-            'subj_age_max': {  # age in years
-                'title': 'Subject Age Max',
-                'type': 'integer',
-            },
-            'subj_age_min': {  # age in years
-                'title': 'Subject Age Min',
-                'type': 'integer',
-            },
-            'exam': {
-                'title': 'Exam Number',
-                'type': 'integer',
-            },
-            'description': {
-                'title': 'Description',
-                'type': 'string',
-            },
-        },
-        # 'required': ['subj_code', 'scan_type', 'date_from', 'date_to', 'psd_name', 'operator', 'subj_age_max', 'subj_age_min', 'exam'],
-        'additionalProperties': False
-    }
-
     def search(self):
         """Search."""
+        SEARCH_POST_SCHEMA = {
+            '$schema': 'http://json-schema.org/draft-04/schema#',
+            'title': 'File',
+            'type': 'object',
+            'properties': {
+                'subj_code': {
+                    'title': 'Subject Code',
+                    'type': 'string',
+                },
+                'subj_firstname': {
+                    'title': 'Subject First Name',   # hash
+                    'type': 'string',
+                },
+                'subj_lastname': {
+                    'title': 'Subject Last Name',
+                    'type': 'string',
+                },
+                'scan_type': {  # MR SPECIFIC!!!
+                    'title': 'Scan Type',
+                    'enum': self.app.db.acquisitions.distinct('types.kind')
+                },
+                'date_from': {
+                    'title': 'Date From',
+                    'type': 'string',
+                },
+                'date_to': {
+                    'title': 'Date To',
+                    'type': 'string',
+                },
+                'psd': {  # MR SPECIFIC!!!
+                    'title': 'PSD Name',
+                    'type': 'string',   # 'enum': self.app.db.acquisitions.distinct('psd'),
+                },
+                'subj_age_max': {  # age in years
+                    'title': 'Subject Age Max',
+                    'type': 'integer',
+                },
+                'subj_age_min': {  # age in years
+                    'title': 'Subject Age Min',
+                    'type': 'integer',
+                },
+                'exam': {
+                    'title': 'Exam Number',
+                    'type': 'integer',
+                },
+                'description': {
+                    'title': 'Description',
+                    'type': 'string',
+                },
+            },
+            # 'required': ['subj_code', 'scan_type', 'date_from', 'date_to', 'psd_name', 'operator', 'subj_age_max', 'subj_age_min', 'exam'],
+            # 'additionalProperties': False
+        }
         if self.request.method == 'GET':
-            return self.SEARCH_POST_SCHEMA
+            return SEARCH_POST_SCHEMA
         try:
             json_body = self.request.json_body
-            jsonschema.validate(json_body, self.SEARCH_POST_SCHEMA)
+            jsonschema.validate(json_body, SEARCH_POST_SCHEMA)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
 
