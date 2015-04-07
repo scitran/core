@@ -32,7 +32,7 @@ routes = [
     webapp2.Route(r'/api',                                          core.Core),
     webapp2_extras.routes.PathPrefixRoute(r'/api', [
         webapp2.Route(r'/download',                                 core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
-        webapp2.Route(r'/download/<fn>',                            core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
+        webapp2.Route(r'/download/<fn>',                            core.Core, handler_method='download', methods=['GET', 'POST'], name='named_download'),
         webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/search',                                   core.Core, handler_method='search', methods=['GET', 'POST']),
     ]),
