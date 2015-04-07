@@ -4,10 +4,12 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
+import json
 import bson
 import copy
 import shutil
 import difflib
+import tarfile
 import datetime
 import mimetypes
 import tempdir as tempfile
@@ -151,81 +153,78 @@ def _update_db(db, dataset):
 
 # TODO: create job should be use-able from bootstrap.py with only database information
 def create_job(dbc, dataset):
-        db = dbc.database
-        type_ = dataset.nims_file_type
-        kinds_ = dataset.nims_file_kinds
-        state_ = dataset.nims_file_state
-        app = None
-        # TODO: check if there are 'default apps' set for this project/session/acquisition
-        acquisition = db.acquisitions.find_one({'uid': dataset.nims_acquisition_id})
-        session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
-        project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
-        aid = acquisition.get('_id')
+    db = dbc.database
+    type_ = dataset.nims_file_type
+    kinds_ = dataset.nims_file_kinds
+    state_ = dataset.nims_file_state
+    app = None
+    # TODO: check if there are 'default apps' set for this project/session/acquisition
+    acquisition = db.acquisitions.find_one({'uid': dataset.nims_acquisition_id})
+    session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
+    project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
+    aid = acquisition.get('_id')
 
-        # job descriptions have a few special cases
+    # XXX: if an input kinds = None, then that job is meant to work on any file kinds
+    app = db.apps.find_one({
+        '$or': [
+            {'inputs': {'$elemMatch': {'type': type_, 'state': state_, 'kinds': kinds_}}, 'default': True},
+            {'inputs': {'$elemMatch': {'type': type_, 'state': state_, 'kinds': None}}, 'default': True},
+        ],
+    })
+    # TODO: this has to move...
+    # force acquisition dicom file to be marked as 'optional = True'
+    db.acquisitions.find_and_modify(
+        {'uid': dataset.nims_acquisition_id, 'files.type': 'dicom'},
+        {'$set': {'files.$.optional': True}},
+        )
+
+    if not app:
+        log.info('no app for type=%s, state=%s, kinds=%s, default=True. no job created.' % (type_, state_, kinds_))
+    else:
         # XXX: outputs can specify to __INHERIT__ a value from the parent input file, for ex: kinds
-        # XXX: if an input kinds = None, then that job is meant to work on any file kinds
-        # otherwise, kinds will restrict the app to work on specific kinds only
-        app = db.apps.find_one({
-            '$or': [
-                {'inputs': {'$elemMatch': {'type': type_, 'state': state_, 'kinds': kinds_}}, 'default': True},
-                {'inputs': {'$elemMatch': {'type': type_, 'state': state_, 'kinds': None}}, 'default': True},
-            ],
-        })
-        # TODO: this has to move...
-        # force acquisition dicom file to be marked as 'optional = True'
-        db.acquisitions.find_and_modify(
-            {'uid': dataset.nims_acquisition_id, 'files.type': 'dicom'},
-            {'$set': {'files.$.optional': True}},
-            )
+        for output in app['outputs']:
+            if output['kinds'] == '__INHERIT__':
+                output['kinds'] = kinds_
 
-        if not app:
-            log.info('no app for type=%s, state=%s, kinds=%s, default=True. no job created.' % (type_, state_, kinds_))
-        else:
-            # replace any special values in the app description
-            for output in app['outputs']:
-                if output['kinds'] == '__INHERIT__':
-                    output['kinds'] = kinds_
-
-            # TODO: job description needs more metadata to be searchable in a useful way
-            output_url = '%s/%s/%s' % ('acquisitions', aid, 'file')
-            job = db.jobs.find_and_modify(
-                {
-                    '_id': db.jobs.count() + 1,
+        # TODO: job description needs more metadata to be searchable in a useful way
+        output_url = '%s/%s/%s' % ('acquisitions', aid, 'file')
+        job = db.jobs.find_and_modify(
+            {
+                '_id': db.jobs.count() + 1,
+            },
+            {
+                '_id': db.jobs.count() + 1,
+                'group': project.get('group_id'),
+                'project': {
+                    '_id': project.get('_id'),
+                    'name': project.get('name'),
                 },
-                {
-                    '_id': db.jobs.count() + 1,
-                    'group': project.get('group_id'),
-                    'project': {
-                        '_id': project.get('_id'),
-                        'name': project.get('name'),
-                    },
-                    'exam': session.get('exam'),
-                    'app': {
-                        '_id': app['_id'],
-                        'type': 'docker',
-                    },
-                    'inputs': [
-                        {
-                            'filename': dataset.nims_file_name + dataset.nims_file_ext,
-                            'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
-                            'payload': {
-                                'type': dataset.nims_file_type,
-                                'state': dataset.nims_file_state,
-                                'kinds': dataset.nims_file_kinds,
-                            },
-                        }
-                    ],
-                    'outputs': [{'url': output_url, 'payload': i} for i in app['outputs']],
-                    'status': 'pending',
-                    'activity': None,
-                    'added': datetime.datetime.now(),
-                    'timestamp': datetime.datetime.now(),
+                'exam': session.get('exam'),
+                'app': {
+                    '_id': app['_id'],
+                    'type': 'docker',
                 },
-                upsert=True,
-                new=True,
-            )
-            log.info('created job %d, group: %s, project %s' % (job['_id'], job['group'], job['project']))
+                'inputs': [
+                    {
+                        'filename': dataset.nims_file_name + dataset.nims_file_ext,
+                        'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
+                        'payload': {
+                            'type': dataset.nims_file_type,
+                            'state': dataset.nims_file_state,
+                            'kinds': dataset.nims_file_kinds,
+                        },
+                    }
+                ],
+                'outputs': [{'url': output_url, 'payload': i} for i in app['outputs']],
+                'status': 'pending',
+                'activity': None,
+                'added': datetime.datetime.now(),
+                'timestamp': datetime.datetime.now(),
+            },
+            upsert=True,
+            new=True,
+        )
+        log.info('created job %d, group: %s, project %s' % (job['_id'], job['group'], job['project']))
 
 
 def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
