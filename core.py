@@ -484,7 +484,7 @@ class Core(base.RequestHandler):
         aquery.update(acq_query)
         log.debug(aquery)
 
-        # group the acquisitions by session
+        # build a more complex response, and clean out database specifics
         groups = []
         projects = []
         sessions = []
@@ -492,7 +492,14 @@ class Core(base.RequestHandler):
         for acq in acqs:
             session = self.app.db.sessions.find_one({'_id': acq['session']})
             project = self.app.db.projects.find_one({'_id': session['project']})
-            group = project.get('group_id')
+            group = project['group_id']
+            del project['group_id']
+            project['group'] = group
+            acq['_id'] = str(acq['_id'])
+            acq['session'] = str(acq['session'])
+            session['_id'] = str(session['_id'])
+            session['project'] = str(session['project'])
+            project['_id'] = str(project['_id'])
             if session not in sessions:
                 sessions.append(session)
             if project not in projects:
