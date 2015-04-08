@@ -87,6 +87,7 @@ class Core(base.RequestHandler):
             [(/projects/schema)]                | schema for single project
             /projects/*<pid>*                   | details for project *<pid>*
             /projects/*<pid>*/sessions          | list sessions for project *<pid>*
+            [(/sessions)]                       | list of sessions
             [(/sessions/count)]                 | count of sessions
             [(/sessions/schema)]                | schema for single session
             /sessions/*<sid>*                   | details for session *<sid>*

@@ -55,19 +55,26 @@ class Sessions(containers.ContainerList):
         """Create a new Session"""
         self.response.write('sessions post\n')
 
-    def get(self, pid):
+    def get(self, pid=None):
         """Return the list of Project Sessions."""
-        _id = bson.ObjectId(pid)
-        if not self.app.db.projects.find_one({'_id': _id}):
-            self.abort(404, 'no such Project')
-        query = {'project': _id}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1}
+        if pid is not None:
+            _id = bson.ObjectId(pid)
+            if not self.app.db.projects.find_one({'_id': _id}):
+                self.abort(404, 'no such Project')
+            query = {'project': _id}
+        else:
+            query = {}
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'project': 1}
         sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
+        for sess in sessions:
+            sess['project'] = str(sess['project'])
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
-                sess['details'] = self.uri_for('session', sid, _full=True) + '?' + self.request.query_string
-                sess['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
+                sess['debug'] = {}
+                sess['debug']['project'] = self.uri_for('project', sess['project'], _full=True) + '?' + self.request.query_string
+                sess['debug']['details'] = self.uri_for('session', sid, _full=True) + '?' + self.request.query_string
+                sess['debug']['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
         return sessions
 
     def put(self):
