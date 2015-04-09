@@ -293,13 +293,13 @@ class Container(base.RequestHandler):
                 '_id': _id,
                 '$and': [
                     {'files.kinds': ['montage']},
-                    {'files.ext': '.tiff'},
+                    {'files.ext': '.zip'},
                 ],
             },
             ['files.$'],
         )
         if not montage_info:
-            self.abort(404, 'montage tiff not found')
+            self.abort(404, 'montage zip not found')
         fn = montage_info['files'][0]['name'] + montage_info['files'][0]['ext']
         fp = os.path.join(self.app.config['data_path'], cid[-3:], cid, fn)
         z = self.request.get('z')
@@ -308,10 +308,12 @@ class Container(base.RequestHandler):
         if not (z and x and y):
             return util.get_info(fp)
         else:
-            self.response.content_type = 'image/png'
+            self.response.content_type = 'image/jpeg'
             tile = util.get_tile(fp, int(z), int(x), int(y))
             if tile:
                 self.response.write(tile)
+            else:
+                self.abort(404, 'request tile does not exist')
 
     def get_attachment(self, cid):
         """Download one attachment."""
