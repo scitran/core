@@ -430,8 +430,6 @@ class Core(base.RequestHandler):
             self.abort(400, str(e))
 
         # TODO: search needs to include operator details? do types of datasets have an 'operator'?
-        # TODO: sessions need to have more 'subject' information to be able to do age searching
-        # construct the queries based on the information available
         # TODO: provide a schema that allows directly using the request data, rather than
         # requiring construction of the queries....
         session_query = {}
@@ -477,13 +475,15 @@ class Core(base.RequestHandler):
             pass
 
         # also query sessions
+        # permissions exist at the session level, which will limit the acquisition queries to sessions user has access to
+        if not self.superuser_request:
+            session_query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
+            acq_query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.app.db.sessions.find(session_query))
         session_ids = [s['_id'] for s in sessions]
-        log.debug(session_ids)
         # first find the acquisitions that meet the acquisition level query params
         aquery = {'session': {'$in': session_ids}}
         aquery.update(acq_query)
-        log.debug(aquery)
 
         # build a more complex response, and clean out database specifics
         groups = []
