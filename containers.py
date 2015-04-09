@@ -308,8 +308,6 @@ class Container(base.RequestHandler):
             tile = util.get_tile(fp, int(z), int(x), int(y))
             if tile:
                 self.response.write(tile)
-            else:
-                self.abort(404, 'request tile does not exist')
 
     def get_attachment(self, cid):
         """Download one attachment."""
