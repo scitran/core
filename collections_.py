@@ -294,7 +294,7 @@ class CollectionSessions(sessions.Sessions):
         agg_res = self.app.db.acquisitions.aggregate([
                 {'$match': {'collections': _id}},
                 {'$group': {'_id': '$session'}},
-                ])['result']
+                ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
         projection = {'label': 1, 'subject.code': 1, 'notes': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
