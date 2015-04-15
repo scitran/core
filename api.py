@@ -33,6 +33,7 @@ routes = [
     webapp2_extras.routes.PathPrefixRoute(r'/api', [
         webapp2.Route(r'/download',                                 core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
         webapp2.Route(r'/download/<fn>',                            core.Core, handler_method='download', methods=['GET', 'POST'], name='named_download'),
+        webapp2.Route(r'/incremental',                              core.Core, handler_method='incremental_upload', methods=['POST']),
         webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/search',                                   core.Core, handler_method='search', methods=['GET', 'POST']),
     ]),
@@ -145,6 +146,7 @@ if __name__ == '__main__':
     args = arg_parser.parse_args()
 
     args.quarantine_path = os.path.join(args.data_path, 'quarantine')
+    args.upload_path = os.path.join(args.data_path, 'upload')
     app.config = vars(args)
 
     logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence paste logging
@@ -159,6 +161,8 @@ if __name__ == '__main__':
         os.makedirs(app.config['data_path'])
     if not os.path.exists(app.config['quarantine_path']):
         os.makedirs(app.config['quarantine_path'])
+    if not os.path.exists(app.config['upload_path']):
+        os.makedirs(app.config['upload_path'])
 
     db_client = pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)
     app.db = db_client.get_default_database()

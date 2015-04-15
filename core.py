@@ -8,11 +8,12 @@ import re
 import json
 import hashlib
 import tarfile
+import zipfile
 import datetime
 import markdown
 import jsonschema
 import collections
-import bson.json_util
+import bson
 
 import base
 import util
@@ -161,6 +162,158 @@ class Core(base.RequestHandler):
             status, detail = util.insert_file(self.app.db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path)
             if status != 200:
                 self.abort(status, detail)
+
+    def incremental_upload(self):
+        """
+        Recieve an incremental upload within a staging area.
+
+        3 phases:
+        1 - upload metadata
+        2 - upload dicoms, one at a time
+        3 - send a 'complete' message
+        """
+        USER_UPLOAD_SCHEMA = {
+            '$schema': 'http://json-schema.org/draft-04/schema#',
+            'title': 'metadata',
+            'type': 'object',
+            'properties': {
+                'filetype': {
+                    'title': 'Filetype',
+                    'type': 'string',
+                },
+                'overwrite': {
+                    'title': 'Header Overwrites',
+                    'type': 'object',
+                    'properties': {
+                        'group_name': {
+                            'title': 'Group Name',
+                            'type': 'string',
+                        },
+                        'project_name': {
+                            'title': 'Project Name',
+                            'type': 'string',
+                        },
+                        'series_uid': {
+                            'title': 'Series UID',
+                            'type': 'string',
+                        },
+                        'acq_no': {
+                            'title': 'Acquisition Number',
+                            'type': 'integer',
+                        },
+                        'manufacturer': {
+                            'title': 'Instrument Manufacturer',
+                            'type': 'string',
+                        },
+                    },
+                    'required': ['group_name', 'project_name', 'series_uid', 'acq_no', 'manufacturer'],
+                },
+            },
+            'required': ['filetype', 'overwrite'],
+            'additionalProperties': True,
+        }
+
+        upload_id = self.request.get('_id')
+        complete = self.request.get('complete').lower() in ['1', 'true']
+        filename = self.request.get('filename')
+        content_md5 = self.request.headers.get('Content-MD5')
+        upload_path = self.app.config.get('upload_path')
+        if not content_md5:
+            self.abort(400, 'no content md5 header')
+
+        def write_to_tar(fp, mode, fn, fobj, content_md5, arcname=None):
+            """
+            Write fn to tarfile fp, with mode, in the inner dir arcname.
+            fp = path to tarfile
+            mode = 'w' or 'a'
+            fn = filename
+            fobj = opened file object, must be able to read()
+            content_md5 = expected sha1() hexdigest
+            arcname = tarfile internal directory
+            """
+            if mode == 'a' and not os.path.exists(fp):
+                return 400, '%s does not exist' % fp
+
+            if not arcname:  # get the arcname from the last file in the archive
+                with tarfile.open(fp, 'r') as tf:
+                    arcname = os.path.dirname(tf.getnames()[-1])
+
+            with tarfile.open(fp, mode) as tf:
+                with tempfile.TemporaryDirectory() as tempdir_path:
+                    hash_ = hashlib.sha1()
+                    tempfn = os.path.join(tempdir_path, fn)
+                    with open(tempfn, 'wb') as fd:
+                        for chunk in iter(lambda: fobj.read(2**20), ''):
+                            hash_.update(chunk)
+                            fd.write(chunk)
+                    if hash_.hexdigest() != content_md5:
+                        status = 400
+                        detail = 'Content-MD5 mismatch.'
+                    else:
+                        tf.add(tempfn, arcname=arcname)
+                        status = 200
+                        detail = 'OK'
+            return status, detail
+
+        if not upload_id and filename.lower() == 'metadata.json':  # create a new temporary file for staging
+            try:
+                metadata = self.request.json_body
+                jsonschema.validate(metadata, USER_UPLOAD_SCHEMA)
+            except jsonschema.ValidationError as e:
+                self.abort(400, str(e))
+            filetype = metadata['filetype']
+            overwrite = metadata['overwrite']
+            # check project and group permissions before proceeding
+            perms = self.app.db.projects.find_one({
+                    'name': overwrite.get('project_name'),
+                    'group_id': overwrite.get('group_name'),
+                    'permissions': {'$elemMatch': {'_id': self.uid}},
+                    }, ['permissions'])
+            if not perms and not self.superuser_request:
+                self.abort(403)
+            # give the interior directory the same name the reaper would give
+            acq_no = overwrite.get('acq_no', 1) if overwrite.get('manufacturer', '').upper() != 'SIEMENS' else None
+            arcname = overwrite.get('series_uid', '') + ('_' + str(acq_no) if acq_no is not None else '') + '_' + filetype
+            upload_id = str(bson.ObjectId())
+            log.debug('creating new temporary file %s' % upload_id)
+            fp = os.path.join(upload_path, upload_id + '.tar')
+            status, detail = write_to_tar(fp, 'w', 'METADATA.json', self.request.body_file, content_md5, arcname)
+            if status != 200:
+                self.abort(status, detail)
+            else:
+                return upload_id
+
+        elif upload_id and filename and not complete:
+            log.debug('appending to %s' % upload_id)
+            fp = os.path.join(upload_path, upload_id + '.tar')
+            status, detail = write_to_tar(fp, 'a', filename, self.request.body_file, content_md5)  # don't know arcname anymore...
+            if status != 200:
+                self.abort(status, detail)
+
+        elif upload_id and complete:
+            fp = os.path.join(upload_path, upload_id + '.tar')
+            log.debug('completing %s' % fp)
+            with tempfile.TemporaryDirectory() as tempdir_path:
+                log.debug('working in tempdir %s' % tempdir_path)
+                zip_fp = os.path.join(tempdir_path, upload_id + '.tgz')
+                with tarfile.open(zip_fp,'w:gz', compresslevel=6) as zf: # zip of tarfile was not being recognized by scitran.data
+                    with tarfile.open(fp, 'r') as tf:
+                        for ti in tf.getmembers():
+                            zf.addfile(ti, tf.extractfile(ti))
+                hash_ = hashlib.sha1()
+                with open(zip_fp, 'rb') as fd:
+                    while True:
+                        chunk = fd.read(2**20)
+                        if not chunk:
+                            break
+                        hash_.update(chunk)
+                log.debug('inserting')
+                status, detail = util.insert_file(self.app.db.acquisitions, None, None, zip_fp, hash_.hexdigest(), self.app.config['data_path'], self.app.config['quarantine_path'])
+                if status != 200:
+                    self.abort(status, detail)
+                os.remove(fp)  # always remove the original tar upon 'complete'. complete file is sorted or quarantined.
+        else:
+            self.abort(400, 'Expected _id (str), filename (str), and/or complete (bool) parameters and binary file content as body')
 
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']
