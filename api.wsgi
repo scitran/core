@@ -18,7 +18,7 @@ os.umask(0o022)
 ap = argparse.ArgumentParser()
 ap.add_argument('--db_uri', help='SciTran DB URI', required=True)
 ap.add_argument('--data_path', help='path to storage area', required=True)
-ap.add_argument('--apps_path', help='path to apps storage', required=True)
+ap.add_argument('--apps_path', help='path to apps storage')
 ap.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
 ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
@@ -49,6 +49,11 @@ if not os.path.exists(application.config['quarantine_path']):
     os.makedirs(application.config['quarantine_path'])
 if not os.path.exists(application.config['upload_path']):
     os.makedirs(application.config['upload_path'])
+if not application.config['apps_path']:
+    log.warning('apps_path is not defined.  Apps functionality disabled')
+else:
+    if not os.path.exists(application.config['apps_path']):
+        os.makedirs(application.config['apps_path'])
 
 # connect to db
 application.db = None
