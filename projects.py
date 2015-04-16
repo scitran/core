@@ -108,6 +108,7 @@ class Projects(containers.ContainerList):
             self.abort(400, 'must be group admin to create project')
         json_body['files'] = []
         json_body['permissions'] = group['roles']
+        json_body['public'] = json_body.get('public', False)
         return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):
