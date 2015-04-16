@@ -5,10 +5,10 @@ log = logging.getLogger('scitran.api')
 
 import os
 import json
+import pytz
 import hashlib
 import jsonschema
 import bson.json_util
-import pytz
 
 import tempdir as tempfile
 
@@ -111,17 +111,11 @@ FILE_DOWNLOAD_SCHEMA = {
 }
 
 
-def fixup_timestamps(item):
-    if 'timestamp' in item:
-        if 'timezone' in item:
-            item_timezone = pytz.timezone(item['timezone'])
-        else:
-            item_timezone = pytz.timezone('UTC')
-
-        timestamp = item_timezone.localize(item['timestamp'])
-
-        item['timestamp'] = timestamp.isoformat()
-        item['timezone'] = item_timezone.zone
+def fixup_timestamps(container):
+    if 'timestamp' in container:
+        container_timezone = pytz.timezone(container.get('timezone', None) or 'UTC')
+        container['timestamp'] = container_timezone.localize(container['timestamp']).isoformat()
+        container['timezone'] = container_timezone.zone
 
 
 class ContainerList(base.RequestHandler):

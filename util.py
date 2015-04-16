@@ -146,10 +146,11 @@ def _update_db(db, dataset):
             fields=[],
             )
     if dataset.nims_timestamp:
-        db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=dataset.nims_timestamp)})
+        db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
         db.sessions.update({'_id': session['_id']}, {'$min': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
     # create a job, if necessary
     return acquisition['_id']
+
 
 # TODO: create job should be use-able from bootstrap.py with only database information
 def create_job(dbc, dataset):
