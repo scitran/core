@@ -10,6 +10,7 @@ import hashlib
 import tarfile
 import zipfile
 import datetime
+import lockfile
 import markdown
 import jsonschema
 import collections
@@ -218,8 +219,6 @@ class Core(base.RequestHandler):
         filename = self.request.get('filename')
         content_md5 = self.request.headers.get('Content-MD5')
         upload_path = self.app.config.get('upload_path')
-        if not content_md5:
-            self.abort(400, 'no content md5 header')
 
         def write_to_tar(fp, mode, fn, fobj, content_md5, arcname=None):
             """
@@ -236,23 +235,23 @@ class Core(base.RequestHandler):
 
             if not arcname:  # get the arcname from the last file in the archive
                 with tarfile.open(fp, 'r') as tf:
-                    arcname = os.path.dirname(tf.getnames()[-1])
-
-            with tarfile.open(fp, mode) as tf:
-                with tempfile.TemporaryDirectory() as tempdir_path:
-                    hash_ = hashlib.sha1()
-                    tempfn = os.path.join(tempdir_path, fn)
-                    with open(tempfn, 'wb') as fd:
-                        for chunk in iter(lambda: fobj.read(2**20), ''):
-                            hash_.update(chunk)
-                            fd.write(chunk)
-                    if hash_.hexdigest() != content_md5:
-                        status = 400
-                        detail = 'Content-MD5 mismatch.'
-                    else:
-                        tf.add(tempfn, arcname=arcname)
-                        status = 200
-                        detail = 'OK'
+                    arcname = os.path.dirname(tf.getnames()[0])
+            with lockfile.LockFile(fp):
+                with tarfile.open(fp, mode) as tf:
+                    with tempfile.TemporaryDirectory() as tempdir_path:
+                        hash_ = hashlib.sha1()
+                        tempfn = os.path.join(tempdir_path, fn)
+                        with open(tempfn, 'wb') as fd:
+                            for chunk in iter(lambda: fobj.read(2**20), ''):
+                                hash_.update(chunk)
+                                fd.write(chunk)
+                        if hash_.hexdigest() != content_md5:
+                            status = 400
+                            detail = 'Content-MD5 mismatch.'
+                        else:
+                            tf.add(tempfn, arcname=os.path.join(arcname, fn))
+                            status = 200
+                            detail = 'OK'
             return status, detail
 
         if not upload_id and filename.lower() == 'metadata.json':  # create a new temporary file for staging
