@@ -198,7 +198,7 @@ class Collections(containers.ContainerList):
     def get(self):
         """Return the list of Collections."""
         query = {'curator_id': self.request.get('curator')} if self.request.get('curator') else {}
-        projection = {'curator_id': 1, 'name': 1, 'notes': 1}
+        projection = {'curator_id': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for coll in collections:
             coll['_id'] = str(coll['_id'])
@@ -296,7 +296,7 @@ class CollectionSessions(sessions.Sessions):
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1}
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection))
         for sess in sessions:
@@ -333,7 +333,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1}
+        projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:

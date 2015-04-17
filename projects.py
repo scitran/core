@@ -113,7 +113,7 @@ class Projects(containers.ContainerList):
     def get(self):
         """Return the User's list of Projects."""
         query = {'group_id': self.request.get('group')} if self.request.get('group') else {}
-        projection = {'group_id': 1, 'name': 1, 'notes': 1}
+        projection = {'group_id': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for proj in projects:

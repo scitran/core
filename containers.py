@@ -5,8 +5,8 @@ log = logging.getLogger('scitran.api')
 
 import os
 import json
+import pytz
 import hashlib
-import datetime
 import jsonschema
 import bson.json_util
 
@@ -16,7 +16,6 @@ import base
 import util
 import users
 
-import tempdir as tempfile
 
 FILE_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -112,6 +111,13 @@ FILE_DOWNLOAD_SCHEMA = {
 }
 
 
+def fixup_timestamps(container):
+    if 'timestamp' in container:
+        container_timezone = pytz.timezone(container.get('timezone', None) or 'UTC')
+        container['timestamp'] = container_timezone.localize(container['timestamp']).isoformat()
+        container['timezone'] = container_timezone.zone
+
+
 class ContainerList(base.RequestHandler):
 
     def _get(self, query, projection, admin_only=False):
@@ -127,6 +133,7 @@ class ContainerList(base.RequestHandler):
         containers = list(self.dbc.find(query, projection))
         for container in containers:
             container['_id'] = str(container['_id'])
+            fixup_timestamps(container)
         return containers
 
 
@@ -154,6 +161,7 @@ class Container(base.RequestHandler):
             for file_info in container['files']:
                 file_info['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + file_info['name'] + file_info['ext']
         container['_id'] = str(container['_id'])
+        fixup_timestamps(container)
         return container, user_perm
 
     def put(self, _id):
