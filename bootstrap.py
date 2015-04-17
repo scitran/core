@@ -177,15 +177,6 @@ example:
 ./scripts/bootstrap.py sort mongodb://localhost/nims /tmp/data /tmp/sorted
 """
 
-def dbinitsort(args):
-    logging.basicConfig(level=logging.WARNING)
-    dbinit(args)
-    upload(args)
-
-dbinitsort_desc = """
-example:
-./scripts/bootstrap.py dbinitsort mongodb://localhost/nims -j bootstrap.json /tmp/data https://example.com/api/upload
-"""
 
 def upload(args):
     import util
@@ -295,20 +286,6 @@ sort_parser.add_argument('db_uri', help='database URI')
 sort_parser.add_argument('path', help='filesystem path to data')
 sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
 sort_parser.set_defaults(func=sort)
-
-dbinitsort_parser = subparsers.add_parser(
-    name='dbinitsort',
-    help='initialize database, then sort all files in a directory tree',
-    description=dbinitsort_desc,
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-dbinitsort_parser.add_argument('db_uri', help='database URI')
-dbinitsort_parser.add_argument('path', help='filesystem path to data')
-dbinitsort_parser.add_argument('url', help='upload URL')
-dbinitsort_parser.add_argument('-j', '--json', help='JSON file container users and groups')
-dbinitsort_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing db data')
-dbinitsort_parser.add_argument('-n', '--no_verify', help='disable SSL verification', action='store_true')
-dbinitsort_parser.set_defaults(func=dbinitsort)
 
 upload_parser = subparsers.add_parser(
         name='upload',
