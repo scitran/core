@@ -14,6 +14,8 @@ import datetime
 
 import util
 
+import scitran.data as scidata
+
 def connect_db(db_uri, **kwargs):
     for x in range(0, 30):
         try:
@@ -122,72 +124,16 @@ def jobsinit(args):
     if args.force:
         db.drop_collection('jobs')
 
-    counter = db.jobs.count() + 1   # where to start creating jobs
-
-    dbc = db.jobs
-
-    for a in db.acquisitions.find({'files.state': ['orig']}, {'files.$': 1, 'session': 1, 'series': 1, 'acquisition': 1}):
-        if a.get('files')[0].get('kinds')[0] == 'screenshot':
-            print 'no default app set for screenshots. skipping...'
+    # find all "orig" files, and create jobs for them
+    for a in db.acquisitions.find({'files': {'$elemMatch': {'state': ['orig']}}}, {'files.$': 1}):
+        aid = str(a['_id'])
+        print aid
+        fp = os.path.join(args.data_path, aid[-3:], aid, a['files'][0]['name'] + a['files'][0]['ext'])
+        if not os.path.exists(fp):
+            print ('%s does not exist. no job created.' % fp)
             continue
-
-        else:
-            app_id = 'scitran/dcm2nii:latest'
-            app_outputs = [
-                {
-                    'fext': '.nii.gz',
-                    'state': ['derived', ],
-                    'type': 'nifti',
-                    'kinds': a.get('files')[0].get('kinds'),  # there should be someway to indicate 'from parent file'
-                },
-                {
-                    'fext': '.bvec',
-                    'state': ['derived', ],
-                    'type': 'text',
-                    'kinds': ['bvec', ],
-                },
-                {
-                    'fext': '.bval',
-                    'state': ['derived', ],
-                    'type': 'text',
-                    'kinds': ['bval', ],
-                },
-            ]
-
-        aid = a.get('_id')
-        session = db.sessions.find_one({'_id': bson.ObjectId(a.get('session'))})
-        project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
-        output_url = '%s/%s/%s' % ('acquisitions', aid, 'file')
-        db.jobs.insert({
-            '_id': counter,
-            'group': project.get('group_id'),
-            'project': {
-                '_id': project.get('_id'),
-                'name': project.get('name'),
-            },
-            'exam': session.get('exam'),
-            'app': {
-                '_id': 'scitran/dcm2nii:latest',
-                'type': 'docker',
-            },
-            'inputs': [
-                {
-                    'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
-                    'payload': {
-                        'type': a['files'][0]['type'],
-                        'state': a['files'][0]['state'],
-                        'kinds': a['files'][0]['kinds'],
-                    },
-                }
-            ],
-            'outputs': [{'url': output_url, 'payload': i} for i in app_outputs],
-            'status': 'pending',     # queued
-            'activity': None,
-            'added': datetime.datetime.now(),
-            'timestamp': datetime.datetime.now(),
-        })
-        print 'created job %d, group: %s, project %s, exam %s, %s.%s' % (counter, project.get('group_id'), project.get('_id'), session.get('exam'), a.get('series'), a.get('acquisition'))
-        counter += 1
+        dataset = scidata.parse(fp)
+        util.create_job(db.jobs, dataset)
 
 jobinit_desc = """
 example:
@@ -335,6 +281,7 @@ jobsinit_parser = subparsers.add_parser(
         )
 jobsinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing jobs')
 jobsinit_parser.add_argument('db_uri', help='DB URI')
+jobsinit_parser.add_argument('data_path', help='filesystem path to sorted data')
 jobsinit_parser.set_defaults(func=jobsinit)
 
 sort_parser = subparsers.add_parser(
