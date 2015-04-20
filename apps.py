@@ -20,6 +20,7 @@ log = logging.getLogger('nimsapi.jobs')
 import tempdir as tempfile
 
 import base
+import util
 
 # TODO: create schemas to verify various json payloads
 APP_SCHEMA = {
@@ -64,18 +65,27 @@ class Apps(base.RequestHandler):
     """Return information about the all the apps."""
 
     def get(self):
+        apps_path = self.app.config.get('apps_path')
+        if not apps_path:
+            self.abort(503, 'GET api/apps/<id> unavailable. apps_path not defined')
         return list(self.app.db.apps.find())
 
     def count(self):
+        apps_path = self.app.config.get('apps_path')
+        if not apps_path:
+            self.abort(503, 'GET api/apps/<id> unavailable. apps_path not defined')
         return self.app.db.apps.count()
 
     def post(self):
         """Create a new App."""
         # this handles receive and writing the file
         # but the the json validation and database is handled by util.
+        apps_path = self.app.config['apps_path']
+        if not apps_path:
+            self.abort(503, 'POST api/apps unavailable. apps_path not defined')
         if self.public_request:  # TODO: how to handle auth during bootstrap?
             self.abort(403, 'must be logged in to upload apps')
-        apps_path = self.app.config['apps_path']
+
         app_meta = None
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=apps_path) as tempdir_path:
             hash_ = hashlib.sha1()
@@ -100,21 +110,27 @@ class Apps(base.RequestHandler):
             except (ValueError, jsonschema.ValidationError) as e:
                 self.abort(400, str(e))
             util.insert_app(self.app.db, app_temp, apps_path, app_meta=app_meta)  # pass meta info, prevent re-reading
-            log.debug('Recieved App: %s' % app_info.get('_id'))
+            log.debug('Recieved App: %s' % app_meta.get('_id'))
 
 
 class App(base.RequestHandler):
 
     def get(self, _id):
         # TODO: auth? should viewing apps be restricted?
+        apps_path = self.app.config.get('apps_path')
+        if not apps_path:
+            self.abort(503, 'GET api/apps/<id> unavailable. apps_path not defined')
         return self.app.db.apps.find_one({'_id': _id})
 
     def get_file(self, _id):
+        apps_path = self.app.config.get('apps_path')
+        if not apps_path:
+            self.abort(503, 'GET api/apps/<id> unavailable. apps_path not defined')
         if self.public_request:  # this will most often be a drone request
             self.abort(403, 'must be logged in to download apps')
         name, version = _id.split(':')
         fn = '%s-%s.tar' % (name, version)
-        fp = os.path.join(self.app.config['apps_path'], name, fn)
+        fp = os.path.join(apps_path, name, fn)
         self.response.app_iter = open(fp, 'rb')
         self.response.headers['Content-Length'] = str(os.path.getsize(fp))  # must be set after setting app_iter
         self.response.headers['Content-Type'] = 'application/octet-stream'

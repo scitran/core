@@ -6,6 +6,7 @@ import time
 import logging
 import pymongo
 import argparse
+import datetime
 import uwsgidecorators
 
 import api
@@ -17,7 +18,7 @@ os.umask(0o022)
 ap = argparse.ArgumentParser()
 ap.add_argument('--db_uri', help='SciTran DB URI', required=True)
 ap.add_argument('--data_path', help='path to storage area', required=True)
-ap.add_argument('--apps_path', help='path to apps storage', required=True)
+ap.add_argument('--apps_path', help='path to apps storage')
 ap.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
 ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
@@ -33,6 +34,7 @@ args = ap.parse_args()
 # --site_name 'Example Site' or --site_name "Example Site"
 args.site_name = ' '.join(args.site_name).strip('"\'')
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
+args.upload_path = os.path.join(args.data_path, 'upload')
 
 logging.basicConfig(level=getattr(logging, args.log_level.upper())) #FIXME probably not necessary, because done in api.py
 log = logging.getLogger('nimsapi')
@@ -45,6 +47,13 @@ if not os.path.exists(application.config['data_path']):
     os.makedirs(application.config['data_path'])
 if not os.path.exists(application.config['quarantine_path']):
     os.makedirs(application.config['quarantine_path'])
+if not os.path.exists(application.config['upload_path']):
+    os.makedirs(application.config['upload_path'])
+if not application.config['apps_path']:
+    log.warning('apps_path is not defined.  Apps functionality disabled')
+else:
+    if not os.path.exists(application.config['apps_path']):
+        os.makedirs(application.config['apps_path'])
 
 # connect to db
 application.db = None
@@ -62,6 +71,16 @@ else:
 
 # TODO: make api_uri a required arg?
 application.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
+
+@uwsgidecorators.cron(0, -1, -1, -1, -1)  # top of every hour
+def upload_storage_cleaning(num):
+    upload_path = application.config['upload_path']
+    for f in os.listdir(upload_path):
+        fp = os.path.join(upload_path, f)
+        timestamp = datetime.datetime.utcfromtimestamp(int(os.stat(fp).st_mtime))
+        if timestamp < (datetime.datetime.utcnow() - datetime.timedelta(hours=1)):
+            log.debug('upload %s was last modified %s' % (fp, str(timestamp)))
+            os.remove(fp)
 
 if not args.ssl_cert:
     log.warning('SSL certificate not specified, Scitran Central functionality disabled')
