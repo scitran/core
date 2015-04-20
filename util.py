@@ -53,6 +53,8 @@ def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_pat
 
         log.info('Sorting     %s' % filename)
         _id = _update_db(dbc.database, dataset)
+        if not _id:
+            return 400, 'Session exists in different project'
         file_spec = dict(
                 _id=_id,
                 files={'$elemMatch': {
@@ -103,7 +105,12 @@ def _update_db(db, dataset):
     session_spec = {'uid': dataset.nims_session_id}
     session = db.sessions.find_one(session_spec, ['project'])
     if session: # skip project creation, if session exists
-        project = db.projects.find_one({'_id': session['project']}, fields=PROJECTION_FIELDS)
+        project = db.projects.find_one({'_id': session['project']}, fields=PROJECTION_FIELDS + ['name'])
+        #TODO:the session must belong to the specified group/project, or not exist at all
+        # if the session exists, for a different group/project, reject the hell out of it.
+        # a single session cannot be split between two different projects
+        if project['name'] != dataset.nims_project:
+           return None
     else:
         existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
         group_id_matches = difflib.get_close_matches(dataset.nims_group_id, existing_group_ids, cutoff=0.8)
