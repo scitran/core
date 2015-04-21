@@ -109,8 +109,8 @@ def _update_db(db, dataset):
         #TODO:the session must belong to the specified group/project, or not exist at all
         # if the session exists, for a different group/project, reject the hell out of it.
         # a single session cannot be split between two different projects
-        if project['name'] != dataset.nims_project:
-           return None
+        # if project['name'] != dataset.nims_project:
+        #    return None
     else:
         existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
         group_id_matches = difflib.get_close_matches(dataset.nims_group_id, existing_group_ids, cutoff=0.8)
