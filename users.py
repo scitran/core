@@ -63,7 +63,8 @@ class Users(base.RequestHandler):
         users = list(self.dbc.find({}, ['firstname', 'lastname', 'email_hash', 'wheel']))
         if self.debug:
             for user in users:
-                user['details'] = self.uri_for('user', _id=str(user['_id']), _full=True) + '?' + self.request.query_string
+                user['debug'] = {}
+                user['debug']['details'] = self.uri_for('user', _id=str(user['_id']), _full=True) + '?' + self.request.query_string
         return users
 
 
@@ -145,7 +146,8 @@ class User(base.RequestHandler):
         if not user:
             self.abort(404, 'no such User')
         if self.debug and (self.superuser_request or _id == self.uid):
-            user['groups'] = self.uri_for('groups', _id=_id, _full=True) + '?' + self.request.query_string
+            user['debug'] = {}
+            user['debug']['groups'] = self.uri_for('groups', _id=_id, _full=True) + '?' + self.request.query_string
         return user
 
     def put(self, _id):
@@ -214,7 +216,10 @@ class Groups(base.RequestHandler):
         groups = list(self.app.db.groups.find(query, ['name']))
         if self.debug:
             for group in groups:
-                group['details'] = self.uri_for('group', _id=str(group['_id']), _full=True) + '?' + self.request.query_string
+                group['debug'] = {}
+                group['debug']['projects'] = self.uri_for('projects', _full=True) + '?' + self.request.query_string + '&group=' + group['_id']
+                group['debug']['sessions'] = self.uri_for('sessions', _full=True) + '?' + self.request.query_string + '&group=' + group['_id']
+                group['debug']['details'] = self.uri_for('group', group['_id'], _full=True) + '?' + self.request.query_string
         return groups
 
 
@@ -273,6 +278,10 @@ class Group(base.RequestHandler):
             group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
+        if self.debug:
+            group['debug'] = {}
+            group['debug']['projects'] = self.uri_for('projects', _full=True) + '?' + self.request.query_string + '&group=' + group['_id']
+            group['debug']['sessions'] = self.uri_for('sessions', _full=True) + '?' + self.request.query_string + '&group=' + group['_id']
         return group
 
     def put(self, _id):

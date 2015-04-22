@@ -74,7 +74,9 @@ class Sessions(containers.ContainerList):
             query = {'project': _id}
         else:
             query = {}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'project': 1, 'timestamp': 1, 'timezone': 1}
+        if self.request.get('group'):
+            query['group'] = self.request.get('group')
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'project': 1, 'group': 1, 'timestamp': 1, 'timezone': 1}
         sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for sess in sessions:
             sess['project'] = str(sess['project'])
@@ -82,6 +84,7 @@ class Sessions(containers.ContainerList):
             for sess in sessions:
                 sid = str(sess['_id'])
                 sess['debug'] = {}
+                sess['debug']['group'] = self.uri_for('group', sess['group'], _full=True) + '?' + self.request.query_string
                 sess['debug']['project'] = self.uri_for('project', sess['project'], _full=True) + '?' + self.request.query_string
                 sess['debug']['details'] = self.uri_for('session', sid, _full=True) + '?' + self.request.query_string
                 sess['debug']['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
@@ -130,7 +133,9 @@ class Session(containers.Container):
         sess, _ = self._get(_id)
         sess['project'] = str(sess['project'])
         if self.debug:
-            sess['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
+            sess['debug'] = {}
+            sess['debug']['project'] = self.uri_for('project', sess['project'], _full=True) + '?' + self.request.query_string
+            sess['debug']['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
         return sess
 
     def put(self, sid):
@@ -140,8 +145,9 @@ class Session(containers.Container):
         if 'project' in json_body:
             session, user_perm = self._get(_id, 'admin', perm_only=False)
             self._get(session['project'], 'admin', perm_only=True, dbc=self.app.db.projects, dbc_name='Project')
-            destination, dest_user_perm = self._get(json_body['project'], 'admin', perm_only=True, dbc=self.app.db.projects, dbc_name='Project')
+            destination, dest_user_perm = self._get(json_body['project'], 'admin', perm_only=False, dbc=self.app.db.projects, dbc_name='Project')
             json_body['permissions'] = destination['permissions']
+            json_body['group'] = destination['group']
             self.update_db(_id, json_body)
             self.app.db.acquisitions.update({'session': _id}, {'$set': {'permissions': destination['permissions']}}, multi=True)
         else:

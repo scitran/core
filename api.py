@@ -62,9 +62,9 @@ routes = [
     webapp2_extras.routes.PathPrefixRoute(r'/api/groups', [
         webapp2.Route(r'/count',                                    users.Groups, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   users.Group, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<_id>',                                    users.Group, name='group'),
+        webapp2.Route(r'/<:[^/]+>',                                 users.Group, name='group'),
     ]),
-    webapp2.Route(r'/api/projects',                                 projects.Projects),
+    webapp2.Route(r'/api/projects',                                 projects.Projects, name='projects'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
         webapp2.Route(r'/count',                                    projects.Projects, handler_method='count', methods=['GET']),
         webapp2.Route(r'/groups',                                   projects.Projects, handler_method='groups', methods=['GET']),
@@ -75,7 +75,7 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               projects.Project, handler_method='delete_attachment', methods=['DELETE']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               projects.Project, handler_method='get_attachment', methods=['GET', 'POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/attachment',               projects.Project, handler_method='put_attachment', methods=['PUT']),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 sessions.Sessions, name='sessions'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 sessions.Sessions, name='p_sessions'),
     ]),
     webapp2.Route(r'/api/collections',                              collections_.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/api/collections', [
@@ -91,7 +91,7 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections_.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
-    webapp2.Route(r'/api/sessions',                                 sessions.Sessions),
+    webapp2.Route(r'/api/sessions',                                 sessions.Sessions, name='sessions'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/sessions', [
         webapp2.Route(r'/count',                                    sessions.Sessions, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   sessions.Session, handler_method='schema', methods=['GET']),
@@ -153,9 +153,9 @@ if __name__ == '__main__':
     log.setLevel(getattr(logging, args.log_level.upper()))
 
     if not app.config['ssl_cert']:
-        log.warning('SSL certificate not specified, SciTran Central functionality disabled')
+        log.warning('SSL certificate not specified -> SciTran Central functionality disabled')
     if app.config['site_id'] == 'local':
-        log.warning('site_id not configured, SciTran Central functionality disabled')
+        log.warning('site_id not configured -> SciTran Central functionality disabled')
 
     if not os.path.exists(app.config['data_path']):
         os.makedirs(app.config['data_path'])
@@ -163,11 +163,10 @@ if __name__ == '__main__':
         os.makedirs(app.config['quarantine_path'])
     if not os.path.exists(app.config['upload_path']):
         os.makedirs(app.config['upload_path'])
-    if not application.config['apps_path']:
-        log.warning('apps_path is not defined.  Apps functionality disabled')
-    else:
-        if not os.path.exists(application.config['apps_path']):
-            os.makedirs(application.config['apps_path'])
+    if not app.config['apps_path']:
+        log.warning('apps_path is not defined -> apps functionality disabled')
+    elif not os.path.exists(app.config['apps_path']):
+        os.makedirs(app.config['apps_path'])
 
     db_client = pymongo.MongoReplicaSetClient(args.db_uri) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri)
     app.db = db_client.get_default_database()

@@ -17,7 +17,7 @@ PROJECT_POST_SCHEMA = {
     'title': 'Project',
     'type': 'object',
     'properties': {
-        'group_id': {
+        'group': {
             'type': 'string',
         },
         'name': {
@@ -30,7 +30,7 @@ PROJECT_POST_SCHEMA = {
             'type': 'string',
         },
     },
-    'required': ['group_id', 'name'],
+    'required': ['group', 'name'],
     'additionalProperties': False,
 }
 
@@ -101,7 +101,7 @@ class Projects(containers.ContainerList):
             jsonschema.validate(json_body, PROJECT_POST_SCHEMA)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
-        group = self.app.db.groups.find_one({'_id': json_body['group_id']}, ['roles'])
+        group = self.app.db.groups.find_one({'_id': json_body['group']}, ['roles'])
         if not group:
             self.abort(400, 'invalid group id')
         if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
@@ -113,19 +113,21 @@ class Projects(containers.ContainerList):
 
     def get(self):
         """Return the User's list of Projects."""
-        query = {'group_id': self.request.get('group')} if self.request.get('group') else {}
-        projection = {'group_id': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        query = {'group': self.request.get('group')} if self.request.get('group') else {}
+        projection = {'group': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
-                proj['details'] = self.uri_for('project', pid, _full=True) + '?' + self.request.query_string
-                proj['sessions'] = self.uri_for('sessions', pid, _full=True) + '?' + self.request.query_string
+                proj['debug'] = {}
+                proj['debug']['group'] = self.uri_for('group', proj['group'], _full=True) + '?' + self.request.query_string
+                proj['debug']['details'] = self.uri_for('project', pid, _full=True) + '?' + self.request.query_string
+                proj['debug']['sessions'] = self.uri_for('p_sessions', pid, _full=True) + '?' + self.request.query_string
         return projects
 
     def groups(self):
         """Return the User's list of Project Groups."""
-        group_ids = list(set((p['group_id'] for p in self.get())))
+        group_ids = list(set((p['group'] for p in self.get())))
         return list(self.app.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
 
 
@@ -169,7 +171,8 @@ class Project(containers.Container):
         _id = bson.ObjectId(pid)
         proj, _ = self._get(_id)
         if self.debug:
-            proj['sessions'] = self.uri_for('sessions', pid, _full=True) + '?' + self.request.query_string
+            proj['debug'] = {}
+            proj['debug']['sessions'] = self.uri_for('p_sessions', pid, _full=True) + '?' + self.request.query_string
         return proj
 
     def put(self, pid):

@@ -23,7 +23,7 @@ mimetypes.types_map.update({'.bval': 'text/plain'})
 get_info = scitran.data.medimg.montage.get_info
 get_tile = scitran.data.medimg.montage.get_tile
 
-PROJECTION_FIELDS = ['timestamp', 'permissions', 'public']
+PROJECTION_FIELDS = ['group', 'timestamp', 'permissions', 'public']
 
 
 def guess_mime(fn):
@@ -110,7 +110,7 @@ def _update_db(db, dataset):
         # if the session exists, for a different group/project, reject the hell out of it.
         # a single session cannot be split between two different projects
         # if project['name'] != dataset.nims_project:
-        #    return None
+        #     return None
     else:
         existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
         group_id_matches = difflib.get_close_matches(dataset.nims_group_id, existing_group_ids, cutoff=0.8)
@@ -121,7 +121,7 @@ def _update_db(db, dataset):
             group_id = 'unknown'
             project_name = dataset.nims_group_id + ('/' + dataset.nims_project if dataset.nims_project else '')
         group = db.groups.find_one({'_id': group_id})
-        project_spec = {'group_id': group['_id'], 'name': project_name}
+        project_spec = {'group': group['_id'], 'name': project_name}
         project = db.projects.find_and_modify(
                 project_spec,
                 {'$setOnInsert': {'permissions': group['roles'], 'public': False, 'files': []}},
@@ -132,7 +132,7 @@ def _update_db(db, dataset):
     session = db.sessions.find_and_modify(
             session_spec,
             {
-                '$setOnInsert': dict(project=project['_id'], permissions=project['permissions'], public=project['public'], files=[]),
+                '$setOnInsert': dict(group=project['group'], project=project['_id'], permissions=project['permissions'], public=project['public'], files=[]),
                 '$set': _entity_metadata(dataset, dataset.session_properties, session_spec), # session_spec ensures non-empty $set
                 '$addToSet': {'domains': dataset.nims_file_domain},
                 },
@@ -202,7 +202,7 @@ def create_job(dbc, dataset):
             },
             {
                 '_id': db.jobs.count() + 1,
-                'group': project.get('group_id'),
+                'group': project.get('group'),
                 'project': {
                     '_id': project.get('_id'),
                     'name': project.get('name'),

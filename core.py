@@ -265,7 +265,7 @@ class Core(base.RequestHandler):
             # check project and group permissions before proceeding
             perms = self.app.db.projects.find_one({
                     'name': overwrite.get('project_name'),
-                    'group_id': overwrite.get('group_name'),
+                    'group': overwrite.get('group_name'),
                     'permissions': {'$elemMatch': {'_id': self.uid}},
                     }, ['permissions'])
             if not perms and not self.superuser_request:
@@ -337,8 +337,8 @@ class Core(base.RequestHandler):
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
-                project = self.app.db.projects.find_one({'_id': item_id}, ['group_id', 'name', 'files'])
-                prefix = project['group_id'] + '/' + project['name']
+                project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files'])
+                prefix = project['group'] + '/' + project['name']
                 total_size, file_cnt = append_targets(targets, project, prefix, total_size, file_cnt)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
                 for session in sessions:
@@ -350,8 +350,8 @@ class Core(base.RequestHandler):
                         total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['group_id', 'name'])
-                prefix = project['group_id'] + '/' + project['name'] + '/' + session.get('label', 'untitled')
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
+                prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, session, prefix, total_size, file_cnt)
                 acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
@@ -360,8 +360,8 @@ class Core(base.RequestHandler):
             elif item['level'] == 'acquisition':
                 acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
                 session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['group_id', 'name'])
-                prefix = project['group_id'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
+                prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
@@ -646,8 +646,8 @@ class Core(base.RequestHandler):
         for acq in acqs:
             session = self.app.db.sessions.find_one({'_id': acq['session']})
             project = self.app.db.projects.find_one({'_id': session['project']})
-            group = project['group_id']
-            del project['group_id']
+            group = project['group']
+            del project['group']
             project['group'] = group
             acq['_id'] = str(acq['_id'])
             acq['session'] = str(acq['session'])
