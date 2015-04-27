@@ -24,6 +24,10 @@ ACQUISITION_PUT_SCHEMA = {
             'title': 'Notes',
             'type': 'string',
         },
+        'description': {
+            'title': 'Description',
+            'type': 'string'
+        },
         'files': {
             'title': 'Files',
             'type': 'array',

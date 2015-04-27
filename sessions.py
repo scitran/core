@@ -27,6 +27,16 @@ SESSION_PUT_SCHEMA = {
             'type': 'string',
             'pattern': '^[0-9a-f]{24}$',
         },
+        'subject': {
+            'title': 'Subject',
+            'type': 'object',
+            'properties': {
+                'code': {
+                    'title': 'Code',
+                    'type': 'string'
+                }
+            }
+        },
         'files': {
             'title': 'Files',
             'type': 'array',
