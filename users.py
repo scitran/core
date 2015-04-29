@@ -286,7 +286,20 @@ class Group(base.RequestHandler):
 
     def put(self, _id):
         """Update an existing Group."""
-        self.response.write('group %s put, %s\n' % (_id, self.request.params))
+        group = self.dbc.find_one({'_id': _id})
+        if not group:
+            self.abort(404, 'no such Group')
+        user_perm = util.user_perm(group.get('roles', []), self.uid)
+        if not self.superuser_request and not user_perm.get('access') == 'admin':
+            self.abort(403, 'must be superuser or group admin to update group')
+        schema = copy.deepcopy(self.json_schema)
+        del schema['required']
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, schema)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
         """Delete an Group."""
