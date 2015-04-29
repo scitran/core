@@ -105,7 +105,7 @@ def _update_db(db, dataset):
     session_spec = {'uid': dataset.nims_session_id}
     session = db.sessions.find_one(session_spec, ['project'])
     if session: # skip project creation, if session exists
-        project = db.projects.find_one({'_id': session['project']}, fields=PROJECTION_FIELDS + ['name'])
+        project = db.projects.find_one({'_id': session['project']}, projection=PROJECTION_FIELDS + ['name'])
         #TODO:the session must belong to the specified group/project, or not exist at all
         # if the session exists, for a different group/project, reject the hell out of it.
         # a single session cannot be split between two different projects
@@ -127,7 +127,7 @@ def _update_db(db, dataset):
                 {'$setOnInsert': {'permissions': group['roles'], 'public': False, 'files': []}},
                 upsert=True,
                 new=True,
-                fields=PROJECTION_FIELDS,
+                projection=PROJECTION_FIELDS,
                 )
     session = db.sessions.find_and_modify(
             session_spec,
@@ -138,7 +138,7 @@ def _update_db(db, dataset):
                 },
             upsert=True,
             new=True,
-            fields=PROJECTION_FIELDS,
+            projection=PROJECTION_FIELDS,
             )
     acquisition_spec = {'uid': dataset.nims_acquisition_id}
     acquisition = db.acquisitions.find_and_modify(
@@ -150,7 +150,7 @@ def _update_db(db, dataset):
                 },
             upsert=True,
             new=True,
-            fields=[],
+            projection=[],
             )
     if dataset.nims_timestamp:
         db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
