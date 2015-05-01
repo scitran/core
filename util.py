@@ -252,7 +252,7 @@ def insert_app(db, fp, apps_path, app_meta=None):
     app_tar = os.path.join(app_dir, '%s-%s.tar' % (name, version))
 
     app_meta.update({'asset_url': 'apps/%s' % app_meta.get('_id')})
-    db.apps.update({'_id': app_meta.get('_id')}, app_meta, new=True, upsert=True)
+    db.apps.update({'_id': app_meta.get('_id')}, app_meta, upsert=True)
     shutil.move(fp, app_tar)
 
 
