@@ -192,13 +192,13 @@ class Collections(containers.ContainerList):
             jsonschema.validate(json_body, COLLECTION_POST_SCHEMA)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
-        json_body['curator_id'] = self.uid
+        json_body['curator'] = self.uid
         return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):
         """Return the list of Collections."""
-        query = {'curator_id': self.request.get('curator')} if self.request.get('curator') else {}
-        projection = {'curator_id': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        query = {'curator': self.request.get('curator')} if self.request.get('curator') else {}
+        projection = {'curator': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for coll in collections:
             coll['_id'] = str(coll['_id'])
@@ -212,7 +212,7 @@ class Collections(containers.ContainerList):
 
     def curators(self):
         """Return the User's list of Collection Curators."""
-        curator_ids = list(set((c['curator_id'] for c in self.get())))
+        curator_ids = list(set((c['curator'] for c in self.get())))
         return list(self.app.db.users.find({'_id': {'$in': curator_ids}}, ['firstname', 'lastname']))
 
 
