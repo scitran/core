@@ -28,7 +28,7 @@ class RequestHandler(webapp2.RequestHandler):
         access_token = self.request.headers.get('Authorization', None)
         if access_token and self.app.config['oauth2_id_endpoint']:
             token_request_time = datetime.datetime.now()
-            cached_token = self.app.db.tokens.find_one({'_id': access_token})
+            cached_token = self.app.db.authtokens.find_one({'_id': access_token})
             if cached_token:
                 self.uid = cached_token['uid']
                 log.debug('looked up cached token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
@@ -37,7 +37,7 @@ class RequestHandler(webapp2.RequestHandler):
                 if r.status_code == 200:
                     identity = json.loads(r.content)
                     self.uid = identity['email']
-                    self.app.db.tokens.save({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
+                    self.app.db.authtokens.save({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
