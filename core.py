@@ -149,18 +149,20 @@ class Core(base.RequestHandler):
         data_path = self.app.config['data_path']
         quarantine_path = self.app.config['quarantine_path']
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=data_path) as tempdir_path:
-            hash_ = hashlib.sha1()
+            md5 = hashlib.md5()
+            sha1 = hashlib.sha1()
             filepath = os.path.join(tempdir_path, filename)
             with open(filepath, 'wb') as fd:
                 for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
-                    hash_.update(chunk)
+                    md5.update(chunk)
+                    sha1.update(chunk)
                     fd.write(chunk)
-            if hash_.hexdigest() != self.request.headers['Content-MD5']:
+            if md5.hexdigest() != self.request.headers['Content-MD5']:
                 self.abort(400, 'Content-MD5 mismatch.')
             if not tarfile.is_tarfile(filepath):
                 self.abort(415, 'Only tar files are accepted.')
             log.info('Received    %s [%s] from %s' % (filename, util.hrsize(self.request.content_length), self.request.user_agent))
-            status, detail = util.insert_file(self.app.db.acquisitions, None, None, filepath, hash_.hexdigest(), data_path, quarantine_path)
+            status, detail = util.insert_file(self.app.db.acquisitions, None, None, filepath, sha1.hexdigest(), data_path, quarantine_path)
             if status != 200:
                 self.abort(status, detail)
 
