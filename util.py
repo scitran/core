@@ -10,6 +10,7 @@ import json
 import uuid
 import shutil
 import difflib
+import hashlib
 import tarfile
 import datetime
 import mimetypes
@@ -27,100 +28,86 @@ get_tile = scitran.data.medimg.montage.get_tile
 PROJECTION_FIELDS = ['group', 'timestamp', 'permissions', 'public']
 
 
-def guess_mime(fn):
-    """Guess mimetype based on filename."""
-    # TODO: could move mime types to scitran.data, but that would only work well if ALL files
-    # went thrugh scitra.data.  We can guarantee that all files go through the API during upload,
-    # or download.  the API seems the right place to determine mime information.
-    mime, enc = mimetypes.guess_type(fn)
-    if not mime:
-        mime = 'application/octet-stream'
-    return mime
+def parse_file(filepath, digest):
+    filename = os.path.basename(filepath)
+    try:
+        log.info('Parsing     %s' % filename)
+        dataset = scitran.data.parse(filepath)
+    except scitran.data.DataError:
+        log.info('Unparsable  %s' % filename)
+        return None
+    filename = dataset.nims_file_name + dataset.nims_file_ext
+    fileinfo = {
+            'mimetype': guess_mimetype(filename),
+            'filename': filename,
+            'filesize': os.path.getsize(filepath),
+            'filetype': dataset.nims_file_type,
+            'filehash': digest,
+            'datahash': None, #dataset.nims_hash, TODO: datasets should be able to hash themselves (but not here)
+            'modality': dataset.nims_file_domain,
+            'datatypes': dataset.nims_file_kinds,
+            'flavor': 'data',
+            }
+    datainfo = {
+            'acquisition_id': dataset.nims_acquisition_id,
+            'session_id': dataset.nims_session_id,
+            'group_id': dataset.nims_group_id,
+            'project_name': dataset.nims_project,
+            'session_properties': _entity_metadata(dataset, dataset.session_properties),
+            'acquisition_properties': _entity_metadata(dataset, dataset.acquisition_properties),
+            'timestamp': dataset.nims_timestamp,
+            'timezone': dataset.nims_timezone,
+            }
+    datainfo['fileinfo'] = fileinfo
+    # HACK!!!
+    datainfo['acquisition_properties'].pop('filetype', None)
+    if fileinfo['filetype'] == 'dicom' and fileinfo['datatypes'][0] != 'screenshot':
+        datainfo['acquisition_properties']['modality'] = fileinfo['modality']
+        datainfo['acquisition_properties']['datatype'] = fileinfo['datatypes'][0]
+    return datainfo
 
 
-def insert_file(dbc, _id, file_info, filepath, digest, data_path, quarantine_path, flavor='file'):
+def quarantine_file(filepath, quarantine_path):
+    q_path = tempfile.mkdtemp(prefix=datetime.datetime.now().strftime('%Y%m%d_%H%M%S_'), dir=quarantine_path)
+    shutil.move(filepath, q_path)
+
+
+def commit_file(dbc, _id, datainfo, filepath, data_path):
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
-    flavor += 's'
-    dataset = None
+    fileinfo = datainfo['fileinfo']
+    log.info('Sorting     %s' % filename)
     if _id is None:
-        try:
-            log.info('Parsing     %s' % filename)
-            dataset = scitran.data.parse(filepath)
-        except scitran.data.DataError:
-            q_path = tempfile.mkdtemp(prefix=datetime.datetime.now().strftime('%Y%m%d_%H%M%S_'), dir=quarantine_path)
-            shutil.move(filepath, q_path)
-            return 202, 'Quarantining %s (unparsable)' % filename
-
-        log.info('Sorting     %s' % filename)
-        _id = _update_db(dbc.database, dataset)
-        if not _id:
-            return 400, 'Session exists in different project'
-        file_spec = dict(
-                _id=_id,
-                files={'$elemMatch': {
-                    'type': dataset.nims_file_type,
-                    'kinds': dataset.nims_file_kinds,
-                    'state': dataset.nims_file_state,
-                    }},
-                )
-        file_info = dict(
-                name=dataset.nims_file_name,
-                ext=dataset.nims_file_ext,
-                size=os.path.getsize(filepath),
-                sha1=digest,
-                #hash=dataset.nims_hash, TODO: datasets should be able to hash themselves (but not here)
-                type=dataset.nims_file_type,
-                kinds=dataset.nims_file_kinds,
-                state=dataset.nims_file_state,
-                )
-        filename = dataset.nims_file_name + dataset.nims_file_ext
-    else:
-        file_spec = {
-                '_id': _id,
-                flavor: {'$elemMatch': {
-                    'type': file_info.get('type'),
-                    'kinds': file_info.get('kinds'),
-                    'state': file_info.get('state'),
-                    }},
-                }
-        if flavor == 'attachments':
-            file_spec[flavor]['$elemMatch'].update({'name': file_info.get('name'), 'ext': file_info.get('ext')})
+        _id = _update_db(dbc.database, datainfo)
+    #create_job(dbc, dataset) # FIXME we should only mark files as new and let engine take it from there
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
     if not os.path.exists(container_path):
         os.makedirs(container_path)
-    success = dbc.update(file_spec, {'$set': {flavor + '.$': file_info}})
-    if not success['updatedExisting']:
-        dbc.update({'_id': _id}, {'$push': {flavor: file_info}})
-    shutil.move(filepath, container_path + '/' + filename)
-    if dataset:  # only create jobs if dataset is parseable
-        create_job(dbc, dataset)
-    log.debug('Done        %s' % os.path.basename(filepath)) # must use filepath, since filename is updated for sorted files
-    return 200, 'Success'
+    r = dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$': fileinfo}})
+    #TODO figure out if file was actually updated and return that fact
+    if r.matched_count != 1:
+        dbc.update({'_id': _id}, {'$push': {'files': fileinfo}})
+    shutil.move(filepath, container_path + '/' + fileinfo['filename'])
+    log.debug('Done        %s' % filename)
 
 
-def _update_db(db, dataset):
+def _update_db(db, datainfo):
     #TODO: possibly try to keep a list of session IDs on the project, instead of having the session point to the project
     #      same for the session and acquisition
     #      queries might be more efficient that way
-    session_spec = {'uid': dataset.nims_session_id}
+    session_spec = {'uid': datainfo['session_id']}
     session = db.sessions.find_one(session_spec, ['project'])
     if session: # skip project creation, if session exists
         project = db.projects.find_one({'_id': session['project']}, projection=PROJECTION_FIELDS + ['name'])
-        #TODO:the session must belong to the specified group/project, or not exist at all
-        # if the session exists, for a different group/project, reject the hell out of it.
-        # a single session cannot be split between two different projects
-        # if project['name'] != dataset.nims_project:
-        #     return None
     else:
         existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
-        group_id_matches = difflib.get_close_matches(dataset.nims_group_id, existing_group_ids, cutoff=0.8)
+        group_id_matches = difflib.get_close_matches(datainfo['group_id'], existing_group_ids, cutoff=0.8)
         if len(group_id_matches) == 1:
             group_id = group_id_matches[0]
-            project_name = dataset.nims_project or 'untitled'
+            project_name = datainfo['project_name'] or 'untitled'
         else:
             group_id = 'unknown'
-            project_name = dataset.nims_group_id + ('/' + dataset.nims_project if dataset.nims_project else '')
+            project_name = datainfo['group_id'] + ('/' + datainfo['project_name'] if datainfo['project_name'] else '')
         group = db.groups.find_one({'_id': group_id})
         project_spec = {'group': group['_id'], 'name': project_name}
         project = db.projects.find_and_modify(
@@ -134,30 +121,43 @@ def _update_db(db, dataset):
             session_spec,
             {
                 '$setOnInsert': dict(group=project['group'], project=project['_id'], permissions=project['permissions'], public=project['public'], files=[]),
-                '$set': _entity_metadata(dataset, dataset.session_properties, session_spec), # session_spec ensures non-empty $set
-                '$addToSet': {'domains': dataset.nims_file_domain},
+                '$set': datainfo['session_properties'] or session_spec, # session_spec ensures non-empty $set
+                #'$addToSet': {'modalities': datainfo['fileinfo']['modality']}, # FIXME
                 },
             upsert=True,
             new=True,
             projection=PROJECTION_FIELDS,
             )
-    acquisition_spec = {'uid': dataset.nims_acquisition_id}
+    acquisition_spec = {'uid': datainfo['acquisition_id']}
     acquisition = db.acquisitions.find_and_modify(
             acquisition_spec,
             {
                 '$setOnInsert': dict(session=session['_id'], permissions=session['permissions'], public=session['public'], files=[]),
-                '$set': _entity_metadata(dataset, dataset.acquisition_properties, acquisition_spec), # acquisition_spec ensures non-empty $set
-                '$addToSet': {'types': {'$each': [{'domain': dataset.nims_file_domain, 'kind': kind} for kind in dataset.nims_file_kinds]}},
+                '$set': datainfo['acquisition_properties'] or acquisition_spec, # acquisition_spec ensures non-empty $set
+                #'$addToSet': {'types': {'$each': [{'domain': dataset.nims_file_domain, 'kind': kind} for kind in dataset.nims_file_kinds]}},
                 },
             upsert=True,
             new=True,
             projection=[],
             )
-    if dataset.nims_timestamp:
-        db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
-        db.sessions.update({'_id': session['_id']}, {'$min': dict(timestamp=dataset.nims_timestamp), '$set': dict(timezone=dataset.nims_timezone)})
-    # create a job, if necessary
+    if datainfo['timestamp']:
+        db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=datainfo['timestamp']), '$set': dict(timezone=datainfo['timezone'])})
+        db.sessions.update({'_id': session['_id']}, {'$min': dict(timestamp=datainfo['timestamp']), '$set': dict(timezone=datainfo['timezone'])})
     return acquisition['_id']
+
+
+def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
+    metadata = copy.deepcopy(metadata)
+    if dataset.nims_metadata_status is not None:
+        parent_key = parent_key and parent_key + '.'
+        for key, attributes in properties.iteritems():
+            if attributes['type'] == 'object':
+                metadata.update(_entity_metadata(dataset, attributes['properties'], parent_key=key))
+            else:
+                value = getattr(dataset, attributes['field']) if 'field' in attributes else None
+                if value or value == 0: # drop Nones and empty iterables
+                    metadata[parent_key + key] = value
+    return metadata
 
 
 # TODO: create job should be use-able from bootstrap.py with only database information
@@ -257,20 +257,6 @@ def insert_app(db, fp, apps_path, app_meta=None):
     shutil.move(fp, app_tar)
 
 
-def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
-    metadata = copy.deepcopy(metadata)
-    if dataset.nims_metadata_status is not None:
-        parent_key = parent_key and parent_key + '.'
-        for key, attributes in properties.iteritems():
-            if attributes['type'] == 'object':
-                metadata.update(_entity_metadata(dataset, attributes['properties'], parent_key=key))
-            else:
-                value = getattr(dataset, attributes['field']) if 'field' in attributes else None
-                if value or value == 0: # drop Nones and empty iterables
-                    metadata[parent_key + key] = value
-    return metadata
-
-
 def hrsize(size):
     if size < 1000:
         return '%d%s' % (size, 'B')
@@ -307,3 +293,23 @@ def download_ticket(type_, target, filename, size):
             'filename': filename,
             'size': size,
             }
+
+
+def receive_stream_and_validate(stream, filepath, valid_md5):
+    md5 = hashlib.md5()
+    sha1 = hashlib.sha1()
+    with open(filepath, 'wb') as fd:
+        for chunk in iter(lambda: stream.read(2**20), ''):
+            md5.update(chunk)
+            sha1.update(chunk)
+            fd.write(chunk)
+    return (md5.hexdigest() == valid_md5), sha1.hexdigest() # FIXME should be md5.hexdigest()
+
+
+def guess_mimetype(fn):
+    """Guess mimetype based on filename."""
+    # TODO: could move mime types to scitran.data, but that would only work well if ALL files
+    # went thrugh scitra.data.  We can guarantee that all files go through the API during upload,
+    # or download.  the API seems the right place to determine mime information.
+    mime, _ = mimetypes.guess_type(fn)
+    return mime or 'application/octet-stream'

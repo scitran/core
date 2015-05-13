@@ -6,7 +6,6 @@ log = logging.getLogger('scitran.api')
 import os
 import re
 import json
-import hashlib
 import tarfile
 import datetime
 import lockfile
@@ -143,26 +142,22 @@ class Core(base.RequestHandler):
         #    self.abort(402, 'uploads must be from an authorized user or drone')
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
-        filename = self.request.get('filename', 'upload')
-        data_path = self.app.config['data_path']
-        quarantine_path = self.app.config['quarantine_path']
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=data_path) as tempdir_path:
-            md5 = hashlib.md5()
-            sha1 = hashlib.sha1()
+        filename = self.request.headers.get('Content-Disposition', '').partition('filename=')[2].strip('"')
+        if not filename:
+            self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
-            with open(filepath, 'wb') as fd:
-                for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
-                    md5.update(chunk)
-                    sha1.update(chunk)
-                    fd.write(chunk)
-            if md5.hexdigest() != self.request.headers['Content-MD5']:
+            success, sha1sum = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
+            if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             if not tarfile.is_tarfile(filepath):
                 self.abort(415, 'Only tar files are accepted.')
             log.info('Received    %s [%s] from %s' % (filename, util.hrsize(self.request.content_length), self.request.user_agent))
-            status, detail = util.insert_file(self.app.db.acquisitions, None, None, filepath, sha1.hexdigest(), data_path, quarantine_path)
-            if status != 200:
-                self.abort(status, detail)
+            fileinfo = util.parse_file(filepath, sha1sum)
+            if fileinfo is None:
+                util.quarantine_file(filepath, self.app.config['quarantine_path'])
+                self.abort(202, 'Quarantining %s (unparsable)' % filename)
+            util.commit_file(self.app.db.acquisitions, None, fileinfo, filepath, self.app.config['data_path'])
 
     def incremental_upload(self):
         """
@@ -214,6 +209,7 @@ class Core(base.RequestHandler):
             'additionalProperties': True,
         }
 
+        import hashlib
         upload_id = self.request.get('_id')
         complete = self.request.get('complete').lower() in ['1', 'true']
         filename = self.request.get('filename')
@@ -307,7 +303,7 @@ class Core(base.RequestHandler):
                             break
                         hash_.update(chunk)
                 log.debug('inserting')
-                status, detail = util.insert_file(self.app.db.acquisitions, None, None, zip_fp, hash_.hexdigest(), self.app.config['data_path'], self.app.config['quarantine_path'])
+                status, detail = util.insert_file(self.app.db.acquisitions, None, None, zip_fp, hash_.hexdigest(), self.app.config)
                 if status != 200:
                     self.abort(status, detail)
                 os.remove(fp)  # always remove the original tar upon 'complete'. complete file is sorted or quarantined.
@@ -367,7 +363,7 @@ class Core(base.RequestHandler):
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
         ticket = util.download_ticket('batch', targets, filename, total_size)
         tkt_id = self.app.db.downloads.insert(ticket)
-        return {'url': self.uri_for('named_download', fn=filename, _scheme='https', ticket=tkt_id), 'file_cnt': file_cnt, 'size': total_size}
+        return {'ticket': tkt_id, 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
         length = None # FIXME compute actual length
@@ -377,27 +373,16 @@ class Core(base.RequestHandler):
             z.write(filepath, acrpath)
         return z, length
 
-    def download(self, fn=None):
-        # discard the filename, fn. backend doesn't need it, but
-        # front end makes uses of filename in url.
+    def download(self):
         ticket_id = self.request.get('ticket')
-        # TODO: what's the default? stream or attach?
-        attach = self.request.get('attach').lower() in ['1', 'true']
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
                 self.abort(404, 'no such ticket')
-            if ticket['type'] == 'single':
-                self.response.app_iter = open(ticket['target'], 'rb')
-                self.response.headers['Content-Length'] = str(ticket['size']) # must be set after setting app_iter
-            else:
-                self.response.app_iter, length = self._archivestream(ticket)
-                self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
-            if attach:
-                self.response.headers['Content-Type'] = 'application/octet-stream'
-                self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
-            else:
-                self.response.headers['Content-Type'] = util.guess_mime(ticket['filename'])
+            self.response.app_iter, length = self._archivestream(ticket)
+            self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
+            self.response.headers['Content-Type'] = 'application/octet-stream'
+            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
             try:
                 req_spec = self.request.json_body

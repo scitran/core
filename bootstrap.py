@@ -166,9 +166,12 @@ def sort(args):
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
                     hash_.update(chunk)
-        status, detail = util.insert_file(db.acquisitions, None, None, filepath, hash_.hexdigest(), args.sort_path, quarantine_path)
-        if status != 200:
-            print detail
+        datainfo = util.parse_file(filepath, hash_.hexdigest())
+        if datainfo is None:
+            util.quarantine_file(filepath, quarantine_path)
+            print 'Quarantining %s (unparsable)' % os.path.basename(filepath)
+        else:
+            util.commit_file(db.acquisitions, None, datainfo, filepath, args.sort_path)
 
 sort_desc = """
 example:

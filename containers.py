@@ -71,7 +71,7 @@ FILE_UPLOAD_SCHEMA = {
     'additionalProperties': False,
 }
 
-FILE_DOWNLOAD_SCHEMA = {
+FILE_ACCESS_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
     'title': 'File Download',
     'anyOf': [
@@ -105,13 +105,13 @@ FILE_DOWNLOAD_SCHEMA = {
                     'type': 'string',
                 },
             },
-            'required': ['name', 'ext'],
+            'required': ['name'],
         },
     ],
 }
 
 
-def fixup_timestamps(container):
+def fixup_timestamps(container): # FIXME this method should not have to exist
     if 'timestamp' in container:
         container_timezone = pytz.timezone(container.get('timezone', None) or 'UTC')
         container['timestamp'] = container_timezone.localize(container['timestamp']).isoformat()
@@ -139,7 +139,7 @@ class ContainerList(base.RequestHandler):
 
 class Container(base.RequestHandler):
 
-    def _get(self, _id, min_role=None, perm_only=False, dbc=None, dbc_name=None):
+    def _get(self, _id, min_role=None, filename=None, perm_only=False, dbc=None, dbc_name=None):
         dbc = dbc or self.dbc
         dbc_name = dbc_name or self.__class__.__name__
         container = dbc.find_one({'_id': _id}, ['permissions'] if perm_only else None)
@@ -147,8 +147,15 @@ class Container(base.RequestHandler):
             self.abort(404, 'no such ' + dbc_name)
         user_perm = util.user_perm(container['permissions'], self.uid, self.source_site)
         if self.public_request:
-            if not container.get('public', False):
-                self.abort(403, 'this ' + dbc_name + 'is not public')
+            ticket_id = self.request.get('ticket')
+            if ticket_id:
+                ticket = self.app.db.downloads.find_one({'_id': ticket_id})
+                if not ticket: # FIXME need better security
+                    self.abort(404, 'no such ticket')
+                if ticket['target'] != _id or ticket['filename'] != filename:
+                    self.abort(400, 'ticket not for this resource')
+            elif not container.get('public', False):
+                self.abort(403, 'this ' + dbc_name + ' is not public')
             del container['permissions']
         elif not self.superuser_request:
             if not user_perm:
@@ -158,10 +165,10 @@ class Container(base.RequestHandler):
             if user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = [user_perm]
         if self.request.get('paths').lower() in ('1', 'true'):
-            for file_info in container['files']:
-                file_info['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + file_info['name'] + file_info['ext']
+            for fileinfo in container['files']:
+                fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['name'] + fileinfo['ext']
         container['_id'] = str(container['_id'])
-        fixup_timestamps(container)
+        fixup_timestamps(container) # FIXME WTF?
         return container, user_perm
 
     def put(self, _id):
@@ -186,112 +193,81 @@ class Container(base.RequestHandler):
     def update_db(self, _id, json_body):
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
-    def get_file(self, cid):
-        try:
-            file_spec = self.request.json_body
-            jsonschema.validate(file_spec, FILE_DOWNLOAD_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
+    def file(self, cid, filename):
         _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'ro')
-        for file_info in container['files']:
-            if 'name' in file_spec:
-                if file_info['name'] == file_spec['name'] and file_info['ext'] == file_spec['ext']:
-                    break
-            else:
-                if file_info['type'] == file_spec['type'] and file_info['kinds'] == file_spec['kinds'] and file_info['state'] == file_spec['state']:
-                    break
+        if self.request.method == 'GET':
+            container, _ = self._get(_id, 'ro', filename)
+            return self._get_file(_id, container, filename)
+        elif self.request.method in ['POST', 'DELETE']:
+            container, _ = self._get(_id, 'rw', filename)
+            return self._get_file(_id, container, filename)
+        elif self.request.method == 'PUT':
+            container, _ = self._get(_id, 'rw', filename)
+            return self._put_file(_id, container, filename)
+        else:
+            self.abort(405)
+
+    def _get_file(self, _id, container, filename):
+        """Download or delete one file."""
+        # FIXME:
+        # we need a genral way to ask for a single file from a zip file
+        # that works for tiles as well as for dicoms
+
+        for fileinfo in container.get('files', []):
+            if fileinfo['name'] == filename:
+                break
         else:
             self.abort(404, 'no such file')
-        filename = file_info['name'] + file_info['ext']
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.request.method == 'GET':
             self.response.app_iter = open(filepath, 'rb')
-            self.response.headers['Content-Length'] = str(file_info['size']) # must be set after setting app_iter
-            self.response.headers['Content-Type'] = 'application/octet-stream'
-            self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % str(filename)
-        else:
-            ticket = util.download_ticket('single', filepath, filename, file_info['size'])
+            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
+            if self.request.get('view').lower() in ['1', 'true']:
+                self.response.headers['Content-Type'] = fileinfo.get('mimetype', 'application/octet-stream')
+            else:
+                self.response.headers['Content-Type'] = 'application/octet-stream'
+                self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+        elif self.request.method == 'POST':
+            ticket = util.download_ticket('file', _id, filename, fileinfo['size'])
             tkt_id = self.app.db.downloads.insert(ticket)
-            return {'url': self.uri_for('named_download', fn=filename, _scheme='https', ticket=tkt_id)}
+            return {'ticket': tkt_id}
+        elif self.request.method == 'DELETE':
+            r = self.dbc.update_one({'_id': _id}, {'$pull': {'files': {'name': filename}}})
+            if r.modified_count != 1:
+                self.abort(400) # FIXME need better error checking
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                log.info('removed file ' + filepath)
+            else:
+                log.warning(filepath + ' does not exist')
+        else:
+            self.abort(405)
 
-    def _put(self, cid=None, flavor='file'):
-        """
-        Receive a targeted processor or user upload for an attachment or file.
-
-        This PUT route is used to add a file to an existing container, not for creating new containers.
-        This upload is different from the main PUT route, because this does not update the main container
-        metadata, nor does it try to parse the file to determine sorting information. The uploaded file(s)
-        will always get uploaded to the specificied container.
-
-        Accepts a multipart request that contains the following form fields:
-        - 'metadata': list of dicts, each dict contains metadata for a file
-        - filename: file object
-        - 'sha': list of dicts, each dict contains 'name' and 'sha1'.
-
-        """
-        # TODO read self.request.body, using '------WebKitFormBoundary' as divider
-        # first line is 'content-disposition' line, extract filename
-        # second line is content-type, determine how to write to a file, as bytes or as string
-        # third linedata_path = self.app.config['data_path'], just a separator, useless
-        def receive_stream_and_validate(stream, digest, filename):
-            # FIXME pull this out to also be used from core.Core.put() and also replace the duplicated code below
-            hash_ = hashlib.sha1()
+    def _put_file(self, _id, container, filename):
+        """Receive a targeted processor or user upload."""
+        #if not self.uid and not self.drone_request:
+        #    self.abort(402, 'uploads must be from an authorized user or drone')
+        if 'Content-MD5' not in self.request.headers:
+            self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+        flavor = self.request.get('flavor', 'data')
+        if flavor not in ['data', 'attachment']:
+            self.abort(400, 'Query must contain flavor parameter: "file" or "attachment".')
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
-            with open(filepath, 'wb') as fd:
-                for chunk in iter(lambda: stream.read(2**20), ''):
-                    hash_.update(chunk)
-                    fd.write(chunk)
-            if hash_.hexdigest() != digest:
+            success, sha1sum = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
+            if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
-            return filepath
-
-        if self.request.content_type != 'multipart/form-data':
-            self.abort(400, 'content-type must be "multipart/form-data"')
-        # TODO: metadata validation
-        _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'rw')
-        data_path = self.app.config['data_path']
-        quarantine_path = self.app.config['quarantine_path']
-        hashes = []
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
-            # get and hash the metadata
-            metahash = hashlib.sha1()
-            metastr = self.request.POST.get('metadata').file.read()  # returns a string?
-            metadata = json.loads(metastr)
-            metahash.update(metastr)
-            hashes.append({'name': 'metadata', 'sha1': metahash.hexdigest()})
-
-            sha1s = json.loads(self.request.POST.get('sha').file.read())
-            for finfo in metadata:
-                fname = finfo.get('name') + finfo.get('ext')  # finfo['ext'] will always be empty
-                fhash = hashlib.sha1()
-                fobj = self.request.POST.get(fname).file
-                filepath = os.path.join(tempdir_path, fname)
-                with open(filepath, 'wb') as fd:
-                    for chunk in iter(lambda: fobj.read(2**20), ''):
-                        fhash.update(chunk)
-                        fd.write(chunk)
-                for s in sha1s:
-                    if fname == s.get('name'):
-                        if fhash.hexdigest() != s.get('sha1'):
-                            self.abort(400, 'Content-MD5 mismatch %s vs %s' % (fhash.hexdigest(), s.get('sha1')))
-                        else:
-                            finfo['sha1'] = s.get('sha1')
-                            status, detail = util.insert_file(self.dbc, _id, finfo, filepath, s.get('sha1'), data_path, quarantine_path, flavor=flavor)
-                        if status != 200:
-                            self.abort(400, 'upload failed')
-                        break
-                else:
-                    self.abort(400, '%s is not listed in the sha1s' % fname)
-
-    def put_file(self, cid=None):
-        """Receive a targeted upload of a dataset file."""
-        self._put(cid, flavor='file')
-
-    def put_attachment(self, cid):
-        """Recieve a targetted upload of an attachment file."""
-        self._put(cid, flavor='attachment')
+            filesize = os.path.getsize(filepath)
+            datainfo = {
+                    'fileinfo': {
+                        'filename': filename,
+                        'filesize': filesize,
+                        'filehash': sha1sum,
+                        'flavor': flavor,
+                        },
+                    }
+            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.user_agent)) # FIXME should log IP not user agent
+            util.commit_file(self.dbc, _id, datainfo, filepath, self.app.config['data_path'])
 
     def get_tile(self, cid):
         """fetch info about a tiled tiff, or retrieve a specific tile."""
@@ -316,45 +292,3 @@ class Container(base.RequestHandler):
             tile = util.get_tile(fp, int(z), int(x), int(y))
             if tile:
                 self.response.write(tile)
-
-    def get_attachment(self, cid):
-        """Download one attachment."""
-        fname = self.request.get('name')
-        _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'ro')
-        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
-        for a_info in container['attachments']:
-            if (a_info['name'] + a_info['ext']) == fname:
-                break
-        else:
-            self.abort(404, 'no such file')
-        if self.request.method == 'GET':
-            self.response.app_iter = open(fpath, 'rb')
-            self.response.headers['Content-Length'] = str(a_info['size']) # must be set after setting app_iter
-            self.response.headers['Content-Type'] = 'application/octet-stream'
-        else:
-            ticket = util.download_ticket('single', fpath, fname, a_info['size'])
-            tkt_id = self.app.db.downloads.insert(ticket)
-            return {'url': self.uri_for('named_download', fn=fname, _scheme='https', ticket=tkt_id)}
-
-    def delete_attachment(self, cid):
-        """Delete one attachment."""
-        fname = self.request.get('name')
-        _id = bson.ObjectId(cid)
-        container, _ = self._get(_id, 'rw')
-        fpath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), fname)
-        for a_info in container['attachments']:
-            if (a_info['name'] + a_info['ext']) == fname:
-                break
-        else:
-            self.abort(404, 'no such file')
-
-        name, ext = os.path.splitext(fname)
-        success = self.dbc.update({'_id': _id, 'attachments.name': fname}, {'$pull': {'attachments': {'name': fname}}})
-        if not success['updatedExisting']:
-            log.info('could not remove database entry.')
-        if os.path.exists(fpath):
-            os.remove(fpath)
-            log.info('removed file %s' % fpath)
-        else:
-            log.info('could not remove file, file %s does not exist' % fpath)
