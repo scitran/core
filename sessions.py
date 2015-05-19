@@ -15,30 +15,20 @@ SESSION_PUT_SCHEMA = {
     'type': 'object',
     'properties': {
         'name': {
-            'title': 'Name',
             'type': 'string',
             'maxLength': 32,
         },
         'notes': {
-            'title': 'Notes',
             'type': 'string',
         },
         'project': {
             'type': 'string',
             'pattern': '^[0-9a-f]{24}$',
         },
-        'subject': {
-            'title': 'Subject',
-            'type': 'object',
-            'properties': {
-                'code': {
-                    'title': 'Code',
-                    'type': 'string'
-                }
-            }
+        'subject_code': {
+            'type': 'string',
         },
         'files': {
-            'title': 'Files',
             'type': 'array',
             'items': containers.FILE_SCHEMA,
             'uniqueItems': True,
@@ -80,6 +70,7 @@ class Sessions(containers.ContainerList):
         sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for sess in sessions:
             sess['project'] = str(sess['project'])
+            sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -132,6 +123,7 @@ class Session(containers.Container):
         _id = bson.ObjectId(sid)
         sess, _ = self._get(_id)
         sess['project'] = str(sess['project'])
+        sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
             sess['debug'] = {}
             sess['debug']['project'] = self.uri_for('project', sess['project'], _full=True) + '?' + self.request.query_string
@@ -142,6 +134,8 @@ class Session(containers.Container):
         """Update an existing Session."""
         _id = bson.ObjectId(sid)
         json_body = self.validate_json_body(_id, ['project'])
+        if 'subject_code' in json_body: # FIXME delete with subject is pulled out of session
+            json_body['subject.code'] = json_body.pop('subject_code')
         if 'project' in json_body:
             session, user_perm = self._get(_id, 'admin', perm_only=False)
             self._get(session['project'], 'admin', perm_only=True, dbc=self.app.db.projects, dbc_name='Project')
