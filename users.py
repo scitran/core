@@ -64,7 +64,7 @@ class Users(base.RequestHandler):
         if self.debug:
             for user in users:
                 user['debug'] = {}
-                user['debug']['details'] = self.uri_for('user', _id=str(user['_id']), _full=True) + '?' + self.request.query_string
+                user['debug']['details'] = self.uri_for('user', str(user['_id']), _full=True) + '?' + self.request.query_string
         return users
 
 
@@ -147,7 +147,7 @@ class User(base.RequestHandler):
             self.abort(404, 'no such User')
         if self.debug and (self.superuser_request or _id == self.uid):
             user['debug'] = {}
-            user['debug']['groups'] = self.uri_for('groups', _id=_id, _full=True) + '?' + self.request.query_string
+            user['debug']['groups'] = self.uri_for('groups', _id, _full=True) + '?' + self.request.query_string
         return user
 
     def put(self, _id):
