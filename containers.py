@@ -4,11 +4,11 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
+import bson
 import json
 import pytz
 import hashlib
 import jsonschema
-import bson.json_util
 
 import tempdir as tempfile
 

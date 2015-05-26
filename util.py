@@ -4,9 +4,9 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
-import json
 import bson
 import copy
+import json
 import shutil
 import difflib
 import tarfile
@@ -298,7 +298,7 @@ def user_perm(permissions, _id, site=None):
 
 
 def download_ticket(type_, target, filename, size):
-    import bson.json_util
+    import bson
     return {
             '_id': str(bson.ObjectId()), # FIXME: use better ticket ID
             'timestamp': datetime.datetime.utcnow(),

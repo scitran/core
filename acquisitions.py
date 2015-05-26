@@ -3,7 +3,7 @@
 import logging
 log = logging.getLogger('scitran.api')
 
-import bson.json_util
+import bson
 
 import scitran.data
 import scitran.data.medimg

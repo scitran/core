@@ -8,12 +8,10 @@ import re
 import json
 import hashlib
 import tarfile
-import zipfile
 import datetime
 import lockfile
 import markdown
 import jsonschema
-import collections
 import bson
 
 import base

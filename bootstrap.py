@@ -3,14 +3,12 @@
 # @author:  Gunnar Schaefer
 
 import os
-import bson
 import json
 import time
 import pymongo
 import hashlib
 import logging
 import argparse
-import datetime
 
 import util
 

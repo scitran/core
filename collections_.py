@@ -3,10 +3,9 @@
 import logging
 log = logging.getLogger('scitran.api')
 
+import bson
 import jsonschema
-import bson.json_util
 
-import util
 import users
 import containers
 import sessions

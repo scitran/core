@@ -8,8 +8,6 @@ represents the /nimsapi/apps route
 
 import os
 import json
-import bson
-import shutil
 import hashlib
 import logging
 import tarfile
