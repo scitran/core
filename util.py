@@ -7,6 +7,7 @@ import os
 import bson
 import copy
 import json
+import uuid
 import shutil
 import difflib
 import tarfile
@@ -298,9 +299,8 @@ def user_perm(permissions, _id, site=None):
 
 
 def download_ticket(type_, target, filename, size):
-    import bson
     return {
-            '_id': str(bson.ObjectId()), # FIXME: use better ticket ID
+            '_id': str(uuid.uuid4()),
             'timestamp': datetime.datetime.utcnow(),
             'type': type_,
             'target': target,
