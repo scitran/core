@@ -303,13 +303,21 @@ def receive_stream_and_validate(stream, filepath, valid_md5):
             md5.update(chunk)
             sha1.update(chunk)
             fd.write(chunk)
-    return (md5.hexdigest() == valid_md5), sha1.hexdigest() # FIXME should be md5.hexdigest()
+    return (md5.hexdigest() == valid_md5), sha1.hexdigest()
 
 
-def guess_mimetype(fn):
-    """Guess mimetype based on filename."""
-    # TODO: could move mime types to scitran.data, but that would only work well if ALL files
-    # went thrugh scitra.data.  We can guarantee that all files go through the API during upload,
-    # or download.  the API seems the right place to determine mime information.
-    mime, _ = mimetypes.guess_type(fn)
+def guess_mimetype(filepath):
+    """Guess MIME type based on filename."""
+    mime, _ = mimetypes.guess_type(filepath)
     return mime or 'application/octet-stream'
+
+
+def guess_filetype(filepath, mimetype):
+    """Guess MIME type based on filename."""
+    type_, subtype = mimetype.split('/')
+    if filepath.endswith('.nii') or filepath.endswith('.nii.gz'):
+        return 'nifti'
+    elif type_ == 'text' and subtype == 'plain':
+        return 'text'
+    else:
+        return subtype

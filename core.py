@@ -318,11 +318,10 @@ class Core(base.RequestHandler):
             prefix = arc_prefix + '/' + prefix
             for f in container['files']:
                 if req_spec['optional'] or not f.get('optional', False):
-                    filename = f['name'] + f['ext']
-                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), filename)
+                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
                     if os.path.exists(filepath): # silently skip missing files
-                        targets.append((filepath, prefix + '/' + filename, f['size']))
-                        total_size += f['size']
+                        targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
+                        total_size += f['filesize']
                         total_cnt += 1
             return total_size, total_cnt
 

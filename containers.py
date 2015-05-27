@@ -30,7 +30,7 @@ FILE_SCHEMA = {
             'title': 'Extension',
             'type': 'string',
         },
-        'size': {
+        'filesize': {
             'title': 'Size',
             'type': 'integer',
         },
@@ -51,7 +51,7 @@ FILE_SCHEMA = {
             'type': 'array',
         },
     },
-    'required': ['name', 'ext', 'size', 'sha1', 'type', 'kinds', 'state'],
+    'required': ['name', 'ext', 'filesize', 'sha1', 'type', 'kinds', 'state'],
     'additionalProperties': False
 }
 
@@ -166,7 +166,7 @@ class Container(base.RequestHandler):
                 container['permissions'] = [user_perm]
         if self.request.get('paths').lower() in ('1', 'true'):
             for fileinfo in container['files']:
-                fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['name'] + fileinfo['ext']
+                fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         container['_id'] = str(container['_id'])
         fixup_timestamps(container) # FIXME WTF?
         return container, user_perm
@@ -214,25 +214,25 @@ class Container(base.RequestHandler):
         # that works for tiles as well as for dicoms
 
         for fileinfo in container.get('files', []):
-            if fileinfo['name'] == filename:
+            if fileinfo['filename'] == filename:
                 break
         else:
             self.abort(404, 'no such file')
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.request.method == 'GET':
             self.response.app_iter = open(filepath, 'rb')
-            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
+            self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
             if self.request.get('view').lower() in ['1', 'true']:
                 self.response.headers['Content-Type'] = fileinfo.get('mimetype', 'application/octet-stream')
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
         elif self.request.method == 'POST':
-            ticket = util.download_ticket('file', _id, filename, fileinfo['size'])
+            ticket = util.download_ticket('file', _id, filename, fileinfo['filesize'])
             tkt_id = self.app.db.downloads.insert(ticket)
             return {'ticket': tkt_id}
         elif self.request.method == 'DELETE':
-            r = self.dbc.update_one({'_id': _id}, {'$pull': {'files': {'name': filename}}})
+            r = self.dbc.update_one({'_id': _id}, {'$pull': {'files': {'filename': filename}}})
             if r.modified_count != 1:
                 self.abort(400) # FIXME need better error checking
             if os.path.exists(filepath):
@@ -258,12 +258,16 @@ class Container(base.RequestHandler):
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             filesize = os.path.getsize(filepath)
+            mimetype = util.guess_mimetype(filepath)
+            filetype = util.guess_filetype(filepath, mimetype)
             datainfo = {
                     'fileinfo': {
                         'filename': filename,
                         'filesize': filesize,
                         'filehash': sha1sum,
+                        'filetype': filetype,
                         'flavor': flavor,
+                        'mimetype': mimetype,
                         },
                     }
             log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.user_agent)) # FIXME should log IP not user agent
