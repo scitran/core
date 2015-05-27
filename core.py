@@ -6,6 +6,7 @@ log = logging.getLogger('scitran.api')
 import os
 import re
 import json
+import hashlib
 import tarfile
 import datetime
 import lockfile
@@ -159,7 +160,7 @@ class Core(base.RequestHandler):
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
             util.commit_file(self.app.db.acquisitions, None, fileinfo, filepath, self.app.config['data_path'])
 
-    def incremental_upload(self):
+    def upload(self):
         """
         Recieve an incremental upload within a staging area.
 
@@ -209,13 +210,6 @@ class Core(base.RequestHandler):
             'additionalProperties': True,
         }
 
-        import hashlib
-        upload_id = self.request.get('_id')
-        complete = self.request.get('complete').lower() in ['1', 'true']
-        filename = self.request.get('filename')
-        content_md5 = self.request.headers.get('Content-MD5')
-        upload_path = self.app.config.get('upload_path')
-
         def write_to_tar(fp, mode, fn, fobj, content_md5, arcname=None):
             """
             Write fn to tarfile fp, with mode, in the inner dir arcname.
@@ -249,6 +243,12 @@ class Core(base.RequestHandler):
                             status = 200
                             detail = 'OK'
             return status, detail
+
+        upload_id = self.request.get('_id')
+        complete = self.request.get('complete').lower() in ['1', 'true']
+        filename = self.request.get('filename')
+        content_md5 = self.request.headers.get('Content-MD5')
+        upload_path = self.app.config.get('upload_path')
 
         if not upload_id and filename.lower() == 'metadata.json':  # create a new temporary file for staging
             try:
@@ -303,9 +303,16 @@ class Core(base.RequestHandler):
                             break
                         hash_.update(chunk)
                 log.debug('inserting')
-                status, detail = util.insert_file(self.app.db.acquisitions, None, None, zip_fp, hash_.hexdigest(), self.app.config)
-                if status != 200:
-                    self.abort(status, detail)
+
+                filepath = zip_fp
+                filename = os.path.basename(filepath)
+                sha1sum = hash_.hexdigest()
+
+                fileinfo = util.parse_file(filepath, sha1sum)
+                if fileinfo is None:
+                    util.quarantine_file(filepath, self.app.config['quarantine_path'])
+                    self.abort(202, 'Quarantining %s (unparsable)' % filename)
+                util.commit_file(self.app.db.acquisitions, None, fileinfo, filepath, self.app.config['data_path'])
                 os.remove(fp)  # always remove the original tar upon 'complete'. complete file is sorted or quarantined.
         else:
             self.abort(400, 'Expected _id (str), filename (str), and/or complete (bool) parameters and binary file content as body')
