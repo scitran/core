@@ -36,7 +36,9 @@ class RequestHandler(webapp2.RequestHandler):
                 r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
                 if r.status_code == 200:
                     identity = json.loads(r.content)
-                    self.uid = identity['email']
+                    self.uid = identity.get('email')
+                    if not self.uid:
+                        self.abort(400, 'OAuth2 token resolution did not return email address')
                     self.app.db.authtokens.save({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
                 else:
