@@ -235,7 +235,7 @@ class Core(base.RequestHandler):
             with lockfile.LockFile(fp):
                 with tarfile.open(fp, mode) as tf:
                     with tempfile.TemporaryDirectory() as tempdir_path:
-                        hash_ = hashlib.sha1()
+                        hash_ = hashlib.md5()
                         tempfn = os.path.join(tempdir_path, fn)
                         with open(tempfn, 'wb') as fd:
                             for chunk in iter(lambda: fobj.read(2**20), ''):
@@ -524,7 +524,7 @@ class Core(base.RequestHandler):
                 },
                 'scan_type': {  # MR SPECIFIC!!!
                     'title': 'Scan Type',
-                    'enum': self.app.db.acquisitions.distinct('types.kind')
+                    'enum': self.app.db.acquisitions.distinct('datatype')
                 },
                 'date_from': {
                     'title': 'Date From',
@@ -600,7 +600,7 @@ class Core(base.RequestHandler):
         if psd:
             acq_query.update({'psd': psd})
         if types_kind:
-            acq_query.update({'types.kind': types_kind})
+            acq_query.update({'datatype': types_kind})
         if date_to and date_from:
             acq_query.update({'timestamp': {'$gte': date_from, '$lte': date_to}})
         elif date_to:

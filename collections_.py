@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import bson
+import datetime
 import jsonschema
 
 import users
@@ -192,6 +193,7 @@ class Collections(containers.ContainerList):
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         json_body['curator'] = self.uid
+        json_body['timestamp'] = datetime.datetime.utcnow()
         return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):
@@ -299,8 +301,9 @@ class CollectionSessions(sessions.Sessions):
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection))
         for sess in sessions:
-            sess['site'] = self.app.config['site_id']
-            sess['_id'] = str(sess['_id'])
+            sess['_id'] = str(sess['_id']) # do this manually, since not going through ContainerList._get()
+            sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+            containers.fixup_timestamps(sess)
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -332,12 +335,12 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = {'label': 1, 'description': 1, 'types': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = {'label': 1, 'description': 1, 'modality': 1, 'datatype': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
-            acq['site'] = self.app.config['site_id']
-            acq['_id'] = str(acq['_id'])
+            acq['_id'] = str(acq['_id']) # do this manually, since not going through ContainerList._get()
+            containers.fixup_timestamps(acq)
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])

@@ -114,6 +114,7 @@ class Acquisition(containers.Container):
         """Return one Acquisition, conditionally with details."""
         _id = bson.ObjectId(aid)
         acq, _ = self._get(_id)
+        acq['session'] = str(acq['session'])
         return acq
 
     def put(self, aid):
