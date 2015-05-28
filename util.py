@@ -284,6 +284,15 @@ def user_perm(permissions, _id, site=None):
         return {}
 
 
+def upload_ticket(**kwargs):
+    ticket = {
+        '_id': str(uuid.uuid4()),
+        'timestamp': datetime.datetime.utcnow(),
+    }
+    ticket.update(kwargs)
+    return ticket
+
+
 def download_ticket(type_, target, filename, size):
     return {
             '_id': str(uuid.uuid4()),

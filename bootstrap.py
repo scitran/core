@@ -74,6 +74,7 @@ def dbinit(args):
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
     db.authtokens.create_index('timestamp', expireAfterSeconds=600)
+    db.uploads.create_index('timestamp', expireAfterSeconds=60)
     db.downloads.create_index('timestamp', expireAfterSeconds=60)
     # TODO: apps and jobs indexes (indicies?)
 
