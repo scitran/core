@@ -8,31 +8,45 @@ import bson
 import scitran.data
 import scitran.data.medimg
 
+import util
 import containers
+
+ACQUISITION_POST_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Acquisition',
+    'type': 'object',
+    'properties': {
+        'label': {
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'timestamp': {
+            'type': 'string',
+            'format': 'date-time',
+        },
+        'timezone': {
+            'type': 'string',
+            'enum': util.valid_timezones,
+        },
+    },
+    'required': ['label'],
+    'additionalProperties': False,
+}
 
 ACQUISITION_PUT_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
     'title': 'Acquisition',
     'type': 'object',
     'properties': {
-        'name': {
-            'title': 'Name',
+        'label': {
             'type': 'string',
             'maxLength': 32,
         },
         'notes': {
-            'title': 'Notes',
             'type': 'string',
         },
         'description': {
-            'title': 'Description',
             'type': 'string'
-        },
-        'files': {
-            'title': 'Files',
-            'type': 'array',
-            'items': containers.FILE_SCHEMA,
-            'uniqueItems': True,
         },
     },
     'minProperties': 1,
@@ -44,6 +58,8 @@ class Acquisitions(containers.ContainerList):
 
     """/nimsapi/acquisitions """
 
+    post_schema = ACQUISITION_POST_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Acquisitions, self).__init__(request, response)
         self.dbc = self.app.db.acquisitions
@@ -52,9 +68,22 @@ class Acquisitions(containers.ContainerList):
         """Return the number of Acquisitions."""
         self.response.write(self.dbc.count())
 
-    def post(self):
+    def post(self, sid):
         """Create a new Acquisition."""
-        self.response.write('acquisitions post\n')
+        json_body = self._post()
+        _id = bson.ObjectId(sid)
+        session = self.app.db.sessions.find_one({'_id': _id}, ['permissions', 'public'])
+        if not session:
+            self.abort(404, 'no such session')
+        if not self.superuser_request and util.user_perm(session['permissions'], self.uid).get('access') != 'admin':
+            self.abort(400, 'must be session admin to create acquisition')
+        json_body['session'] = _id
+        json_body['permissions'] = session['permissions']
+        json_body['public'] = session.get('public', False)
+        json_body['files'] = []
+        if 'timestamp' in json_body:
+            json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
+        return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self, sid):
         """Return the list of Session Acquisitions."""

@@ -7,14 +7,37 @@ import bson
 
 import scitran.data.medimg
 
+import util
 import containers
+
+SESSION_POST_SCHEMA = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'title': 'Session',
+    'type': 'object',
+    'properties': {
+        'label': {
+            'type': 'string',
+            'maxLength': 32,
+        },
+        'timestamp': {
+            'type': 'string',
+            'format': 'date-time',
+        },
+        'timezone': {
+            'type': 'string',
+            'enum': util.valid_timezones,
+        },
+    },
+    'required': ['label'],
+    'additionalProperties': False,
+}
 
 SESSION_PUT_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
     'title': 'Session',
     'type': 'object',
     'properties': {
-        'name': {
+        'label': {
             'type': 'string',
             'maxLength': 32,
         },
@@ -28,11 +51,6 @@ SESSION_PUT_SCHEMA = {
         'subject_code': {
             'type': 'string',
         },
-        'files': {
-            'type': 'array',
-            'items': containers.FILE_SCHEMA,
-            'uniqueItems': True,
-        },
     },
     'minProperties': 1,
     'additionalProperties': False,
@@ -43,6 +61,8 @@ class Sessions(containers.ContainerList):
 
     """/sessions """
 
+    post_schema = SESSION_POST_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Sessions, self).__init__(request, response)
         self.dbc = self.app.db.sessions
@@ -51,9 +71,23 @@ class Sessions(containers.ContainerList):
         """Return the number of Sessions."""
         self.response.write(self.dbc.count())
 
-    def post(self):
-        """Create a new Session"""
-        self.response.write('sessions post\n')
+    def post(self, pid):
+        """Create a new Session."""
+        json_body = self._post()
+        _id = bson.ObjectId(pid)
+        project = self.app.db.projects.find_one({'_id': _id}, ['group', 'permissions', 'public'])
+        if not project:
+            self.abort(404, 'no such project')
+        if not self.superuser_request and util.user_perm(project['permissions'], self.uid).get('access') != 'admin':
+            self.abort(400, 'must be project admin to create session')
+        json_body['project'] = _id
+        json_body['group'] = project['group']
+        json_body['permissions'] = project['permissions']
+        json_body['public'] = project.get('public', False)
+        json_body['files'] = []
+        if 'timestamp' in json_body:
+            json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
+        return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self, pid=None):
         """Return the list of Project Sessions."""

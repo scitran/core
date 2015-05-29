@@ -86,6 +86,8 @@ class Projects(containers.ContainerList):
 
     """/projects """
 
+    post_schema = PROJECT_POST_SCHEMA
+
     def __init__(self, request=None, response=None):
         super(Projects, self).__init__(request, response)
         self.dbc = self.app.db.projects
@@ -96,19 +98,15 @@ class Projects(containers.ContainerList):
 
     def post(self):
         """Create a new Project."""
-        try:
-            json_body = self.request.json_body
-            jsonschema.validate(json_body, PROJECT_POST_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
+        json_body = self._post()
         group = self.app.db.groups.find_one({'_id': json_body['group']}, ['roles'])
         if not group:
             self.abort(400, 'invalid group id')
         if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
             self.abort(400, 'must be group admin to create project')
-        json_body['files'] = []
         json_body['permissions'] = group['roles']
         json_body['public'] = json_body.get('public', False)
+        json_body['files'] = []
         return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):

@@ -7,6 +7,7 @@ import os
 import bson
 import copy
 import json
+import pytz
 import uuid
 import shutil
 import difflib
@@ -14,6 +15,7 @@ import hashlib
 import tarfile
 import datetime
 import mimetypes
+import dateutil.parser
 import tempdir as tempfile
 
 import scitran.data
@@ -24,6 +26,8 @@ mimetypes.types_map.update({'.bval': 'text/plain'})
 
 get_info = scitran.data.medimg.montage.get_info
 get_tile = scitran.data.medimg.montage.get_tile
+
+valid_timezones = pytz.all_timezones
 
 PROJECTION_FIELDS = ['group', 'timestamp', 'permissions', 'public']
 
@@ -330,3 +334,12 @@ def guess_filetype(filepath, mimetype):
         return 'text'
     else:
         return subtype
+
+
+def format_timestamp(timestamp, tzname):
+    timezone = pytz.timezone(tzname or 'UTC')
+    return timezone.localize(timestamp).isoformat(), timezone.zone
+
+
+def parse_timestamp(iso_timestamp):
+    return dateutil.parser.parse(iso_timestamp)

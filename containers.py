@@ -111,14 +111,15 @@ FILE_ACCESS_SCHEMA = {
 }
 
 
-def fixup_timestamps(container): # FIXME this method should not have to exist
-    if 'timestamp' in container:
-        container_timezone = pytz.timezone(container.get('timezone', None) or 'UTC')
-        container['timestamp'] = container_timezone.localize(container['timestamp']).isoformat()
-        container['timezone'] = container_timezone.zone
-
-
 class ContainerList(base.RequestHandler):
+
+    def _post(self):
+        try:
+            json_body = self.request.json_body
+            jsonschema.validate(json_body, self.post_schema)
+        except (ValueError, jsonschema.ValidationError) as e:
+            self.abort(400, str(e))
+        return json_body
 
     def _get(self, query, projection, admin_only=False):
         if self.public_request:
@@ -133,7 +134,8 @@ class ContainerList(base.RequestHandler):
         containers = list(self.dbc.find(query, projection))
         for container in containers:
             container['_id'] = str(container['_id'])
-            fixup_timestamps(container)
+            if 'timestamp' in container:
+                container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone'))
         return containers
 
 
@@ -168,7 +170,8 @@ class Container(base.RequestHandler):
             for fileinfo in container['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         container['_id'] = str(container['_id'])
-        fixup_timestamps(container) # FIXME WTF?
+        if 'timestamp' in container:
+            container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone'))
         return container, user_perm
 
     def put(self, _id):

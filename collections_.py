@@ -303,7 +303,8 @@ class CollectionSessions(sessions.Sessions):
         for sess in sessions:
             sess['_id'] = str(sess['_id']) # do this manually, since not going through ContainerList._get()
             sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
-            containers.fixup_timestamps(sess)
+            if 'timestamp' in sess:
+                sess['timestamp'], sess['timezone'] = util.format_timestamp(sess['timestamp'], sess.get('timezone'))
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -340,7 +341,8 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
             acq['_id'] = str(acq['_id']) # do this manually, since not going through ContainerList._get()
-            containers.fixup_timestamps(acq)
+            if 'timestamp' in acq:
+                acq['timestamp'], acq['timezone'] = util.format_timestamp(acq['timestamp'], acq.get('timezone'))
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
