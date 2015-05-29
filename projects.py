@@ -4,7 +4,6 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import bson
-import jsonschema
 
 import scitran.data.medimg
 
@@ -23,7 +22,6 @@ PROJECT_POST_SCHEMA = {
         },
     },
     'required': ['name'],
-    'additionalProperties': False,
 }
 
 PROJECT_PUT_SCHEMA = {
@@ -160,7 +158,7 @@ class Project(containers.Container):
     def put(self, pid):
         """Update an existing Project."""
         _id = bson.ObjectId(pid)
-        json_body = super(Project, self).put(_id)
+        json_body = super(Project, self)._put(_id)
         if 'permissions' in json_body or 'public' in json_body:
             updates = {}
             if 'permissions' in json_body:
@@ -173,4 +171,9 @@ class Project(containers.Container):
 
     def delete(self, pid):
         """Delete a Project."""
-        self.abort(501)
+        _id = bson.ObjectId(pid)
+        self._get(_id, 'admin', perm_only=True)
+        session_ids = [s['_id'] for s in self.app.db.sessions.find({'project': _id}, [])]
+        if session_ids:
+            self.abort(400, 'project contains sessions and cannot be deleted')
+        self._delete(_id)

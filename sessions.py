@@ -29,7 +29,6 @@ SESSION_POST_SCHEMA = {
         },
     },
     'required': ['label'],
-    'additionalProperties': False,
 }
 
 SESSION_PUT_SCHEMA = {
@@ -168,12 +167,13 @@ class Session(containers.Container):
 
     def put(self, sid):
         """Update an existing Session."""
+        # FIXME should use super(Session, self)._put(_id)
         _id = bson.ObjectId(sid)
         json_body = self.validate_json_body(_id, ['project'])
         if 'subject_code' in json_body: # FIXME delete with subject is pulled out of session
             json_body['subject.code'] = json_body.pop('subject_code')
         if 'project' in json_body:
-            session, user_perm = self._get(_id, 'admin', perm_only=False)
+            session, _ = self._get(_id, 'admin', perm_only=False)
             self._get(session['project'], 'admin', perm_only=True, dbc=self.app.db.projects, dbc_name='Project')
             destination, dest_user_perm = self._get(json_body['project'], 'admin', perm_only=False, dbc=self.app.db.projects, dbc_name='Project')
             json_body['permissions'] = destination['permissions']
@@ -186,4 +186,9 @@ class Session(containers.Container):
 
     def delete(self, sid):
         """Delete a Session."""
-        self.abort(501)
+        _id = bson.ObjectId(sid)
+        self._get(_id, 'admin', perm_only=True)
+        acq_ids = [a['_id'] for a in self.app.db.acquisitions.find({'session': _id}, [])]
+        if acq_ids:
+            self.abort(400, 'session contains acquisitions and cannot be deleted')
+        self._delete(_id)

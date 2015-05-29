@@ -305,5 +305,7 @@ class Group(base.RequestHandler):
         """Delete an Group."""
         if not self.superuser_request:
             self.abort(403, 'must be superuser to delete a Group')
-        # TODO: block deletion, if group is referenced by any projects
-        self.dbc.remove({'_id': _id})
+        project_ids = [p['_id'] for p in self.app.db.projects.find({'group': _id}, [])]
+        if project_ids:
+            self.abort(400, 'group contains projects and cannot be deleted')
+        self.dbc.delete_one({'_id': _id})

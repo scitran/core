@@ -5,9 +5,7 @@ log = logging.getLogger('scitran.api')
 
 import os
 import bson
-import json
-import pytz
-import hashlib
+import shutil
 import jsonschema
 
 import tempdir as tempfile
@@ -174,11 +172,18 @@ class Container(base.RequestHandler):
             container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone'))
         return container, user_perm
 
-    def put(self, _id):
+    def _put(self, _id):
         json_body = self.validate_json_body(_id, ['project'])
         self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
         self.update_db(_id, json_body)
         return json_body
+
+    def _delete(self, _id):
+        self.dbc.delete_one({'_id': _id})
+        container_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
+        if os.path.isdir(container_path):
+            log.debug('deleting ' + container_path)
+            shutil.rmtree(container_path)
 
     def validate_json_body(self, _id, oid_keys=[]):
         try:

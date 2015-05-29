@@ -30,7 +30,6 @@ ACQUISITION_POST_SCHEMA = {
         },
     },
     'required': ['label'],
-    'additionalProperties': False,
 }
 
 ACQUISITION_PUT_SCHEMA = {
@@ -96,7 +95,8 @@ class Acquisitions(containers.ContainerList):
         if self.debug:
             for acquisition in acquisitions:
                 aid = str(acquisition['_id'])
-                acquisition['details'] = self.uri_for('acquisition', aid, _full=True) + '?' + self.request.query_string
+                acquisition['debug'] = {}
+                acquisition['debug']['details'] = self.uri_for('acquisition', aid, _full=True) + '?' + self.request.query_string
         return acquisitions
 
     def put(self):
@@ -149,8 +149,10 @@ class Acquisition(containers.Container):
     def put(self, aid):
         """Update an existing Acquisition."""
         _id = bson.ObjectId(aid)
-        json_body = super(Acquisition, self).put(_id)
+        json_body = super(Acquisition, self)._put(_id)
 
     def delete(self, aid):
         """Delete an Acquisition."""
-        self.abort(501)
+        _id = bson.ObjectId(aid)
+        self._get(_id, 'admin', perm_only=True)
+        self._delete(_id)
