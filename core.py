@@ -115,13 +115,14 @@ class Core(base.RequestHandler):
             [(/groups/count)]                   | count of groups
             [(/groups/schema)]                  | schema for single group
             /groups/*<gid>*                     | details for group *<gid>*
+            /groups/*<gid>*/projects            | list of projects for group *<gid>*
+            /groups/*<gid>*/sessions            | list of sessions for group *<gid>*
             [(/projects)]                       | list of projects
             [(/projects/count)]                 | count of projects
             [(/projects/groups)]                | groups for projects
             [(/projects/schema)]                | schema for single project
             /projects/*<pid>*                   | details for project *<pid>*
             /projects/*<pid>*/sessions          | list sessions for project *<pid>*
-            [(/sessions)]                       | list of sessions
             [(/sessions/count)]                 | count of sessions
             [(/sessions/schema)]                | schema for single session
             /sessions/*<sid>*                   | details for session *<sid>*

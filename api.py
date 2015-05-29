@@ -50,6 +50,8 @@ routes = [
         webapp2.Route(r'/count',                                    users.Groups, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   users.Group, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 users.Group, name='group'),
+        webapp2.Route(r'/<:[^/]+>/projects',                        projects.Projects, name='g_projects'),
+        webapp2.Route(r'/<gid:[^/]+>/sessions',                     sessions.Sessions, name='g_sessions', methods=['GET']),
     ]),
     webapp2.Route(r'/api/projects',                                 projects.Projects, name='projects'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
@@ -58,7 +60,7 @@ routes = [
         webapp2.Route(r'/schema',                                   projects.Project, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          projects.Project, name='project'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            projects.Project, handler_method='file'),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 sessions.Sessions, name='p_sessions'),
+        webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',              sessions.Sessions, name='p_sessions'),
     ]),
     webapp2.Route(r'/api/collections',                              collections_.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/api/collections', [
@@ -70,7 +72,6 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections_.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
-    webapp2.Route(r'/api/sessions',                                 sessions.Sessions, name='sessions'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/sessions', [
         webapp2.Route(r'/count',                                    sessions.Sessions, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   sessions.Session, handler_method='schema', methods=['GET']),

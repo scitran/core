@@ -17,20 +17,12 @@ PROJECT_POST_SCHEMA = {
     'title': 'Project',
     'type': 'object',
     'properties': {
-        'group': {
-            'type': 'string',
-        },
         'name': {
-            'title': 'Name',
             'type': 'string',
             'maxLength': 32,
         },
-        'notes': {
-            'title': 'Notes',
-            'type': 'string',
-        },
     },
-    'required': ['group', 'name'],
+    'required': ['name'],
     'additionalProperties': False,
 }
 
@@ -40,16 +32,13 @@ PROJECT_PUT_SCHEMA = {
     'type': 'object',
     'properties': {
         'name': {
-            'title': 'Name',
             'type': 'string',
             'maxLength': 32,
         },
         'notes': {
-            'title': 'Notes',
             'type': 'string',
         },
         'permissions': {
-            'title': 'Permissions',
             'type': 'array',
             'items': {
                 'type': 'object',
@@ -67,14 +56,7 @@ PROJECT_PUT_SCHEMA = {
             },
         },
         'public': {
-            'title': 'Public',
             'type': 'boolean',
-        },
-        'files': {
-            'title': 'Files',
-            'type': 'array',
-            'items': containers.FILE_SCHEMA,
-            'uniqueItems': True,
         },
     },
     'minProperties': 1,
@@ -96,22 +78,23 @@ class Projects(containers.ContainerList):
         """Return the number of Projects."""
         self.response.write(self.dbc.count())
 
-    def post(self):
+    def post(self, gid):
         """Create a new Project."""
         json_body = self._post()
-        group = self.app.db.groups.find_one({'_id': json_body['group']}, ['roles'])
+        group = self.app.db.groups.find_one({'_id': gid}, ['roles'])
         if not group:
             self.abort(400, 'invalid group id')
         if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
             self.abort(400, 'must be group admin to create project')
+        json_body['group'] = gid
         json_body['permissions'] = group['roles']
         json_body['public'] = json_body.get('public', False)
         json_body['files'] = []
         return {'_id': str(self.dbc.insert(json_body))}
 
-    def get(self):
+    def get(self, gid=None):
         """Return the User's list of Projects."""
-        query = {'group': self.request.get('group')} if self.request.get('group') else {}
+        query = {'group': gid} if gid else {}
         projection = {'group': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
@@ -120,7 +103,7 @@ class Projects(containers.ContainerList):
                 proj['debug'] = {}
                 proj['debug']['group'] = self.uri_for('group', proj['group'], _full=True) + '?' + self.request.query_string
                 proj['debug']['details'] = self.uri_for('project', pid, _full=True) + '?' + self.request.query_string
-                proj['debug']['sessions'] = self.uri_for('p_sessions', pid, _full=True) + '?' + self.request.query_string
+                proj['debug']['sessions'] = self.uri_for('p_sessions', pid=pid, _full=True) + '?' + self.request.query_string
         return projects
 
     def groups(self):
@@ -170,7 +153,8 @@ class Project(containers.Container):
         proj, _ = self._get(_id)
         if self.debug:
             proj['debug'] = {}
-            proj['debug']['sessions'] = self.uri_for('p_sessions', pid, _full=True) + '?' + self.request.query_string
+            proj['debug']['group'] = self.uri_for('group', proj['group'], _full=True) + '?' + self.request.query_string
+            proj['debug']['sessions'] = self.uri_for('p_sessions', pid=pid, _full=True) + '?' + self.request.query_string
         return proj
 
     def put(self, pid):
@@ -188,5 +172,5 @@ class Project(containers.Container):
             self.app.db.acquisitions.update({'session': {'$in': session_ids}}, {'$set': updates}, multi=True)
 
     def delete(self, pid):
-        """Delete an Project."""
+        """Delete a Project."""
         self.abort(501)

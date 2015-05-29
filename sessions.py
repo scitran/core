@@ -89,17 +89,19 @@ class Sessions(containers.ContainerList):
             json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
         return {'_id': str(self.dbc.insert(json_body))}
 
-    def get(self, pid=None):
-        """Return the list of Project Sessions."""
+    def get(self, pid=None, gid=None):
+        """Return the list of project or group sessions."""
         if pid is not None:
             _id = bson.ObjectId(pid)
             if not self.app.db.projects.find_one({'_id': _id}):
-                self.abort(404, 'no such Project')
+                self.abort(404, 'no such project')
             query = {'project': _id}
+        elif gid is not None:
+            if not self.app.db.groups.find_one({'_id': gid}):
+                self.abort(404, 'no such group')
+            query = {'group': gid}
         else:
-            query = {}
-        if self.request.get('group'):
-            query['group'] = self.request.get('group')
+            self.abort(400) # the routing table should never allow this
         projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'project': 1, 'group': 1, 'timestamp': 1, 'timezone': 1}
         sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for sess in sessions:
