@@ -259,7 +259,7 @@ class Container(base.RequestHandler):
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         flavor = self.request.get('flavor', 'data')
         if flavor not in ['data', 'attachment']:
-            self.abort(400, 'Query must contain flavor parameter: "file" or "attachment".')
+            self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
             success, sha1sum = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
@@ -278,7 +278,7 @@ class Container(base.RequestHandler):
                         'mimetype': mimetype,
                         },
                     }
-            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.user_agent)) # FIXME should log IP not user agent
+            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.client_addr))
             util.commit_file(self.dbc, _id, datainfo, filepath, self.app.config['data_path'])
 
     def get_tile(self, cid):
