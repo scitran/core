@@ -165,7 +165,7 @@ def sort(args):
         hash_ = hashlib.sha1()
         if not args.quick:
             with open(filepath, 'rb') as fd:
-                for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
+                for chunk in iter(lambda: fd.read(2**20), ''):
                     hash_.update(chunk)
         datainfo = util.parse_file(filepath, hash_.hexdigest())
         if datainfo is None:
@@ -197,7 +197,7 @@ def upload(args):
         print 'hashing     %s' % filename
         hash_ = hashlib.sha1()
         with open(filepath, 'rb') as fd:
-            for chunk in iter(lambda: fd.read(1048577 * hash_.block_size), ''):
+            for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
         print 'uploading   %s [%s]' % (filename, util.hrsize(os.path.getsize(filepath)))
         with open(filepath, 'rb') as fd:
