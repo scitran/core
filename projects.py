@@ -48,6 +48,9 @@ PROJECT_PUT_SCHEMA = {
                     '_id': {
                         'type': 'string',
                     },
+                    'site': {
+                        'type': 'string',
+                    },
                 },
                 'required': ['access', '_id'],
                 'additionalProperties': False,
