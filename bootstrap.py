@@ -90,7 +90,7 @@ def dbinit(args):
         for u in db.users.find():
             db.users.update({'_id': u['_id']}, {'$set': {'email_hash': hashlib.md5(u['email']).hexdigest()}})
 
-    db.groups.update({'_id': 'unknown'}, {'$set': {'_id': 'unknown'}}, upsert=True)
+    db.groups.update({'_id': 'unknown'}, {'$setOnInsert': {'name': 'Unknown', 'roles': []}}, upsert=True)
 
 dbinit_desc = """
 example:
