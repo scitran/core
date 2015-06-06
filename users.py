@@ -164,8 +164,10 @@ class User(base.RequestHandler):
             jsonschema.validate(json_body, schema)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
-        if 'wheel' in json_body and _id == self.uid:
+        if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
             self.abort(400, 'user cannot alter own superuser privilege')
+        if 'email' in json_body and json_body['email'] != user.get('email'):
+            json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
