@@ -336,7 +336,7 @@ def guess_filetype(filepath, mimetype):
         return subtype
 
 
-def format_timestamp(timestamp, tzname):
+def format_timestamp(timestamp, tzname=None):
     timezone = pytz.timezone(tzname or 'UTC')
     return timezone.localize(timestamp).isoformat(), timezone.zone
 

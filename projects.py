@@ -34,7 +34,24 @@ PROJECT_PUT_SCHEMA = {
             'maxLength': 32,
         },
         'notes': {
-            'type': 'string',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'author': {
+                        'type': 'string',
+                    },
+                    'timestamp': {
+                        'type': 'string',
+                        'format': 'date-time',
+                    },
+                    'text': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['text'],
+                'additionalProperties': False,
+            },
         },
         'permissions': {
             'type': 'array',
@@ -95,6 +112,10 @@ class Projects(containers.ContainerList):
 
     def get(self, gid=None):
         """Return the User's list of Projects."""
+        if gid is not None:
+            group = self.app.db.groups.find_one({'_id': gid}, [])
+            if not group:
+                self.abort(400, 'invalid group id')
         query = {'group': gid} if gid else {}
         projection = {'group': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projects = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))

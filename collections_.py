@@ -8,6 +8,7 @@ import datetime
 import jsonschema
 
 import users
+import util
 import containers
 import sessions
 import acquisitions
@@ -21,10 +22,6 @@ COLLECTION_POST_SCHEMA = {
             'title': 'Name',
             'type': 'string',
             'maxLength': 32,
-        },
-        'notes': {
-            'title': 'Notes',
-            'type': 'string',
         },
         'permissions': {
             'title': 'Permissions',
@@ -60,8 +57,24 @@ COLLECTION_PUT_SCHEMA = {
             'maxLength': 32,
         },
         'notes': {
-            'title': 'Notes',
-            'type': 'string',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'author': {
+                        'type': 'string',
+                    },
+                    'timestamp': {
+                        'type': 'string',
+                        'format': 'date-time',
+                    },
+                    'text': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['text'],
+                'additionalProperties': False,
+            },
         },
         'permissions': {
             'title': 'Permissions',
@@ -80,12 +93,6 @@ COLLECTION_PUT_SCHEMA = {
                 'required': ['access', '_id'],
                 'additionalProperties': False,
             },
-        },
-        'files': {
-            'title': 'Files',
-            'type': 'array',
-            'items': containers.FILE_SCHEMA,
-            'uniqueItems': True,
         },
         'contents': {
             'type': 'object',
@@ -201,8 +208,6 @@ class Collections(containers.ContainerList):
         query = {'curator': self.request.get('curator')} if self.request.get('curator') else {}
         projection = {'curator': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
-        for coll in collections:
-            coll['_id'] = str(coll['_id'])
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])
@@ -243,7 +248,6 @@ class Collection(containers.Container):
         """Return one Collection, conditionally with details."""
         _id = bson.ObjectId(cid)
         coll, _ = self._get(_id)
-        coll['_id'] = str(coll['_id'])
         if self.debug:
             coll['sessions'] = self.uri_for('coll_sessions', cid, _full=True) + '?' + self.request.query_string
             coll['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?' + self.request.query_string
@@ -303,8 +307,8 @@ class CollectionSessions(sessions.Sessions):
         for sess in sessions:
             sess['_id'] = str(sess['_id']) # do this manually, since not going through ContainerList._get()
             sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
-            if 'timestamp' in sess:
-                sess['timestamp'], sess['timezone'] = util.format_timestamp(sess['timestamp'], sess.get('timezone'))
+            sess.setdefault('timestamp', datetime.datetime.utcnow())
+            sess['timestamp'], sess['timezone'] = util.format_timestamp(sess['timestamp'], sess.get('timezone'))
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -341,8 +345,8 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
             acq['_id'] = str(acq['_id']) # do this manually, since not going through ContainerList._get()
-            if 'timestamp' in acq:
-                acq['timestamp'], acq['timezone'] = util.format_timestamp(acq['timestamp'], acq.get('timezone'))
+            acq.setdefault('timestamp', datetime.datetime.utcnow())
+            acq['timestamp'], acq['timezone'] = util.format_timestamp(acq['timestamp'], acq.get('timezone'))
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])

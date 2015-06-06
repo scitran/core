@@ -6,6 +6,7 @@ log = logging.getLogger('scitran.api')
 import os
 import bson
 import shutil
+import datetime
 import jsonschema
 
 import tempdir as tempfile
@@ -132,8 +133,8 @@ class ContainerList(base.RequestHandler):
         containers = list(self.dbc.find(query, projection))
         for container in containers:
             container['_id'] = str(container['_id'])
-            if 'timestamp' in container:
-                container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone'))
+            container.setdefault('timestamp', datetime.datetime.utcnow())
+            container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
         return containers
 
 
@@ -168,8 +169,10 @@ class Container(base.RequestHandler):
             for fileinfo in container['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         container['_id'] = str(container['_id'])
-        if 'timestamp' in container:
-            container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone'))
+        container.setdefault('timestamp', datetime.datetime.utcnow())
+        container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
+        for note in container.get('notes', []):
+            note['timestamp'], _ = util.format_timestamp(note['timestamp']) # TODO json serializer should do this
         return container, user_perm
 
     def _put(self, _id):
@@ -199,6 +202,12 @@ class Container(base.RequestHandler):
         return json_body
 
     def update_db(self, _id, json_body):
+        for note in json_body.get('notes', []):
+            note.setdefault('author', self.uid)
+            if 'timestamp' in note:
+                note['timestamp'] = util.parse_timestamp(note['timestamp'])
+            else:
+                note['timestamp'] = datetime.datetime.utcnow()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def file(self, cid, filename):

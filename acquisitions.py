@@ -42,7 +42,24 @@ ACQUISITION_PUT_SCHEMA = {
             'maxLength': 32,
         },
         'notes': {
-            'type': 'string',
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'author': {
+                        'type': 'string',
+                    },
+                    'timestamp': {
+                        'type': 'string',
+                        'format': 'date-time',
+                    },
+                    'text': {
+                        'type': 'string',
+                    },
+                },
+                'required': ['text'],
+                'additionalProperties': False,
+            },
         },
         'description': {
             'type': 'string'
