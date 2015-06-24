@@ -240,7 +240,7 @@ class Container(base.RequestHandler):
             self.response.app_iter = open(filepath, 'rb')
             self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
             if self.request.get('view').lower() in ['1', 'true']:
-                self.response.headers['Content-Type'] = fileinfo.get('mimetype', 'application/octet-stream')
+                self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
