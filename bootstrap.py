@@ -195,16 +195,20 @@ def upload(args):
     for filepath in files:
         filename = os.path.basename(filepath)
         print 'hashing     %s' % filename
-        hash_ = hashlib.sha1()
+        hash_ = hashlib.md5()
         with open(filepath, 'rb') as fd:
             for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
         print 'uploading   %s [%s]' % (filename, util.hrsize(os.path.getsize(filepath)))
         with open(filepath, 'rb') as fd:
-            headers = {'User-Agent': 'bootstrapper', 'Content-MD5': hash_.hexdigest()}
+            headers = {
+                    'User-Agent': 'bootstrapper',
+                    'Content-MD5': hash_.hexdigest(),
+                    'Content-Disposition': 'attachment; filename="%s"' % filename,
+                    }
             try:
                 start = datetime.datetime.now()
-                r = requests.put(args.url + '?filename=%s' % filename, data=fd, headers=headers, verify=not args.no_verify)
+                r = requests.put(args.url, data=fd, headers=headers, verify=not args.no_verify)
                 upload_duration = (datetime.datetime.now() - start).total_seconds()
             except requests.exceptions.ConnectionError as e:
                 print 'error       %s: %s' % (filename, e)
