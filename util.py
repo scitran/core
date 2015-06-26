@@ -233,24 +233,26 @@ def user_perm(permissions, _id, site=None):
         return {}
 
 
-def upload_ticket(**kwargs):
+def upload_ticket(ip, **kwargs):
     ticket = {
         '_id': str(uuid.uuid4()),
         'timestamp': datetime.datetime.utcnow(),
+        'ip': ip,
     }
     ticket.update(kwargs)
     return ticket
 
 
-def download_ticket(type_, target, filename, size):
+def download_ticket(ip, type_, target, filename, size):
     return {
-            '_id': str(uuid.uuid4()),
-            'timestamp': datetime.datetime.utcnow(),
-            'type': type_,
-            'target': target,
-            'filename': filename,
-            'size': size,
-            }
+        '_id': str(uuid.uuid4()),
+        'timestamp': datetime.datetime.utcnow(),
+        'ip': ip,
+        'type': type_,
+        'target': target,
+        'filename': filename,
+        'size': size,
+    }
 
 
 def receive_stream_and_validate(stream, filepath, received_md5):
@@ -275,7 +277,7 @@ def guess_mimetype(filepath):
 
 
 def guess_filetype(filepath, mimetype):
-    """Guess MIME type based on filename."""
+    """Guess file type based on filename and MIME type."""
     type_, subtype = mimetype.split('/')
     if filepath.endswith('.nii') or filepath.endswith('.nii.gz'):
         return 'nifti'

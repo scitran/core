@@ -155,10 +155,10 @@ class Container(base.RequestHandler):
             ticket_id = self.request.GET.get('ticket')
             if ticket_id:
                 ticket = self.app.db.downloads.find_one({'_id': ticket_id})
-                if not ticket: # FIXME need better security
+                if not ticket:
                     self.abort(404, 'no such ticket')
-                if ticket['target'] != _id or ticket['filename'] != filename:
-                    self.abort(400, 'ticket not for this resource')
+                if ticket['target'] != _id or ticket['filename'] != filename or ticket['ip'] != self.request.client_addr:
+                    self.abort(400, 'ticket not for this resource or source IP')
             elif not container.get('public', False):
                 self.abort(403, 'this ' + dbc_name + ' is not public')
             del container['permissions']
@@ -249,7 +249,7 @@ class Container(base.RequestHandler):
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
         elif self.request.method == 'POST':
-            ticket = util.download_ticket('file', _id, filename, fileinfo['filesize'])
+            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])
             tkt_id = self.app.db.downloads.insert(ticket)
             return {'ticket': tkt_id}
         elif self.request.method == 'DELETE':
