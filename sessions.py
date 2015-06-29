@@ -117,7 +117,7 @@ class Sessions(containers.ContainerList):
                 self.abort(404, 'no such group')
             query = {'group': gid}
         else:
-            self.abort(400) # the routing table should never allow this
+            query = {}
         projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'project': 1, 'group': 1, 'timestamp': 1, 'timezone': 1}
         sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for sess in sessions:
