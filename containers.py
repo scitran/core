@@ -5,6 +5,7 @@ log = logging.getLogger('scitran.api')
 
 import os
 import bson
+import json
 import shutil
 import datetime
 import jsonschema
@@ -267,6 +268,14 @@ class Container(base.RequestHandler):
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         flavor = self.request.get('flavor', 'data')
+        try:
+            tags = json.loads(self.request.get('tags', '[]'))
+        except ValueError:
+            self.abort(400, 'invalid "tags" parameter')
+        try:
+            metadata = json.loads(self.request.get('metadata', '{}'))
+        except ValueError:
+            self.abort(400, 'invalid "metadata" parameter')
         if flavor not in ['data', 'attachment']:
             self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
@@ -285,6 +294,8 @@ class Container(base.RequestHandler):
                         'filetype': filetype,
                         'flavor': flavor,
                         'mimetype': mimetype,
+                        'tags': tags,
+                        'metadata': metadata,
                         },
                     }
             log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.client_addr))
