@@ -219,11 +219,12 @@ class Core(base.RequestHandler):
             if not tarfile.is_tarfile(filepath):
                 self.abort(415, 'Only tar files are accepted.')
             log.info('Received    %s [%s] from %s' % (filename, util.hrsize(self.request.content_length), self.request.user_agent))
-            fileinfo = util.parse_file(filepath, sha1sum)
-            if fileinfo is None:
+            datainfo = util.parse_file(filepath, sha1sum)
+            if datainfo is None:
                 util.quarantine_file(filepath, self.app.config['quarantine_path'])
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
-            util.commit_file(self.app.db.acquisitions, None, fileinfo, filepath, self.app.config['data_path'])
+            util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'])
+            util.create_job(self.app.db.acquisitions, datainfo) # FIXME we should only mark files as new and let engine take it from there
 
     def upload(self):
         """

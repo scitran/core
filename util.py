@@ -83,7 +83,6 @@ def commit_file(dbc, _id, datainfo, filepath, data_path):
     log.info('Sorting     %s' % filename)
     if _id is None:
         _id = _update_db(dbc.database, datainfo)
-    #create_job(dbc, dataset) # FIXME we should only mark files as new and let engine take it from there
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
     if not os.path.exists(container_path):
         os.makedirs(container_path)
@@ -165,14 +164,15 @@ def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
 
 
 # TODO: create job should be use-able from bootstrap.py with only database information
-def create_job(dbc, dataset):
+def create_job(dbc, datainfo):
+    fileinfo = datainfo['fileinfo']
     db = dbc.database
-    type_ = dataset.nims_file_type
-    kinds_ = dataset.nims_file_kinds
-    state_ = dataset.nims_file_state
+    type_ = fileinfo['filetype']
+    kinds_ = fileinfo['datatypes']
+    state_ = ['orig'] # dataset.nims_file_state ### WHAT IS THIS AND WHY DO WE CARE?
     app = None
     # TODO: check if there are 'default apps' set for this project/session/acquisition
-    acquisition = db.acquisitions.find_one({'uid': dataset.nims_acquisition_id})
+    acquisition = db.acquisitions.find_one({'uid': datainfo['acquisition_id']})
     session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
     project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
     aid = acquisition.get('_id')
@@ -187,7 +187,7 @@ def create_job(dbc, dataset):
     # TODO: this has to move...
     # force acquisition dicom file to be marked as 'optional = True'
     db.acquisitions.find_and_modify(
-        {'uid': dataset.nims_acquisition_id, 'files.type': 'dicom'},
+        {'uid': datainfo['acquisition_id'], 'files.type': 'dicom'},
         {'$set': {'files.$.optional': True}},
         )
 
@@ -219,12 +219,12 @@ def create_job(dbc, dataset):
                 },
                 'inputs': [
                     {
-                        'filename': dataset.nims_file_name + dataset.nims_file_ext,
+                        'filename': fileinfo['filename'],
                         'url': '%s/%s/%s' % ('acquisitions', aid, 'file'),
                         'payload': {
-                            'type': dataset.nims_file_type,
-                            'state': dataset.nims_file_state,
-                            'kinds': dataset.nims_file_kinds,
+                            'type': type_,
+                            'state': state_,
+                            'kinds': kinds_,
                         },
                     }
                 ],
@@ -330,6 +330,8 @@ def guess_filetype(filepath, mimetype):
     type_, subtype = mimetype.split('/')
     if filepath.endswith('.nii') or filepath.endswith('.nii.gz'):
         return 'nifti'
+    elif filepath.endswith('_montage.zip'):
+        return 'montage'
     elif type_ == 'text' and subtype == 'plain':
         return 'text'
     else:

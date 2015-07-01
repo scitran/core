@@ -173,6 +173,7 @@ def sort(args):
             print 'Quarantining %s (unparsable)' % os.path.basename(filepath)
         else:
             util.commit_file(db.acquisitions, None, datainfo, filepath, args.sort_path)
+            util.create_job(db.acquisitions, datainfo) # FIXME we should only mark files as new and let engine take it from there
 
 sort_desc = """
 example:

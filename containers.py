@@ -307,12 +307,12 @@ class Container(base.RequestHandler):
         container, _ = self._get(_id, 'ro')  # need at least read access to view tiles
         montage_info = None
         for f in container.get('files'):
-            if f['kinds'] == ['montage'] and f['ext'] == '.zip':
+            if f['filetype'] == 'montage':
                 montage_info = f
                 break
         if not montage_info:
             self.abort(404, 'montage zip not found')
-        fn = montage_info['name'] + montage_info['ext']
+        fn = montage_info['filename']
         fp = os.path.join(self.app.config['data_path'], cid[-3:], cid, fn)
         z = self.request.get('z')
         x = self.request.get('x')
