@@ -70,6 +70,7 @@ routes = [
         webapp2.Route(r'/count',                                    acquisitions.Acquisitions, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   acquisitions.Acquisition, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='file'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            acquisitions.Acquisition, handler_method='file'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/tile',                     acquisitions.Acquisition, handler_method='get_tile', methods=['GET']),
     ]),

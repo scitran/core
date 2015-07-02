@@ -213,7 +213,7 @@ class Container(base.RequestHandler):
                 note['timestamp'] = datetime.datetime.utcnow()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
-    def file(self, cid, filename):
+    def file(self, cid, filename=None):
         _id = bson.ObjectId(cid)
         if self.request.method == 'GET':
             container, _ = self._get(_id, 'ro', filename)
@@ -267,9 +267,24 @@ class Container(base.RequestHandler):
         """Receive a targeted processor or user upload."""
         #if not self.uid and not self.drone_request:
         #    self.abort(402, 'uploads must be from an authorized user or drone')
-        if 'Content-MD5' not in self.request.headers:
-            self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+        #print self.request.content_type
+        if self.request.content_type == 'multipart/form-data':
+            print 'in multipart/form-data code'
+            #print self.request.POST
+            return
+            if 'file' not in self.request.params: # test w/o params
+                self.abort(400, 'multipart/form-data must contain a "file" field')
+            filename = self.request.params['file'].filename
+            filestream = self.request.params['file'].file
+        else:
+            if 'Content-MD5' not in self.request.headers:
+                self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+            filestream = self.request.body_file
         flavor = self.request.get('flavor', 'data')
+        if flavor not in ['data', 'attachment']:
+            self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
+
+        # TODO put tags and metadata into the form
         try:
             tags = json.loads(self.request.get('tags', '[]'))
         except ValueError:
@@ -278,11 +293,10 @@ class Container(base.RequestHandler):
             metadata = json.loads(self.request.get('metadata', '{}'))
         except ValueError:
             self.abort(400, 'invalid "metadata" parameter')
-        if flavor not in ['data', 'attachment']:
-            self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
+
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
-            success, sha1sum = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
+            success, sha1sum = util.receive_stream_and_validate(filestream, filepath, self.request.headers.get('Content-MD5'))
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             filesize = os.path.getsize(filepath)
