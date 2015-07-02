@@ -270,8 +270,7 @@ class Container(base.RequestHandler):
         #print self.request.content_type
         if self.request.content_type == 'multipart/form-data':
             print 'in multipart/form-data code'
-            #print self.request.POST
-            return
+
             if 'file' not in self.request.params: # test w/o params
                 self.abort(400, 'multipart/form-data must contain a "file" field')
             filename = self.request.params['file'].filename

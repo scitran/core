@@ -55,6 +55,7 @@ routes = [
         webapp2.Route(r'/schema',                                   collections_.Collection, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          collections_.Collection, name='collection'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            collections_.Collection, handler_method='file'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     collections_.Collection, handler_method='file'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections_.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
