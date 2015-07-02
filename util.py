@@ -173,8 +173,8 @@ def create_job(dbc, datainfo):
     app = None
     # TODO: check if there are 'default apps' set for this project/session/acquisition
     acquisition = db.acquisitions.find_one({'uid': datainfo['acquisition_id']})
-    session = db.sessions.find_one({'_id': bson.ObjectId(acquisition.get('session'))})
-    project = db.projects.find_one({'_id': bson.ObjectId(session.get('project'))})
+    session = db.sessions.find_one({'_id': acquisition.get('session')})
+    project = db.projects.find_one({'_id': session.get('project')})
     aid = acquisition.get('_id')
 
     # XXX: if an input kinds = None, then that job is meant to work on any file kinds

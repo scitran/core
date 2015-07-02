@@ -124,15 +124,16 @@ def jobsinit(args):
         db.drop_collection('jobs')
 
     # find all "orig" files, and create jobs for them
-    for a in db.acquisitions.find({'files': {'$elemMatch': {'state': ['orig']}}}, {'files.$': 1}):
+    for a in db.acquisitions.find({'files.filetype': 'dicom'}, ['uid', 'files.$']):
         aid = str(a['_id'])
+        fileinfo = a['files'][0]
         print aid
-        fp = os.path.join(args.data_path, aid[-3:], aid, a['files'][0]['name'] + a['files'][0]['ext'])
+        fp = os.path.join(args.data_path, aid[-3:], aid, fileinfo['filename'])
         if not os.path.exists(fp):
             print ('%s does not exist. no job created.' % fp)
             continue
-        dataset = scidata.parse(fp)
-        util.create_job(db.jobs, dataset)
+        datainfo = {'acquisition_id': a['uid'], 'fileinfo': fileinfo}
+        util.create_job(db.acquisitions, datainfo)
 
 jobinit_desc = """
 example:
