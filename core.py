@@ -209,12 +209,14 @@ class Core(base.RequestHandler):
         #    self.abort(402, 'uploads must be from an authorized user or drone')
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+
         filename = self.request.headers.get('Content-Disposition', '').partition('filename=')[2].strip('"')
+        print '+++++++++++++++ content type', self.request.content_type
         if not filename:
             self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
-            success, sha1sum = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
+            success, digest, filesize, duration = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             if not tarfile.is_tarfile(filepath):
@@ -226,6 +228,8 @@ class Core(base.RequestHandler):
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
             util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'])
             util.create_job(self.app.db.acquisitions, datainfo) # FIXME we should only mark files as new and let engine take it from there
+            throughput = filesize / duration.total_seconds()
+            log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
 
     def upload(self):
         """
@@ -240,7 +244,7 @@ class Core(base.RequestHandler):
         def store_file(fd, filename, md5, arcpath, arcname):
             with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
                 filepath = os.path.join(tempdir_path, filename)
-                success, _ = util.receive_stream_and_validate(fd, filepath, md5)
+                success, _, _, _ = util.receive_stream_and_validate(fd, filepath, md5)
                 if not success:
                     self.abort(400, 'Content-MD5 mismatch.')
                 with lockfile.LockFile(arcpath):
@@ -304,11 +308,11 @@ class Core(base.RequestHandler):
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(2**20), ''):
                     sha1.update(chunk)
-            fileinfo = util.parse_file(filepath, sha1.hexdigest())
-            if fileinfo is None:
+            datainfo = util.parse_file(filepath, sha1.hexdigest())
+            if datainfo is None:
                 util.quarantine_file(filepath, self.app.config['quarantine_path'])
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
-            util.commit_file(self.app.db.acquisitions, None, fileinfo, filepath, self.app.config['data_path'])
+            util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'])
 
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']

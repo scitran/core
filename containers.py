@@ -267,35 +267,37 @@ class Container(base.RequestHandler):
         """Receive a targeted processor or user upload."""
         #if not self.uid and not self.drone_request:
         #    self.abort(402, 'uploads must be from an authorized user or drone')
-        #print self.request.content_type
+        tags = []
+        metadata = {}
         if self.request.content_type == 'multipart/form-data':
-            print 'in multipart/form-data code'
-
-            if 'file' not in self.request.params: # test w/o params
+            filestream = None
+            for fieldname, fieldvalue in self.request.POST.iteritems():
+                if fieldname == 'file':
+                    filename = self.request.params['file'].filename
+                    filestream = self.request.params['file'].file
+                elif fieldname == 'tags':
+                    try:
+                        tags = json.loads(fieldvalue)
+                    except ValueError:
+                        self.abort(400, 'non-JSON value in "tags" parameter')
+                elif fieldname == 'metadata':
+                    try:
+                        metadata = json.loads(fieldvalue)
+                    except ValueError:
+                        self.abort(400, 'non-JSON value in "metadata" parameter')
+            if filestream is None:
                 self.abort(400, 'multipart/form-data must contain a "file" field')
-            filename = self.request.params['file'].filename
-            filestream = self.request.params['file'].file
         else:
             if 'Content-MD5' not in self.request.headers:
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
             filestream = self.request.body_file
-        flavor = self.request.get('flavor', 'data')
+        flavor = self.request.get('flavor', 'data') # TODO: flavor should go away
         if flavor not in ['data', 'attachment']:
             self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
-
-        # TODO put tags and metadata into the form
-        try:
-            tags = json.loads(self.request.get('tags', '[]'))
-        except ValueError:
-            self.abort(400, 'invalid "tags" parameter')
-        try:
-            metadata = json.loads(self.request.get('metadata', '{}'))
-        except ValueError:
-            self.abort(400, 'invalid "metadata" parameter')
-
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
-            success, sha1sum = util.receive_stream_and_validate(filestream, filepath, self.request.headers.get('Content-MD5'))
+            md5 = self.request.headers.get('Content-MD5')
+            success, digest, _, duration = util.receive_stream_and_validate(filestream, filepath, md5)
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             filesize = os.path.getsize(filepath)
@@ -305,7 +307,7 @@ class Container(base.RequestHandler):
                     'fileinfo': {
                         'filename': filename,
                         'filesize': filesize,
-                        'filehash': sha1sum,
+                        'filehash': digest,
                         'filetype': filetype,
                         'flavor': flavor,
                         'mimetype': mimetype,
@@ -313,7 +315,8 @@ class Container(base.RequestHandler):
                         'metadata': metadata,
                         },
                     }
-            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.client_addr))
+            throughput = filesize / duration.total_seconds()
+            log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
             util.commit_file(self.dbc, _id, datainfo, filepath, self.app.config['data_path'])
 
     def get_tile(self, cid):
