@@ -18,7 +18,8 @@ import bson
 import base
 import util
 import users
-import zipstream
+import tarfile
+import cStringIO
 import tempdir as tempfile
 
 UPLOAD_SCHEMA = {
@@ -358,18 +359,23 @@ class Core(base.RequestHandler):
                 prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-        filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
+        filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket('batch', targets, filename, total_size)
         self.app.db.downloads.insert(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
-        length = None # FIXME compute actual length
-        z = zipstream.ZipFile(allowZip64=True)
         targets = ticket['target']
-        for filepath, acrpath, _ in targets:
-            z.write(filepath, acrpath)
-        return z, length
+        s = cStringIO.StringIO()
+        z = tarfile.open(mode="w|", fileobj=s)
+        for filepath, arcpath, size in targets:
+            z.add(filepath, arcname=arcpath, recursive=False)
+            yield s.getvalue()
+            s.truncate(0)
+            s.seek(0)
+        z.close()
+        yield s.getvalue()
+        raise StopIteration
 
     def download(self):
         ticket_id = self.request.get('ticket')
@@ -377,8 +383,7 @@ class Core(base.RequestHandler):
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
                 self.abort(404, 'no such ticket')
-            self.response.app_iter, length = self._archivestream(ticket)
-            self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
+            self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
