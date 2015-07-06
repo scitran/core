@@ -118,11 +118,12 @@ class Sessions(containers.ContainerList):
             query = {'group': gid}
         else:
             query = {}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'project': 1, 'group': 1, 'timestamp': 1, 'timezone': 1}
+        projection = {'label': 1, 'subject_code': 1, 'subject.code': 1, 'notes': 1, 'project': 1, 'group': 1, 'timestamp': 1, 'timezone': 1}
         sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         for sess in sessions:
             sess['project'] = str(sess['project'])
-            sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+            if 'subject_code' not in sess:
+                sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -178,7 +179,8 @@ class Session(containers.Container):
         _id = bson.ObjectId(sid)
         sess, _ = self._get(_id)
         sess['project'] = str(sess['project'])
-        sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+        if 'subject_code' not in sess:
+            sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
             sess['debug'] = {}
             sess['debug']['project'] = self.uri_for('project', sess['project'], _full=True) + '?' + self.request.query_string
