@@ -546,7 +546,7 @@ class Core(base.RequestHandler):
                 },
                 'exam': {
                     'title': 'Exam Number',
-                    'type': 'integer',
+                    'type': 'string',
                 },
                 'description': {
                     'title': 'Description',
@@ -635,6 +635,7 @@ class Core(base.RequestHandler):
             acq['session'] = str(acq['session'])
             session['_id'] = str(session['_id'])
             session['project'] = str(session['project'])
+            session['subject_code'] = session.get('subject', {}).get('code', '')
             project['_id'] = str(project['_id'])
             if session not in sessions:
                 sessions.append(session)
