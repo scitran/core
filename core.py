@@ -568,15 +568,23 @@ class Core(base.RequestHandler):
         # TODO: search needs to include operator details? do types of datasets have an 'operator'?
         # TODO: provide a schema that allows directly using the request data, rather than
         # requiring construction of the queries....
+        def _parse_query_string(query_string):
+            if '*' in query_string:
+                regex = re.sub('\*', '.*', query_string)
+                return {'$regex': '^' + regex + '$', '$options': 'i'}
+            else:
+                return query_string
+
+
         session_query = {}
         exam = json_body.get('exam')
         subj_code = json_body.get('subj_code')
         age_max = json_body.get('subj_age_max')
         age_min = json_body.get('subj_age_min')
         if exam:
-            session_query.update({'exam': exam})
+            session_query.update({'exam': _parse_query_string(exam)})
         if subj_code:
-            session_query.update({'subject.code': subj_code})
+            session_query.update({'subject.code': _parse_query_string(subj_code)})
         if age_min and age_max:
             session_query.update({'subject.age': {'$gte': age_min, '$lte': age_max}})
         elif age_max:
@@ -597,7 +605,7 @@ class Core(base.RequestHandler):
         if date_from:
             date_from = datetime.datetime.strptime(date_from, time_fmt)
         if psd:
-            acq_query.update({'psd': psd})
+            acq_query.update({'psd': _parse_query_string(psd)})
         if types_kind:
             acq_query.update({'datatype': types_kind})
         if date_to and date_from:
