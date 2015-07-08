@@ -49,8 +49,8 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(401, 'invalid oauth2 token', headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
-        elif self.debug and self.request.get('user'):
-            self.uid = self.request.get('user')
+        elif self.debug and self.request.GET.get('user'):
+            self.uid = self.request.GET.get('user')
 
         # Drone shared secret authentication
         elif drone_secret is not None and self.request.user_agent.startswith('SciTran Drone '):
@@ -84,9 +84,9 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        target_site = self.request.get('site', self.app.config['site_id'])
+        target_site = self.request.GET.get('site', self.app.config['site_id'])
         if target_site == self.app.config['site_id']:
-            log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
+            log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             return super(RequestHandler, self).dispatch()
         else:
             if not self.app.config['site_id']:
@@ -105,10 +105,10 @@ class RequestHandler(webapp2.RequestHandler):
             del self.headers['Host']
             if 'Authorization' in self.headers: del self.headers['Authorization']
             # adjust params
-            self.params = self.request.params.mixed()
+            self.params = self.request.GET.mixed()
             if 'user' in self.params: del self.params['user']
             del self.params['site']
-            log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
+            log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             target_uri = target['api_uri'] + self.request.path.split('/api')[1]
             r = requests.request(
                     self.request.method,
