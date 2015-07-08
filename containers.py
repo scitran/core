@@ -273,14 +273,22 @@ class Container(base.RequestHandler):
             filestream = None
             for fieldname, fieldvalue in self.request.POST.iteritems():
                 if fieldname == 'file':
-                    filename = self.request.params['file'].filename
-                    filestream = self.request.params['file'].file
+                    print 'File form field found.'
+                    filename = fieldvalue.filename
+                    filestream = fieldvalue.file
+
+                    print filename + ' filename found'
+
+                    break
+
                 elif fieldname == 'tags':
+                    print 'TAG form field found.'
                     try:
                         tags = json.loads(fieldvalue)
                     except ValueError:
                         self.abort(400, 'non-JSON value in "tags" parameter')
                 elif fieldname == 'metadata':
+                    print 'METADATA form field found.'
                     try:
                         metadata = json.loads(fieldvalue)
                     except ValueError:
@@ -294,10 +302,17 @@ class Container(base.RequestHandler):
         flavor = self.request.get('flavor', 'data') # TODO: flavor should go away
         if flavor not in ['data', 'attachment']:
             self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
+
+        print 'Getting down to biz'
+
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
             md5 = self.request.headers.get('Content-MD5')
             success, digest, _, duration = util.receive_stream_and_validate(filestream, filepath, md5)
+
+            print 'Read content'
+
+
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             filesize = os.path.getsize(filepath)
