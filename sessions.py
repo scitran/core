@@ -169,7 +169,7 @@ class Session(containers.Container):
         self.dbc = self.app.db.sessions
 
     def schema(self, *args, **kwargs):
-        method =self.request.GET.get('method').lower()
+        method =self.request.GET.get('method', '').lower()
         if method == 'put':
             return SESSION_PUT_SCHEMA
         return super(Session, self).schema(scitran.data.medimg.medimg.MedImgReader.session_properties)

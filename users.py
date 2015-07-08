@@ -138,9 +138,9 @@ class User(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User info')
         projection = []
-        if self.request.GET.get('remotes') in ('1', 'true'):
+        if self.request.GET.get('remotes', '') in ('1', 'true'):
             projection += ['remotes']
-        if self.request.GET.get('status') in ('1', 'true'):
+        if self.request.GET.get('status', '') in ('1', 'true'):
             projection += ['status']
         user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:
@@ -211,7 +211,7 @@ class Groups(base.RequestHandler):
             query = {'roles._id': _id}
         else:
             if not self.superuser_request:
-                if self.request.GET.get('admin').lower() in ('1', 'true'):
+                if self.request.GET.get('admin', '').lower() in ('1', 'true'):
                     query = {'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}}
                 else:
                     query = {'roles._id': self.uid}

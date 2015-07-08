@@ -234,7 +234,7 @@ class Collection(containers.Container):
         self.json_schema = COLLECTION_SCHEMA
 
     def schema(self):
-        method =self.request.GET.get('method').lower()
+        method =self.request.GET.get('method', '').lower()
         if method == 'get':
             return COLLECTION_SCHEMA
         elif method == 'post':
@@ -312,8 +312,8 @@ class CollectionSessions(sessions.Sessions):
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
-                sess['details'] = self.uri_for('session', sid, _full=True) + '?user=' + self.request.GET.get('user')
-                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.GET.get('user'))
+                sess['details'] = self.uri_for('session', sid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.GET.get('user', ''))
         return sessions
 
     def put(self):
@@ -335,7 +335,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if not self.app.db.collections.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
         query = {'collections': _id}
-        sid = self.request.GET.get('session')
+        sid = self.request.GET.get('session', '')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
@@ -350,7 +350,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
-                acq['details'] = self.uri_for('acquisition', aid, _full=True) + '?user=' + self.request.GET.get('user')
+                acq['details'] = self.uri_for('acquisition', aid, _full=True) + '?user=' + self.request.GET.get('user', '')
         return acquisitions
 
     def put(self):
