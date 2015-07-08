@@ -108,7 +108,7 @@ class Acquisitions(containers.ContainerList):
             self.abort(404, 'no such Session')
         query = {'session': _id}
         projection = ['label', 'description', 'modality', 'datatype', 'notes', 'timestamp', 'timezone']
-        acquisitions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
+        acquisitions = self._get(query, projection, self.request.GET.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for acquisition in acquisitions:
                 aid = str(acquisition['_id'])

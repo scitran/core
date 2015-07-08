@@ -151,7 +151,7 @@ class Container(base.RequestHandler):
             self.abort(404, 'no such ' + dbc_name)
         user_perm = util.user_perm(container['permissions'], self.uid, self.source_site)
         if self.public_request:
-            ticket_id = self.request.get('ticket')
+            ticket_id = self.request.GET.get('ticket')
             if ticket_id:
                 ticket = self.app.db.downloads.find_one({'_id': ticket_id})
                 if not ticket: # FIXME need better security
@@ -168,7 +168,7 @@ class Container(base.RequestHandler):
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + dbc_name)
             if user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = [user_perm]
-        if self.request.get('paths').lower() in ('1', 'true'):
+        if self.request.GET.get('paths').lower() in ('1', 'true'):
             for fileinfo in container['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         container['_id'] = str(container['_id'])
@@ -242,7 +242,7 @@ class Container(base.RequestHandler):
         if self.request.method == 'GET':
             self.response.app_iter = open(filepath, 'rb')
             self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
-            if self.request.get('view').lower() in ['1', 'true']:
+            if self.request.GET.get('view').lower() in ['1', 'true']:
                 self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
@@ -299,7 +299,7 @@ class Container(base.RequestHandler):
             if 'Content-MD5' not in self.request.headers:
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
             filestream = self.request.body_file
-        flavor = self.request.get('flavor', 'data') # TODO: flavor should go away
+        flavor = self.request.GET.get('flavor', 'data') # TODO: flavor should go away
         if flavor not in ['data', 'attachment']:
             self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
 
@@ -347,9 +347,9 @@ class Container(base.RequestHandler):
             self.abort(404, 'montage zip not found')
         fn = montage_info['filename']
         fp = os.path.join(self.app.config['data_path'], cid[-3:], cid, fn)
-        z = self.request.get('z')
-        x = self.request.get('x')
-        y = self.request.get('y')
+        z = self.request.GET.get('z')
+        x = self.request.GET.get('x')
+        y = self.request.GET.get('y')
         if not (z and x and y):
             return util.get_info(fp)
         else:

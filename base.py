@@ -84,7 +84,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        target_site = self.request.GET.get('site', self.app.config['site_id'])
+        target_site = self.request.GET.get.get('site', self.app.config['site_id'])
         if target_site == self.app.config['site_id']:
             log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             return super(RequestHandler, self).dispatch()

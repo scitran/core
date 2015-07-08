@@ -194,7 +194,7 @@ class Core(base.RequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body style="min-width:900px">\n')
-        if self.debug and not self.request.get('user', None):
+        if self.debug and not self.request.GET.get('user', None):
             self.response.write('<form name="username" action="" method="get">\n')
             self.response.write('Username: <input type="text" name="user">\n')
             self.response.write('<input type="submit" value="Generate Custom Links">\n')
@@ -254,8 +254,8 @@ class Core(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'must be logged in to upload data')
 
-        filename = self.request.get('filename')
-        ticket_id = self.request.get('ticket')
+        filename = self.request.GET.get('filename')
+        ticket_id = self.request.GET.get('ticket')
         if not ticket_id:
             if filename != 'METADATA.json':
                 self.abort(400, 'first file must be METADATA.json')
@@ -289,7 +289,7 @@ class Core(base.RequestHandler):
             self.abort(404, 'no such ticket')
         arcpath = os.path.join(self.app.config['upload_path'], ticket_id + '.tar')
 
-        if self.request.get('complete').lower() not in ['1', 'true']:
+        if self.request.GET.get('complete').lower() not in ['1', 'true']:
             if 'Content-MD5' not in self.request.headers:
                 self.app.db.uploads.remove({'_id': ticket_id}) # delete ticket
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
@@ -384,7 +384,7 @@ class Core(base.RequestHandler):
         stream.close()
 
     def download(self):
-        ticket_id = self.request.get('ticket')
+        ticket_id = self.request.GET.get('ticket')
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
@@ -405,7 +405,7 @@ class Core(base.RequestHandler):
         """Return local and remote sites."""
         projection = ['name', 'onload']
         # TODO onload for local is true
-        if self.public_request or self.request.get('all').lower() in ('1', 'true'):
+        if self.public_request or self.request.GET.get('all').lower() in ('1', 'true'):
             sites = list(self.app.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs
