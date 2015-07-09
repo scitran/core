@@ -3,6 +3,7 @@
 import logging
 log = logging.getLogger('scitran.api')
 
+import cgi
 import os
 import bson
 import json
@@ -271,28 +272,49 @@ class Container(base.RequestHandler):
         metadata = {}
         if self.request.content_type == 'multipart/form-data':
             filestream = None
-            for fieldname, fieldvalue in self.request.POST.iteritems():
-                if fieldname == 'file':
-                    print 'File form field found.'
-                    filename = fieldvalue.filename
-                    filestream = fieldvalue.file
 
-                    print filename + ' filename found'
+            print 'PREPARE'
 
-                    break
+            # print str(self.request.body_file)
 
-                elif fieldname == 'tags':
-                    print 'TAG form field found.'
-                    try:
-                        tags = json.loads(fieldvalue)
-                    except ValueError:
-                        self.abort(400, 'non-JSON value in "tags" parameter')
-                elif fieldname == 'metadata':
-                    print 'METADATA form field found.'
-                    try:
-                        metadata = json.loads(fieldvalue)
-                    except ValueError:
-                        self.abort(400, 'non-JSON value in "metadata" parameter')
+            fs_environ = self.request.environ.copy()
+            fs_environ.setdefault('CONTENT_LENGTH', '0')
+            fs_environ['QUERY_STRING'] = ''
+
+            # Attempt to parse the field manually
+            form = cgi.FieldStorage(fp=self.request.body_file, environ=fs_environ, keep_blank_values=True)
+
+            fileitem = form['file']
+
+            filestream = fileitem.file
+            filename = fileitem.filename
+
+            print 'SETUP'
+
+            # wat = self.request.getfirst('file')
+
+            # for fieldname, fieldvalue in self.request.POST.iteritems():
+            #     if fieldname == 'file':
+            #         print 'File form field found.'
+            #         filename = fieldvalue.filename
+            #         filestream = fieldvalue.file
+
+            #         print filename + ' filename found'
+
+            #         break
+
+            #     elif fieldname == 'tags':
+            #         print 'TAG form field found.'
+            #         try:
+            #             tags = json.loads(fieldvalue)
+            #         except ValueError:
+            #             self.abort(400, 'non-JSON value in "tags" parameter')
+            #     elif fieldname == 'metadata':
+            #         print 'METADATA form field found.'
+            #         try:
+            #             metadata = json.loads(fieldvalue)
+            #         except ValueError:
+            #             self.abort(400, 'non-JSON value in "metadata" parameter')
             if filestream is None:
                 self.abort(400, 'multipart/form-data must contain a "file" field')
         else:
