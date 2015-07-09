@@ -273,21 +273,34 @@ class Container(base.RequestHandler):
         if self.request.content_type == 'multipart/form-data':
             filestream = None
 
+
             print 'PREPARE'
 
+            # filestream = self.request.body_file
+            # filename = 'lol.txt'
+
             # print str(self.request.body_file)
+
+            print 'ENVIRON SETUP'
 
             fs_environ = self.request.environ.copy()
             fs_environ.setdefault('CONTENT_LENGTH', '0')
             fs_environ['QUERY_STRING'] = ''
 
+
+            print 'CREATE FIELDSTORAGE'
+
             # Attempt to parse the field manually
             form = cgi.FieldStorage(fp=self.request.body_file, environ=fs_environ, keep_blank_values=True)
 
+            print 'ACCESS FILE ATTR'
             fileitem = form['file']
 
+            print 'GET PROPS'
             filestream = fileitem.file
             filename = fileitem.filename
+
+            print 'File is ' + filename
 
             print 'SETUP'
 
