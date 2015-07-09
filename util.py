@@ -23,6 +23,9 @@ import scitran.data.medimg.montage
 
 mimetypes.types_map.update({'.bvec': 'text/plain'})
 mimetypes.types_map.update({'.bval': 'text/plain'})
+mimetypes.types_map.update({'.m': 'text/plain'})
+mimetypes.types_map.update({'.sh': 'text/plain'})
+mimetypes.types_map.update({'.r': 'text/plain'})
 
 get_info = scitran.data.medimg.montage.get_info
 get_tile = scitran.data.medimg.montage.get_tile
