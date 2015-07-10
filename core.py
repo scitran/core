@@ -521,6 +521,11 @@ class Core(base.RequestHandler):
                     'title': 'Subject Last Name',
                     'type': 'string',
                 },
+                'sex': {
+                    'title': 'Subject Sex',
+                    'type': 'string',
+                    'enum': ['male', 'female'],
+                },
                 'scan_type': {  # MR SPECIFIC!!!
                     'title': 'Scan Type',
                     'enum': self.app.db.acquisitions.distinct('datatype')
@@ -581,10 +586,13 @@ class Core(base.RequestHandler):
         subj_code = json_body.get('subj_code')
         age_max = json_body.get('subj_age_max')
         age_min = json_body.get('subj_age_min')
+        sex = json_body.get('sex')
         if exam:
             session_query.update({'exam': _parse_query_string(exam)})
         if subj_code:
             session_query.update({'subject.code': _parse_query_string(subj_code)})
+        if sex:
+            session_query.update({'subject.sex': sex})
         if age_min and age_max:
             session_query.update({'subject.age': {'$gte': age_min, '$lte': age_max}})
         elif age_max:
