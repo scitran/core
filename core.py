@@ -366,7 +366,7 @@ class Core(base.RequestHandler):
 
     def _add_file_to_tar_stream(self, tar, filepath, arcpath):
         BLOCKSIZE = 512
-        BUFSIZE = 32 * BLOCKSIZE  # Stream 16k (32 * 512) at a time
+        BUFSIZE = 1 * 1024 * 1024  # Stream 1MB at a time
 
         tarinfo = tar.gettarinfo(filepath, arcpath)
         buf = tarinfo.tobuf()
