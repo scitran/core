@@ -31,7 +31,7 @@ INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
 
 class Users(base.RequestHandler):
 
-    """/nimsapi/users """
+    """/users """
 
     def __init__(self, request=None, response=None):
         super(Users, self).__init__(request, response)
@@ -70,7 +70,7 @@ class Users(base.RequestHandler):
 
 class User(base.RequestHandler):
 
-    """/nimsapi/users/<_id> """
+    """/users/<_id> """
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -179,7 +179,7 @@ class User(base.RequestHandler):
 
 class Groups(base.RequestHandler):
 
-    """/nimsapi/groups """
+    """/groups """
 
     def __init__(self, request=None, response=None):
         super(Groups, self).__init__(request, response)
@@ -227,7 +227,7 @@ class Groups(base.RequestHandler):
 
 class Group(base.RequestHandler):
 
-    """/nimsapi/groups/<_id>"""
+    """/groups/<_id>"""
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',

@@ -72,7 +72,7 @@ ACQUISITION_PUT_SCHEMA = {
 
 class Acquisitions(containers.ContainerList):
 
-    """/nimsapi/acquisitions """
+    """/acquisitions """
 
     post_schema = ACQUISITION_POST_SCHEMA
 
@@ -123,7 +123,7 @@ class Acquisitions(containers.ContainerList):
 
 class Acquisition(containers.Container):
 
-    """/nimsapi/acquisitions/<aid> """
+    """/acquisitions/<aid> """
 
     json_schema = {
         '$schema': 'http://json-schema.org/draft-04/schema#',

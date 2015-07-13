@@ -9,7 +9,7 @@ import collections
 
 import logging
 import logging.config
-log = logging.getLogger('nimsapi.processor')
+log = logging.getLogger('scitran.processor')
 
 import tempdir as tempfile
 

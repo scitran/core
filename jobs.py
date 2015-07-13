@@ -2,13 +2,11 @@
 
 """
 API request handlers for process-job-handling.
-
-represents the /nimsapi/jobs route
 """
 
 import logging
 import datetime
-log = logging.getLogger('nimsapi.jobs')
+log = logging.getLogger('scitran.jobs')
 
 import base
 

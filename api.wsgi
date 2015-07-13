@@ -37,7 +37,7 @@ args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 args.upload_path = os.path.join(args.data_path, 'upload')
 
 logging.basicConfig(level=getattr(logging, args.log_level.upper())) #FIXME probably not necessary, because done in api.py
-log = logging.getLogger('nimsapi')
+log = logging.getLogger('scitran')
 
 # configure uwsgi application
 application = api.app
