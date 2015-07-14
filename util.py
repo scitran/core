@@ -21,11 +21,15 @@ import tempdir as tempfile
 import scitran.data
 import scitran.data.medimg.montage
 
-mimetypes.types_map.update({'.bvec': 'text/plain'})
-mimetypes.types_map.update({'.bval': 'text/plain'})
-mimetypes.types_map.update({'.m': 'text/plain'})
-mimetypes.types_map.update({'.sh': 'text/plain'})
-mimetypes.types_map.update({'.r': 'text/plain'})
+MIMETYPES = [
+    ('.bvec', 'text', 'bvec'),
+    ('.bval', 'text', 'bval'),
+    ('.m', 'text', 'matlab'),
+    ('.sh', 'text', 'shell'),
+    ('.r', 'text', 'r'),
+]
+for mt in MIMETYPES:
+    mimetypes.types_map.update({mt[0]: mt[1] + '/' + mt[2]})
 
 get_info = scitran.data.medimg.montage.get_info
 get_tile = scitran.data.medimg.montage.get_tile
@@ -335,7 +339,7 @@ def guess_filetype(filepath, mimetype):
         return 'nifti'
     elif filepath.endswith('_montage.zip'):
         return 'montage'
-    elif type_ == 'text' and subtype == 'plain':
+    elif type_ == 'text' and subtype in ['plain'] + [mt[2] for mt in MIMETYPES]:
         return 'text'
     else:
         return subtype
