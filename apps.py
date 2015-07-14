@@ -3,7 +3,7 @@
 """
 API request handlers for Apps.
 
-represents the /nimsapi/apps route
+represents the /apps route
 """
 
 import os
@@ -13,7 +13,7 @@ import logging
 import tarfile
 import jsonschema
 
-log = logging.getLogger('nimsapi.jobs')
+log = logging.getLogger('scitran.jobs')
 
 import tempdir as tempfile
 
