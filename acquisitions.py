@@ -107,7 +107,7 @@ class Acquisitions(containers.ContainerList):
         if not self.app.db.sessions.find_one({'_id': _id}):
             self.abort(404, 'no such Session')
         query = {'session': _id}
-        projection = {'label': 1, 'description': 1, 'modality': 1, 'datatype': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = ['label', 'description', 'modality', 'datatype', 'notes', 'timestamp', 'timezone']
         acquisitions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for acquisition in acquisitions:

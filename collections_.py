@@ -206,7 +206,7 @@ class Collections(containers.ContainerList):
     def get(self):
         """Return the list of Collections."""
         query = {'curator': self.request.get('curator')} if self.request.get('curator') else {}
-        projection = {'curator': 1, 'name': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = ['curator', 'name', 'notes', 'timestamp', 'timezone']
         collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
         if self.debug:
             for coll in collections:
@@ -303,7 +303,7 @@ class CollectionSessions(sessions.Sessions):
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
         projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
-        sessions = list(self.dbc.find(query, projection))
+        sessions = list(self.dbc.find(query, projection)) # avoid permissions checking by not using ContainerList._get()
         for sess in sessions:
             sess['_id'] = str(sess['_id']) # do this manually, since not going through ContainerList._get()
             sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session

@@ -122,6 +122,7 @@ class ContainerList(base.RequestHandler):
         return json_body
 
     def _get(self, query, projection, admin_only=False):
+        projection = {p: 1 for p in projection + ['files']}
         if self.public_request:
             query['public'] = True
         else:
@@ -136,6 +137,7 @@ class ContainerList(base.RequestHandler):
             container['_id'] = str(container['_id'])
             container.setdefault('timestamp', datetime.datetime.utcnow())
             container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
+            container['attachment_count'] = len([f for f in container.get('files', []) if f.get('flavor') == 'attachment'])
         return containers
 
 
