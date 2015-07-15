@@ -5,6 +5,7 @@ log = logging.getLogger('scitran.api')
 
 import os
 import re
+import bson
 import gzip
 import json
 import hashlib
@@ -12,14 +13,12 @@ import tarfile
 import datetime
 import lockfile
 import markdown
+import cStringIO
 import jsonschema
-import bson
 
 import base
 import util
 import users
-import tarfile
-import cStringIO
 import tempdir as tempfile
 
 UPLOAD_SCHEMA = {
@@ -366,16 +365,16 @@ class Core(base.RequestHandler):
 
     def _archivestream(self, ticket):
         BLOCKSIZE = 512
-        BUFSIZE = 2**20  # stream files in 1MB chunks
+        CHUNKSIZE = 2**20  # stream files in 1MB chunks
         stream = cStringIO.StringIO()
         with tarfile.open(mode='w|', fileobj=stream) as archive:
             for filepath, arcpath, _ in ticket['target']:
                 yield archive.gettarinfo(filepath, arcpath).tobuf()
                 with open(filepath, 'rb') as fd:
-                    for chunk in iter(lambda: fd.read(BUFSIZE), ''):
-                        if len(chunk) < BUFSIZE:  # NULL-pad to the next multiple of BLOCKSIZE
-                            chunk += (b'\0' * (BLOCKSIZE - (len(chunk) % BLOCKSIZE)))
+                    for chunk in iter(lambda: fd.read(CHUNKSIZE), ''):
                         yield chunk
+                    if len(chunk) % BLOCKSIZE != 0:
+                        yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
