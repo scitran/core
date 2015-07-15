@@ -18,7 +18,8 @@ import bson
 import base
 import util
 import users
-import zipstream
+import tarfile
+import cStringIO
 import tempdir as tempfile
 
 UPLOAD_SCHEMA = {
@@ -358,18 +359,25 @@ class Core(base.RequestHandler):
                 prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-        filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.zip'
+        filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket('batch', targets, filename, total_size)
         self.app.db.downloads.insert(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
-        length = None # FIXME compute actual length
-        z = zipstream.ZipFile(allowZip64=True)
-        targets = ticket['target']
-        for filepath, acrpath, _ in targets:
-            z.write(filepath, acrpath)
-        return z, length
+        BLOCKSIZE = 512
+        BUFSIZE = 2**20  # stream files in 1MB chunks
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as archive:
+            for filepath, arcpath, _ in ticket['target']:
+                yield archive.gettarinfo(filepath, arcpath).tobuf()
+                with open(filepath, 'rb') as fd:
+                    for chunk in iter(lambda: fd.read(BUFSIZE), ''):
+                        if len(chunk) < BUFSIZE:  # NULL-pad to the next multiple of BLOCKSIZE
+                            chunk += (b'\0' * (BLOCKSIZE - (len(chunk) % BLOCKSIZE)))
+                        yield chunk
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
 
     def download(self):
         ticket_id = self.request.get('ticket')
@@ -377,8 +385,7 @@ class Core(base.RequestHandler):
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
                 self.abort(404, 'no such ticket')
-            self.response.app_iter, length = self._archivestream(ticket)
-            self.response.headers['Content-Length'] = str(length) # must be set after setting app_iter
+            self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
