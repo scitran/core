@@ -233,6 +233,14 @@ def user_perm(permissions, _id, site=None):
         return {}
 
 
+def container_fileinfo(container, filename):
+    for fileinfo in container.get('files', []):
+        if fileinfo['filename'] == filename:
+            return fileinfo
+    else:
+        return None
+
+
 def upload_ticket(ip, **kwargs):
     ticket = {
         '_id': str(uuid.uuid4()),
