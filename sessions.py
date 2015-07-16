@@ -119,7 +119,7 @@ class Sessions(containers.ContainerList):
         else:
             query = {}
         projection = ['label', 'subject_code', 'subject.code', 'notes', 'project', 'group', 'timestamp', 'timezone']
-        sessions = self._get(query, projection, self.request.GET.get('admin').lower() in ('1', 'true'))
+        sessions = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
         for sess in sessions:
             sess['project'] = str(sess['project'])
             if 'subject_code' not in sess:

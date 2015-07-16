@@ -118,7 +118,7 @@ class Projects(containers.ContainerList):
                 self.abort(400, 'invalid group id')
         query = {'group': gid} if gid else {}
         projection = ['group', 'name', 'notes', 'timestamp', 'timezone']
-        projects = self._get(query, projection, self.request.GET.get('admin').lower() in ('1', 'true'))
+        projects = self._get(query, projection,  self.request.GET.get('admin', '') in ('1', 'true'))
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])

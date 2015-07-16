@@ -207,7 +207,7 @@ class Collections(containers.ContainerList):
         """Return the list of Collections."""
         query = {'curator': self.request.GET.get('curator')} if self.request.GET.get('curator') else {}
         projection = ['curator', 'name', 'notes', 'timestamp', 'timezone']
-        collections = self._get(query, projection, self.request.GET.get('admin').lower() in ('1', 'true'))
+        collections = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])
