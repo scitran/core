@@ -22,6 +22,8 @@ def createJob(db, jobType, containerType, containerID):
     if jobType != 'dcm2nii':
         raise Exception('Usupported algorithm ' + jobType)
 
+    # TODO validate container exists
+
     job = {
         'state': 'pending',
         'attempt': 1,
@@ -31,14 +33,14 @@ def createJob(db, jobType, containerType, containerID):
 
         'inputs': [
             {
-                'type': 'scitran'
+                'type': 'scitran',
                 'location': '/',
-                'URI': 'TBD'
+                'URI': 'TBD',
             },
             {
                 'type': 'scitran',
                 'location': '/script',
-                'URI': 'TBD'
+                'URI': 'TBD',
             },
 
         ],
@@ -53,11 +55,13 @@ def createJob(db, jobType, containerType, containerID):
             {
                 'type': 'scitran',
                 'location': '/output',
-                'URI': 'TBD'
+                'URI': 'TBD',
             },
         ],
     }
 
     result = db.jobs.insert_one(job)
-    log.info('Running %s as job %d to process %s %d' % (jobType, result['_id'], containerType, containerID))
-    return result.inserted_id
+    id = result.inserted_id
+
+    log.info('Running %s as job %s to process %s %s' % (jobType, str(id), containerType, containerID))
+    return id

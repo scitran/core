@@ -7,9 +7,10 @@ API request handlers for process-job-handling.
 import logging
 import datetime
 log = logging.getLogger('scitran.jobs')
+import pymongo
 
 import base
-
+import algorithms
 
 JOB_STATES = [
     'pending',  # Job is queued
@@ -56,19 +57,26 @@ class Jobs(base.RequestHandler):
         Engine will poll this endpoint whenever there are free processing slots.
         """
 
+        # algorithms.createJob(self.app.db, 'dcm2nii', 'session', '55a58db95f22580812902b9e')
+
         # REVIEW: is this atomic?
         # REVIEW: semantics are not documented as to this mutation's behaviour when filter matches no docs.
-        return self.app.db.jobs.find_one_and_update(
+        result = self.app.db.jobs.find_one_and_update(
             {
-                'status': 'pending'
+                'state': 'pending'
             },
             { '$set': {
-                'status': 'running',
+                'state': 'running',
                 'modified': datetime.datetime.now()}
             },
             sort=[('modified', -1)],
-            return_document=ReturnDocument.AFTER
+            return_document=pymongo.collection.ReturnDocument.AFTER
         )
+
+        if result == None:
+            self.abort(400, 'No jobs to process')
+
+        return result
 
 class Job(base.RequestHandler):
 
@@ -89,7 +97,7 @@ class Job(base.RequestHandler):
         print 'MUTATION HAS ' + len(mutation) + ' FIELDS'
 
         if job['state'] not in JOB_STATES_ALLOWED_MUTATE:
-            self.abort(404, 'Cannot mutate a job that is ' + job['state'] '.')
+            self.abort(404, 'Cannot mutate a job that is ' + job['state'] + '.')
 
         if 'state' in mutation and not validTransition(job['state'], mutation['state']):
             self.abort(404, 'Mutating job from ' + job['state'] + ' to ' + mutation['state'] + ' not allowed.')
