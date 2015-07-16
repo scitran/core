@@ -273,61 +273,22 @@ class Container(base.RequestHandler):
         if self.request.content_type == 'multipart/form-data':
             filestream = None
 
-
-            print 'PREPARE'
-
-            # filestream = self.request.body_file
-            # filename = 'lol.txt'
-
-            # print str(self.request.body_file)
-
-            print 'ENVIRON SETUP'
-
+            # Required for FieldStorage to parse the form correctly.
+            # Unmodified code copied for example usage in webob (IRRC).
             fs_environ = self.request.environ.copy()
             fs_environ.setdefault('CONTENT_LENGTH', '0')
             fs_environ['QUERY_STRING'] = ''
 
-
-            print 'CREATE FIELDSTORAGE'
-
-            # Attempt to parse the field manually
+            # Parse the field manually.
+            # Doing so with the standard library rather then webapp2 will correctly use temp files.
+            # This will read the entire form stream to disk before continuing.
             form = cgi.FieldStorage(fp=self.request.body_file, environ=fs_environ, keep_blank_values=True)
 
-            print 'ACCESS FILE ATTR'
+            # This will at most seek the temp file.
             fileitem = form['file']
-
-            print 'GET PROPS'
             filestream = fileitem.file
             filename = fileitem.filename
 
-            print 'File is ' + filename
-
-            print 'SETUP'
-
-            # wat = self.request.getfirst('file')
-
-            # for fieldname, fieldvalue in self.request.POST.iteritems():
-            #     if fieldname == 'file':
-            #         print 'File form field found.'
-            #         filename = fieldvalue.filename
-            #         filestream = fieldvalue.file
-
-            #         print filename + ' filename found'
-
-            #         break
-
-            #     elif fieldname == 'tags':
-            #         print 'TAG form field found.'
-            #         try:
-            #             tags = json.loads(fieldvalue)
-            #         except ValueError:
-            #             self.abort(400, 'non-JSON value in "tags" parameter')
-            #     elif fieldname == 'metadata':
-            #         print 'METADATA form field found.'
-            #         try:
-            #             metadata = json.loads(fieldvalue)
-            #         except ValueError:
-            #             self.abort(400, 'non-JSON value in "metadata" parameter')
             if filestream is None:
                 self.abort(400, 'multipart/form-data must contain a "file" field')
         else:
@@ -338,15 +299,10 @@ class Container(base.RequestHandler):
         if flavor not in ['data', 'attachment']:
             self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
 
-        print 'Getting down to biz'
-
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
             md5 = self.request.headers.get('Content-MD5')
             success, digest, _, duration = util.receive_stream_and_validate(filestream, filepath, md5)
-
-            print 'Read content'
-
 
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
