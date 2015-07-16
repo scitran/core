@@ -10,33 +10,30 @@ log = logging.getLogger('scitran.jobs')
 
 import base
 
-# TODO: what should this whitelist contain? protocol + FQDN?
-# ex. https://coronal.stanford.edu
-PROCESSOR_WHITELIST = [
-    'dockerhost',
-]
 
 JOB_STATES = [
-    'pending',      # created but not started
-    'queued',       # job claimed by a processor
-    'running',      # job running on a processor
-    'done',         # job completed successfully
-    'failed',       # some error occurred,
-    'paused',       # job paused.  can't think when this would be useful...
+    'pending',  # Job is queued
+    'running',  # Job has been handed to an engine and is being processed
+    'failed',   # Job has an expired heartbeat (orphaned) or has suffered an error
+    'complete', # Job has successfully completed
+
 ]
 
-# Jobs must now how they affect the various components of a file description
-# some "special" case things will reset state from 'orig' to 'pending'
-# but the usual case will be to append an item to the state list.
+JOB_STATES_ALLOWED_MUTATE = [
+    'pending',
+    'running',
+]
 
-# TODO: create job function should live here
-# where it can be editted with the route that consume and modify the jobs
+JOB_TRANSITIONS = [
+    "pending --> running",
+    "running --> failed",
+    "running --> complete",
+]
 
-# GET  /jobs full list of jobs, allow specifiers, status=
-# POST /jobs creates a new job. this will be used by webapp to add new jobs
-# GET  /jobs/<_id> get information about one job
-# PUT  /jobs/<_id> update informabout about one job
-# GET  /jobs/next, special route to get the 'next job'
+# TODO: json schema
+
+def validTransition(fromState, toState):
+    return (fromState + " --> " + tosState) in JOB_TRANSITIONS
 
 class Jobs(base.RequestHandler):
 
@@ -44,87 +41,62 @@ class Jobs(base.RequestHandler):
 
     def get(self):
         """
-        Return one Job that needs processing.
-
-        TODO: allow querying for group
-        TODO: allow querying for project
-        TODO: allow querying by other meta data. can this be generalized?
-
+        List all jobs. Not used by engine.
         """
-        # TODO: auth
         return list(self.app.db.jobs.find())
 
     def count(self):
-        """Return the total number of jobs."""
-        # no auth?
+        """Return the total number of jobs. Not used by engine."""
         return self.app.db.jobs.count()
 
-    def counts(self):
-        """Return more information about the jobs."""
-        counts = {
-            'total': self.app.db.jobs.count(),
-            'failed': self.app.db.jobs.find({'status': 'failed'}).count(),
-            'pending': self.app.db.jobs.find({'status': 'pending'}).count(),
-            'done': self.app.db.jobs.find({'status': 'done'}).count(),
-        }
-        return counts
-
     def next(self):
-        """Return the next job in the queue that matches the query parameters."""
-        # TODO: add ability to query on things like psd type or psd name
-        try:
-            query_params = self.request.json
-        except ValueError as e:
-            self.abort(400, str(e))
+        """
+        Atomically change a 'pending' job to 'running' and returns it. Updates timestamp.
+        Will return empty if there are no jobs to offer.
+        Engine will poll this endpoint whenever there are free processing slots.
+        """
 
-        query = {'status': 'pending'}
-        try:
-            query_params = self.request.json
-        except ValueError as e:
-            self.abort(400, str(e))
-
-        project_query = query_params.get('project')
-        group_query = query_params.get('group')
-        query = {'status': 'pending'}
-        if project_query:
-            query.update({'project': project_query})
-        if group_query:
-            query.update({'group': group_query})
-
-        # TODO: how to guarantee the 'oldest' jobs pending jobs are given out first
-        job_spec = self.app.db.jobs.find_and_modify(
-            query,
-            {'$set': {'status': 'queued', 'modified': datetime.datetime.now()}},
+        # REVIEW: is this atomic?
+        # REVIEW: semantics are not documented as to this mutation's behaviour when filter matches no docs.
+        return self.app.db.jobs.find_one_and_update(
+            {
+                'status': 'pending'
+            },
+            { '$set': {
+                'status': 'running',
+                'modified': datetime.datetime.now()}
+            },
             sort=[('modified', -1)],
-            new=True
+            return_document=ReturnDocument.AFTER
         )
-        return job_spec
-
 
 class Job(base.RequestHandler):
 
     """Provides /Jobs/<jid> routes."""
 
-    # TODO flesh out the job schema
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'User',
-        'type': 'object',
-        'properties': {
-            '_id': {
-                'title': 'Job ID',
-                'type': 'string',
-            },
-        },
-        'required': ['_id'],
-        'additionalProperties': True,
-    }
-
     def get(self, _id):
         return self.app.db.jobs.find_one({'_id': int(_id)})
 
     def put(self, _id):
-        """Update a single job."""
-        payload = self.request.json
-        # TODO: validate the json before updating the db
-        self.app.db.jobs.update({'_id': int(_id)}, {'$set': {'status': payload.get('status'), 'activity': payload.get('activity')}})
+        """
+        Update a job. Updates timestamp.
+        Enforces a valid state machine transition, if any.
+        Rejects any change to a job that is not currently in 'pending' or 'running' state.
+        """
+        mutation = self.request.json
+        job = self.app.db.jobs.find_one({'_id': int(_id)})
+
+        print 'MUTATION HAS ' + len(mutation) + ' FIELDS'
+
+        if job['state'] not in JOB_STATES_ALLOWED_MUTATE:
+            self.abort(404, 'Cannot mutate a job that is ' + job['state'] '.')
+
+        if 'state' in mutation and not validTransition(job['state'], mutation['state']):
+            self.abort(404, 'Mutating job from ' + job['state'] + ' to ' + mutation['state'] + ' not allowed.')
+
+        # Any modification must be a timestamp update
+        mutation['timestamp'] = datetime.datetime.now()
+
+        # REVIEW: is this atomic?
+        # As far as I can tell, update_one vs find_one_and_update differ only in what they return.
+        self.app.db.jobs.update_one(job, mutation)
