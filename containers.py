@@ -179,7 +179,7 @@ class Container(base.RequestHandler):
         return container, user_perm
 
     def _put(self, _id):
-        json_body = self.validate_json_body(_id, ['project'])
+        json_body = self.validate_json_body(['project'])
         self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
         self.update_db(_id, json_body)
         return json_body
@@ -191,7 +191,7 @@ class Container(base.RequestHandler):
             log.debug('deleting ' + container_path)
             shutil.rmtree(container_path)
 
-    def validate_json_body(self, _id, oid_keys=[]):
+    def validate_json_body(self, oid_keys=[]):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, self.put_schema)

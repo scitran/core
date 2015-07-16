@@ -191,7 +191,7 @@ class Session(containers.Container):
         """Update an existing Session."""
         # FIXME should use super(Session, self)._put(_id)
         _id = bson.ObjectId(sid)
-        json_body = self.validate_json_body(_id, ['project'])
+        json_body = self.validate_json_body(['project'])
         if 'subject_code' in json_body: # FIXME delete with subject is pulled out of session
             json_body['subject.code'] = json_body.pop('subject_code')
         if 'project' in json_body:

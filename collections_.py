@@ -256,7 +256,7 @@ class Collection(containers.Container):
     def put(self, cid):
         """Update an existing Collection."""
         _id = bson.ObjectId(cid)
-        json_body = self.validate_json_body(_id)
+        json_body = self.validate_json_body()
         self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
         contents = json_body.pop('contents', None)
         if json_body:
