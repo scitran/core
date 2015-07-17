@@ -113,11 +113,20 @@ class RequestHandler(webapp2.RequestHandler):
             del self.params['site']
             log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.params.mixed())))
             target_uri = target['api_uri'] + self.request.path.split('/api')[1]
-            r = requests.request(self.request.method, target_uri,
-                    params=self.params, data=self.request.body, headers=self.headers, cert=self.app.config['ssl_cert'])
+            r = requests.request(
+                    self.request.method,
+                    target_uri,
+                    stream=True,
+                    params=self.params,
+                    data=self.request.body_file,
+                    headers=self.headers,
+                    cert=self.app.config['ssl_cert'])
             if r.status_code != 200:
                 self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
-            self.response.write(r.content)
+            self.response.app_iter = r.iter_content(2**20)
+            for header in ['Content-' + h for h in 'Length', 'Type', 'Disposition']:
+                if header in r.headers:
+                    self.response.headers[header] = r.headers[header]
 
     def abort(self, code, *args, **kwargs):
         log.warning(str(code) + ' ' + '; '.join(args))
