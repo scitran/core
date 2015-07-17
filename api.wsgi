@@ -28,6 +28,7 @@ ap.add_argument('--demo', help='enable automatic user creation', action='store_t
 ap.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
 ap.add_argument('--central_uri', help='scitran central api', default='https://sdmc.scitran.io/api')
 ap.add_argument('--log_level', help='log level [info]', default='info')
+ap.add_argument('--secret', help='Shared secret', required=True)
 args = ap.parse_args()
 
 # HACK to allow setting the --site_name in the same way as api.py
@@ -42,6 +43,8 @@ log = logging.getLogger('scitran')
 # configure uwsgi application
 application = api.app
 application.config = vars(args)
+
+application.secret = args.secret
 
 if not os.path.exists(application.config['data_path']):
     os.makedirs(application.config['data_path'])
