@@ -25,7 +25,11 @@ class RequestHandler(webapp2.RequestHandler):
         self.source_site = None
         self.drone_request = False
         identity = {}
+
         access_token = self.request.headers.get('Authorization', None)
+        drone_auth = self.request.headers.get('X-SciTran-Auth', None)
+
+        # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:
             token_request_time = datetime.datetime.now()
             cached_token = self.app.db.authtokens.find_one({'_id': access_token})
@@ -44,24 +48,33 @@ class RequestHandler(webapp2.RequestHandler):
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
+
+        # 'Debug' (insecure) setting: allow request to act as requested user
         elif self.debug and self.request.get('user'):
             self.uid = self.request.get('user')
-        elif self.request.user_agent.startswith('SciTran'):
-            if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
-                self.abort(401, 'no valid SSL client certificate')
-            if self.request.user_agent.startswith('SciTran Instance'):
+
+        # Drone shared secret authentication
+        elif drone_auth != None and self.request.user_agent.startswith('SciTran Drone '):
+            if drone_auth == "change-me":
+                log.info('Drone ' + self.request.user_agent.replace('SciTran Drone ', '') + ' request accepted')
+                self.drone_request = True
+                self.public_request = False
+            else:
+                self.abort(401, 'invalid shared secret')
+
+        # Cross-site authentication
+        elif self.request.user_agent.startswith('SciTran Instance'):
+            if self.request.environ['SSL_CLIENT_VERIFY'] == 'SUCCESS':
                 self.uid = self.request.headers.get('X-User')
                 self.source_site = self.request.headers.get('X-Site')
                 remote_instance = self.request.user_agent.replace('SciTran Instance', '').strip()
                 if not self.app.db.sites.find_one({'_id': remote_instance}):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
-                drone_type, drone_id = self.request.user_agent.replace('SciTran', '').strip().split()
-                if not self.app.db.drones.find_one({'_id': drone_id}):
-                    self.abort(402, drone_id + ' is not an authorized drone')
-                self.drone_request = True
+                self.abort(401, 'no valid SSL client certificate')
+
         self.public_request = not bool(self.uid)
-        log.debug('public request: %s' % str(self.public_request))
+
         if self.drone_request and not self.source_site:  # engine request
             self.public_request = False
             self.superuser_request = True
@@ -84,6 +97,8 @@ class RequestHandler(webapp2.RequestHandler):
                 else:
                     self.abort(403, 'user ' + self.uid + ' does not exist')
             self.superuser_request = user.get('root') and user.get('wheel')
+
+        log.debug('public request: %s' % str(self.public_request))
 
     def dispatch(self):
         """dispatching and request forwarding"""
