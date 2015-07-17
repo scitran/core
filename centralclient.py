@@ -13,7 +13,7 @@ import logging
 import logging.config
 logging.basicConfig()
 log = logging.getLogger('centralclient')
-logging.getLogger('requests').setLevel(logging.WARNING)  # silence Requests library logging
+logging.getLogger('urllib3').setLevel(logging.WARNING)  # silence Requests library logging
 
 import re
 import json
