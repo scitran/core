@@ -2,6 +2,7 @@
 
 import logging
 log = logging.getLogger('scitran.api')
+logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown library logging
 
 import os
 import re

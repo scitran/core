@@ -23,11 +23,10 @@ class RequestHandler(webapp2.RequestHandler):
         # set uid, source_site, public_request, and superuser
         self.uid = None
         self.source_site = None
-        self.drone_request = False
-        identity = {}
+        drone_request = False
 
         access_token = self.request.headers.get('Authorization', None)
-        drone_auth = self.request.headers.get('X-SciTran-Auth', None)
+        drone_secret = self.request.headers.get('X-SciTran-Auth', None)
 
         # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:
@@ -54,16 +53,14 @@ class RequestHandler(webapp2.RequestHandler):
             self.uid = self.request.get('user')
 
         # Drone shared secret authentication
-        elif drone_auth != None and self.request.user_agent.startswith('SciTran Drone '):
-            if drone_auth == self.app.secret:
-                log.info('Drone ' + self.request.user_agent.replace('SciTran Drone ', '') + ' request accepted')
-                self.drone_request = True
-                self.public_request = False
-            else:
-                self.abort(401, 'invalid shared secret')
+        elif drone_secret is not None and self.request.user_agent.startswith('SciTran Drone '):
+            if drone_secret != self.app.config['secret']:
+                self.abort(401, 'invalid drone secret')
+            log.info('drone ' + self.request.user_agent.replace('SciTran Drone ', '') + ' request accepted')
+            drone_request = True
 
         # Cross-site authentication
-        elif self.request.user_agent.startswith('SciTran Instance'):
+        elif self.request.user_agent.startswith('SciTran Instance '):
             if self.request.environ['SSL_CLIENT_VERIFY'] == 'SUCCESS':
                 self.uid = self.request.headers.get('X-User')
                 self.source_site = self.request.headers.get('X-Site')
@@ -73,32 +70,17 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.abort(401, 'no valid SSL client certificate')
 
-        self.public_request = not bool(self.uid)
+        self.public_request = not drone_request and not self.uid
 
-        if self.drone_request and not self.source_site:  # engine request
-            self.public_request = False
-            self.superuser_request = True
-        elif self.public_request or self.source_site:
+        if self.public_request or self.source_site:
             self.superuser_request = False
+        elif drone_request:
+            self.superuser_request = True
         else:
             user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
             if not user:
-                if self.app.config['demo']:
-                    self.app.db.users.insert({
-                        '_id': self.uid,
-                        'email': self.uid,
-                        'email_hash': hashlib.md5(self.uid).hexdigest(),
-                        'firstname': identity.get('given_name', 'Firstname'),
-                        'lastname': identity.get('family_name', 'Lastname'),
-                        'wheel': True,
-                        'root': True,
-                    })
-                    user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
-                else:
-                    self.abort(403, 'user ' + self.uid + ' does not exist')
+                self.abort(403, 'user ' + self.uid + ' does not exist')
             self.superuser_request = user.get('root') and user.get('wheel')
-
-        log.debug('public request: %s' % str(self.public_request))
 
     def dispatch(self):
         """dispatching and request forwarding"""
