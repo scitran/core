@@ -266,34 +266,46 @@ class Container(base.RequestHandler):
 
     def _put_file(self, _id, container, filename):
         """Receive a targeted processor or user upload."""
-        #if not self.uid and not self.drone_request:
-        #    self.abort(402, 'uploads must be from an authorized user or drone')
         tags = []
         metadata = {}
         if self.request.content_type == 'multipart/form-data':
             filestream = None
-
-            # Required for FieldStorage to parse the form correctly.
-            # Unmodified code copied for example usage in webob (IRRC).
+            # use cgi lib to parse multipart data without loading all into memory; use tempfile instead
+            # FIXME avoid using tempfile; processs incoming stream on the fly
             fs_environ = self.request.environ.copy()
             fs_environ.setdefault('CONTENT_LENGTH', '0')
             fs_environ['QUERY_STRING'] = ''
-
-            # Parse the field manually.
-            # Doing so with the standard library rather then webapp2 will correctly use temp files.
-            # This will read the entire form stream to disk before continuing.
             form = cgi.FieldStorage(fp=self.request.body_file, environ=fs_environ, keep_blank_values=True)
-
-            # This will at most seek the temp file.
-            fileitem = form['file']
-            filestream = fileitem.file
-            filename = fileitem.filename
-
+            for fieldname in form:
+                field = form[fieldname]
+                if fieldname == 'file':
+                    filestream = field.file
+                    filename = field.filename
+                elif fieldname == 'tags':
+                    try:
+                        tags = json.loads(field.value)
+                    except ValueError:
+                        self.abort(400, 'non-JSON value in "tags" parameter')
+                elif fieldname == 'metadata':
+                    try:
+                        metadata = json.loads(field.value)
+                    except ValueError:
+                        self.abort(400, 'non-JSON value in "metadata" parameter')
             if filestream is None:
                 self.abort(400, 'multipart/form-data must contain a "file" field')
+        elif filename is None:
+            self.abort(400, 'Request must contain a filename parameter.')
         else:
             if 'Content-MD5' not in self.request.headers:
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+            try:
+                tags = json.loads(self.request.get('tags', '[]'))
+            except ValueError:
+                self.abort(400, 'invalid "tags" parameter')
+            try:
+                metadata = json.loads(self.request.get('metadata', '{}'))
+            except ValueError:
+                self.abort(400, 'invalid "metadata" parameter')
             filestream = self.request.body_file
         flavor = self.request.GET.get('flavor', 'data') # TODO: flavor should go away
         if flavor not in ['data', 'attachment']:
