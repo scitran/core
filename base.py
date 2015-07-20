@@ -54,7 +54,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         # Drone shared secret authentication
         elif drone_secret is not None and self.request.user_agent.startswith('SciTran Drone '):
-            if drone_secret != self.app.config['secret']:
+            if drone_secret != self.app.config['drone_secret']:
                 self.abort(401, 'invalid drone secret')
             log.info('drone ' + self.request.user_agent.replace('SciTran Drone ', '') + ' request accepted')
             drone_request = True
