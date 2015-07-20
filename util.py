@@ -321,9 +321,7 @@ def receive_stream_and_validate(stream, filepath, received_md5):
     filesize = 0
     start_time = datetime.datetime.utcnow()
     with open(filepath, 'wb') as fd:
-        print 'Hashing uploaded file...'
         for chunk in iter(lambda: stream.read(2**20), ''):
-            # print 'received ' + hrsize(filesize)
             md5.update(chunk)
             sha1.update(chunk)
             filesize += len(chunk)

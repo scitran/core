@@ -138,9 +138,9 @@ class User(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User info')
         projection = []
-        if self.request.GET.get('remotes', '') in ('1', 'true'):
+        if self.request.GET.get('remotes', '').lower() in ('1', 'true'):
             projection += ['remotes']
-        if self.request.GET.get('status', '') in ('1', 'true'):
+        if self.request.GET.get('status', '').lower() in ('1', 'true'):
             projection += ['status']
         user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:

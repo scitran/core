@@ -234,12 +234,12 @@ class Collection(containers.Container):
         self.json_schema = COLLECTION_SCHEMA
 
     def schema(self):
-        method =self.request.GET.get('method', '').lower()
-        if method == 'get':
+        method =self.request.GET.get('method', '').upper()
+        if method == 'GET':
             return COLLECTION_SCHEMA
-        elif method == 'post':
+        elif method == 'POST':
             return COLLECTION_POST_SCHEMA
-        elif method == 'put':
+        elif method == 'PUT':
             return COLLECTION_PUT_SCHEMA
         else:
             self.abort(404, 'no schema for method ' + method)
@@ -335,7 +335,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if not self.app.db.collections.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
         query = {'collections': _id}
-        sid = self.request.GET.get('session', '')
+        sid = self.request.GET.get('session')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':

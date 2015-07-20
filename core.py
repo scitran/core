@@ -209,9 +209,7 @@ class Core(base.RequestHandler):
         #    self.abort(402, 'uploads must be from an authorized user or drone')
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
-
         filename = self.request.headers.get('Content-Disposition', '').partition('filename=')[2].strip('"')
-        print '+++++++++++++++ content type', self.request.content_type
         if not filename:
             self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
@@ -256,6 +254,7 @@ class Core(base.RequestHandler):
 
         filename = self.request.GET.get('filename')
         ticket_id = self.request.GET.get('ticket')
+
         if not ticket_id:
             if filename != 'METADATA.json':
                 self.abort(400, 'first file must be METADATA.json')
@@ -289,7 +288,7 @@ class Core(base.RequestHandler):
             self.abort(404, 'no such ticket')
         arcpath = os.path.join(self.app.config['upload_path'], ticket_id + '.tar')
 
-        if self.request.GET.get('complete', '').lower() not in ['1', 'true']:
+        if self.request.GET.get('complete', '').lower() not in ('1', 'true'):
             if 'Content-MD5' not in self.request.headers:
                 self.app.db.uploads.remove({'_id': ticket_id}) # delete ticket
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
@@ -384,7 +383,7 @@ class Core(base.RequestHandler):
         stream.close()
 
     def download(self):
-        ticket_id = self.request.GET.get('ticket', '')
+        ticket_id = self.request.GET.get('ticket')
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
