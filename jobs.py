@@ -107,10 +107,16 @@ class Jobs(base.RequestHandler):
         """
         List all jobs. Not used by engine.
         """
+        if not self.superuser_request:
+            self.abort(401, 'Request requires superuser')
+
         return list(self.app.db.jobs.find())
 
     def count(self):
         """Return the total number of jobs. Not used by engine."""
+        if not self.superuser_request:
+            self.abort(401, 'Request requires superuser')
+
         return self.app.db.jobs.count()
 
     def next(self):
@@ -119,6 +125,8 @@ class Jobs(base.RequestHandler):
         Will return empty if there are no jobs to offer.
         Engine will poll this endpoint whenever there are free processing slots.
         """
+        if not self.superuser_request:
+            self.abort(401, 'Request requires superuser')
 
         # algorithms.createJob(self.app.db, 'dcm2nii', 'session', '55a58db95f22580812902b9e')
 
@@ -146,6 +154,9 @@ class Job(base.RequestHandler):
     """Provides /Jobs/<jid> routes."""
 
     def get(self, _id):
+        if not self.superuser_request:
+            self.abort(401, 'Request requires superuser')
+
         return self.app.db.jobs.find_one({'_id': int(_id)})
 
     def put(self, _id):
@@ -154,6 +165,9 @@ class Job(base.RequestHandler):
         Enforces a valid state machine transition, if any.
         Rejects any change to a job that is not currently in 'pending' or 'running' state.
         """
+        if not self.superuser_request:
+            self.abort(401, 'Request requires superuser')
+
         mutation = self.request.json
         job = self.app.db.jobs.find_one({'_id': int(_id)})
 
