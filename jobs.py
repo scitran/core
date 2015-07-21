@@ -7,10 +7,13 @@ API request handlers for process-job-handling.
 import logging
 import datetime
 log = logging.getLogger('scitran.jobs')
+
+import bson
 import pymongo
 
 import base
 import algorithms
+import util
 
 JOB_STATES = [
     'pending',  # Job is queued
@@ -99,6 +102,13 @@ def createJob(db, jobType, containerType, containerID):
     log.info('Running %s as job %s to process %s %s' % (jobType, str(id), containerType, containerID))
     return id
 
+def serializeJob(job):
+    if job:
+        job['_id'] = str(job['_id'])
+        job['created'] = util.format_timestamp(job['created'])
+        job['modified'] = util.format_timestamp(job['modified'])
+
+    return job
 
 class Jobs(base.RequestHandler):
 
@@ -111,7 +121,11 @@ class Jobs(base.RequestHandler):
         if not self.superuser_request:
             self.abort(401, 'Request requires superuser')
 
-        return list(self.app.db.jobs.find())
+        results = list(self.app.db.jobs.find())
+        for result in results:
+            result = serializeJob(result)
+
+        return results
 
     def count(self):
         """Return the total number of jobs. Not used by engine."""
@@ -129,7 +143,7 @@ class Jobs(base.RequestHandler):
         if not self.superuser_request:
             self.abort(401, 'Request requires superuser')
 
-        # algorithms.createJob(self.app.db, 'dcm2nii', 'session', '55a58db95f22580812902b9e')
+        # createJob(self.app.db, 'dcm2nii', 'session', '55a58db95f22580812902b9e')
 
         # REVIEW: is this atomic?
         # REVIEW: semantics are not documented as to this mutation's behaviour when filter matches no docs.
@@ -148,7 +162,7 @@ class Jobs(base.RequestHandler):
         if result == None:
             self.abort(400, 'No jobs to process')
 
-        return result
+        return serializeJob(result)
 
 class Job(base.RequestHandler):
 
@@ -158,7 +172,8 @@ class Job(base.RequestHandler):
         if not self.superuser_request:
             self.abort(401, 'Request requires superuser')
 
-        return self.app.db.jobs.find_one({'_id': int(_id)})
+        result = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
+        return serializeJob(result)
 
     def put(self, _id):
         """
@@ -170,7 +185,7 @@ class Job(base.RequestHandler):
             self.abort(401, 'Request requires superuser')
 
         mutation = self.request.json
-        job = self.app.db.jobs.find_one({'_id': int(_id)})
+        job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
 
         print 'MUTATION HAS ' + len(mutation) + ' FIELDS'
 
