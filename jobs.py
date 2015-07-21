@@ -36,19 +36,20 @@ JOB_TRANSITIONS = [
 def validTransition(fromState, toState):
     return (fromState + " --> " + tosState) in JOB_TRANSITIONS
 
-
-
-# Creating a Job From Uploads
-
-# The current method of util.create.job() will be removed.
-# New way: the upload API handler marks the file as dirty, for later processing.
-
 def createJob(db, jobType, containerType, containerID):
     """
-    @param db             Reference to the database instance
-    @param jobType        Human-friendly name of the algorithm
-    @param containerType  Type of container ('acquisition', 'session', etc)
-    @param containerID    ID of the container ('2', etc)
+    Creates a job.
+
+    Parameters
+    ----------
+    db: pymongo.database.Database
+        Reference to the database instance
+    jobType: string
+        Human-friendly name of the algorithm
+    containerType: string
+        Type of container ('acquisition', 'session', etc)
+    containerID: string
+        ID of the container ('2', etc)
     """
 
     if jobType != 'dcm2nii':
