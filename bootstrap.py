@@ -243,17 +243,6 @@ appsinit_parser.add_argument('app_tgz', help='filesystem path to tgz of app buil
 appsinit_parser.add_argument('apps_path', help='filesystem path to loaded apps')
 appsinit_parser.set_defaults(func=appsinit)
 
-jobsinit_parser = subparsers.add_parser(
-        name='jobsinit',
-        help='initalize jobs collection from existing acquisitions',
-        description=dbinit_desc,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        )
-jobsinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing jobs')
-jobsinit_parser.add_argument('db_uri', help='DB URI')
-jobsinit_parser.add_argument('data_path', help='filesystem path to sorted data')
-jobsinit_parser.set_defaults(func=jobsinit)
-
 sort_parser = subparsers.add_parser(
         name='sort',
         help='sort all files in a dicrectory tree',

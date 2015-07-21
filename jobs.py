@@ -5,14 +5,13 @@ API request handlers for process-job-handling.
 """
 
 import logging
-import datetime
 log = logging.getLogger('scitran.jobs')
 
 import bson
 import pymongo
+import datetime
 
 import base
-import algorithms
 import util
 
 JOB_STATES = [

@@ -12,7 +12,7 @@ import uuid
 import shutil
 import difflib
 import hashlib
-import tarfile
+import zipfile
 import datetime
 import mimetypes
 import dateutil.parser
@@ -54,7 +54,6 @@ def parse_file(filepath, digest):
             'filesize': os.path.getsize(filepath),
             'filetype': dataset.nims_file_type,
             'filehash': digest,
-            'datahash': None, #dataset.nims_hash, TODO: datasets should be able to hash themselves (but not here)
             'modality': dataset.nims_file_domain,
             'datatypes': dataset.nims_file_kinds,
             'flavor': 'data',
@@ -91,13 +90,26 @@ def commit_file(dbc, _id, datainfo, filepath, data_path):
     if _id is None:
         _id = _update_db(dbc.database, datainfo)
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
+    target_filepath = container_path + '/' + fileinfo['filename']
     if not os.path.exists(container_path):
         os.makedirs(container_path)
-    r = dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename'], 'dirty': True}, {'$set': {'files.$': fileinfo}})
-    #TODO figure out if file was actually updated and return that fact
-    if r.matched_count != 1:
-        dbc.update({'_id': _id}, {'$push': {'files': fileinfo}})
-    shutil.move(filepath, container_path + '/' + fileinfo['filename'])
+    container = dbc.find_one_and_update({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$': fileinfo}})
+    if container: # file already exists
+        for f in container['files']:
+            if f['filename'] == fileinfo['filename']:
+                if identical_content(target_filepath, f['filehash'], filepath, fileinfo['filehash']): # existing file has identical content
+                    log.debug('Dropping    %s (identical)' % filename)
+                    os.remove(filepath)
+                else: # existing file has different content
+                    log.debug('Replacing   %s' % filename)
+                    shutil.move(filepath, target_filepath)
+                    dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$.dirty': True}})
+                break
+    else:         # file does not exist
+        log.debug('Adding      %s' % filename)
+        fileinfo['dirty'] = True
+        shutil.move(filepath, target_filepath)
+        dbc.update_one({'_id': _id}, {'$push': {'files': fileinfo}})
     log.debug('Done        %s' % filename)
 
 
@@ -169,25 +181,23 @@ def _entity_metadata(dataset, properties, metadata={}, parent_key=''):
                     metadata[parent_key + key] = value
     return metadata
 
-def insert_app(db, fp, apps_path, app_meta=None):
-    """Validate and insert an application tar into the filesystem and database."""
-    # download, md-5 check, and json validation are handled elsewhere
-    if not app_meta:
-        with tarfile.open(fp) as tf:
-            for ti in tf:
-                if ti.name.endswith('description.json'):
-                    app_meta = json.load(tf.extractfile(ti))
-                    break
 
-    name, version = app_meta.get('_id').split(':')
-    app_dir = os.path.join(apps_path, name)
-    if not os.path.exists(app_dir):
-        os.makedirs(app_dir)
-    app_tar = os.path.join(app_dir, '%s-%s.tar' % (name, version))
-
-    app_meta.update({'asset_url': 'apps/%s' % app_meta.get('_id')})
-    db.apps.update({'_id': app_meta.get('_id')}, app_meta, upsert=True)
-    shutil.move(fp, app_tar)
+def identical_content(filepath1, digest1, filepath2, digest2):
+    if zipfile.is_zipfile(filepath1) and zipfile.is_zipfile(filepath2):
+        with zipfile.ZipFile(filepath1) as zf1, zipfile.ZipFile(filepath2) as zf2:
+            zf1_infolist = sorted(zf1.infolist(), key=lambda zi: zi.filename)
+            zf2_infolist = sorted(zf2.infolist(), key=lambda zi: zi.filename)
+            if zf1.comment != zf2.comment:
+                return False
+            if len(zf1_infolist) != len(zf2_infolist):
+                return False
+            for zii, zij in zip(zf1_infolist, zf2_infolist):
+                if zii.CRC != zij.CRC:
+                    return False
+            else:
+                return True
+    else:
+        return digest1 == digest2
 
 
 def hrsize(size):
