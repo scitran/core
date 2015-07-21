@@ -225,7 +225,6 @@ class Core(base.RequestHandler):
                 util.quarantine_file(filepath, self.app.config['quarantine_path'])
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
             util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'])
-            util.create_job(self.app.db.acquisitions, datainfo) # FIXME we should only mark files as new and let engine take it from there
             throughput = filesize / duration.total_seconds()
             log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
 

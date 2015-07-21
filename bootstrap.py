@@ -113,34 +113,6 @@ example:
 ./scripts/bootstrap.py appsinit mongodb://cnifs.stanford.edu/nims?repliaceSet=cni  /path/to/app/dir /path/to/apps/storage
 """
 
-# TODO: this should use util.create_job to eliminate duplicate code
-# TODO: update util.create_job to be useable from this bootstrap script.
-def jobsinit(args):
-    """Create a job entry for every acquisition's orig dataset."""
-    db_client = connect_db(args.db_uri)
-    db = db_client.get_default_database()
-
-    if args.force:
-        db.drop_collection('jobs')
-
-    # find all "orig" files, and create jobs for them
-    for a in db.acquisitions.find({'files.filetype': 'dicom'}, ['uid', 'files.$']):
-        aid = str(a['_id'])
-        fileinfo = a['files'][0]
-        print aid
-        fp = os.path.join(args.data_path, aid[-3:], aid, fileinfo['filename'])
-        if not os.path.exists(fp):
-            print ('%s does not exist. no job created.' % fp)
-            continue
-        datainfo = {'acquisition_id': a['uid'], 'fileinfo': fileinfo}
-        util.create_job(db.acquisitions, datainfo)
-
-jobinit_desc = """
-example:
-    ./scripts/bootstrap.py jobsinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni
-"""
-
-
 def sort(args):
     logging.basicConfig(level=logging.WARNING)
     quarantine_path = os.path.join(args.sort_path, 'quarantine')
@@ -174,7 +146,6 @@ def sort(args):
             print 'Quarantining %s (unparsable)' % os.path.basename(filepath)
         else:
             util.commit_file(db.acquisitions, None, datainfo, filepath, args.sort_path)
-            util.create_job(db.acquisitions, datainfo) # FIXME we should only mark files as new and let engine take it from there
 
 sort_desc = """
 example:
