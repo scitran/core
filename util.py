@@ -93,7 +93,7 @@ def commit_file(dbc, _id, datainfo, filepath, data_path):
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
     if not os.path.exists(container_path):
         os.makedirs(container_path)
-    r = dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$': fileinfo}})
+    r = dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename'], 'dirty': True}, {'$set': {'files.$': fileinfo}})
     #TODO figure out if file was actually updated and return that fact
     if r.matched_count != 1:
         dbc.update({'_id': _id}, {'$push': {'files': fileinfo}})
