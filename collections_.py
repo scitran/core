@@ -205,9 +205,9 @@ class Collections(containers.ContainerList):
 
     def get(self):
         """Return the list of Collections."""
-        query = {'curator': self.request.get('curator')} if self.request.get('curator') else {}
+        query = {'curator': self.request.GET.get('curator')} if self.request.GET.get('curator') else {}
         projection = ['curator', 'name', 'notes', 'timestamp', 'timezone']
-        collections = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
+        collections = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])
@@ -234,12 +234,12 @@ class Collection(containers.Container):
         self.json_schema = COLLECTION_SCHEMA
 
     def schema(self):
-        method =self.request.get('method').lower()
-        if method == 'get':
+        method =self.request.GET.get('method', '').upper()
+        if method == 'GET':
             return COLLECTION_SCHEMA
-        elif method == 'post':
+        elif method == 'POST':
             return COLLECTION_POST_SCHEMA
-        elif method == 'put':
+        elif method == 'PUT':
             return COLLECTION_PUT_SCHEMA
         else:
             self.abort(404, 'no schema for method ' + method)
@@ -312,8 +312,8 @@ class CollectionSessions(sessions.Sessions):
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
-                sess['details'] = self.uri_for('session', sid, _full=True) + '?user=' + self.request.get('user')
-                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.get('user'))
+                sess['details'] = self.uri_for('session', sid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.GET.get('user', ''))
         return sessions
 
     def put(self):
@@ -335,7 +335,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if not self.app.db.collections.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
         query = {'collections': _id}
-        sid = self.request.get('session')
+        sid = self.request.GET.get('session')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
@@ -350,7 +350,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
-                acq['details'] = self.uri_for('acquisition', aid, _full=True) + '?user=' + self.request.get('user')
+                acq['details'] = self.uri_for('acquisition', aid, _full=True) + '?user=' + self.request.GET.get('user', '')
         return acquisitions
 
     def put(self):

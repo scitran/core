@@ -119,7 +119,7 @@ class Sessions(containers.ContainerList):
         else:
             query = {}
         projection = ['label', 'subject_code', 'subject.code', 'notes', 'project', 'group', 'timestamp', 'timezone']
-        sessions = self._get(query, projection, self.request.get('admin').lower() in ('1', 'true'))
+        sessions = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
         for sess in sessions:
             sess['project'] = str(sess['project'])
             if 'subject_code' not in sess:
@@ -169,7 +169,7 @@ class Session(containers.Container):
         self.dbc = self.app.db.sessions
 
     def schema(self, *args, **kwargs):
-        method =self.request.get('method').lower()
+        method =self.request.GET.get('method', '').lower()
         if method == 'put':
             return SESSION_PUT_SCHEMA
         return super(Session, self).schema(scitran.data.medimg.medimg.MedImgReader.session_properties)

@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import os
+import cgi
 import bson
 import json
 import shutil
@@ -151,7 +152,7 @@ class Container(base.RequestHandler):
             self.abort(404, 'no such ' + dbc_name)
         user_perm = util.user_perm(container['permissions'], self.uid, self.source_site)
         if self.public_request:
-            ticket_id = self.request.get('ticket')
+            ticket_id = self.request.GET.get('ticket')
             if ticket_id:
                 ticket = self.app.db.downloads.find_one({'_id': ticket_id})
                 if not ticket: # FIXME need better security
@@ -168,7 +169,7 @@ class Container(base.RequestHandler):
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + dbc_name)
             if user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = [user_perm]
-        if self.request.get('paths').lower() in ('1', 'true'):
+        if self.request.GET.get('paths', '').lower() in ('1', 'true'):
             for fileinfo in container['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         container['_id'] = str(container['_id'])
@@ -213,7 +214,7 @@ class Container(base.RequestHandler):
                 note['timestamp'] = datetime.datetime.utcnow()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
-    def file(self, cid, filename):
+    def file(self, cid, filename=None):
         _id = bson.ObjectId(cid)
         if self.request.method == 'GET':
             container, _ = self._get(_id, 'ro', filename)
@@ -242,7 +243,7 @@ class Container(base.RequestHandler):
         if self.request.method == 'GET':
             self.response.app_iter = open(filepath, 'rb')
             self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
-            if self.request.get('view').lower() in ['1', 'true']:
+            if self.request.GET.get('view', '').lower() in ('1', 'true'):
                 self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
@@ -265,24 +266,56 @@ class Container(base.RequestHandler):
 
     def _put_file(self, _id, container, filename):
         """Receive a targeted processor or user upload."""
-        #if not self.uid and not self.drone_request:
-        #    self.abort(402, 'uploads must be from an authorized user or drone')
-        if 'Content-MD5' not in self.request.headers:
-            self.abort(400, 'Request must contain a valid "Content-MD5" header.')
-        flavor = self.request.get('flavor', 'data')
-        try:
-            tags = json.loads(self.request.get('tags', '[]'))
-        except ValueError:
-            self.abort(400, 'invalid "tags" parameter')
-        try:
-            metadata = json.loads(self.request.get('metadata', '{}'))
-        except ValueError:
-            self.abort(400, 'invalid "metadata" parameter')
+        tags = []
+        metadata = {}
+        if self.request.content_type == 'multipart/form-data':
+            filestream = None
+            # use cgi lib to parse multipart data without loading all into memory; use tempfile instead
+            # FIXME avoid using tempfile; processs incoming stream on the fly
+            fs_environ = self.request.environ.copy()
+            fs_environ.setdefault('CONTENT_LENGTH', '0')
+            fs_environ['QUERY_STRING'] = ''
+            form = cgi.FieldStorage(fp=self.request.body_file, environ=fs_environ, keep_blank_values=True)
+            for fieldname in form:
+                field = form[fieldname]
+                if fieldname == 'file':
+                    filestream = field.file
+                    filename = field.filename
+                elif fieldname == 'tags':
+                    try:
+                        tags = json.loads(field.value)
+                    except ValueError:
+                        self.abort(400, 'non-JSON value in "tags" parameter')
+                elif fieldname == 'metadata':
+                    try:
+                        metadata = json.loads(field.value)
+                    except ValueError:
+                        self.abort(400, 'non-JSON value in "metadata" parameter')
+            if filestream is None:
+                self.abort(400, 'multipart/form-data must contain a "file" field')
+        elif filename is None:
+            self.abort(400, 'Request must contain a filename parameter.')
+        else:
+            if 'Content-MD5' not in self.request.headers:
+                self.abort(400, 'Request must contain a valid "Content-MD5" header.')
+            try:
+                tags = json.loads(self.request.get('tags', '[]'))
+            except ValueError:
+                self.abort(400, 'invalid "tags" parameter')
+            try:
+                metadata = json.loads(self.request.get('metadata', '{}'))
+            except ValueError:
+                self.abort(400, 'invalid "metadata" parameter')
+            filestream = self.request.body_file
+        flavor = self.request.GET.get('flavor', 'data') # TODO: flavor should go away
         if flavor not in ['data', 'attachment']:
             self.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
+
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             filepath = os.path.join(tempdir_path, filename)
-            success, sha1sum = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
+            md5 = self.request.headers.get('Content-MD5')
+            success, digest, _, duration = util.receive_stream_and_validate(filestream, filepath, md5)
+
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             filesize = os.path.getsize(filepath)
@@ -292,7 +325,7 @@ class Container(base.RequestHandler):
                     'fileinfo': {
                         'filename': filename,
                         'filesize': filesize,
-                        'filehash': sha1sum,
+                        'filehash': digest,
                         'filetype': filetype,
                         'flavor': flavor,
                         'mimetype': mimetype,
@@ -300,7 +333,8 @@ class Container(base.RequestHandler):
                         'metadata': metadata,
                         },
                     }
-            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(filesize), self.request.client_addr))
+            throughput = filesize / duration.total_seconds()
+            log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
             util.commit_file(self.dbc, _id, datainfo, filepath, self.app.config['data_path'])
 
     def get_tile(self, cid):
@@ -316,9 +350,9 @@ class Container(base.RequestHandler):
             self.abort(404, 'montage zip not found')
         fn = montage_info['filename']
         fp = os.path.join(self.app.config['data_path'], cid[-3:], cid, fn)
-        z = self.request.get('z')
-        x = self.request.get('x')
-        y = self.request.get('y')
+        z = self.request.GET.get('z')
+        x = self.request.GET.get('x')
+        y = self.request.GET.get('y')
         if not (z and x and y):
             return util.get_info(fp)
         else:

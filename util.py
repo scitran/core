@@ -274,10 +274,10 @@ def hrsize(size):
     for suffix in 'KMGTPEZY':
         size /= 1024.
         if size < 10.:
-            return '%.1f%s' % (size, suffix)
+            return '%.1f%sB' % (size, suffix)
         if size < 1000.:
-            return '%.0f%s' % (size, suffix)
-    return '%.0f%s' % (size, 'Y')
+            return '%.0f%sB' % (size, suffix)
+    return '%.0f%sB' % (size, 'Y')
 
 
 def mongo_dict(d):
@@ -315,15 +315,19 @@ def download_ticket(type_, target, filename, size):
             }
 
 
-def receive_stream_and_validate(stream, filepath, valid_md5):
+def receive_stream_and_validate(stream, filepath, received_md5):
     md5 = hashlib.md5()
     sha1 = hashlib.sha1()
+    filesize = 0
+    start_time = datetime.datetime.utcnow()
     with open(filepath, 'wb') as fd:
         for chunk in iter(lambda: stream.read(2**20), ''):
             md5.update(chunk)
             sha1.update(chunk)
+            filesize += len(chunk)
             fd.write(chunk)
-    return (md5.hexdigest() == valid_md5), sha1.hexdigest()
+    duration = datetime.datetime.utcnow() - start_time
+    return (md5.hexdigest() == received_md5) if received_md5 is not None else True, sha1.hexdigest(), filesize, duration
 
 
 def guess_mimetype(filepath):
