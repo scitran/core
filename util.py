@@ -82,7 +82,7 @@ def quarantine_file(filepath, quarantine_path):
     shutil.move(filepath, q_path)
 
 
-def commit_file(dbc, _id, datainfo, filepath, data_path):
+def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
     fileinfo = datainfo['fileinfo']
@@ -97,20 +97,26 @@ def commit_file(dbc, _id, datainfo, filepath, data_path):
     if container: # file already exists
         for f in container['files']:
             if f['filename'] == fileinfo['filename']:
-                if identical_content(target_filepath, f['filehash'], filepath, fileinfo['filehash']): # existing file has identical content
+                if not force:
+                    updated = False
+                elif identical_content(target_filepath, f['filehash'], filepath, fileinfo['filehash']): # existing file has identical content
                     log.debug('Dropping    %s (identical)' % filename)
                     os.remove(filepath)
+                    updated = None
                 else: # existing file has different content
                     log.debug('Replacing   %s' % filename)
                     shutil.move(filepath, target_filepath)
                     dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$.dirty': True}})
+                    updated = True
                 break
     else:         # file does not exist
         log.debug('Adding      %s' % filename)
         fileinfo['dirty'] = True
         shutil.move(filepath, target_filepath)
         dbc.update_one({'_id': _id}, {'$push': {'files': fileinfo}})
+        updated = True
     log.debug('Done        %s' % filename)
+    return updated
 
 
 def _update_db(db, datainfo):
