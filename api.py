@@ -39,7 +39,7 @@ routes = [
         webapp2.Route(r'/<:[^/]+>/projects',                        projects.Projects, name='g_projects'),
         webapp2.Route(r'/<gid:[^/]+>/sessions',                     sessions.Sessions, name='g_sessions', methods=['GET']),
     ]),
-    webapp2.Route(r'/api/projects',                                 projects.Projects, name='projects'),
+    webapp2.Route(r'/api/projects',                                 projects.Projects, methods=['GET'], name='projects'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
         webapp2.Route(r'/count',                                    projects.Projects, handler_method='count', methods=['GET']),
         webapp2.Route(r'/groups',                                   projects.Projects, handler_method='groups', methods=['GET']),
@@ -60,7 +60,7 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections_.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections_.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
-    webapp2.Route(r'/api/sessions',                                 sessions.Sessions, name='sessions'),
+    webapp2.Route(r'/api/sessions',                                 sessions.Sessions, methods=['GET'], name='sessions'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/sessions', [
         webapp2.Route(r'/count',                                    sessions.Sessions, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   sessions.Session, handler_method='schema', methods=['GET']),

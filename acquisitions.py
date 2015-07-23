@@ -116,10 +116,6 @@ class Acquisitions(containers.ContainerList):
                 acquisition['debug']['details'] = self.uri_for('acquisition', aid, _full=True) + '?' + self.request.query_string
         return acquisitions
 
-    def put(self):
-        """Update many Acquisitions."""
-        self.response.write('acquisitions put\n')
-
 
 class Acquisition(containers.Container):
 

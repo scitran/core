@@ -134,10 +134,6 @@ class Sessions(containers.ContainerList):
                 sess['debug']['acquisitions'] = self.uri_for('acquisitions', sid, _full=True) + '?' + self.request.query_string
         return sessions
 
-    def put(self):
-        """Update many Sessions."""
-        self.response.write('sessions put\n')
-
 
 class Session(containers.Container):
 
