@@ -48,7 +48,12 @@ def dbinit(args):
         if 'drones' in input_data:
             db.drones.insert(input_data['drones'])
         for u in db.users.find():
-            db.users.update({'_id': u['_id']}, {'$set': {'email_hash': hashlib.md5(u['email']).hexdigest()}})
+            update = {'_id': u['_id']} # prevent empty $set
+            if 'avatar' not in u:
+                update['avatar'] = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm'
+            if 'preferences' not in u:
+                update['preferences'] = {}
+            db.users.update({'_id': u['_id']}, {'$set': update})
 
     db.groups.update({'_id': 'unknown'}, {'$setOnInsert': {'name': 'Unknown', 'roles': []}}, upsert=True)
 

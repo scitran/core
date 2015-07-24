@@ -49,7 +49,8 @@ class Users(base.RequestHandler):
             json_body = self.request.json_body
             jsonschema.validate(json_body, User.json_schema)
             json_body.setdefault('email', json_body['_id'])
-            json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
+            json_body.setdefault('preferences', {})
+            json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
             self.dbc.insert(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
@@ -60,7 +61,7 @@ class Users(base.RequestHandler):
         """Return the list of Users."""
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User list')
-        users = list(self.dbc.find({}, ['firstname', 'lastname', 'email_hash', 'wheel']))
+        users = list(self.dbc.find({}, {'preferences': False}))
         if self.debug:
             for user in users:
                 user['debug'] = {}
@@ -94,8 +95,9 @@ class User(base.RequestHandler):
                 'type': 'string',
                 'format': 'email',
             },
-            'email_hash': {
+            'avatar': {
                 'type': 'string',
+                'format': 'uri',
             },
             'root': {
                 'type': 'boolean',
@@ -123,10 +125,9 @@ class User(base.RequestHandler):
 
     def self(self):
         """Return details for the current User."""
-        user = self.dbc.find_one({'_id': self.uid}, ['firstname', 'lastname', 'root', 'wheel', 'preferences', 'email_hash'])
+        user = self.dbc.find_one({'_id': self.uid})
         if not user:
             self.abort(400, 'no user is logged in')
-        user.setdefault('preferences', {})
         return user
 
     def roles(self):
@@ -166,8 +167,6 @@ class User(base.RequestHandler):
             self.abort(400, str(e))
         if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
             self.abort(400, 'user cannot alter own superuser privilege')
-        if 'email' in json_body and json_body['email'] != user.get('email'):
-            json_body['email_hash'] = hashlib.md5(json_body['email']).hexdigest()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
