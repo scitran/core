@@ -279,8 +279,8 @@ class Collection(containers.Container):
         """Delete a Collection."""
         _id = bson.ObjectId(cid)
         self._get(_id, 'admin', perm_only=True)
-        self.app.db.acquisitions.update({'collections': _id}, {'$pull': {'collections': _id}}, multi=True)
-        self.dbc.remove({'_id': _id})
+        self.app.db.acquisitions.update_many({'collections': _id}, {'$pull': {'collections': _id}})
+        self._delete(_id)
 
 
 class CollectionSessions(sessions.Sessions):
