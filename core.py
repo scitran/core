@@ -278,7 +278,7 @@ class Core(base.RequestHandler):
 
             acq_no = overwrites.get('acq_no')
             arcname = overwrites['series_uid'] + ('_' + str(acq_no) if acq_no is not None else '') + '_' + filetype
-            ticket = util.upload_ticket(arcname=arcname) # store arcname for later reference
+            ticket = util.upload_ticket(self.request.client_addr, arcname=arcname) # store arcname for later reference
             self.app.db.uploads.insert_one(ticket)
             arcpath = os.path.join(self.app.config['upload_path'], ticket['_id'] + '.tar')
             store_file(self.request.body_file, filename, self.request.headers['Content-MD5'], arcpath, arcname)
@@ -287,6 +287,8 @@ class Core(base.RequestHandler):
         ticket = self.app.db.uploads.find_one({'_id': ticket_id})
         if not ticket:
             self.abort(404, 'no such ticket')
+        if ticket['ip'] != self.request.client_addr:
+            self.abort(400, 'ticket not for this source IP')
         arcpath = os.path.join(self.app.config['upload_path'], ticket_id + '.tar')
 
         if self.request.GET.get('complete', '').lower() not in ('1', 'true'):
@@ -364,7 +366,7 @@ class Core(base.RequestHandler):
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
-        ticket = util.download_ticket('batch', targets, filename, total_size)
+        ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
         self.app.db.downloads.insert(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
@@ -389,6 +391,8 @@ class Core(base.RequestHandler):
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
                 self.abort(404, 'no such ticket')
+            if ticket['ip'] != self.request.client_addr:
+                self.abort(400, 'ticket not for this source IP')
             self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
