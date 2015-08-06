@@ -201,6 +201,7 @@ class Collections(containers.ContainerList):
             self.abort(400, str(e))
         json_body['curator'] = self.uid
         json_body['timestamp'] = datetime.datetime.utcnow()
+        json_body['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
         return {'_id': str(self.dbc.insert(json_body))}
 
     def get(self):
