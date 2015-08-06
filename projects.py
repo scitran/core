@@ -106,7 +106,10 @@ class Projects(containers.ContainerList):
         if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
             self.abort(400, 'must be group admin to create project')
         json_body['group'] = gid
-        json_body['permissions'] = group['roles']
+        if self.request.GET.get('inherit', '').lower() in ('1', 'true'):
+            json_body['permissions'] = group['roles']
+        else:
+            json_body['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
         json_body['public'] = json_body.get('public', False)
         json_body['files'] = []
         json_body['timestamp'] = datetime.datetime.utcnow()
