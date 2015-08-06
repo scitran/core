@@ -108,24 +108,6 @@ class Core(base.RequestHandler):
         """Return 200 OK."""
         pass
 
-    def post(self):
-        if not self.app.config['demo']:
-            self.abort(400, 'API must be in demo mode')
-        try:
-            payload = self.request.json_body
-            jsonschema.validate(payload, RESET_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
-        if payload.get('reset', False):
-            self.app.db.projects.delete_many({})
-            self.app.db.sessions.delete_many({})
-            self.app.db.acquisitions.delete_many({})
-            self.app.db.collections.delete_many({})
-            self.app.db.jobs.delete_many({})
-            for p in (self.app.config['data_path'] + '/' + d for d in os.listdir(self.app.config['data_path'])):
-                if p not in [self.app.config['upload_path'], self.app.config['quarantine_path']]:
-                    shutil.rmtree(p)
-
     def get(self):
         """Return API documentation"""
         resources = """
