@@ -80,7 +80,6 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='file', methods=['POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            acquisitions.Acquisition, handler_method='file'),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/tile',                     acquisitions.Acquisition, handler_method='get_tile', methods=['GET']),
     ]),
     webapp2.Route(r'/api/jobs',                                     jobs.Jobs),
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
