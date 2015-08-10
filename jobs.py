@@ -59,12 +59,14 @@ def createJob(db, jobType, containerType, containerID):
 
     # TODO validate container exists
 
+    now = datetime.datetime.now()
+
     job = {
         'state': 'pending',
         'attempt': 1,
 
-        'created':  datetime.datetime.now(),
-        'modified': datetime.datetime.now(),
+        'created':  now,
+        'modified': now,
 
         'inputs': [
             {
