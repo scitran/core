@@ -135,6 +135,13 @@ class Jobs(base.RequestHandler):
 
         return self.app.db.jobs.count()
 
+    def addTestJob(self):
+        """Adds a harmless job for testing purposes. Intentionally equivalent return to createJob."""
+        if not self.superuser_request:
+            self.abort(401, 'Request requires superuser')
+
+        return createJob(self.app.db, 'dcm2nii', 'acquisition', '55bf861e6941f040cf8d6939')
+
     def next(self):
         """
         Atomically change a 'pending' job to 'running' and returns it. Updates timestamp.
@@ -143,8 +150,6 @@ class Jobs(base.RequestHandler):
         """
         if not self.superuser_request:
             self.abort(401, 'Request requires superuser')
-
-        # createJob(self.app.db, 'dcm2nii', 'session', '55a58db95f22580812902b9e')
 
         # REVIEW: is this atomic?
         # REVIEW: semantics are not documented as to this mutation's behaviour when filter matches no docs.
