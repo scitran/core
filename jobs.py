@@ -36,7 +36,7 @@ JOB_TRANSITIONS = [
 # TODO: json schema
 
 def validTransition(fromState, toState):
-    return (fromState + " --> " + tosState) in JOB_TRANSITIONS
+    return (fromState + " --> " + toState) in JOB_TRANSITIONS or fromState == toState
 
 def createJob(db, jobType, containerType, containerID):
     """
