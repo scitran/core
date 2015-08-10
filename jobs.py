@@ -188,6 +188,9 @@ class Job(base.RequestHandler):
         mutation = self.request.json
         job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
 
+        if job is None:
+            self.abort(404, 'Job not found')
+
         print 'MUTATION HAS ' + str(len(mutation)) + ' FIELDS'
 
         if job['state'] not in JOB_STATES_ALLOWED_MUTATE:
