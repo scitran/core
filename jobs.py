@@ -204,4 +204,4 @@ class Job(base.RequestHandler):
 
         # REVIEW: is this atomic?
         # As far as I can tell, update_one vs find_one_and_update differ only in what they return.
-        self.app.db.jobs.update_one(job, mutation)
+        self.app.db.jobs.update_one(job, {'$set': mutation})
