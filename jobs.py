@@ -200,7 +200,7 @@ class Job(base.RequestHandler):
             self.abort(404, 'Mutating job from ' + job['state'] + ' to ' + mutation['state'] + ' not allowed.')
 
         # Any modification must be a timestamp update
-        mutation['timestamp'] = datetime.datetime.now()
+        mutation['modified'] = datetime.datetime.now()
 
         # REVIEW: is this atomic?
         # As far as I can tell, update_one vs find_one_and_update differ only in what they return.
