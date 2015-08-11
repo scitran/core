@@ -59,7 +59,7 @@ def createJob(db, jobType, containerType, containerID):
 
     # TODO validate container exists
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.utcnow()
 
     job = {
         'state': 'pending',
@@ -159,7 +159,7 @@ class Jobs(base.RequestHandler):
             },
             { '$set': {
                 'state': 'running',
-                'modified': datetime.datetime.now()}
+                'modified': datetime.datetime.utcnow()}
             },
             sort=[('modified', -1)],
             return_document=pymongo.collection.ReturnDocument.AFTER
@@ -205,7 +205,7 @@ class Job(base.RequestHandler):
             self.abort(404, 'Mutating job from ' + job['state'] + ' to ' + mutation['state'] + ' not allowed.')
 
         # Any modification must be a timestamp update
-        mutation['modified'] = datetime.datetime.now()
+        mutation['modified'] = datetime.datetime.utcnow()
 
         # REVIEW: is this atomic?
         # As far as I can tell, update_one vs find_one_and_update differ only in what they return.
