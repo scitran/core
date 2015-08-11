@@ -196,8 +196,6 @@ class Job(base.RequestHandler):
         if job is None:
             self.abort(404, 'Job not found')
 
-        print 'MUTATION HAS ' + str(len(mutation)) + ' FIELDS'
-
         if job['state'] not in JOB_STATES_ALLOWED_MUTATE:
             self.abort(404, 'Cannot mutate a job that is ' + job['state'] + '.')
 
