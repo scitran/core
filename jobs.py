@@ -98,10 +98,10 @@ def createJob(db, jobType, containerType, containerID):
     }
 
     result = db.jobs.insert_one(job)
-    id = result.inserted_id
+    _id = result.inserted_id
 
-    log.info('Running %s as job %s to process %s %s' % (jobType, str(id), containerType, containerID))
-    return id
+    log.info('Running %s as job %s to process %s %s' % (jobType, str(_id), containerType, containerID))
+    return _id
 
 def serializeJob(job):
     if job:
