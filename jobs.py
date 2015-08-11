@@ -38,7 +38,7 @@ JOB_TRANSITIONS = [
 def validTransition(fromState, toState):
     return (fromState + " --> " + toState) in JOB_TRANSITIONS or fromState == toState
 
-def createJob(db, jobType, containerType, containerID):
+def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID=None):
     """
     Creates a job.
 
@@ -63,7 +63,7 @@ def createJob(db, jobType, containerType, containerID):
 
     job = {
         'state': 'pending',
-        'attempt': 1,
+        'attempt': attemptN,
 
         'created':  now,
         'modified': now,
@@ -96,6 +96,9 @@ def createJob(db, jobType, containerType, containerID):
             },
         ],
     }
+
+    if previousJobID is not None:
+        job['previousJobID'] = previousJobID
 
     result = db.jobs.insert_one(job)
     _id = result.inserted_id
