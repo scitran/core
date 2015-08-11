@@ -6,6 +6,7 @@ log = logging.getLogger('scitran.api')
 import copy
 import hashlib
 import pymongo
+import datetime
 import jsonschema
 
 import base
@@ -194,7 +195,10 @@ class Groups(base.RequestHandler):
             self.abort(403, 'must be logged in and superuser to create new group')
         try:
             json_body = self.request.json_body
-            jsonschema.validate(json_body, Group.json_schema)
+            jsonschema.validate(json_body, Group.post_schema)
+            json_body['created'] = datetime.datetime.utcnow()
+            json_body['modified'] = datetime.datetime.utcnow()
+            json_body.setdefault('roles', [])
             self.dbc.insert(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
@@ -218,6 +222,9 @@ class Groups(base.RequestHandler):
                     query = {'roles._id': self.uid}
                 projection += ['roles.$']
         groups = list(self.app.db.groups.find(query, projection))
+        #for group in groups:
+        #    group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
+        #    group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             for group in groups:
                 group['debug'] = {}
@@ -231,47 +238,15 @@ class Group(base.RequestHandler):
 
     """/groups/<_id>"""
 
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'Group',
-        'type': 'object',
-        'properties': {
-            '_id': {
-                'title': 'Group ID',
-                'type': 'string',
-            },
-            'name': {
-                'title': 'Name',
-                'type': 'string',
-                'maxLength': 32,
-            },
-            'roles': {
-                'title': 'Roles',
-                'type': 'array',
-                'default': [],
-                'items': {
-                    'type': 'object',
-                    'properties': {
-                        'access': {
-                            'type': 'string',
-                            'enum': [role['rid'] for role in ROLES],
-                        },
-                        '_id': {
-                            'type': 'string',
-                        },
-                    },
-                    'required': ['access', '_id'],
-                    'additionalProperties': False,
-                },
-                'uniqueItems': True,
-            },
-        },
-        'required': ['_id'],
-    }
-
     def __init__(self, request=None, response=None):
         super(Group, self).__init__(request, response)
         self.dbc = self.app.db.groups
+
+    def schema(self):
+        method =self.request.GET.get('method', '').lower()
+        if method == 'put':
+            return self.put_schema
+        return self.post_schema
 
     def get(self, _id):
         """Return Group details."""
@@ -282,6 +257,9 @@ class Group(base.RequestHandler):
             group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
+        if 'created' in group and 'modified' in group:
+            group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
+            group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             group['debug'] = {}
             group['debug']['projects'] = self.uri_for('g_projects', gid=group['_id'], _full=True) + '?' + self.request.query_string
@@ -296,11 +274,9 @@ class Group(base.RequestHandler):
         user_perm = util.user_perm(group.get('roles', []), self.uid)
         if not self.superuser_request and not user_perm.get('access') == 'admin':
             self.abort(403, 'must be superuser or group admin to update group')
-        schema = copy.deepcopy(self.json_schema)
-        del schema['required']
         try:
             json_body = self.request.json_body
-            jsonschema.validate(json_body, schema)
+            jsonschema.validate(json_body, self.put_schema)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
