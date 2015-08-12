@@ -47,7 +47,7 @@ def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID
     db: pymongo.database.Database
         Reference to the database instance
     jobType: string
-        Human-friendly name of the algorithm
+        Human-friendly unique name of the algorithm
     containerType: string
         Type of container ('acquisition', 'session', etc)
     containerID: string
@@ -68,33 +68,38 @@ def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID
         'created':  now,
         'modified': now,
 
-        'inputs': [
-            {
-                'type': 'scitran',
-                'location': '/',
-                'URI': 'TBD',
-            },
-            {
-                'type': 'scitran',
-                'location': '/script',
-                'URI': 'TBD',
+        'algorithm_id': jobType,
+
+        'formula': {
+            'inputs': [
+                {
+                    'type': 'scitran',
+                    'location': '/',
+                    'URI': 'TBD',
+                },
+                {
+                    'type': 'scitran',
+                    'location': '/script',
+                    'URI': 'TBD',
+                },
+
+            ],
+
+            'accents': {
+                'cwd': "/script",
+                'command': [ 'TBD' ],
+                'environment': { },
             },
 
-        ],
+            'outputs': [
+                {
+                    'type': 'scitran',
+                    'location': '/output',
+                    'URI': 'TBD',
+                },
+            ],
+        }
 
-        'accents': {
-            'cwd': "/script",
-            'command': [ 'TBD' ],
-            'environment': { },
-        },
-
-        'outputs': [
-            {
-                'type': 'scitran',
-                'location': '/output',
-                'URI': 'TBD',
-            },
-        ],
     }
 
     if previousJobID is not None:
