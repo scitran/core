@@ -35,10 +35,10 @@ JOB_TRANSITIONS = [
 
 # TODO: json schema
 
-def validTransition(fromState, toState):
-    return (fromState + " --> " + toState) in JOB_TRANSITIONS or fromState == toState
+def valid_transition(from_state, to_state):
+    return (from_state + " --> " + to_state) in JOB_TRANSITIONS or from_state == to_state
 
-def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID=None):
+def create_job(db, job_id, container_type, container_id, attempt_n=1, previous_job_id=None):
     """
     Creates a job.
 
@@ -46,16 +46,16 @@ def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID
     ----------
     db: pymongo.database.Database
         Reference to the database instance
-    jobType: string
+    job_id: string
         Human-friendly unique name of the algorithm
-    containerType: string
+    container_type: string
         Type of container ('acquisition', 'session', etc)
-    containerID: string
+    container_id: string
         ID of the container ('2', etc)
     """
 
-    if jobType != 'dcm2nii':
-        raise Exception('Usupported algorithm ' + jobType)
+    if job_id != 'dcm2nii':
+        raise Exception('Usupported algorithm ' + job_id)
 
     # TODO validate container exists
 
@@ -63,12 +63,12 @@ def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID
 
     job = {
         'state': 'pending',
-        'attempt': attemptN,
+        'attempt': attempt_n,
 
         'created':  now,
         'modified': now,
 
-        'algorithm_id': jobType,
+        'algorithm_id': job_id,
 
         'formula': {
             'inputs': [
@@ -102,16 +102,16 @@ def createJob(db, jobType, containerType, containerID, attemptN=1, previousJobID
 
     }
 
-    if previousJobID is not None:
-        job['previousJobID'] = previousJobID
+    if previous_job_id is not None:
+        job['previous_job_id'] = previous_job_id
 
     result = db.jobs.insert_one(job)
     _id = result.inserted_id
 
-    log.info('Running %s as job %s to process %s %s' % (jobType, str(_id), containerType, containerID))
+    log.info('Running %s as job %s to process %s %s' % (job_id, str(_id), container_type, container_id))
     return _id
 
-def serializeJob(job):
+def serialize_job(job):
     if job:
         job['_id'] = str(job['_id'])
         job['created'] = util.format_timestamp(job['created'])
@@ -132,7 +132,7 @@ class Jobs(base.RequestHandler):
 
         results = list(self.app.db.jobs.find())
         for result in results:
-            result = serializeJob(result)
+            result = serialize_job(result)
 
         return results
 
@@ -144,11 +144,11 @@ class Jobs(base.RequestHandler):
         return self.app.db.jobs.count()
 
     def addTestJob(self):
-        """Adds a harmless job for testing purposes. Intentionally equivalent return to createJob."""
+        """Adds a harmless job for testing purposes. Intentionally equivalent return to create_job."""
         if not self.superuser_request:
             self.abort(401, 'Request requires superuser')
 
-        return createJob(self.app.db, 'dcm2nii', 'acquisition', '55bf861e6941f040cf8d6939')
+        return create_job(self.app.db, 'dcm2nii', 'acquisition', '55bf861e6941f040cf8d6939')
 
     def next(self):
         """
@@ -176,7 +176,7 @@ class Jobs(base.RequestHandler):
         if result == None:
             self.abort(400, 'No jobs to process')
 
-        return serializeJob(result)
+        return serialize_job(result)
 
 class Job(base.RequestHandler):
 
@@ -187,7 +187,7 @@ class Job(base.RequestHandler):
             self.abort(401, 'Request requires superuser')
 
         result = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
-        return serializeJob(result)
+        return serialize_job(result)
 
     def put(self, _id):
         """
@@ -207,7 +207,7 @@ class Job(base.RequestHandler):
         if job['state'] not in JOB_STATES_ALLOWED_MUTATE:
             self.abort(404, 'Cannot mutate a job that is ' + job['state'] + '.')
 
-        if 'state' in mutation and not validTransition(job['state'], mutation['state']):
+        if 'state' in mutation and not valid_transition(job['state'], mutation['state']):
             self.abort(404, 'Mutating job from ' + job['state'] + ' to ' + mutation['state'] + ' not allowed.')
 
         # Any modification must be a timestamp update
