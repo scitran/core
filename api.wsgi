@@ -136,9 +136,11 @@ else:
                         r = application.db[c_type].update_one(
                                 {
                                     '_id': c['_id'],
-                                    '$elemMatch': {
-                                        'files.filename': f['filename'],
-                                        'files.filehash': f['filehash'],
+                                    'files': {
+                                        '$elemMatch': {
+                                            'filename': f['filename'],
+                                            'filehash': f['filehash'],
+                                        },
                                     },
                                 },
                                 {
