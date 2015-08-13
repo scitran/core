@@ -33,29 +33,41 @@ JOB_TRANSITIONS = [
     "running --> complete",
 ]
 
-# TODO: json schema
-
 def valid_transition(from_state, to_state):
     return (from_state + " --> " + to_state) in JOB_TRANSITIONS or from_state == to_state
 
-def create_job(db, job_id, container_type, container_id, attempt_n=1, previous_job_id=None):
+ALGORITHMS = [
+    "dcm2nii"
+]
+
+
+# TODO: json schema
+
+
+def queue_job(db, algorithm_id, container_type, container_id, filename, filehash, attempt_n=1, previous_job_id=None):
     """
-    Creates a job.
+    Enqueues a job for execution.
 
     Parameters
     ----------
     db: pymongo.database.Database
         Reference to the database instance
-    job_id: string
+    algorithm_id: string
         Human-friendly unique name of the algorithm
     container_type: string
         Type of container ('acquisition', 'session', etc)
     container_id: string
         ID of the container ('2', etc)
+    filename: string
+        Name of the file to download
+    filehash: string
+        Hash of the file to download
+    attempt_n: integer (optional)
+        If an equivalent job has tried & failed before, pass which attempt number we're at. Defaults to 1 (no previous attempts).
     """
 
-    if job_id != 'dcm2nii':
-        raise Exception('Usupported algorithm ' + job_id)
+    if algorithm_id not in ALGORITHMS:
+        raise Exception('Usupported algorithm ' + algorithm_id)
 
     # TODO validate container exists
 
@@ -63,12 +75,18 @@ def create_job(db, job_id, container_type, container_id, attempt_n=1, previous_j
 
     job = {
         'state': 'pending',
-        'attempt': attempt_n,
 
         'created':  now,
         'modified': now,
 
-        'algorithm_id': job_id,
+         # We need all these keys to re-run this job if it fails.
+        'algorithm_id': algorithm_id,
+        'container_id': container_id,
+        'container_type': container_type,
+        'container_type': algorithm_id,
+        'filename': filename,
+        'filehash': filehash,
+        'attempt': attempt_n,
 
         'formula': {
             'inputs': [
@@ -108,7 +126,7 @@ def create_job(db, job_id, container_type, container_id, attempt_n=1, previous_j
     result = db.jobs.insert_one(job)
     _id = result.inserted_id
 
-    log.info('Running %s as job %s to process %s %s' % (job_id, str(_id), container_type, container_id))
+    log.info('Running %s as job %s to process %s %s' % (algorithm_id, str(_id), container_type, container_id))
     return _id
 
 def serialize_job(job):
@@ -144,11 +162,11 @@ class Jobs(base.RequestHandler):
         return self.app.db.jobs.count()
 
     def addTestJob(self):
-        """Adds a harmless job for testing purposes. Intentionally equivalent return to create_job."""
+        """Adds a harmless job for testing purposes. Intentionally equivalent return to queue_job."""
         if not self.superuser_request:
             self.abort(401, 'Request requires superuser')
 
-        return create_job(self.app.db, 'dcm2nii', 'acquisition', '55bf861e6941f040cf8d6939')
+        return queue_job(self.app.db, 'dcm2nii', 'acquisition', '55bf861e6941f040cf8d6939')
 
     def next(self):
         """
