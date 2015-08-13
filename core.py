@@ -121,13 +121,11 @@ class Core(base.RequestHandler):
             [(/users/count)]                    | count of users
             [(/users/self)]                     | user identity
             [(/users/roles)]                    | user roles
-            [(/users/schema)]                   | schema for single user
             [(/users/*<uid>*)]                  | details for user *<uid>*
             [(/users/*<uid>*/groups)]           | groups for user *<uid>*
             [(/users/*<uid>*/projects)]         | projects for user *<uid>*
             [(/groups)]                         | list of groups
             [(/groups/count)]                   | count of groups
-            [(/groups/schema)]                  | schema for single group
             /groups/*<gid>*                     | details for group *<gid>*
             /groups/*<gid>*/projects            | list of projects for group *<gid>*
             /groups/*<gid>*/sessions            | list of sessions for group *<gid>*
@@ -152,6 +150,8 @@ class Core(base.RequestHandler):
             /collections/*<cid>*                | details for collection *<cid>*
             /collections/*<cid>*/sessions       | list of sessions for collection *<cid>*
             /collections/*<cid>*/acquisitions   | list of acquisitions for collection *<cid>*
+            [(/schema/group)]                   | group schema
+            [(/schema/user)]                    | user schema
             """
 
         if self.debug and self.uid:

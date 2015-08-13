@@ -26,13 +26,13 @@ routes = [
     ]),
     webapp2_extras.routes.PathPrefixRoute(r'/api/schema', [
         webapp2.Route(r'/group',                                    users.Group, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/user',                                     users.User, handler_method='schema', methods=['GET']),
     ]),
     webapp2.Route(r'/api/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
         webapp2.Route(r'/count',                                    users.Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/self',                                     users.User, handler_method='self', methods=['GET']),
         webapp2.Route(r'/roles',                                    users.User, handler_method='roles', methods=['GET']),
-        webapp2.Route(r'/schema',                                   users.User, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 users.User, name='user'),
         webapp2.Route(r'/<:[^/]+>/groups',                          users.Groups, name='groups'),
         webapp2.Route(r'/<uid:[^/]+>/projects',                     projects.Projects, name='u_projects'),
@@ -97,11 +97,13 @@ routes = [
 ]
 
 
-for cls, schema_file in [(cls, os.path.join(os.path.dirname(__file__), schema_file)) for cls, schema_file in [
-        (users.Group, 'groups.json'),
-        ]]:
-    with open(schema_file) as fp:
-        cls.post_schema = json.load(fp)
+with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
+    schema_dict = json.load(fp)
+for cls in [
+        users.Group,
+        users.User,
+        ]:
+    cls.post_schema = copy.deepcopy(schema_dict[cls.__name__.lower()])
     cls.put_schema = copy.deepcopy(cls.post_schema)
     cls.put_schema['properties'].pop('_id')
     cls.put_schema.pop('required')

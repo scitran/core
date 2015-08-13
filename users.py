@@ -48,7 +48,7 @@ class Users(base.RequestHandler):
             self.abort(403, 'must be logged in to create new user')
         try:
             json_body = self.request.json_body
-            jsonschema.validate(json_body, User.json_schema)
+            jsonschema.validate(json_body, User.post_schema)
             json_body.setdefault('email', json_body['_id'])
             json_body.setdefault('preferences', {})
             json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
@@ -74,55 +74,15 @@ class User(base.RequestHandler):
 
     """/users/<_id> """
 
-    json_schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
-        'title': 'User',
-        'type': 'object',
-        'properties': {
-            '_id': {
-                'title': 'User ID',
-                'type': 'string',
-            },
-            'firstname': {
-                'title': 'First Name',
-                'type': 'string',
-            },
-            'lastname': {
-                'title': 'Last Name',
-                'type': 'string',
-            },
-            'email': {
-                'title': 'Email',
-                'type': 'string',
-                'format': 'email',
-            },
-            'avatar': {
-                'type': 'string',
-                'format': 'uri',
-            },
-            'root': {
-                'type': 'boolean',
-            },
-            'wheel': {
-                'type': 'boolean',
-            },
-            'preferences': {
-                'title': 'Preferences',
-                'type': 'object',
-                'properties': {
-                    'data_layout': {
-                        'type': 'string',
-                    },
-                },
-            },
-        },
-        'required': ['_id', 'firstname', 'lastname'],
-        'additionalProperties': False,
-    }
-
     def __init__(self, request=None, response=None):
         super(User, self).__init__(request, response)
         self.dbc = self.app.db.users
+
+    def schema(self):
+        method =self.request.GET.get('method', '').lower()
+        if method == 'put':
+            return self.put_schema
+        return self.post_schema
 
     def self(self):
         """Return details for the current User."""
@@ -159,11 +119,9 @@ class User(base.RequestHandler):
             self.abort(404, 'no such User')
         if not self.superuser_request and _id != self.uid:
             self.abort(403, 'must be superuser to update another User')
-        schema = copy.deepcopy(self.json_schema)
-        del schema['required']
         try:
             json_body = self.request.json_body
-            jsonschema.validate(json_body, schema)
+            jsonschema.validate(json_body, self.put_schema)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
         if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
@@ -222,9 +180,6 @@ class Groups(base.RequestHandler):
                     query = {'roles._id': self.uid}
                 projection += ['roles.$']
         groups = list(self.app.db.groups.find(query, projection))
-        #for group in groups:
-        #    group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
-        #    group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             for group in groups:
                 group['debug'] = {}
