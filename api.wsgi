@@ -16,6 +16,7 @@ import argparse
 
 import api
 import centralclient
+import jobs
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
