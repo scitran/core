@@ -204,17 +204,20 @@ class Groups(base.RequestHandler):
     def get(self, _id=None):
         """Return the list of Groups."""
         query = None
+        projection = ['name']
         if _id is not None:
             if _id != self.uid and not self.superuser_request:
                 self.abort(403, 'User ' + self.uid + ' may not see the Groups of User ' + _id)
             query = {'roles._id': _id}
+            projection += ['roles.$']
         else:
             if not self.superuser_request:
                 if self.request.GET.get('admin', '').lower() in ('1', 'true'):
                     query = {'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}}
                 else:
                     query = {'roles._id': self.uid}
-        groups = list(self.app.db.groups.find(query, ['name']))
+                projection += ['roles.$']
+        groups = list(self.app.db.groups.find(query, projection))
         if self.debug:
             for group in groups:
                 group['debug'] = {}
