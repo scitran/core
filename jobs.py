@@ -44,6 +44,41 @@ ALGORITHMS = [
 # TODO: json schema
 
 
+def spawn_jobs(db, containers, file):
+    """
+    Spawn some number of queued jobs to process a file.
+
+    Parameters
+    ----------
+    db: pymongo.database.Database
+        Reference to the database instance
+    containers: [ tuple(string, scitran.Container) ]
+        An array of tuples, each containing a container type name, and a container object.
+        Contract is:
+            1) The first container in the array will be the container which owns file passed in the file param.
+            2) Following array indexes, if any, will be higher in the ownership heirarchy than the first container.
+            3) Array is not guaranteed to be strictly hierarchically ordered.
+    file: scitran.File
+        File object that is used to spawn 0 or more jobs.
+    """
+
+    # File information
+    filename = file['filename']
+    filehash = file['filehash']
+
+    # File container information
+    last = len(containers) - 1
+    container_type, container = containers[last]
+    container_id = container['_id']
+
+    log.info('File ' + filename + 'is in a ' + container_type + ' with id ' + str(container_id) + ' and hash ' + filehash)
+
+    # Spawn rules currently do not look at container hierarchy, and only care about a single file.
+    # Further, one algorithm is unconditionally triggered for each dirty file.
+
+    queue_job(db, 'dcm2nii', container_type, container_id, filename, filehash)
+
+
 def queue_job(db, algorithm_id, container_type, container_id, filename, filehash, attempt_n=1, previous_job_id=None):
     """
     Enqueues a job for execution.
