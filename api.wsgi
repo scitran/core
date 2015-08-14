@@ -163,3 +163,5 @@ else:
             if j['attempt'] < 3:
                 job_id = jobs.queue_job(application.db, j['algorithm_id'], j['container_type'], j['container_id'], j['filename'], j['filehash'], j['attempt']+1, j['_id'])
                 log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
+            else:
+                log.info('permanently failed job %s (attempt %d)' % (j['_id'], j['attempt']+1))
