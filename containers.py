@@ -122,17 +122,20 @@ class ContainerList(base.RequestHandler):
             self.abort(400, str(e))
         return json_body
 
-    def _get(self, query, projection, admin_only=False):
+    def _get(self, query, projection, admin_only=False, uid=None):
         projection = {p: 1 for p in projection + ['files']}
         if self.public_request:
             query['public'] = True
         else:
-            projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
-            if not self.superuser_request:
+            if uid is not None:
+                if uid != self.uid and not self.superuser_request:
+                    self.abort(403, 'User ' + self.uid + ' may not see the Projects of User ' + uid)
+            if not self.superuser_request or uid:
                 if admin_only:
-                    query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site, 'access': 'admin'}}
+                    query['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site, 'access': 'admin'}}
                 else:
-                    query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
+                    query['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site}}
+            projection['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site}}
         containers = list(self.dbc.find(query, projection))
         for container in containers:
             container['_id'] = str(container['_id'])

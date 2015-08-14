@@ -122,7 +122,9 @@ class Core(base.RequestHandler):
             [(/users/self)]                     | user identity
             [(/users/roles)]                    | user roles
             [(/users/schema)]                   | schema for single user
-            /users/*<uid>*                      | details for user *<uid>*
+            [(/users/*<uid>*)]                  | details for user *<uid>*
+            [(/users/*<uid>*/groups)]           | groups for user *<uid>*
+            [(/users/*<uid>*/projects)]         | projects for user *<uid>*
             [(/groups)]                         | list of groups
             [(/groups/count)]                   | count of groups
             [(/groups/schema)]                  | schema for single group
@@ -154,6 +156,7 @@ class Core(base.RequestHandler):
 
         if self.debug and self.uid:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s)' % self.uid, resources)
+            resources = re.sub(r'(\(.*)\*<uid>\*(.*\))', r'\1%s\2' % self.uid, resources)
         else:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
         resources = resources.replace('<', '&lt;').replace('>', '&gt;').strip()

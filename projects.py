@@ -115,7 +115,7 @@ class Projects(containers.ContainerList):
         json_body['timestamp'] = datetime.datetime.utcnow()
         return {'_id': str(self.dbc.insert(json_body))}
 
-    def get(self, gid=None):
+    def get(self, uid=None, gid=None):
         """Return the User's list of Projects."""
         if gid is not None:
             group = self.app.db.groups.find_one({'_id': gid}, [])
@@ -123,7 +123,7 @@ class Projects(containers.ContainerList):
                 self.abort(400, 'invalid group id')
         query = {'group': gid} if gid else {}
         projection = ['group', 'name', 'notes', 'timestamp', 'timezone']
-        projects = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
+        projects = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'), uid)
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
