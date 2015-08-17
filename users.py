@@ -54,7 +54,7 @@ class Users(base.RequestHandler):
             json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
             self.dbc.insert(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
+            self.abort(400, e)
         except pymongo.errors.DuplicateKeyError as e:
             self.abort(400, 'User ID %s already exists' % json_body['_id'])
 
@@ -123,7 +123,7 @@ class User(base.RequestHandler):
             json_body = self.request.json_body
             jsonschema.validate(json_body, self.put_schema)
         except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
+            self.abort(400, e)
         if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
             self.abort(400, 'user cannot alter own superuser privilege')
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
@@ -159,7 +159,7 @@ class Groups(base.RequestHandler):
             json_body.setdefault('roles', [])
             self.dbc.insert(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
+            self.abort(400, e)
         except pymongo.errors.DuplicateKeyError as e:
             self.abort(400, 'Groups ID %s already exists' % json_body['_id'])
 
@@ -233,7 +233,7 @@ class Group(base.RequestHandler):
             json_body = self.request.json_body
             jsonschema.validate(json_body, self.put_schema)
         except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
+            self.abort(400, e)
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
