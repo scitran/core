@@ -336,12 +336,12 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         if not self.app.db.collections.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
         query = {'collections': _id}
-        sid = self.request.GET.get('session')
+        sid = self.request.GET.get('session', '')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = {'label': 1, 'description': 1, 'modality': 1, 'datatype': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = {p: 1 for p in ['label', 'description', 'modality', 'datatype', 'notes', 'timestamp', 'timezone', 'files']}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
