@@ -239,6 +239,9 @@ class Container(base.RequestHandler):
         fileinfo = util.container_fileinfo(container, filename)
         if not fileinfo:
             self.abort(404, 'no such file')
+        hash_ = self.request.GET.get('hash')
+        if hash_ and hash_ != fileinfo['hash']:
+            self.abort(409, 'file exists, hash mismatch')
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.request.GET.get('ticket') == '':    # request for download ticket
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])

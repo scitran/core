@@ -1,3 +1,5 @@
+# vim: filetype=python
+
 import logging
 logging.basicConfig(
         format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
@@ -14,6 +16,7 @@ import argparse
 
 import api
 import centralclient
+import jobs
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
@@ -100,7 +103,7 @@ else:
     import uwsgidecorators
 
     @uwsgidecorators.cron(0, -1, -1, -1, -1)  # top of every hour
-    def upload_storage_cleaning(num):
+    def upload_storage_cleaning(signum):
         upload_path = application.config['upload_path']
         for f in os.listdir(upload_path):
             fp = os.path.join(upload_path, f)
@@ -119,5 +122,46 @@ else:
             else:
                 fail_count = 0
             if fail_count == 3:
-                log.debug('scitran central unreachable, purging all remotes info')
+                log.warning('scitran central unreachable, purging all remotes info')
                 centralclient.clean_remotes(application.db, args.site_id)
+
+    @uwsgidecorators.timer(30)
+    def job_creation(signum):
+        for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
+            for c in application.db[c_type].find({'files.dirty': True}, ['files']):
+                containers = [(c_type, c)] # TODO: this should be the full container hierarchy
+                for f in c['files']:
+                    if f.get('dirty'):
+                        jobs.spawn_jobs(application.db, containers, f)
+                        r = application.db[c_type].update_one(
+                                {
+                                    '_id': c['_id'],
+                                    'files': {
+                                        '$elemMatch': {
+                                            'filename': f['filename'],
+                                            'filehash': f['filehash'],
+                                        },
+                                    },
+                                },
+                                {
+                                    '$set': {
+                                        'files.$.dirty': False,
+                                    },
+                                },
+                                )
+                        if not r.matched_count:
+                            log.info('file modified, not marked as clean: %s %s, %s' % (c_type, c, f['filename']))
+        for j in application.db.jobs.find_many_and_update(
+                {
+                    'state': 'running',
+                    'heartbeat': {'$lt': {datetime.datetime.utcnow() - datetime.timedelta(seconds=100)}},
+                },
+                {
+                    'state': 'failed',
+                },
+                ):
+            if j['attempt'] < 3:
+                job_id = jobs.queue_job(application.db, j['algorithm_id'], j['container_type'], j['container_id'], j['filename'], j['filehash'], j['attempt']+1, j['_id'])
+                log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
+            else:
+                log.info('permanently failed job %s (attempt %d)' % (j['_id'], j['attempt']+1))
