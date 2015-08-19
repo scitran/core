@@ -13,9 +13,10 @@ log = logging.getLogger('scitran.bootstrap')
 import os
 import json
 import time
-import pymongo
 import hashlib
+import pymongo
 import argparse
+import datetime
 
 import util
 
@@ -41,19 +42,20 @@ def dbinit(args):
     if args.json:
         with open(args.json) as json_dump:
             input_data = json.load(json_dump)
-        if 'users' in input_data:
-            db.users.insert(input_data['users'])
-        if 'groups' in input_data:
-            db.groups.insert(input_data['groups'])
-        if 'drones' in input_data:
-            db.drones.insert(input_data['drones'])
-        for u in db.users.find():
-            update = {'_id': u['_id']} # prevent empty $set
-            if 'avatar' not in u:
-                update['avatar'] = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm'
-            if 'preferences' not in u:
-                update['preferences'] = {}
-            db.users.update({'_id': u['_id']}, {'$set': update})
+        for u in input_data.get('users', []):
+            u['created'] = datetime.datetime.utcnow()
+            u['modified'] = datetime.datetime.utcnow()
+            u.setdefault('preferences', {})
+            u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
+            db.users.insert(u)
+        for g in input_data.get('groups', []):
+            g['created'] = datetime.datetime.utcnow()
+            g['modified'] = datetime.datetime.utcnow()
+            db.groups.insert(g)
+        for d in input_data.get('drones', []):
+            d['created'] = datetime.datetime.utcnow()
+            d['modified'] = datetime.datetime.utcnow()
+            db.drones.insert(d)
 
     db.groups.update({'_id': 'unknown'}, {'$setOnInsert': {'name': 'Unknown', 'roles': []}}, upsert=True)
 

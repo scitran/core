@@ -49,6 +49,8 @@ class Users(base.RequestHandler):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, User.post_schema)
+            json_body['created'] = datetime.datetime.utcnow()
+            json_body['modified'] = datetime.datetime.utcnow()
             json_body.setdefault('email', json_body['_id'])
             json_body.setdefault('preferences', {})
             json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
@@ -63,6 +65,9 @@ class Users(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User list')
         users = list(self.dbc.find({}, {'preferences': False}))
+        for user in users:
+            user['created'], _ = util.format_timestamp(user['created']) # TODO json serializer should do this
+            user['modified'], _ = util.format_timestamp(user['modified']) # TODO json serializer should do this
         if self.debug:
             for user in users:
                 user['debug'] = {}
@@ -107,6 +112,8 @@ class User(base.RequestHandler):
         user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:
             self.abort(404, 'no such User')
+        user['created'], _ = util.format_timestamp(user['created']) # TODO json serializer should do this
+        user['modified'], _ = util.format_timestamp(user['modified']) # TODO json serializer should do this
         if self.debug and (self.superuser_request or _id == self.uid):
             user['debug'] = {}
             user['debug']['groups'] = self.uri_for('groups', _id, _full=True) + '?' + self.request.query_string
@@ -126,6 +133,7 @@ class User(base.RequestHandler):
             self.abort(400, e)
         if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
             self.abort(400, 'user cannot alter own superuser privilege')
+        json_body['modified'] = datetime.datetime.utcnow()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
@@ -166,7 +174,7 @@ class Groups(base.RequestHandler):
     def get(self, _id=None):
         """Return the list of Groups."""
         query = None
-        projection = ['name']
+        projection = ['name', 'created', 'modified']
         if _id is not None:
             if _id != self.uid and not self.superuser_request:
                 self.abort(403, 'User ' + self.uid + ' may not see the Groups of User ' + _id)
@@ -180,6 +188,9 @@ class Groups(base.RequestHandler):
                     query = {'roles._id': self.uid}
                 projection += ['roles.$']
         groups = list(self.app.db.groups.find(query, projection))
+        for group in groups:
+            group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
+            group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             for group in groups:
                 group['debug'] = {}
@@ -212,9 +223,8 @@ class Group(base.RequestHandler):
             group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
-        if 'created' in group and 'modified' in group:
-            group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
-            group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
+        group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
+        group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             group['debug'] = {}
             group['debug']['projects'] = self.uri_for('g_projects', gid=group['_id'], _full=True) + '?' + self.request.query_string
@@ -234,6 +244,7 @@ class Group(base.RequestHandler):
             jsonschema.validate(json_body, self.put_schema)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, e)
+        json_body['modified'] = datetime.datetime.utcnow()
         self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
