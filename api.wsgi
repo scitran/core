@@ -150,18 +150,23 @@ else:
                                 },
                                 )
                         if not r.matched_count:
-                            log.info('file modified, not marked as clean: %s %s, %s' % (c_type, c, f['filename']))
-        for j in application.db.jobs.find_many_and_update(
+                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['filename']))
+        while True:
+            j = application.db.jobs.find_one_and_update(
                 {
                     'state': 'running',
-                    'heartbeat': {'$lt': {datetime.datetime.utcnow() - datetime.timedelta(seconds=100)}},
+                    'heartbeat': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
                 },
                 {
-                    'state': 'failed',
+                    '$set': {
+                        'state': 'failed',
+                    },
                 },
-                ):
+                )
+            if j is None:
+                break
             if j['attempt'] < 3:
                 job_id = jobs.queue_job(application.db, j['algorithm_id'], j['container_type'], j['container_id'], j['filename'], j['filehash'], j['attempt']+1, j['_id'])
                 log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
             else:
-                log.info('permanently failed job %s (attempt %d)' % (j['_id'], j['attempt']+1))
+                log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
