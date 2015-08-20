@@ -126,7 +126,7 @@ class RequestHandler(webapp2.RequestHandler):
                 if header in r.headers:
                     self.response.headers[header] = r.headers[header]
 
-    def abort(self, code, detail):
+    def abort(self, code, detail, **kwargs):
         if isinstance(detail, jsonschema.ValidationError):
             detail = {
                 'relative_path': list(detail.relative_path),
@@ -140,7 +140,7 @@ class RequestHandler(webapp2.RequestHandler):
                 'code': code,
                 'detail': detail,
                 }
-        webapp2.abort(code, json_body=json_body)
+        webapp2.abort(code, json_body=json_body, **kwargs)
 
     def schema(self, updates={}):
         json_schema = copy.deepcopy(self.json_schema)
