@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger('scitran.api')
 
 import bson
+import datetime
 
 import scitran.data.medimg
 
@@ -105,12 +106,16 @@ class Projects(containers.ContainerList):
         if not self.superuser_request and util.user_perm(group['roles'], self.uid).get('access') != 'admin':
             self.abort(400, 'must be group admin to create project')
         json_body['group'] = gid
-        json_body['permissions'] = group['roles']
+        if self.request.GET.get('inherit', '').lower() in ('1', 'true'):
+            json_body['permissions'] = group['roles']
+        else:
+            json_body['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
         json_body['public'] = json_body.get('public', False)
         json_body['files'] = []
+        json_body['timestamp'] = datetime.datetime.utcnow()
         return {'_id': str(self.dbc.insert(json_body))}
 
-    def get(self, gid=None):
+    def get(self, uid=None, gid=None):
         """Return the User's list of Projects."""
         if gid is not None:
             group = self.app.db.groups.find_one({'_id': gid}, [])
@@ -118,7 +123,7 @@ class Projects(containers.ContainerList):
                 self.abort(400, 'invalid group id')
         query = {'group': gid} if gid else {}
         projection = ['group', 'name', 'notes', 'timestamp', 'timezone']
-        projects = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
+        projects = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'), uid)
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])

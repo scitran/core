@@ -6,11 +6,12 @@ logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown libra
 
 import os
 import re
+import cgi
 import bson
-import gzip
 import json
 import hashlib
 import tarfile
+import zipfile
 import datetime
 import lockfile
 import markdown
@@ -108,24 +109,6 @@ class Core(base.RequestHandler):
         """Return 200 OK."""
         pass
 
-    def post(self):
-        if not self.app.config['demo']:
-            self.abort(400, 'API must be in demo mode')
-        try:
-            payload = self.request.json_body
-            jsonschema.validate(payload, RESET_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
-        if payload.get('reset', False):
-            self.app.db.projects.delete_many({})
-            self.app.db.sessions.delete_many({})
-            self.app.db.acquisitions.delete_many({})
-            self.app.db.collections.delete_many({})
-            self.app.db.jobs.delete_many({})
-            for p in (self.app.config['data_path'] + '/' + d for d in os.listdir(self.app.config['data_path'])):
-                if p not in [self.app.config['upload_path'], self.app.config['quarantine_path']]:
-                    shutil.rmtree(p)
-
     def get(self):
         """Return API documentation"""
         resources = """
@@ -139,11 +122,11 @@ class Core(base.RequestHandler):
             [(/users/count)]                    | count of users
             [(/users/self)]                     | user identity
             [(/users/roles)]                    | user roles
-            [(/users/schema)]                   | schema for single user
-            /users/*<uid>*                      | details for user *<uid>*
+            [(/users/*<uid>*)]                  | details for user *<uid>*
+            [(/users/*<uid>*/groups)]           | groups for user *<uid>*
+            [(/users/*<uid>*/projects)]         | projects for user *<uid>*
             [(/groups)]                         | list of groups
             [(/groups/count)]                   | count of groups
-            [(/groups/schema)]                  | schema for single group
             /groups/*<gid>*                     | details for group *<gid>*
             /groups/*<gid>*/projects            | list of projects for group *<gid>*
             /groups/*<gid>*/sessions            | list of sessions for group *<gid>*
@@ -168,10 +151,13 @@ class Core(base.RequestHandler):
             /collections/*<cid>*                | details for collection *<cid>*
             /collections/*<cid>*/sessions       | list of sessions for collection *<cid>*
             /collections/*<cid>*/acquisitions   | list of acquisitions for collection *<cid>*
+            [(/schema/group)]                   | group schema
+            [(/schema/user)]                    | user schema
             """
 
         if self.debug and self.uid:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s)' % self.uid, resources)
+            resources = re.sub(r'(\(.*)\*<uid>\*(.*\))', r'\1%s\2' % self.uid, resources)
         else:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
         resources = resources.replace('<', '&lt;').replace('>', '&gt;').strip()
@@ -203,13 +189,13 @@ class Core(base.RequestHandler):
         self.response.write('</body>\n')
         self.response.write('</html>\n')
 
-    def put(self):
-        """Receive a sortable reaper or user upload."""
-        #if not self.uid and not self.drone_request:
-        #    self.abort(402, 'uploads must be from an authorized user or drone')
+    def reaper(self):
+        """Receive a sortable reaper upload."""
+        if not self.superuser_request:
+            self.abort(402, 'uploads must be from an authorized drone')
         if 'Content-MD5' not in self.request.headers:
             self.abort(400, 'Request must contain a valid "Content-MD5" header.')
-        filename = self.request.headers.get('Content-Disposition', '').partition('filename=')[2].strip('"')
+        filename = cgi.parse_header(self.request.headers.get('Content-Disposition', ''))[1].get('filename')
         if not filename:
             self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
@@ -217,15 +203,16 @@ class Core(base.RequestHandler):
             success, digest, filesize, duration = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
-            if not tarfile.is_tarfile(filepath):
-                self.abort(415, 'Only tar files are accepted.')
+            if not zipfile.is_zipfile(filepath):
+                self.abort(415, 'Only ZIP files are accepted.')
             log.info('Received    %s [%s] from %s' % (filename, util.hrsize(self.request.content_length), self.request.user_agent))
             datainfo = util.parse_file(filepath, digest)
             if datainfo is None:
                 util.quarantine_file(filepath, self.app.config['quarantine_path'])
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
-            util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'])
-            util.create_job(self.app.db.acquisitions, datainfo) # FIXME we should only mark files as new and let engine take it from there
+            success = util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'], True)
+            if not success:
+                self.abort(202, 'Identical file exists')
             throughput = filesize / duration.total_seconds()
             log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
 
@@ -246,8 +233,8 @@ class Core(base.RequestHandler):
                 if not success:
                     self.abort(400, 'Content-MD5 mismatch.')
                 with lockfile.LockFile(arcpath):
-                    with tarfile.open(arcpath, 'a') as archive:
-                        archive.add(filepath, os.path.join(arcname, filename))
+                    with zipfile.ZipFile(arcpath, 'a', zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
+                        archive.write(filepath, os.path.join(arcname, filename))
 
         if self.public_request:
             self.abort(403, 'must be logged in to upload data')
@@ -277,16 +264,19 @@ class Core(base.RequestHandler):
 
             acq_no = overwrites.get('acq_no')
             arcname = overwrites['series_uid'] + ('_' + str(acq_no) if acq_no is not None else '') + '_' + filetype
-            ticket = util.upload_ticket(arcname=arcname) # store arcname for later reference
+            ticket = util.upload_ticket(self.request.client_addr, arcname=arcname) # store arcname for later reference
             self.app.db.uploads.insert_one(ticket)
-            arcpath = os.path.join(self.app.config['upload_path'], ticket['_id'] + '.tar')
-            store_file(self.request.body_file, filename, self.request.headers['Content-MD5'], arcpath, arcname)
+            arcpath = os.path.join(self.app.config['upload_path'], ticket['_id'] + '.zip')
+            with zipfile.ZipFile(arcpath, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
+                archive.comment = json.dumps(json_body)
             return {'ticket': ticket['_id']}
 
         ticket = self.app.db.uploads.find_one({'_id': ticket_id})
         if not ticket:
             self.abort(404, 'no such ticket')
-        arcpath = os.path.join(self.app.config['upload_path'], ticket_id + '.tar')
+        if ticket['ip'] != self.request.client_addr:
+            self.abort(400, 'ticket not for this source IP')
+        arcpath = os.path.join(self.app.config['upload_path'], ticket_id + '.zip')
 
         if self.request.GET.get('complete', '').lower() not in ('1', 'true'):
             if 'Content-MD5' not in self.request.headers:
@@ -297,21 +287,16 @@ class Core(base.RequestHandler):
                 self.abort(400, 'Request must contain a filename query parameter.')
             self.app.db.uploads.update_one({'_id': ticket_id}, {'$set': {'timestamp': datetime.datetime.utcnow()}}) # refresh ticket
             store_file(self.request.body_file, filename, self.request.headers['Content-MD5'], arcpath, ticket['arcname'])
-        else: # complete -> zip, hash, commit
-            filepath = arcpath[:-2] + 'gz'
-            with gzip.open(filepath, 'wb', compresslevel=6) as gzfile:
-                with open(arcpath) as rawfile:
-                    gzfile.writelines(rawfile)
-            os.remove(arcpath)
+        else: # complete -> hash, commit
             sha1 = hashlib.sha1()
-            with open(filepath, 'rb') as fd:
+            with open(arcpath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(2**20), ''):
                     sha1.update(chunk)
-            datainfo = util.parse_file(filepath, sha1.hexdigest())
+            datainfo = util.parse_file(arcpath, sha1.hexdigest())
             if datainfo is None:
-                util.quarantine_file(filepath, self.app.config['quarantine_path'])
+                util.quarantine_file(arcpath, self.app.config['quarantine_path'])
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
-            util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'])
+            util.commit_file(self.app.db.acquisitions, None, datainfo, arcpath, self.app.config['data_path'])
 
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']
@@ -363,7 +348,7 @@ class Core(base.RequestHandler):
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
-        ticket = util.download_ticket('batch', targets, filename, total_size)
+        ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
         self.app.db.downloads.insert(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
@@ -388,6 +373,8 @@ class Core(base.RequestHandler):
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
                 self.abort(404, 'no such ticket')
+            if ticket['ip'] != self.request.client_addr:
+                self.abort(400, 'ticket not for this source IP')
             self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])

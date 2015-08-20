@@ -10,6 +10,7 @@ import hashlib
 import webapp2
 import datetime
 import requests
+import jsonschema
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -125,14 +126,21 @@ class RequestHandler(webapp2.RequestHandler):
                 if header in r.headers:
                     self.response.headers[header] = r.headers[header]
 
-    def abort(self, code, *args, **kwargs):
-        log.warning(str(code) + ' ' + '; '.join(args))
+    def abort(self, code, detail, **kwargs):
+        if isinstance(detail, jsonschema.ValidationError):
+            detail = {
+                'relative_path': list(detail.relative_path),
+                'instance': detail.instance,
+                'validator': detail.validator,
+                'validator_value': detail.validator_value,
+            }
+        log.warning(str(code) + ' ' + str(detail))
         json_body = {
                 'uid': self.uid,
                 'code': code,
-                'detail': '; '.join(args),
+                'detail': detail,
                 }
-        webapp2.abort(code, *args, json_body=json_body, **kwargs)
+        webapp2.abort(code, json_body=json_body, **kwargs)
 
     def schema(self, updates={}):
         json_schema = copy.deepcopy(self.json_schema)
