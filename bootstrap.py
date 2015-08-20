@@ -23,6 +23,7 @@ import util
 
 def dbinit(args):
     db = pymongo.MongoClient(args.db_uri).get_default_database()
+    now = datetime.datetime.utcnow()
 
     if args.force:
         db.client.drop_database(db)
@@ -43,21 +44,26 @@ def dbinit(args):
         with open(args.json) as json_dump:
             input_data = json.load(json_dump)
         for u in input_data.get('users', []):
-            u['created'] = datetime.datetime.utcnow()
-            u['modified'] = datetime.datetime.utcnow()
+            u['created'] = now
+            u['modified'] = now
             u.setdefault('preferences', {})
             u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
             db.users.insert(u)
         for g in input_data.get('groups', []):
-            g['created'] = datetime.datetime.utcnow()
-            g['modified'] = datetime.datetime.utcnow()
+            g['created'] = now
+            g['modified'] = now
             db.groups.insert(g)
         for d in input_data.get('drones', []):
-            d['created'] = datetime.datetime.utcnow()
-            d['modified'] = datetime.datetime.utcnow()
+            d['created'] = now
+            d['modified'] = now
             db.drones.insert(d)
 
-    db.groups.update({'_id': 'unknown'}, {'$setOnInsert': {'name': 'Unknown', 'roles': []}}, upsert=True)
+    db.groups.update({'_id': 'unknown'}, {'$setOnInsert': {
+            'created': now,
+            'modified': now,
+            'name': 'Unknown',
+            'roles': [],
+            }}, upsert=True)
 
 dbinit_desc = """
 example:
