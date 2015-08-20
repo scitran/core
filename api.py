@@ -1,4 +1,5 @@
 import os
+import copy
 import json
 import webapp2
 import bson.json_util
@@ -23,12 +24,15 @@ routes = [
         webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/search',                                   core.Core, handler_method='search', methods=['GET', 'POST']),
     ]),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/schema', [
+        webapp2.Route(r'/group',                                    users.Group, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/user',                                     users.User, handler_method='schema', methods=['GET']),
+    ]),
     webapp2.Route(r'/api/users',                                    users.Users),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
         webapp2.Route(r'/count',                                    users.Users, handler_method='count', methods=['GET']),
         webapp2.Route(r'/self',                                     users.User, handler_method='self', methods=['GET']),
         webapp2.Route(r'/roles',                                    users.User, handler_method='roles', methods=['GET']),
-        webapp2.Route(r'/schema',                                   users.User, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 users.User, name='user'),
         webapp2.Route(r'/<:[^/]+>/groups',                          users.Groups, name='groups'),
         webapp2.Route(r'/<uid:[^/]+>/projects',                     projects.Projects, name='u_projects'),
@@ -36,7 +40,6 @@ routes = [
     webapp2.Route(r'/api/groups',                                   users.Groups),
     webapp2_extras.routes.PathPrefixRoute(r'/api/groups', [
         webapp2.Route(r'/count',                                    users.Groups, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/schema',                                   users.Group, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 users.Group, name='group'),
         webapp2.Route(r'/<gid:[^/]+>/projects',                     projects.Projects, name='g_projects'),
         webapp2.Route(r'/<gid:[^/]+>/sessions',                     sessions.Sessions, name='g_sessions', methods=['GET']),
@@ -94,11 +97,25 @@ routes = [
     ]),
 ]
 
+
+with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
+    schema_dict = json.load(fp)
+for cls in [
+        users.Group,
+        users.User,
+        ]:
+    cls.post_schema = copy.deepcopy(schema_dict[cls.__name__.lower()])
+    cls.put_schema = copy.deepcopy(cls.post_schema)
+    cls.put_schema['properties'].pop('_id')
+    cls.put_schema.pop('required')
+
+
 def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
         response.write(json.dumps(rv, default=bson.json_util.default))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
+
 
 app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)

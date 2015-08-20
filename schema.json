@@ -1,0 +1,105 @@
+{
+    "group": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "properties": {
+            "_id": {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[0-9a-z.@_-]*$",
+                "title": "ID",
+                "type": "string"
+            },
+            "name": {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[0-9A-Za-z .@_-]*$",
+                "title": "Name",
+                "type": "string"
+            },
+            "roles": {
+                "default": [],
+                "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "_id": {
+                            "type": "string"
+                        },
+                        "access": {
+                            "enum": [
+                                "ro",
+                                "rw",
+                                "admin"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "access",
+                        "_id"
+                    ],
+                    "type": "object"
+                },
+                "title": "Roles",
+                "type": "array",
+                "uniqueItems": true
+            }
+        },
+        "required": [
+            "_id"
+        ],
+        "title": "Group",
+        "type": "object"
+    },
+    "user": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "additionalProperties": false,
+        "properties": {
+            "_id": {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[0-9a-z.@_-]*$",
+                "title": "ID",
+                "type": "string"
+            },
+            "avatar": {
+                "format": "uri",
+                "title": "Avatar",
+                "type": "string"
+            },
+            "email": {
+                "format": "email",
+                "title": "Email",
+                "type": "string"
+            },
+            "firstname": {
+                "maxLength": 32,
+                "minLength": 2,
+                "title": "First Name",
+                "type": "string"
+            },
+            "lastname": {
+                "maxLength": 32,
+                "minLength": 2,
+                "title": "Last Name",
+                "type": "string"
+            },
+            "preferences": {
+                "title": "Preferences",
+                "type": "object"
+            },
+            "root": {
+                "type": "boolean"
+            },
+            "wheel": {
+                "type": "boolean"
+            }
+        },
+        "required": [
+            "_id",
+            "firstname",
+            "lastname"
+        ],
+        "title": "User",
+        "type": "object"
+    }
+}
