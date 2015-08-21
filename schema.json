@@ -1,6 +1,7 @@
 {
     "group": {
         "$schema": "http://json-schema.org/draft-04/schema#",
+        "additionalProperties": false,
         "properties": {
             "_id": {
                 "maxLength": 32,
