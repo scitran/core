@@ -2,9 +2,10 @@
 
 import os
 import time
+import logging
 import pymongo
 import argparse
-import logging
+import datetime
 
 from api import app, centralclient, jobs
 from api.util import log
@@ -92,6 +93,20 @@ for x in range(10):
 else:
     raise Exception('Could not connect to MongoDB')
 
+# TODO jobs indexes
+# TODO review all indexes
+app.db.projects.create_index([('gid', 1), ('name', 1)])
+app.db.sessions.create_index('project')
+app.db.sessions.create_index('uid')
+app.db.acquisitions.create_index('session')
+app.db.acquisitions.create_index('uid')
+app.db.acquisitions.create_index('collections')
+app.db.authtokens.create_index('timestamp', expireAfterSeconds=600)
+app.db.uploads.create_index('timestamp', expireAfterSeconds=60)
+app.db.downloads.create_index('timestamp', expireAfterSeconds=60)
+
+now = datetime.datetime.utcnow()
+app.db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
 app.db.sites.replace_one({'_id': args.site_id}, {'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
 
 
@@ -101,7 +116,6 @@ if __name__ == '__main__':
 else:
     application = app # needed for uwsgi
 
-    import datetime
     import uwsgidecorators
 
     @uwsgidecorators.cron(0, -1, -1, -1, -1)  # top of every hour

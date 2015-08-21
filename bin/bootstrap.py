@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-#
-# @author:  Gunnar Schaefer
-"""This script helps bootstrap data"""
+
+"""This script helps bootstrap users and data"""
 
 import os
 import json
@@ -16,53 +15,31 @@ from api import util  # from scitran.api import util
 log = logging.getLogger('scitran.api.bootstrap')
 
 
-def dbinit(args):
+def users(args):
     db = pymongo.MongoClient(args.db_uri).get_default_database()
     now = datetime.datetime.utcnow()
-
     if args.force:
         db.client.drop_database(db)
+    with open(args.json) as json_dump:
+        input_data = json.load(json_dump)
+    for u in input_data.get('users', []):
+        u['created'] = now
+        u['modified'] = now
+        u.setdefault('preferences', {})
+        u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
+        db.users.insert_one(u)
+    for g in input_data.get('groups', []):
+        g['created'] = now
+        g['modified'] = now
+        db.groups.insert_one(g)
+    for d in input_data.get('drones', []):
+        d['created'] = now
+        d['modified'] = now
+        db.drones.insert_one(d)
 
-    db.projects.create_index([('gid', 1), ('name', 1)])
-    db.sessions.create_index('project')
-    db.sessions.create_index('uid')
-    db.acquisitions.create_index('session')
-    db.acquisitions.create_index('uid')
-    db.acquisitions.create_index('collections')
-    db.authtokens.create_index('timestamp', expireAfterSeconds=600)
-    db.uploads.create_index('timestamp', expireAfterSeconds=60)
-    db.downloads.create_index('timestamp', expireAfterSeconds=60)
-    # TODO jobs indexes
-    # TODO review all indexes
-
-    if args.json:
-        with open(args.json) as json_dump:
-            input_data = json.load(json_dump)
-        for u in input_data.get('users', []):
-            u['created'] = now
-            u['modified'] = now
-            u.setdefault('preferences', {})
-            u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
-            db.users.insert_one(u)
-        for g in input_data.get('groups', []):
-            g['created'] = now
-            g['modified'] = now
-            db.groups.insert_one(g)
-        for d in input_data.get('drones', []):
-            d['created'] = now
-            d['modified'] = now
-            db.drones.insert_one(d)
-
-    db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': {
-            'created': now,
-            'modified': now,
-            'name': 'Unknown',
-            'roles': [],
-            }}, upsert=True)
-
-dbinit_desc = """
+users_desc = """
 example:
-./bin/bootstrap.py dbinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni -j nims_users_and_groups.json
+./bin/bootstrap.py users mongodb://localhost/scitran users_and_groups.json
 """
 
 
@@ -99,27 +76,27 @@ def sort(args):
 
 sort_desc = """
 example:
-./bin/bootstrap.py sort mongodb://localhost/nims /tmp/data /tmp/sorted
+./bin/bootstrap.py sort mongodb://localhost/scitran /tmp/data /tmp/sorted
 """
 
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='operation to perform')
 
-dbinit_parser = subparsers.add_parser(
-        name='dbinit',
-        help='initialize database',
-        description=dbinit_desc,
+users_parser = subparsers.add_parser(
+        name='users',
+        help='bootstrap users and groups',
+        description=users_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-dbinit_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
-dbinit_parser.add_argument('-j', '--json', help='JSON file containing users and groups')
-dbinit_parser.add_argument('db_uri', help='DB URI')
-dbinit_parser.set_defaults(func=dbinit)
+users_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
+users_parser.add_argument('db_uri', help='DB URI')
+users_parser.add_argument('json', help='JSON file containing users and groups')
+users_parser.set_defaults(func=users)
 
 sort_parser = subparsers.add_parser(
         name='sort',
-        help='sort all files in a dicrectory tree',
+        help='sort files in a dicrectory tree',
         description=sort_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
