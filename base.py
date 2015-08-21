@@ -6,7 +6,6 @@ logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests libra
 
 import copy
 import json
-import hashlib
 import webapp2
 import datetime
 import requests
@@ -57,7 +56,7 @@ class RequestHandler(webapp2.RequestHandler):
         elif drone_secret is not None and self.request.user_agent.startswith('SciTran Drone '):
             if drone_secret != self.app.config['drone_secret']:
                 self.abort(401, 'invalid drone secret')
-            log.info('drone ' + self.request.user_agent.replace('SciTran Drone ', '') + ' request accepted')
+            log.info('drone "' + self.request.user_agent.replace('SciTran Drone ', '') + '" request accepted')
             drone_request = True
 
         # Cross-site authentication
@@ -126,7 +125,7 @@ class RequestHandler(webapp2.RequestHandler):
                 if header in r.headers:
                     self.response.headers[header] = r.headers[header]
 
-    def abort(self, code, detail, **kwargs):
+    def abort(self, code, detail=None, **kwargs):
         if isinstance(detail, jsonschema.ValidationError):
             detail = {
                 'relative_path': list(detail.relative_path),
