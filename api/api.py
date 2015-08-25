@@ -5,14 +5,14 @@ import webapp2
 import bson.json_util
 import webapp2_extras.routes
 
-import apps
-import core
-import jobs
-import users
-import projects
-import sessions
-import acquisitions
-import collections_
+from . import apps
+from . import core
+from . import jobs
+from . import users
+from . import projects
+from . import sessions
+from . import acquisitions
+from . import collections_
 
 
 routes = [
@@ -97,7 +97,7 @@ routes = [
 ]
 
 
-with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
+with open(os.path.join(os.path.dirname(__file__), 'data', 'schema.json')) as fp:
     schema_dict = json.load(fp)
 for cls in [
         users.Group,

@@ -1,8 +1,5 @@
 # @author:  Gunnar Schaefer
 
-import logging
-log = logging.getLogger('scitran.api')
-
 import os
 import copy
 import pytz
@@ -15,8 +12,14 @@ import datetime
 import mimetypes
 import dateutil.parser
 import tempdir as tempfile
+import logging
 
 import scitran.data
+
+log_fmt = '%(asctime)s %(message)s'
+datefmt = '%Y-%m-%d %H:%M:%S'
+log = logging.getLogger('scitran.api')
+logging.basicConfig(format=log_fmt, datefmt=datefmt, level=logging.INFO)
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
@@ -80,6 +83,17 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
     fileinfo = datainfo['fileinfo']
+    log_path = os.path.join(os.path.split(data_path)[0], 'logs')
+    # XXX Eventually it would be good to find a more principled/constant
+    # way to do this
+    if os.path.isdir(log_path):
+        hdlr = logging.FileHandler(os.path.join(log_path, 'commit_file.log'))
+        fmt = logging.Formatter(fmt=log_fmt, datefmt=datefmt)
+        hdlr.setFormatter(fmt)
+        hdlr.setLevel(logging.DEBUG)
+        log.addHandler(hdlr)
+    else:
+        hdlr = None
     log.info('Sorting     %s' % filename)
     if _id is None:
         _id = _update_db(dbc.database, datainfo)
@@ -110,6 +124,8 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
         dbc.update_one({'_id': _id}, {'$push': {'files': fileinfo}})
         updated = True
     log.debug('Done        %s' % filename)
+    if hdlr is not None:
+        log.removeHandler(hdlr)
     return updated
 
 
@@ -121,6 +137,7 @@ def _update_db(db, datainfo):
     session = db.sessions.find_one(session_spec, ['project'])
     if session: # skip project creation, if session exists
         project = db.projects.find_one({'_id': session['project']}, projection=PROJECTION_FIELDS + ['name'])
+        group = db.groups.find_one({'_id': project['group']}, projection=PROJECTION_FIELDS + ['name'])
     else:
         existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
         group_id_matches = difflib.get_close_matches(datainfo['group_id'], existing_group_ids, cutoff=0.8)
@@ -150,6 +167,12 @@ def _update_db(db, datainfo):
             new=True,
             projection=PROJECTION_FIELDS,
             )
+    try:
+        session_label = session['label']
+    except KeyError:  # this can happen if nims_metadata_status == None
+        session_label = '(unknown)'
+    log.info('Using group_id="%s", project_name="%s", and session_label="%s"'
+             % (project['group'], project['name'], session_label))
     acquisition_spec = {'uid': datainfo['acquisition_id']}
     acquisition = db.acquisitions.find_and_modify(
             acquisition_spec,

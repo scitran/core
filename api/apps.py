@@ -7,18 +7,14 @@ represents the /apps route
 """
 
 import os
-import json
-import hashlib
-import logging
-import tarfile
-import jsonschema
+# import json
+# import hashlib
+# import tarfile
+# import jsonschema
 
-log = logging.getLogger('scitran.jobs')
-
-import tempdir as tempfile
-
-import base
-import util
+# from . import tempdir as tempfile
+from . import base
+# from .util import log, insert_app
 
 # TODO: create schemas to verify various json payloads
 APP_SCHEMA = {
@@ -78,6 +74,7 @@ class Apps(base.RequestHandler):
         """Create a new App."""
         # this handles receive and writing the file
         # but the the json validation and database is handled by util.
+        """
         apps_path = self.app.config['apps_path']
         if not apps_path:
             self.abort(503, 'POST api/apps unavailable. apps_path not defined')
@@ -107,8 +104,11 @@ class Apps(base.RequestHandler):
                 jsonschema.validate(app_meta, APP_SCHEMA)
             except (ValueError, jsonschema.ValidationError) as e:
                 self.abort(400, str(e))
-            util.insert_app(self.app.db, app_temp, apps_path, app_meta=app_meta)  # pass meta info, prevent re-reading
+            insert_app(self.app.db, app_temp, apps_path, app_meta=app_meta)  # pass meta info, prevent re-reading
             log.debug('Recieved App: %s' % app_meta.get('_id'))
+        """
+        # XXX util.insert_app doesn't exist...?
+        raise NotImplementedError
 
 
 class App(base.RequestHandler):

@@ -1,24 +1,19 @@
 #!/usr/bin/env python
 #
 # @author:  Gunnar Schaefer
-
-import logging
-logging.basicConfig(
-    format='%(asctime)s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    level=logging.INFO,
-)
-log = logging.getLogger('scitran.bootstrap')
+"""This script helps bootstrap data"""
 
 import os
 import json
-import time
 import hashlib
+import logging
 import pymongo
 import argparse
 import datetime
 
-import util
+from api import util  # from scitran.api import util
+
+log = logging.getLogger('scitran.api.bootstrap')
 
 
 def dbinit(args):
@@ -67,7 +62,7 @@ def dbinit(args):
 
 dbinit_desc = """
 example:
-./scripts/bootstrap.py dbinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni -j nims_users_and_groups.json
+./bin/bootstrap.py dbinit mongodb://cnifs.stanford.edu/nims?replicaSet=cni -j nims_users_and_groups.json
 """
 
 
@@ -104,7 +99,7 @@ def sort(args):
 
 sort_desc = """
 example:
-./scripts/bootstrap.py sort mongodb://localhost/nims /tmp/data /tmp/sorted
+./bin/bootstrap.py sort mongodb://localhost/nims /tmp/data /tmp/sorted
 """
 
 

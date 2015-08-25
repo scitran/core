@@ -1,17 +1,14 @@
 # @author:  Gunnar Schaefer
 
-import logging
-log = logging.getLogger('scitran.api')
-
 import bson
 import datetime
 import jsonschema
 
-import users
-import util
-import containers
-import sessions
-import acquisitions
+from . import users
+from . import util
+from . import containers
+from . import sessions
+from . import acquisitions
 
 COLLECTION_POST_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',

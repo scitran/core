@@ -23,9 +23,7 @@ import time
 import pymongo
 import argparse
 
-import api
-import centralclient
-import jobs
+from api import api, centralclient, jobs
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'

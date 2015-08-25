@@ -5,14 +5,14 @@ API request handlers for process-job-handling.
 """
 
 import logging
-log = logging.getLogger('scitran.jobs')
+log = logging.getLogger('scitran.api.jobs')
 
 import bson
 import pymongo
 import datetime
 
-import base
-import util
+from . import base
+from . import util
 
 JOB_STATES = [
     'pending',  # Job is queued

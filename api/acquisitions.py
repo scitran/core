@@ -1,15 +1,11 @@
 # @author:  Gunnar Schaefer
 
-import logging
-log = logging.getLogger('scitran.api')
-
 import bson
 
-import scitran.data
 import scitran.data.medimg
 
-import util
-import containers
+from . import util
+from . import containers
 
 ACQUISITION_POST_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
@@ -148,9 +144,9 @@ class Acquisition(containers.Container):
 
     def schema(self, *args, **kwargs):
         return super(Acquisition, self).schema(scitran.data.medimg.medimg.MedImgReader.acquisition_properties)
-        scitran.data.project_properties(ds_dict['project_type'])
-        scitran.data.session_properties(ds_dict['session_type'])
-        scitran.data.acquisition_properties(ds_dict['acquisition_type'])
+        # scitran.data.project_properties(ds_dict['project_type'])
+        # scitran.data.session_properties(ds_dict['session_type'])
+        # scitran.data.acquisition_properties(ds_dict['acquisition_type'])
 
     def get(self, aid):
         """Return one Acquisition, conditionally with details."""

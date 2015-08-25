@@ -1,9 +1,6 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
 import logging
-log = logging.getLogger('scitran.api')
-logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown library logging
-
 import os
 import re
 import cgi
@@ -18,10 +15,14 @@ import markdown
 import cStringIO
 import jsonschema
 
-import base
-import util
-import users
-import tempdir as tempfile
+from . import base
+from . import util
+from .util import log
+from . import users
+from . import tempdir as tempfile
+
+# silence Markdown library logging
+logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
 
 UPLOAD_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
