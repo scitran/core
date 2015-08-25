@@ -318,7 +318,7 @@ class Container(base.RequestHandler):
                 field = form[fieldname]
                 if fieldname == 'file':
                     filestream = field.file
-                    filename = field.filename
+                    _, filename = os.path.split(field.filename)
                 elif fieldname == 'tags':
                     try:
                         tags = json.loads(field.value)
@@ -334,6 +334,8 @@ class Container(base.RequestHandler):
         elif filename is None:
             self.abort(400, 'Request must contain a filename parameter.')
         else:
+            _, filename = os.path.split(filename)
+
             if 'Content-MD5' not in self.request.headers:
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
             try:
