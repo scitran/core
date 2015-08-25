@@ -25,6 +25,7 @@ def users(args):
     for u in input_data.get('users', []):
         u['created'] = now
         u['modified'] = now
+        u.setdefault('email', u['_id'])
         u.setdefault('preferences', {})
         u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
         db.users.insert_one(u)
