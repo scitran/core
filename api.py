@@ -115,6 +115,10 @@ def dispatcher(router, request, response):
         response.write(json.dumps(rv, default=bson.json_util.default))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
 
+try:
+    import newrelic.agent
+    app = newrelic.agent.WSGIApplicationWrapper(webapp2.WSGIApplication(routes))
+except ImportError:
+    app = webapp2.WSGIApplication(routes)
 
-app = webapp2.WSGIApplication(routes)
 app.router.set_dispatcher(dispatcher)

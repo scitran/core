@@ -9,6 +9,15 @@ logging.basicConfig(
 log = logging.getLogger('scitran.api')
 logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
 
+try:
+    import newrelic.agent
+    newrelic.agent.initialize('../../newrelic.ini')
+    log.info('New Relic detected and loaded. Monitoring enabled.')
+except ImportError:
+    log.info('New Relic not detected. Monitoring disabled.')
+except newrelic.api.exceptions.ConfigurationError:
+    log.warn('New Relic detected but configuration was not valid. Please ensure newrelic.ini is present. Monitoring disabled.')
+
 import os
 import time
 import pymongo
