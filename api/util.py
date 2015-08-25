@@ -71,6 +71,8 @@ def parse_file(filepath, digest):
     if fileinfo['filetype'] == 'dicom' and fileinfo['datatypes'][0] != 'screenshot':
         datainfo['acquisition_properties']['modality'] = fileinfo['modality']
         datainfo['acquisition_properties']['datatype'] = fileinfo['datatypes'][0]
+    elif fileinfo['filetype'] == 'meeg':
+        datainfo['acquisition_properties']['datatype'] = fileinfo['datatypes'][0]
     return datainfo
 
 
@@ -137,7 +139,6 @@ def _update_db(db, datainfo):
     session = db.sessions.find_one(session_spec, ['project'])
     if session: # skip project creation, if session exists
         project = db.projects.find_one({'_id': session['project']}, projection=PROJECTION_FIELDS + ['name'])
-        group = db.groups.find_one({'_id': project['group']}, projection=PROJECTION_FIELDS + ['name'])
     else:
         existing_group_ids = [g['_id'] for g in db.groups.find(None, ['_id'])]
         group_id_matches = difflib.get_close_matches(datainfo['group_id'], existing_group_ids, cutoff=0.8)
