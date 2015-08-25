@@ -23,7 +23,7 @@ import time
 import pymongo
 import argparse
 
-from api import api, centralclient, jobs
+from api import app, centralclient, jobs
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
@@ -59,37 +59,37 @@ args.site_name = ' '.join(args.site_name).strip('"\'')
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 args.upload_path = os.path.join(args.data_path, 'upload')
 
-api.app.config = vars(args)
+app.config = vars(args)
 
 centralclient_enabled = True
-if not api.app.config['ssl_cert']:
+if not app.config['ssl_cert']:
     centralclient_enabled = False
     log.warning('ssl_cert not configured -> SciTran Central functionality disabled')
-if api.app.config['site_id'] == 'local':
+if app.config['site_id'] == 'local':
     centralclient_enabled = False
     log.warning('site_id not configured -> SciTran Central functionality disabled')
-elif not api.app.config['api_uri']:
+elif not app.config['api_uri']:
     centralclient_enabled = False
     log.warning('api_uri not configured -> SciTran Central functionality disabled')
-if not api.app.config['central_uri']:
+if not app.config['central_uri']:
     centralclient_enabled = False
     log.warning('central_uri not configured -> SciTran Central functionality disabled')
-if not api.app.config['drone_secret']:
+if not app.config['drone_secret']:
     log.warning('drone_secret not configured -> Drone functionality disabled')
-if not api.app.config['apps_path']:
+if not app.config['apps_path']:
     log.warning('apps_path is not defined -> App functionality disabled')
-elif not os.path.exists(api.app.config['apps_path']):
-    os.makedirs(api.app.config['apps_path'])
-if not os.path.exists(api.app.config['data_path']):
-    os.makedirs(api.app.config['data_path'])
-if not os.path.exists(api.app.config['quarantine_path']):
-    os.makedirs(api.app.config['quarantine_path'])
-if not os.path.exists(api.app.config['upload_path']):
-    os.makedirs(api.app.config['upload_path'])
+elif not os.path.exists(app.config['apps_path']):
+    os.makedirs(app.config['apps_path'])
+if not os.path.exists(app.config['data_path']):
+    os.makedirs(app.config['data_path'])
+if not os.path.exists(app.config['quarantine_path']):
+    os.makedirs(app.config['quarantine_path'])
+if not os.path.exists(app.config['upload_path']):
+    os.makedirs(app.config['upload_path'])
 
 for x in range(10):
     try:
-        api.app.db = pymongo.MongoClient(args.db_uri).get_default_database()
+        app.db = pymongo.MongoClient(args.db_uri).get_default_database()
     except:
         time.sleep(6)
     else:
@@ -97,14 +97,14 @@ for x in range(10):
 else:
     raise Exception('Could not connect to MongoDB')
 
-api.app.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
+app.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
 
 
 if __name__ == '__main__':
-    api.app.debug = True # send stack trace for uncaught exceptions to client
-    paste.httpserver.serve(api.app, host=args.host, port=args.port, ssl_pem=args.ssl_cert)
+    app.debug = True # send stack trace for uncaught exceptions to client
+    paste.httpserver.serve(app, host=args.host, port=args.port, ssl_pem=args.ssl_cert)
 else:
-    application = api.app # needed for uwsgi
+    application = app # needed for uwsgi
 
     import datetime
     import uwsgidecorators
