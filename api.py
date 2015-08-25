@@ -116,8 +116,8 @@ def dispatcher(router, request, response):
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
 
 try:
-    from newrelic import agent
-    app = agent.WSGIApplicationWrapper(webapp2.WSGIApplication(routes))
+    import newrelic.agent
+    app = newrelic.agent.WSGIApplicationWrapper(webapp2.WSGIApplication(routes))
 except ImportError:
     app = webapp2.WSGIApplication(routes)
 
