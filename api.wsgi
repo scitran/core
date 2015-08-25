@@ -1,5 +1,11 @@
 # vim: filetype=python
 
+try:
+    import newrelic.agent
+    newrelic.agent.initialize('../../newrelic.ini')
+except ImportError:
+    pass
+
 import logging
 logging.basicConfig(
         format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
