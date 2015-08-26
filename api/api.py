@@ -97,7 +97,7 @@ routes = [
 ]
 
 
-with open(os.path.join(os.path.dirname(__file__), 'data', 'schema.json')) as fp:
+with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
     schema_dict = json.load(fp)
 for cls in [
         users.Group,
