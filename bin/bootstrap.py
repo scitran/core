@@ -43,17 +43,17 @@ def dbinit(args):
             u['modified'] = now
             u.setdefault('preferences', {})
             u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
-            db.users.insert(u)
+            db.users.insert_one(u)
         for g in input_data.get('groups', []):
             g['created'] = now
             g['modified'] = now
-            db.groups.insert(g)
+            db.groups.insert_one(g)
         for d in input_data.get('drones', []):
             d['created'] = now
             d['modified'] = now
-            db.drones.insert(d)
+            db.drones.insert_one(d)
 
-    db.groups.update({'_id': 'unknown'}, {'$setOnInsert': {
+    db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': {
             'created': now,
             'modified': now,
             'name': 'Unknown',

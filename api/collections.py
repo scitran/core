@@ -199,7 +199,7 @@ class Collections(containers.ContainerList):
         json_body['curator'] = self.uid
         json_body['timestamp'] = datetime.datetime.utcnow()
         json_body['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
-        return {'_id': str(self.dbc.insert(json_body))}
+        return {'_id': str(self.dbc.insert_one(json_body))}
 
     def get(self):
         """Return the list of Collections."""
@@ -271,7 +271,7 @@ class Collection(containers.Container):
                 elif item['level'] == 'acquisition':
                     acq_ids += [item_id]
             operator = '$addToSet' if contents['operation'] == 'add' else '$pull'
-            self.app.db.acquisitions.update({'_id': {'$in': acq_ids}}, {operator: {'collections': _id}}, multi=True)
+            self.app.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': _id}})
 
     def delete(self, cid):
         """Delete a Collection."""

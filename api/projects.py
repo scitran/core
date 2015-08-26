@@ -110,7 +110,7 @@ class Projects(containers.ContainerList):
         json_body['public'] = json_body.get('public', False)
         json_body['files'] = []
         json_body['timestamp'] = datetime.datetime.utcnow()
-        return {'_id': str(self.dbc.insert(json_body))}
+        return {'_id': str(self.dbc.insert_one(json_body))}
 
     def get(self, uid=None, gid=None):
         """Return the User's list of Projects."""
@@ -192,8 +192,8 @@ class Project(containers.Container):
             if 'public' in json_body:
                 updates['public'] = json_body['public']
             session_ids = [s['_id'] for s in self.app.db.sessions.find({'project': _id}, [])]
-            self.app.db.sessions.update({'project': _id}, {'$set': updates}, multi=True)
-            self.app.db.acquisitions.update({'session': {'$in': session_ids}}, {'$set': updates}, multi=True)
+            self.app.db.sessions.update_many({'project': _id}, {'$set': updates})
+            self.app.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': updates})
 
     def delete(self, pid):
         """Delete a Project."""

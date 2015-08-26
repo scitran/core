@@ -44,7 +44,7 @@ class RequestHandler(webapp2.RequestHandler):
                     self.uid = identity.get('email')
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
-                    self.app.db.authtokens.save({'_id': access_token, 'uid': self.uid, 'timestamp': datetime.datetime.utcnow()})
+                    self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': datetime.datetime.utcnow()}, upsert=True)
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}

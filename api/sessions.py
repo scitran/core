@@ -100,7 +100,7 @@ class Sessions(containers.ContainerList):
         json_body['files'] = []
         if 'timestamp' in json_body:
             json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
-        return {'_id': str(self.dbc.insert(json_body))}
+        return {'_id': str(self.dbc.insert_one(json_body))}
 
     def get(self, pid=None, gid=None):
         """Return the list of project or group sessions."""
@@ -194,7 +194,7 @@ class Session(containers.Container):
             json_body['permissions'] = destination['permissions']
             json_body['group'] = destination['group']
             self.update_db(_id, json_body)
-            self.app.db.acquisitions.update({'session': _id}, {'$set': {'permissions': destination['permissions']}}, multi=True)
+            self.app.db.acquisitions.update_many({'session': _id}, {'$set': {'permissions': destination['permissions']}})
         else:
             self._get(_id, 'admin' if 'permissions' in json_body else 'rw', perm_only=True)
             self.update_db(_id, json_body)

@@ -95,7 +95,7 @@ class Acquisitions(containers.ContainerList):
         json_body['files'] = []
         if 'timestamp' in json_body:
             json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
-        return {'_id': str(self.dbc.insert(json_body))}
+        return {'_id': str(self.dbc.insert_one(json_body))}
 
     def get(self, sid):
         """Return the list of Session Acquisitions."""

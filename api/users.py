@@ -50,7 +50,7 @@ class Users(base.RequestHandler):
             json_body.setdefault('email', json_body['_id'])
             json_body.setdefault('preferences', {})
             json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
-            self.dbc.insert(json_body)
+            self.dbc.insert_one(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, e)
         except pymongo.errors.DuplicateKeyError as e:
@@ -130,13 +130,13 @@ class User(base.RequestHandler):
         if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
             self.abort(400, 'user cannot alter own superuser privilege')
         json_body['modified'] = datetime.datetime.utcnow()
-        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
+        self.dbc.update_one({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
         """Delete a User."""
         if not self.superuser_request:
             self.abort(403, 'must be superuser to delete a User')
-        self.dbc.remove({'_id': _id})
+        self.dbc.delete_one({'_id': _id})
 
 
 class Groups(base.RequestHandler):
@@ -161,7 +161,7 @@ class Groups(base.RequestHandler):
             json_body['created'] = datetime.datetime.utcnow()
             json_body['modified'] = datetime.datetime.utcnow()
             json_body.setdefault('roles', [])
-            self.dbc.insert(json_body)
+            self.dbc.insert_one(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, e)
         except pymongo.errors.DuplicateKeyError as e:
@@ -241,7 +241,7 @@ class Group(base.RequestHandler):
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, e)
         json_body['modified'] = datetime.datetime.utcnow()
-        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
+        self.dbc.update_one({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def delete(self, _id):
         """Delete an Group."""

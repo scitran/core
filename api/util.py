@@ -7,6 +7,7 @@ import uuid
 import shutil
 import difflib
 import hashlib
+import pymongo
 import zipfile
 import datetime
 import mimetypes
@@ -138,23 +139,23 @@ def _update_db(db, datainfo):
             project_name = datainfo['group_id'] + ('/' + datainfo['project_name'] if datainfo['project_name'] else '')
         group = db.groups.find_one({'_id': group_id})
         project_spec = {'group': group['_id'], 'name': project_name}
-        project = db.projects.find_and_modify(
+        project = db.projects.find_one_and_update(
                 project_spec,
                 {'$setOnInsert': {'permissions': group['roles'], 'public': False, 'files': []}},
+                PROJECTION_FIELDS,
                 upsert=True,
-                new=True,
-                projection=PROJECTION_FIELDS,
+                return_document=pymongo.collection.ReturnDocument.AFTER,
                 )
-    session = db.sessions.find_and_modify(
+    session = db.sessions.find_one_and_update(
             session_spec,
             {
                 '$setOnInsert': dict(group=project['group'], project=project['_id'], permissions=project['permissions'], public=project['public'], files=[]),
                 '$set': datainfo['session_properties'] or session_spec, # session_spec ensures non-empty $set
                 #'$addToSet': {'modalities': datainfo['fileinfo']['modality']}, # FIXME
                 },
+            PROJECTION_FIELDS,
             upsert=True,
-            new=True,
-            projection=PROJECTION_FIELDS,
+            return_document=pymongo.collection.ReturnDocument.AFTER,
             )
     try:
         session_label = session['label']
@@ -162,20 +163,20 @@ def _update_db(db, datainfo):
         session_label = '(unknown)'
     log.info('Setting     group_id="%s", project_name="%s", and session_label="%s"' % (project['group'], project['name'], session_label))
     acquisition_spec = {'uid': datainfo['acquisition_id']}
-    acquisition = db.acquisitions.find_and_modify(
+    acquisition = db.acquisitions.find_one_and_update(
             acquisition_spec,
             {
                 '$setOnInsert': dict(session=session['_id'], permissions=session['permissions'], public=session['public'], files=[]),
                 '$set': datainfo['acquisition_properties'] or acquisition_spec, # acquisition_spec ensures non-empty $set
                 #'$addToSet': {'types': {'$each': [{'domain': dataset.nims_file_domain, 'kind': kind} for kind in dataset.nims_file_kinds]}},
                 },
+            [],
             upsert=True,
-            new=True,
-            projection=[],
+            return_document=pymongo.collection.ReturnDocument.AFTER,
             )
     if datainfo['timestamp']:
-        db.projects.update({'_id': project['_id']}, {'$max': dict(timestamp=datainfo['timestamp']), '$set': dict(timezone=datainfo['timezone'])})
-        db.sessions.update({'_id': session['_id']}, {'$min': dict(timestamp=datainfo['timestamp']), '$set': dict(timezone=datainfo['timezone'])})
+        db.projects.update_one({'_id': project['_id']}, {'$max': dict(timestamp=datainfo['timestamp']), '$set': dict(timezone=datainfo['timezone'])})
+        db.sessions.update_one({'_id': session['_id']}, {'$min': dict(timestamp=datainfo['timestamp']), '$set': dict(timezone=datainfo['timezone'])})
     return acquisition['_id']
 
 
