@@ -1,12 +1,14 @@
 # vim: filetype=python
 
+import os
+import time
+import pymongo
+import argparse
 import logging
-logging.basicConfig(
-        format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        level=logging.DEBUG,
-        )
-log = logging.getLogger('scitran.api')
+
+from api import app, centralclient, jobs
+from api.util import log
+
 logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
 
 try:
@@ -17,13 +19,6 @@ except ImportError:
     log.info('New Relic not detected. Monitoring disabled.')
 except newrelic.api.exceptions.ConfigurationError:
     log.warn('New Relic detected but configuration was not valid. Please ensure newrelic.ini is present. Monitoring disabled.')
-
-import os
-import time
-import pymongo
-import argparse
-
-from api import app, centralclient, jobs
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'

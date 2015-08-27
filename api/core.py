@@ -211,6 +211,7 @@ class Core(base.RequestHandler):
             if datainfo is None:
                 util.quarantine_file(filepath, self.app.config['quarantine_path'])
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
+            log.info('Sorting     %s' % os.path.basename(filepath))
             success = util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'], True)
             if not success:
                 self.abort(202, 'Identical file exists')

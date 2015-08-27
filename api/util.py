@@ -16,10 +16,13 @@ import logging
 
 import scitran.data
 
-log_fmt = '%(asctime)s %(message)s'
-datefmt = '%Y-%m-%d %H:%M:%S'
+logging.basicConfig(
+    format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.DEBUG,
+)
 log = logging.getLogger('scitran.api')
-logging.basicConfig(format=log_fmt, datefmt=datefmt, level=logging.INFO)
+log.setLevel(logging.INFO)
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
@@ -85,18 +88,6 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
     fileinfo = datainfo['fileinfo']
-    log_path = os.path.join(os.path.split(data_path)[0], 'logs')
-    # XXX Eventually it would be good to find a more principled/constant
-    # way to do this
-    if os.path.isdir(log_path):
-        hdlr = logging.FileHandler(os.path.join(log_path, 'commit_file.log'))
-        fmt = logging.Formatter(fmt=log_fmt, datefmt=datefmt)
-        hdlr.setFormatter(fmt)
-        hdlr.setLevel(logging.DEBUG)
-        log.addHandler(hdlr)
-    else:
-        hdlr = None
-    log.info('Sorting     %s' % filename)
     if _id is None:
         _id = _update_db(dbc.database, datainfo)
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
@@ -126,8 +117,6 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
         dbc.update_one({'_id': _id}, {'$push': {'files': fileinfo}})
         updated = True
     log.debug('Done        %s' % filename)
-    if hdlr is not None:
-        log.removeHandler(hdlr)
     return updated
 
 
@@ -172,8 +161,7 @@ def _update_db(db, datainfo):
         session_label = session['label']
     except KeyError:  # this can happen if nims_metadata_status == None
         session_label = '(unknown)'
-    log.info('Using group_id="%s", project_name="%s", and session_label="%s"'
-             % (project['group'], project['name'], session_label))
+    log.info('Setting     group_id="%s", project_name="%s", and session_label="%s"' % (project['group'], project['name'], session_label))
     acquisition_spec = {'uid': datainfo['acquisition_id']}
     acquisition = db.acquisitions.find_and_modify(
             acquisition_spec,
