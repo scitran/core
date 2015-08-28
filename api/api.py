@@ -14,6 +14,8 @@ from . import projects
 from . import sessions
 from . import acquisitions
 from . import collections
+from . import listhandler
+from . import permchecker
 
 
 routes = [
@@ -44,6 +46,7 @@ routes = [
         webapp2.Route(r'/<:[^/]+>',                                 users.Group, name='group'),
         webapp2.Route(r'/<gid:[^/]+>/projects',                     projects.Projects, name='g_projects'),
         webapp2.Route(r'/<gid:[^/]+>/sessions',                     sessions.Sessions, name='g_sessions', methods=['GET']),
+        webapp2.Route(r'/<cid:[^/]+>/<list:roles>/<_id:[^/]+>',     listhandler.ListHandler, name='g_roles', defaults={'collection': 'groups', 'permchecker': permchecker.default_sublist}),
     ]),
     webapp2.Route(r'/api/projects',                                 projects.Projects, methods=['GET'], name='projects'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
