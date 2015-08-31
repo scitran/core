@@ -22,7 +22,6 @@ logging.basicConfig(
     level=logging.DEBUG,
 )
 log = logging.getLogger('scitran.api')
-log.setLevel(logging.INFO)
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
