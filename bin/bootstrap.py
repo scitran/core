@@ -84,6 +84,8 @@ example:
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='operation to perform')
 
+parser.add_argument('--log_level', help='log level [info]', default='info')
+
 users_parser = subparsers.add_parser(
         name='users',
         help='bootstrap users and groups',
@@ -108,4 +110,5 @@ sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
 sort_parser.set_defaults(func=sort)
 
 args = parser.parse_args()
+logging.getLogger().setLevel(getattr(logging, args.log_level.upper()))
 args.func(args)
