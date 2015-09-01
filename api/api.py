@@ -5,7 +5,6 @@ import webapp2
 import bson.json_util
 import webapp2_extras.routes
 
-from . import apps
 from . import core
 from . import jobs
 from . import users
@@ -87,12 +86,6 @@ routes = [
         webapp2.Route(r'/count',                                    jobs.Jobs, handler_method='count', methods=['GET']),
         webapp2.Route(r'/addTestJob',                               jobs.Jobs, handler_method='addTestJob', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 jobs.Job,  name='job'),
-    ]),
-    webapp2.Route(r'/api/apps',                                     apps.Apps),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/apps', [
-        webapp2.Route(r'/count',                                    apps.Apps, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/<:[^/]+>',                                 apps.App,  name='job'),
-        webapp2.Route(r'/<:[^/]+>/file',                            apps.App,  handler_method='get_file'),
     ]),
 ]
 
