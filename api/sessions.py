@@ -1,14 +1,11 @@
 # @author:  Gunnar Schaefer
 
-import logging
-log = logging.getLogger('scitran.api')
-
 import bson
 
 import scitran.data.medimg
 
-import util
-import containers
+from . import util
+from . import containers
 
 SESSION_POST_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',

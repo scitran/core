@@ -1,8 +1,5 @@
 # @author:  Gunnar Schaefer
 
-import logging
-log = logging.getLogger('scitran.api')
-
 import os
 import copy
 import pytz
@@ -15,8 +12,16 @@ import datetime
 import mimetypes
 import dateutil.parser
 import tempdir as tempfile
+import logging
 
 import scitran.data
+
+logging.basicConfig(
+    format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.DEBUG,
+)
+log = logging.getLogger('scitran.api')
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
@@ -68,6 +73,8 @@ def parse_file(filepath, digest):
     if fileinfo['filetype'] == 'dicom' and fileinfo['datatypes'][0] != 'screenshot':
         datainfo['acquisition_properties']['modality'] = fileinfo['modality']
         datainfo['acquisition_properties']['datatype'] = fileinfo['datatypes'][0]
+    elif fileinfo['filetype'] == 'meeg':
+        datainfo['acquisition_properties']['datatype'] = fileinfo['datatypes'][0]
     return datainfo
 
 
@@ -80,7 +87,6 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
     """Insert a file as an attachment or as a file."""
     filename = os.path.basename(filepath)
     fileinfo = datainfo['fileinfo']
-    log.info('Sorting     %s' % filename)
     if _id is None:
         _id = _update_db(dbc.database, datainfo)
     container_path = os.path.join(data_path, str(_id)[-3:] + '/' + str(_id))
@@ -150,6 +156,11 @@ def _update_db(db, datainfo):
             new=True,
             projection=PROJECTION_FIELDS,
             )
+    try:
+        session_label = session['label']
+    except KeyError:  # this can happen if nims_metadata_status == None
+        session_label = '(unknown)'
+    log.info('Setting     group_id="%s", project_name="%s", and session_label="%s"' % (project['group'], project['name'], session_label))
     acquisition_spec = {'uid': datainfo['acquisition_id']}
     acquisition = db.acquisitions.find_and_modify(
             acquisition_spec,

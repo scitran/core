@@ -1,8 +1,5 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
-import logging
-log = logging.getLogger('scitran.api')
-
 import os
 import cgi
 import bson
@@ -14,9 +11,10 @@ import jsonschema
 
 import tempdir as tempfile
 
-import base
-import util
-import users
+from . import base
+from . import util
+from .util import log
+from . import users
 
 
 FILE_SCHEMA = {

@@ -5,14 +5,13 @@ import webapp2
 import bson.json_util
 import webapp2_extras.routes
 
-import apps
-import core
-import jobs
-import users
-import projects
-import sessions
-import acquisitions
-import collections_
+from . import core
+from . import jobs
+from . import users
+from . import projects
+from . import sessions
+from . import acquisitions
+from . import collections
 
 
 routes = [
@@ -54,16 +53,16 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            projects.Project, handler_method='file'),
         webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',              sessions.Sessions, name='p_sessions'),
     ]),
-    webapp2.Route(r'/api/collections',                              collections_.Collections),
+    webapp2.Route(r'/api/collections',                              collections.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/api/collections', [
-        webapp2.Route(r'/count',                                    collections_.Collections, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/curators',                                 collections_.Collections, handler_method='curators', methods=['GET']),
-        webapp2.Route(r'/schema',                                   collections_.Collection, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/<:[0-9a-f]{24}>',                          collections_.Collection, name='collection'),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     collections_.Collection, handler_method='file', methods=['POST']),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            collections_.Collection, handler_method='file'),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections_.CollectionSessions, name='coll_sessions'),
-        webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections_.CollectionAcquisitions, name='coll_acquisitions'),
+        webapp2.Route(r'/count',                                    collections.Collections, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/curators',                                 collections.Collections, handler_method='curators', methods=['GET']),
+        webapp2.Route(r'/schema',                                   collections.Collection, handler_method='schema', methods=['GET']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>',                          collections.Collection, name='collection'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     collections.Collection, handler_method='file', methods=['POST']),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            collections.Collection, handler_method='file'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections.CollectionSessions, name='coll_sessions'),
+        webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections.CollectionAcquisitions, name='coll_acquisitions'),
     ]),
     webapp2.Route(r'/api/sessions',                                 sessions.Sessions, methods=['GET'], name='sessions'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/sessions', [
@@ -87,12 +86,6 @@ routes = [
         webapp2.Route(r'/count',                                    jobs.Jobs, handler_method='count', methods=['GET']),
         webapp2.Route(r'/addTestJob',                               jobs.Jobs, handler_method='addTestJob', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 jobs.Job,  name='job'),
-    ]),
-    webapp2.Route(r'/api/apps',                                     apps.Apps),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/apps', [
-        webapp2.Route(r'/count',                                    apps.Apps, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/<:[^/]+>',                                 apps.App,  name='job'),
-        webapp2.Route(r'/<:[^/]+>/file',                            apps.App,  handler_method='get_file'),
     ]),
 ]
 

@@ -1,15 +1,17 @@
 # @author:  Gunnar Schaefer, Kevin S. Hahn
 
-import logging
-log = logging.getLogger('scitran.api')
-logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library logging
-
 import copy
 import json
+import logging
 import webapp2
 import datetime
 import requests
 import jsonschema
+
+from .util import log
+
+# silence Requests library logging
+logging.getLogger('requests').setLevel(logging.WARNING)
 
 
 class RequestHandler(webapp2.RequestHandler):

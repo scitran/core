@@ -1,16 +1,12 @@
 # @author:  Gunnar Schaefer
 
-import logging
-log = logging.getLogger('scitran.api')
-
-import copy
 import hashlib
 import pymongo
 import datetime
 import jsonschema
 
-import base
-import util
+from . import base
+from . import util
 
 ROLES = [
     {
