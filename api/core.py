@@ -282,10 +282,10 @@ class Core(base.RequestHandler):
 
         if self.request.GET.get('complete', '').lower() not in ('1', 'true'):
             if 'Content-MD5' not in self.request.headers:
-                self.app.db.uploads.remove({'_id': ticket_id}) # delete ticket
+                self.app.db.uploads.delete_one({'_id': ticket_id}) # delete ticket
                 self.abort(400, 'Request must contain a valid "Content-MD5" header.')
             if not filename:
-                self.app.db.uploads.remove({'_id': ticket_id}) # delete ticket
+                self.app.db.uploads.delete_one({'_id': ticket_id}) # delete ticket
                 self.abort(400, 'Request must contain a filename query parameter.')
             self.app.db.uploads.update_one({'_id': ticket_id}, {'$set': {'timestamp': datetime.datetime.utcnow()}}) # refresh ticket
             store_file(self.request.body_file, filename, self.request.headers['Content-MD5'], arcpath, ticket['arcname'])
@@ -351,7 +351,7 @@ class Core(base.RequestHandler):
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
-        self.app.db.downloads.insert(ticket)
+        self.app.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
@@ -647,12 +647,7 @@ class Core(base.RequestHandler):
             group = project['group']
             del project['group']
             project['group'] = group
-            acq['_id'] = str(acq['_id'])
-            acq['session'] = str(acq['session'])
-            session['_id'] = str(session['_id'])
-            session['project'] = str(session['project'])
             session['subject_code'] = session.get('subject', {}).get('code', '')
-            project['_id'] = str(project['_id'])
             if session not in sessions:
                 sessions.append(session)
             if project not in projects:

@@ -1,8 +1,10 @@
 import os
 import copy
 import json
+import pytz
 import webapp2
-import bson.json_util
+import datetime
+import bson.objectid
 import webapp2_extras.routes
 
 from . import core
@@ -98,15 +100,24 @@ for cls in [
         ]:
     cls.post_schema = copy.deepcopy(schema_dict[cls.__name__.lower()])
     cls.put_schema = copy.deepcopy(cls.post_schema)
-    cls.put_schema['properties'].pop('_id')
+    cls.put_schema['properties'].pop('_id', None)
     cls.put_schema.pop('required')
+
+
+def custom_json_serializer(obj):
+    if isinstance(obj, bson.objectid.ObjectId):
+        return str(obj)
+    elif isinstance(obj, datetime.datetime):
+        return pytz.timezone('UTC').localize(obj).isoformat()
+    raise TypeError(repr(obj) + " is not JSON serializable")
 
 
 def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
-        response.write(json.dumps(rv, default=bson.json_util.default))
+        response.write(json.dumps(rv, default=custom_json_serializer))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
+
 
 try:
     import newrelic.agent

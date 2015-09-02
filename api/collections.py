@@ -33,6 +33,9 @@ COLLECTION_POST_SCHEMA = {
                     '_id': {
                         'type': 'string',
                     },
+                    'site': {
+                        'type': 'string',
+                    },
                 },
                 'required': ['access', '_id'],
                 'additionalProperties': False,
@@ -84,6 +87,9 @@ COLLECTION_PUT_SCHEMA = {
                         'enum': [role['rid'] for role in users.ROLES],
                     },
                     '_id': {
+                        'type': 'string',
+                    },
+                    'site': {
                         'type': 'string',
                     },
                 },
@@ -199,7 +205,7 @@ class Collections(containers.ContainerList):
         json_body['curator'] = self.uid
         json_body['timestamp'] = datetime.datetime.utcnow()
         json_body['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
-        return {'_id': str(self.dbc.insert(json_body))}
+        return {'_id': self.dbc.insert_one(json_body).inserted_id}
 
     def get(self):
         """Return the list of Collections."""
@@ -271,7 +277,7 @@ class Collection(containers.Container):
                 elif item['level'] == 'acquisition':
                     acq_ids += [item_id]
             operator = '$addToSet' if contents['operation'] == 'add' else '$pull'
-            self.app.db.acquisitions.update({'_id': {'$in': acq_ids}}, {operator: {'collections': _id}}, multi=True)
+            self.app.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': _id}})
 
     def delete(self, cid):
         """Delete a Collection."""
@@ -303,10 +309,7 @@ class CollectionSessions(sessions.Sessions):
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection)) # avoid permissions checking by not using ContainerList._get()
         for sess in sessions:
-            sess['_id'] = str(sess['_id']) # do this manually, since not going through ContainerList._get()
             sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
-            sess.setdefault('timestamp', datetime.datetime.utcnow())
-            sess['timestamp'], sess['timezone'] = util.format_timestamp(sess['timestamp'], sess.get('timezone'))
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -342,9 +345,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
-            acq['_id'] = str(acq['_id']) # do this manually, since not going through ContainerList._get()
             acq.setdefault('timestamp', datetime.datetime.utcnow())
-            acq['timestamp'], acq['timezone'] = util.format_timestamp(acq['timestamp'], acq.get('timezone'))
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])

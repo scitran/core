@@ -137,9 +137,7 @@ class ContainerList(base.RequestHandler):
             projection['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site}}
         containers = list(self.dbc.find(query, projection))
         for container in containers:
-            container['_id'] = str(container['_id'])
             container.setdefault('timestamp', datetime.datetime.utcnow())
-            container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
             container['attachment_count'] = len([f for f in container.get('files', []) if f.get('flavor') == 'attachment'])
         return containers
 
@@ -174,11 +172,7 @@ class Container(base.RequestHandler):
         if self.request.GET.get('paths', '').lower() in ('1', 'true'):
             for fileinfo in container['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
-        container['_id'] = str(container['_id'])
         container.setdefault('timestamp', datetime.datetime.utcnow())
-        container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
-        for note in container.get('notes', []):
-            note['timestamp'], _ = util.format_timestamp(note['timestamp']) # TODO json serializer should do this
         return container, user_perm
 
     def _put(self, _id):
@@ -214,7 +208,7 @@ class Container(base.RequestHandler):
                 note['timestamp'] = util.parse_timestamp(note['timestamp'])
             else:
                 note['timestamp'] = datetime.datetime.utcnow()
-        self.dbc.update({'_id': _id}, {'$set': util.mongo_dict(json_body)})
+        self.dbc.update_one({'_id': _id}, {'$set': util.mongo_dict(json_body)})
 
     def file(self, cid, filename=None):
         _id = bson.ObjectId(cid)
@@ -244,13 +238,13 @@ class Container(base.RequestHandler):
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.request.GET.get('ticket') == '':    # request for download ticket
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])
-            return {'ticket': self.app.db.downloads.insert(ticket)}
+            return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
         else:                                       # authenticated or ticketed (unauthenticated) download
             zip_member = self.request.GET.get('member')
             if self.request.GET.get('info', '').lower() in ('1', 'true'):
                 try:
                     with zipfile.ZipFile(filepath) as zf:
-                        return [(zi.filename, zi.file_size, util.format_timestamp(datetime.datetime(*zi.date_time))[0]) for zi in zf.infolist()]
+                        return [(zi.filename, zi.file_size, datetime.datetime(*zi.date_time)) for zi in zf.infolist()]
                 except zipfile.BadZipfile:
                     self.abort(400, 'not a zip file')
             elif self.request.GET.get('comment', '').lower() in ('1', 'true'):

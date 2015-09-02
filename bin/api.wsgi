@@ -92,7 +92,7 @@ for x in range(10):
 else:
     raise Exception('Could not connect to MongoDB')
 
-app.db.sites.update({'_id': args.site_id}, {'_id': args.site_id, 'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
+app.db.sites.replace_one({'_id': args.site_id}, {'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
 
 
 if __name__ == '__main__':
