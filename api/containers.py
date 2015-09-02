@@ -137,9 +137,7 @@ class ContainerList(base.RequestHandler):
             projection['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site}}
         containers = list(self.dbc.find(query, projection))
         for container in containers:
-            container['_id'] = str(container['_id'])
             container.setdefault('timestamp', datetime.datetime.utcnow())
-            container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
             container['attachment_count'] = len([f for f in container.get('files', []) if f.get('flavor') == 'attachment'])
         return containers
 
@@ -174,11 +172,7 @@ class Container(base.RequestHandler):
         if self.request.GET.get('paths', '').lower() in ('1', 'true'):
             for fileinfo in container['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
-        container['_id'] = str(container['_id'])
         container.setdefault('timestamp', datetime.datetime.utcnow())
-        container['timestamp'], container['timezone'] = util.format_timestamp(container['timestamp'], container.get('timezone')) # TODO json serializer should do this
-        for note in container.get('notes', []):
-            note['timestamp'], _ = util.format_timestamp(note['timestamp']) # TODO json serializer should do this
         return container, user_perm
 
     def _put(self, _id):
@@ -250,7 +244,7 @@ class Container(base.RequestHandler):
             if self.request.GET.get('info', '').lower() in ('1', 'true'):
                 try:
                     with zipfile.ZipFile(filepath) as zf:
-                        return [(zi.filename, zi.file_size, util.format_timestamp(datetime.datetime(*zi.date_time))[0]) for zi in zf.infolist()]
+                        return [(zi.filename, zi.file_size, datetime.datetime(*zi.date_time)) for zi in zf.infolist()]
                 except zipfile.BadZipfile:
                     self.abort(400, 'not a zip file')
             elif self.request.GET.get('comment', '').lower() in ('1', 'true'):

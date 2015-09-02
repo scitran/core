@@ -61,9 +61,6 @@ class Users(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'must be logged in to retrieve User list')
         users = list(self.dbc.find({}, {'preferences': False}))
-        for user in users:
-            user['created'], _ = util.format_timestamp(user['created']) # TODO json serializer should do this
-            user['modified'], _ = util.format_timestamp(user['modified']) # TODO json serializer should do this
         if self.debug:
             for user in users:
                 user['debug'] = {}
@@ -108,8 +105,6 @@ class User(base.RequestHandler):
         user = self.dbc.find_one({'_id': _id}, projection or None)
         if not user:
             self.abort(404, 'no such User')
-        user['created'], _ = util.format_timestamp(user['created']) # TODO json serializer should do this
-        user['modified'], _ = util.format_timestamp(user['modified']) # TODO json serializer should do this
         if self.debug and (self.superuser_request or _id == self.uid):
             user['debug'] = {}
             user['debug']['groups'] = self.uri_for('groups', _id, _full=True) + '?' + self.request.query_string
@@ -184,9 +179,6 @@ class Groups(base.RequestHandler):
                     query = {'roles._id': self.uid}
                 projection += ['roles.$']
         groups = list(self.app.db.groups.find(query, projection))
-        for group in groups:
-            group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
-            group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             for group in groups:
                 group['debug'] = {}
@@ -219,8 +211,6 @@ class Group(base.RequestHandler):
             group = self.app.db.groups.find_one({'_id': _id, 'roles': {'$elemMatch': {'_id': self.uid, 'access': 'admin'}}})
             if not group:
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
-        group['created'], _ = util.format_timestamp(group['created']) # TODO json serializer should do this
-        group['modified'], _ = util.format_timestamp(group['modified']) # TODO json serializer should do this
         if self.debug:
             group['debug'] = {}
             group['debug']['projects'] = self.uri_for('g_projects', gid=group['_id'], _full=True) + '?' + self.request.query_string

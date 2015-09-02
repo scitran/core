@@ -164,14 +164,6 @@ def queue_job(db, algorithm_id, container_type, container_id, filename, filehash
     log.info('Running %s as job %s to process %s %s' % (algorithm_id, str(_id), container_type, container_id))
     return _id
 
-def serialize_job(job):
-    if job:
-        job['_id'] = str(job['_id'])
-        job['created'] = util.format_timestamp(job['created'])
-        job['modified'] = util.format_timestamp(job['modified'])
-
-    return job
-
 class Jobs(base.RequestHandler):
 
     """Provide /jobs API routes."""
@@ -184,8 +176,6 @@ class Jobs(base.RequestHandler):
             self.abort(401, 'Request requires superuser')
 
         results = list(self.app.db.jobs.find())
-        for result in results:
-            result = serialize_job(result)
 
         return results
 
@@ -229,7 +219,7 @@ class Jobs(base.RequestHandler):
         if result == None:
             self.abort(400, 'No jobs to process')
 
-        return serialize_job(result)
+        return result
 
 class Job(base.RequestHandler):
 
@@ -240,7 +230,7 @@ class Job(base.RequestHandler):
             self.abort(401, 'Request requires superuser')
 
         result = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
-        return serialize_job(result)
+        return result
 
     def put(self, _id):
         """

@@ -32,11 +32,11 @@ class RequestHandler(webapp2.RequestHandler):
 
         # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:
-            token_request_time = datetime.datetime.now()
+            token_request_time = datetime.datetime.utcnow()
             cached_token = self.app.db.authtokens.find_one({'_id': access_token})
             if cached_token:
                 self.uid = cached_token['uid']
-                log.debug('looked up cached token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
+                log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - token_request_time).total_seconds() * 1000.))
             else:
                 r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
                 if r.status_code == 200:
@@ -45,7 +45,7 @@ class RequestHandler(webapp2.RequestHandler):
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
                     self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': datetime.datetime.utcnow()}, upsert=True)
-                    log.debug('looked up remote token in %dms' % ((datetime.datetime.now() - token_request_time).total_seconds() * 1000.))
+                    log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - token_request_time).total_seconds() * 1000.))
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
