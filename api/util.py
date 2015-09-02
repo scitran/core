@@ -36,7 +36,7 @@ for mt in MIMETYPES:
 
 valid_timezones = pytz.all_timezones
 
-PROJECTION_FIELDS = ['group', 'timestamp', 'permissions', 'public']
+PROJECTION_FIELDS = ['group', 'name', 'timestamp', 'permissions', 'public']
 
 
 def parse_file(filepath, digest):
@@ -157,11 +157,7 @@ def _update_db(db, datainfo):
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER,
             )
-    try:
-        session_label = session['label']
-    except KeyError:  # this can happen if nims_metadata_status == None
-        session_label = '(unknown)'
-    log.info('Setting     group_id="%s", project_name="%s", and session_label="%s"' % (project['group'], project['name'], session_label))
+    log.info('Setting     group_id="%s", project_name="%s", and session_label="%s"' % (project['group'], project.get('name', 'unknown'), session.get('label', '(unknown)')))
     acquisition_spec = {'uid': datainfo['acquisition_id']}
     acquisition = db.acquisitions.find_one_and_update(
             acquisition_spec,
