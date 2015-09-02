@@ -95,7 +95,7 @@ class Acquisitions(containers.ContainerList):
         json_body['files'] = []
         if 'timestamp' in json_body:
             json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
-        return {'_id': str(self.dbc.insert_one(json_body).inserted_id)}
+        return {'_id': self.dbc.insert_one(json_body).inserted_id}
 
     def get(self, sid):
         """Return the list of Session Acquisitions."""
@@ -152,7 +152,6 @@ class Acquisition(containers.Container):
         """Return one Acquisition, conditionally with details."""
         _id = bson.ObjectId(aid)
         acq, _ = self._get(_id)
-        acq['session'] = str(acq['session'])
         return acq
 
     def put(self, aid):

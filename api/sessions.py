@@ -100,7 +100,7 @@ class Sessions(containers.ContainerList):
         json_body['files'] = []
         if 'timestamp' in json_body:
             json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
-        return {'_id': str(self.dbc.insert_one(json_body).inserted_id)}
+        return {'_id': self.dbc.insert_one(json_body).inserted_id}
 
     def get(self, pid=None, gid=None):
         """Return the list of project or group sessions."""
@@ -118,7 +118,6 @@ class Sessions(containers.ContainerList):
         projection = ['label', 'subject_code', 'subject.code', 'notes', 'project', 'group', 'timestamp', 'timezone']
         sessions = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
         for sess in sessions:
-            sess['project'] = str(sess['project'])
             if 'subject_code' not in sess:
                 sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
@@ -171,7 +170,6 @@ class Session(containers.Container):
         """Return one Session, conditionally with details."""
         _id = bson.ObjectId(sid)
         sess, _ = self._get(_id)
-        sess['project'] = str(sess['project'])
         if 'subject_code' not in sess:
             sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:

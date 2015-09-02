@@ -110,7 +110,7 @@ class Projects(containers.ContainerList):
         json_body['public'] = json_body.get('public', False)
         json_body['files'] = []
         json_body['timestamp'] = datetime.datetime.utcnow()
-        return {'_id': str(self.dbc.insert_one(json_body).inserted_id)}
+        return {'_id': self.dbc.insert_one(json_body).inserted_id}
 
     def get(self, uid=None, gid=None):
         """Return the User's list of Projects."""
