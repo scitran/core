@@ -33,6 +33,9 @@ COLLECTION_POST_SCHEMA = {
                     '_id': {
                         'type': 'string',
                     },
+                    'site': {
+                        'type': 'string',
+                    },
                 },
                 'required': ['access', '_id'],
                 'additionalProperties': False,
@@ -84,6 +87,9 @@ COLLECTION_PUT_SCHEMA = {
                         'enum': [role['rid'] for role in users.ROLES],
                     },
                     '_id': {
+                        'type': 'string',
+                    },
+                    'site': {
                         'type': 'string',
                     },
                 },
