@@ -100,7 +100,7 @@ class Sessions(containers.ContainerList):
         json_body['files'] = []
         if 'timestamp' in json_body:
             json_body['timestamp'] = util.parse_timestamp(json_body['timestamp'])
-        return {'_id': str(self.dbc.insert_one(json_body))}
+        return {'_id': str(self.dbc.insert_one(json_body).inserted_id)}
 
     def get(self, pid=None, gid=None):
         """Return the list of project or group sessions."""

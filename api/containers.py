@@ -244,7 +244,7 @@ class Container(base.RequestHandler):
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.request.GET.get('ticket') == '':    # request for download ticket
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])
-            return {'ticket': self.app.db.downloads.insert_one(ticket)}
+            return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
         else:                                       # authenticated or ticketed (unauthenticated) download
             zip_member = self.request.GET.get('member')
             if self.request.GET.get('info', '').lower() in ('1', 'true'):

@@ -199,7 +199,7 @@ class Collections(containers.ContainerList):
         json_body['curator'] = self.uid
         json_body['timestamp'] = datetime.datetime.utcnow()
         json_body['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
-        return {'_id': str(self.dbc.insert_one(json_body))}
+        return {'_id': str(self.dbc.insert_one(json_body).inserted_id)}
 
     def get(self):
         """Return the list of Collections."""
