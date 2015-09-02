@@ -45,8 +45,7 @@ class Users(base.RequestHandler):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, User.post_schema)
-            json_body['created'] = datetime.datetime.utcnow()
-            json_body['modified'] = datetime.datetime.utcnow()
+            json_body['created'] = json_body['modified'] = datetime.datetime.utcnow()
             json_body.setdefault('email', json_body['_id'])
             json_body.setdefault('preferences', {})
             json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
@@ -153,8 +152,7 @@ class Groups(base.RequestHandler):
         try:
             json_body = self.request.json_body
             jsonschema.validate(json_body, Group.post_schema)
-            json_body['created'] = datetime.datetime.utcnow()
-            json_body['modified'] = datetime.datetime.utcnow()
+            json_body['created'] = json_body['modified'] = datetime.datetime.utcnow()
             json_body.setdefault('roles', [])
             self.dbc.insert_one(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
