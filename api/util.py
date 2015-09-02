@@ -94,7 +94,7 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
     target_filepath = container_path + '/' + fileinfo['filename']
     if not os.path.exists(container_path):
         os.makedirs(container_path)
-    container = dbc.find_one_and_update({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$': fileinfo}})
+    container = dbc.find_one({'_id':_id, 'files.filename': fileinfo['filename']})
     if container: # file already exists
         for f in container['files']:
             if f['filename'] == fileinfo['filename']:
@@ -107,12 +107,14 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
                 else: # existing file has different content
                     log.debug('Replacing   %s' % filename)
                     shutil.move(filepath, target_filepath)
-                    dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']}, {'$set': {'files.$.dirty': True}})
+                    dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']},
+                            {'$set': {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}})
                     updated = True
                 break
     else:         # file does not exist
         log.debug('Adding      %s' % filename)
         fileinfo['dirty'] = True
+        fileinfo['created'] = fileinfo['modified'] = datetime.datetime.utcnow()
         shutil.move(filepath, target_filepath)
         dbc.update_one({'_id': _id}, {'$push': {'files': fileinfo}})
         updated = True
