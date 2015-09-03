@@ -45,6 +45,36 @@ class RequestHandler(webapp2.RequestHandler):
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
                     self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': datetime.datetime.utcnow()}, upsert=True)
+
+                    # Opportunistically set user's avatar based on their auth provider
+                    # TODO: after api starts reading toml config, switch on
+                    # auth.provider rather than manually comparing endpoint URL.
+                    if self.app.config['oauth2_id_endpoint'] == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect' and identity.get('picture') != None:
+                        avatarURL = identity.get('picture')
+
+                        # NOTE: Google URLs have a size attached. This code removes that parameter.
+                        # One could also set the size explicitly.
+                        # from urllib import urlencode
+                        # from urlparse import urlparse, urlunparse, parse_qs
+                        # u = urlparse(avatarURL)
+                        # query = parse_qs(u.query)
+                        # query.pop('sz', None)
+                        # u = u._replace(query=urlencode(query, True))
+                        # avatarURL = urlunparse(u)
+
+                        result = self.app.db.users.find_one_and_update(
+                            {
+                                'email': self.uid
+                            },
+                            { '$set': {
+                                'avatar': avatarURL,
+                                'modified': datetime.datetime.utcnow()
+                            }}
+                        )
+
+                        if result == None:
+                            log.debug('Could not find user record to update avatar')
+
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - token_request_time).total_seconds() * 1000.))
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
