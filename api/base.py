@@ -21,6 +21,7 @@ class RequestHandler(webapp2.RequestHandler):
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
         self.debug = self.app.config['insecure']
+        request_start = datetime.datetime.utcnow()
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
@@ -32,11 +33,10 @@ class RequestHandler(webapp2.RequestHandler):
 
         # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:
-            token_request_time = datetime.datetime.utcnow()
             cached_token = self.app.db.authtokens.find_one({'_id': access_token})
             if cached_token:
                 self.uid = cached_token['uid']
-                log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - token_request_time).total_seconds() * 1000.))
+                log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
             else:
                 r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
                 if r.status_code == 200:
@@ -44,8 +44,25 @@ class RequestHandler(webapp2.RequestHandler):
                     self.uid = identity.get('email')
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
-                    self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': datetime.datetime.utcnow()}, upsert=True)
-                    log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - token_request_time).total_seconds() * 1000.))
+                    self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': request_start}, upsert=True)
+                    log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
+
+                    # Opportunistically set user's avatar based on their auth provider
+                    # TODO: after api starts reading toml config, switch on
+                    # auth.provider rather than manually comparing endpoint URL.
+                    if self.app.config['oauth2_id_endpoint'] == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
+                        avatar = identity.get('picture')
+                        # NOTE: Google URLs have a size attached. This code removes that parameter.
+                        # One could also set the size explicitly.
+                        # from urllib import urlencode
+                        # from urlparse import urlparse, urlunparse, parse_qs
+                        # u = urlparse(avatar)
+                        # query = parse_qs(u.query)
+                        # query.pop('sz', None)
+                        # u = u._replace(query=urlencode(query, True))
+                        # avatar = urlunparse(u)
+                        if avatar:
+                            r = self.app.db.users.update_one({'_id': self.uid, 'avatar': {'$ne': avatar}}, {'$set':{'avatar': avatar, 'modified': request_start}})
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
