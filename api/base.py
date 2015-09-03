@@ -62,9 +62,7 @@ class RequestHandler(webapp2.RequestHandler):
                         # u = u._replace(query=urlencode(query, True))
                         # avatar = urlunparse(u)
                         if avatar:
-                            r = self.app.db.users.update_one({'_id': self.uid}, {'$set':{'avatar': avatar, 'modified': request_start}})
-                            if not r.matched_count:
-                                log.debug('Could not find user record to update avatar')
+                            r = self.app.db.users.update_one({'_id': self.uid, 'avatar': {'$ne': avatar}}, {'$set':{'avatar': avatar, 'modified': request_start}})
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
