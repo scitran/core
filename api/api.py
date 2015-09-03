@@ -16,6 +16,7 @@ from . import acquisitions
 from . import collections
 from . import listhandler
 from . import permchecker
+from dao import storage
 
 
 routes = [
@@ -46,7 +47,8 @@ routes = [
         webapp2.Route(r'/<:[^/]+>',                                 users.Group, name='group'),
         webapp2.Route(r'/<gid:[^/]+>/projects',                     projects.Projects, name='g_projects'),
         webapp2.Route(r'/<gid:[^/]+>/sessions',                     sessions.Sessions, name='g_sessions', methods=['GET']),
-        webapp2.Route(r'/<cid:[^/]+>/<list:roles>/<_id:[^/]+>',     listhandler.ListHandler, name='g_roles', defaults={'collection': 'groups', 'permchecker': permchecker.default_sublist}),
+        webapp2.Route(r'/<cid:[^/]+>/roles/<_id:[^/]+>',     listhandler.ListHandler, name='g_roles',
+            defaults={'permchecker': permchecker.group_roles_sublist, 'storage': storage.ObjectListStorage('groups', 'roles')}),
     ]),
     webapp2.Route(r'/api/projects',                                 projects.Projects, methods=['GET'], name='projects'),
     webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
@@ -84,6 +86,8 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file',                     acquisitions.Acquisition, handler_method='file', methods=['POST']),
         webapp2.Route(r'/<:[0-9a-f]{24}>/file/<:[^/]+>',            acquisitions.Acquisition, handler_method='file'),
+        webapp2.Route(r'/<cid:[^/]+>/roles/<_id:[^/]+>',     listhandler.ListHandler, name='aq_tags',
+            defaults={'permchecker': permchecker.default_sublist, 'storage': storage.StringListStorage('acquisitions', 'tags')}),
     ]),
     webapp2.Route(r'/api/jobs',                                     jobs.Jobs),
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [

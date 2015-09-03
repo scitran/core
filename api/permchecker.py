@@ -1,10 +1,12 @@
+# @author:  Renzo Frigato
+
 from users import INTEGER_ROLES
 
 def _get_access(container, uid):
     permissions_list = container['roles'] or container['permissions']
     for perm in permissions_list:
-        if perm._id == uid:
-            return INTEGER_ROLES[perm.access]
+        if perm['_id'] == uid:
+            return INTEGER_ROLES[perm['access']]
     else:
         return -1
 
@@ -21,4 +23,6 @@ def group_roles_sublist(container, method, uid):
     access = _get_access(container, uid)
     return access >= INTEGER_ROLES['admin']
 
+def always_true(container, method, uid):
+    return True
 
