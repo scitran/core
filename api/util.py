@@ -36,7 +36,7 @@ for mt in MIMETYPES:
 
 valid_timezones = pytz.all_timezones
 
-PROJECTION_FIELDS = ['group', 'name', 'timestamp', 'permissions', 'public']
+PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
 
 
 def parse_file(filepath, digest):
