@@ -24,7 +24,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def resolve_token(self, access_token, request_start):
         current_retry_timeout = 1
-        while (current_retry_timeout <= OAUTH_RETRY_LIMIT_SECONDS):
+        while (current_retry_timeout <= self.OAUTH_RETRY_LIMIT_SECONDS):
             r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
 
             #This condition results in a retry
