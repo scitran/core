@@ -134,6 +134,8 @@ class ContainerList(base.RequestHandler):
                     query['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site, 'access': 'admin'}}
                 else:
                     query['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site}}
+            if self.request.GET.get('public', '').lower() in ('1', 'true'):
+                query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
             projection['permissions'] = {'$elemMatch': {'_id': uid or self.uid, 'site': self.source_site}}
         containers = list(self.dbc.find(query, projection))
         for container in containers:
@@ -163,11 +165,13 @@ class Container(base.RequestHandler):
                 self.abort(403, 'this ' + dbc_name + ' is not public')
             del container['permissions']
         elif not self.superuser_request:
-            if not user_perm:
+            if not container.get('public') and not user_perm:
                 self.abort(403, self.uid + ' does not have permissions on this ' + dbc_name)
             if min_role and users.INTEGER_ROLES[user_perm['access']] < users.INTEGER_ROLES[min_role]:
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + dbc_name)
-            if user_perm['access'] != 'admin': # if not admin, mask permissions of other users
+            if not user_perm:
+                container['permissions'] = []
+            elif user_perm['access'] != 'admin': # if not admin, mask permissions of other users
                 container['permissions'] = [user_perm]
         if self.request.GET.get('paths', '').lower() in ('1', 'true'):
             for fileinfo in container['files']:
