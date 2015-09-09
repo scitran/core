@@ -25,7 +25,7 @@ class ListStorage(object):
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}
-        log.error('query {}'.format(query))
+        log.debug('query {}'.format(query))
         return self.dbc.find_one(query)
 
     def apply_change(self, action, _id, elem_match=None, payload=None):
@@ -42,7 +42,7 @@ class ListStorage(object):
         raise ValueError('action should be one of POST, PUT, DELETE')
 
     def _create_el(self, _id, payload):
-        log.error('payload {}'.format(payload))
+        log.debug('payload {}'.format(payload))
         if isinstance(payload, dict):
             if payload.get('_id') is None:
                 elem_match = copy.deepcopy(payload)
@@ -58,18 +58,20 @@ class ListStorage(object):
         return self.dbc.update_one(query, update)
 
     def _update_el(self, _id, elem_match, payload):
-        log.error('elem_match {}'.format(payload))
-        log.error('payload {}'.format(elem_match))
+        log.debug('elem_match {}'.format(payload))
+        log.debug('payload {}'.format(elem_match))
         if isinstance(payload, dict):
             mod_elem = {}
             for k,v in payload.items():
                 mod_elem[self.list_name + '.$.' + k] = v
             query = {'_id': _id, self.list_name: {'$elemMatch': elem_match} }
+            if payload.get('_id') is not None:
+                query[self.list_name + '._id'] = {'$ne': payload.get('_id')}
         else:
             mod_elem = {
                 self.list_name + '.$': payload
             }
-            query = {'_id': _id, self.list_name: elem_match}
+            query = {'_id': _id, self.list_name: elem_match, self.list_name: {'$ne': payload}}
         update = {
             '$set': mod_elem
         }
@@ -86,15 +88,15 @@ class ListStorage(object):
         return self.dbc.update_one(query, update)
 
     def _get_el(self, _id, elem_match = None):
-        log.error('elem_match {}'.format(elem_match))
+        log.debug('elem_match {}'.format(elem_match))
         if isinstance(elem_match, str):
             query_params = elem_match
         else:
             query_params = {'$elemMatch': elem_match}
         query = {'_id': _id, self.list_name: query_params}
         projection = {self.list_name + '.$': 1}
-        log.error('query {}'.format(query))
-        log.error('projection {}'.format(projection))
+        log.debug('query {}'.format(query))
+        log.debug('projection {}'.format(projection))
         return self.dbc.find_one(query, projection)
 
 

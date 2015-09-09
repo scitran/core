@@ -2,7 +2,7 @@
 
 from users import INTEGER_ROLES
 
-def _get_access(container, uid):
+def _get_access(uid, container):
     permissions_list = container.get('roles') or container.get('permissions')
     for perm in permissions_list:
         if perm['_id'] == uid:
@@ -10,19 +10,39 @@ def _get_access(container, uid):
     else:
         return -1
 
-def default_sublist(container, method, uid):
-    access = _get_access(container, uid)
 
-    if method == 'GET':
-        return access >= INTEGER_ROLES['ro']
-    if method in Set(['POST', 'PUT', 'DELETE']):
-        return access >= INTEGER_ROLES['rw']
-    return False
+def always_ok(apply_change):
+    return apply_change
 
-def group_roles_sublist(container, method, uid):
-    access = _get_access(container, uid)
-    return access >= INTEGER_ROLES['admin']
 
-def always_true(container, method, uid):
-    return True
+def default_sublist(handler, container):
+    access = _get_access(handler.uid, container)
+    def g(apply_change):
+        def f(method, _id, elem_match = None, payload = None):
+            if method == 'GET':
+                min_access = INTEGER_ROLES['ro']
+            elif method in Set(['POST', 'PUT', 'DELETE']):
+                min_access = INTEGER_ROLES['rw']
+            else:
+                min_access = float('inf')
 
+            if access >= min_access:
+                return apply_change(method, _id, elem_match, payload)
+            else:
+                handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
+        return f
+    return g
+
+
+def group_roles_sublist(handler, container):
+    access = _get_access(handler.uid, container)
+    def g(apply_change):
+        def f(method, _id, elem_match = None, payload = None):
+            if method == 'GET' and elem_match.get('_id') == handler.uid:
+                return apply_change(method, _id, elem_match, payload)
+            elif access >= INTEGER_ROLES['admin']:
+                return apply_change(method, _id, elem_match, payload)
+            else:
+                handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
+        return f
+    return g
