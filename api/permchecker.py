@@ -3,7 +3,7 @@
 from users import INTEGER_ROLES
 
 def _get_access(container, uid):
-    permissions_list = container['roles'] or container['permissions']
+    permissions_list = container.get('roles') or container.get('permissions')
     for perm in permissions_list:
         if perm['_id'] == uid:
             return INTEGER_ROLES[perm['access']]

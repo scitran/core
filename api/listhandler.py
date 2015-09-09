@@ -16,11 +16,14 @@ class ListHandler(base.RequestHandler):
         list_name = storage.list_name
         _id = kwargs.pop('cid', None) or kwargs.pop('_id')
         storage.load_collection(self.app.db)
-        container = storage.get_container(_id, elem_match = kwargs)
+        container = storage.get_container(_id)
         if container is not None:
-            if not permchecker(container, 'GET', self.uid):
-                self.abort(403, 'user not authorized to get container')
-            return container[list_name][0]
+            if not self.superuser_request and not permchecker(container, 'GET', self.uid):
+                self.abort(403, 'user not authorized to get container {}'.format(self.uid))
+            result = storage.apply_change('GET', _id, elem_match=kwargs)
+            if result is None or result.get(list_name) is None or len(result[list_name]) == 0:
+                self.abort(404, 'Element not found in list {} of collection {} {}'.format(list_name, storage.coll_name, _id))
+            return result[list_name][0]
         else:
             self.abort(404, 'Element not found in list {} of collection {} {}'.format(list_name, storage.coll_name, _id))
 
@@ -33,7 +36,7 @@ class ListHandler(base.RequestHandler):
         storage.load_collection(self.app.db)
         container = storage.get_container(_id)
         if container is not None:
-            if not permchecker(container, 'POST', self.uid):
+            if not self.superuser_request and not permchecker(container, 'POST', self.uid):
                 self.abort(403, 'user not authorized to create element in list')
         else:
             self.abort(404, 'Element not found in list {} of collection {} {}'.format(list_name, storage.coll_name, _id))
@@ -56,7 +59,7 @@ class ListHandler(base.RequestHandler):
         storage.load_collection(self.app.db)
         container = storage.get_container(_id)
         if container is not None:
-            if not permchecker(container, method, self.uid):
+            if not self.superuser_request and not permchecker(container, method, self.uid):
                 self.abort(403, 'user not authorized to update element in list')
         else:
             self.abort(404, 'Element not found in list {} of collection {}'.format(list_name, storage.coll_name))
@@ -78,7 +81,7 @@ class ListHandler(base.RequestHandler):
         storage.load_collection(self.app.db)
         container = storage.get_container(_id)
         if container is not None:
-            if not permchecker(container, method, self.uid):
+            if not self.superuser_request and not permchecker(container, method, self.uid):
                 self.abort(403, 'user not authorized to delete element from list')
         else:
             self.abort(404, 'Element not found in list {} of collection {}'.format(list_name, storage.coll_name))
