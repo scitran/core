@@ -45,6 +45,7 @@ class RequestHandler(webapp2.RequestHandler):
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
                     self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': request_start}, upsert=True)
+                    self.app.db.users.update_one({'_id': self.uid, 'firstseen': {'$exists': False}}, {'$set': {'firstseen': request_start}})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
 
                     # Opportunistically set user's avatar based on their auth provider
@@ -96,7 +97,7 @@ class RequestHandler(webapp2.RequestHandler):
         elif drone_request:
             self.superuser_request = True
         else:
-            user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
+            user = self.app.db.users.find_one_and_update({'_id': self.uid}, {'$set': {'lastseen': request_start}}, ['root', 'wheel'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
             self.superuser_request = user.get('root') and user.get('wheel')
