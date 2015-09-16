@@ -3,6 +3,7 @@
 import hashlib
 import pymongo
 import datetime
+import requests
 import jsonschema
 
 from . import base
@@ -48,7 +49,11 @@ class Users(base.RequestHandler):
             json_body['created'] = json_body['modified'] = datetime.datetime.utcnow()
             json_body.setdefault('email', json_body['_id'])
             json_body.setdefault('preferences', {})
-            json_body.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(json_body['email']).hexdigest() + '?s=512&d=mm')
+            gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
+            if requests.head(gravatar, params={'d': '404'}):
+                u.setdefault('avatar', gravatar)
+            u.setdefault('avatars', {})
+            u['avatars'].setdefault('gravatar', gravatar)
             self.dbc.insert_one(json_body)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, e)

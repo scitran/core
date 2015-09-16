@@ -2,10 +2,12 @@
 
 import copy
 import json
+import urllib
 import logging
 import webapp2
 import datetime
 import requests
+import urlparse
 import jsonschema
 
 from .util import log
@@ -22,6 +24,7 @@ class RequestHandler(webapp2.RequestHandler):
         self.initialize(request, response)
         self.debug = self.app.config['insecure']
         request_start = datetime.datetime.utcnow()
+        provider_avatar = None
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
@@ -39,7 +42,7 @@ class RequestHandler(webapp2.RequestHandler):
                 log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
             else:
                 r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
-                if r.status_code == 200:
+                if r.ok:
                     identity = json.loads(r.content)
                     self.uid = identity.get('email')
                     if not self.uid:
@@ -48,22 +51,16 @@ class RequestHandler(webapp2.RequestHandler):
                     self.app.db.users.update_one({'_id': self.uid, 'firstseen': {'$exists': False}}, {'$set': {'firstseen': request_start}})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
 
-                    # Opportunistically set user's avatar based on their auth provider
-                    # TODO: after api starts reading toml config, switch on
-                    # auth.provider rather than manually comparing endpoint URL.
+                    # Set user's auth provider avatar
+                    # TODO: after api starts reading toml config, switch on auth.provider rather than manually comparing endpoint URL.
                     if self.app.config['oauth2_id_endpoint'] == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
-                        avatar = identity.get('picture')
-                        # NOTE: Google URLs have a size attached. This code removes that parameter.
-                        # One could also set the size explicitly.
-                        # from urllib import urlencode
-                        # from urlparse import urlparse, urlunparse, parse_qs
-                        # u = urlparse(avatar)
-                        # query = parse_qs(u.query)
-                        # query.pop('sz', None)
-                        # u = u._replace(query=urlencode(query, True))
-                        # avatar = urlunparse(u)
-                        if avatar:
-                            r = self.app.db.users.update_one({'_id': self.uid, 'avatar': {'$ne': avatar}}, {'$set':{'avatar': avatar, 'modified': request_start}})
+                        provider_avatar = identity.get('picture')
+                        # Remove attached size param from URL.
+                        u = urlparse.urlparse(provider_avatar)
+                        query = urlparse.parse_qs(u.query)
+                        query.pop('sz', None)
+                        u = u._replace(query=urllib.urlencode(query, True))
+                        provider_avatar = urlparse.urlunparse(u)
                 else:
                     headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
@@ -100,6 +97,9 @@ class RequestHandler(webapp2.RequestHandler):
             user = self.app.db.users.find_one_and_update({'_id': self.uid}, {'$set': {'lastseen': request_start}}, ['root', 'wheel'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
+            if provider_avatar:
+                self.app.db.users.update_one({'_id': self.uid, 'avatar': None}, {'$set':{'avatar': provider_avatar, 'modified': request_start}})
+                self.app.db.users.update_one({'_id': self.uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': request_start}})
             self.superuser_request = user.get('root') and user.get('wheel')
 
     def dispatch(self):
