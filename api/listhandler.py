@@ -72,6 +72,8 @@ class ListHandler(base.RequestHandler):
         if container is not None:
             if self.superuser_request:
                 perm_checker = permchecker.always_ok
+            elif self.public_request:
+                perm_checker = permchecker.public_request(self, container)
             else:
                 perm_checker = perm_checker(self, container)
         else:
