@@ -104,7 +104,6 @@ class FileListHandler(ListHandler):
             fileinfo = storage.apply_change('GET', _id, elem_match=kwargs)['files'][0]
         else:
             fileinfo = perm_checker(storage.apply_change)('GET', _id, elem_match=kwargs)['files'][0]
-        log.error(fileinfo)
         if not fileinfo:
             self.abort(404, 'no such file')
         hash_ = self.request.GET.get('hash')
