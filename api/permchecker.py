@@ -1,6 +1,10 @@
 # @author:  Renzo Frigato
 
+import logging
+
 from users import INTEGER_ROLES
+
+log = logging.getLogger('scitran.api')
 
 def _get_access(uid, container):
     permissions_list = container.get('roles') or container.get('permissions')

@@ -1,5 +1,6 @@
 # @author:  Renzo Frigato
 
+import datetime
 import logging
 import base
 import json
@@ -20,7 +21,8 @@ class ListHandler(base.RequestHandler):
         self._initialized = None
 
     def get(self, *args, **kwargs):
-        _id, perm_checker, storage = self._initialize_request(kwargs)
+        container, perm_checker, storage = self._initialize_request(kwargs)
+        _id = container["_id"]
         list_name = storage.list_name
 
         result = perm_checker(storage.apply_change)('GET', _id, elem_match=kwargs)
@@ -30,7 +32,8 @@ class ListHandler(base.RequestHandler):
         return result[list_name][0]
 
     def post(self, *args, **kwargs):
-        _id, perm_checker, storage = self._initialize_request(kwargs)
+        container, perm_checker, storage = self._initialize_request(kwargs)
+        _id = container["_id"]
 
         payload = self.request.POST.mixed()
         payload.update(kwargs)
@@ -42,7 +45,8 @@ class ListHandler(base.RequestHandler):
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
     def put(self, *args, **kwargs):
-        _id, perm_checker, storage = self._initialize_request(kwargs)
+        container, perm_checker, storage = self._initialize_request(kwargs)
+        _id = container["_id"]
 
         result = perm_checker(storage.apply_change)('PUT', _id, elem_match = kwargs, payload = self.request.POST.mixed())
 
@@ -52,7 +56,8 @@ class ListHandler(base.RequestHandler):
             self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
     def delete(self, *args, **kwargs):
-        _id, perm_checker, storage = self._initialize_request(kwargs)
+        container, perm_checker, storage = self._initialize_request(kwargs)
+        _id = container["_id"]
         result = perm_checker(storage.apply_change)('DELETE', _id, elem_match = kwargs)
 
         if result.modified_count == 1:
@@ -78,7 +83,7 @@ class ListHandler(base.RequestHandler):
                 perm_checker = perm_checker(self, container)
         else:
             self.abort(404, 'Element {} not found in collection {}'.format(_id, storage.coll_name))
-        self._initialized = (_id, perm_checker, storage)
+        self._initialized = (container, perm_checker, storage)
         return self._initialized
 
 class FileListHandler(ListHandler):
@@ -95,7 +100,8 @@ class FileListHandler(ListHandler):
         return ticket
 
     def get(self, *args, **kwargs):
-        _id, perm_checker, storage = self._initialize_request(kwargs)
+        container, perm_checker, storage = self._initialize_request(kwargs)
+        _id = container["_id"]
         list_name = storage.list_name
         filename = kwargs.get('filename')
         ticket_id = self.request.GET.get('ticket')
@@ -166,12 +172,14 @@ class FileListHandler(ListHandler):
 
     def post(self, *args, **kwargs):
         force = self.request.GET.get('force', '').lower() in ('1', 'true')
-        _id, perm_checker, storage = self._initialize_request(kwargs)
+        container, perm_checker, storage = self._initialize_request(kwargs)
+        _id = container["_id"]
         payload = self.request.POST.mixed()
         payload.update(kwargs)
         filename = payload.get('filename')
         file_request = files.FileRequest.from_handler(self, filename)
         file_request.save_temp_file(self.app.config['upload_path'])
+        file_datetime = datetime.datetime.utcnow()
         payload.update({
             'filesize': file_request.filesize,
             'filehash': file_request.sha1,
@@ -180,12 +188,14 @@ class FileListHandler(ListHandler):
             'mimetype': file_request.mimetype,
             'tags': file_request.tags,
             'metadata': file_request.metadata,
+            'created': file_datetime,
+            'modified': file_datetime,
+            'dirty': True
         })
         dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
         if not force:
             result = perm_checker(storage.apply_change)('POST', _id, payload=payload)
         else:
-            container = storage.get_container(_id)
             filepath = os.path.join(tempdir_path, filename)
             for f in container['files']:
                 if f['filename'] == filename:

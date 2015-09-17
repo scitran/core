@@ -4,13 +4,8 @@ import bson.objectid
 import copy
 import logging
 import re
-log = logging.getLogger('scitran.api')
 
-def before_do_also(additional_action, apply_change):
-    def f(action, _id, elem_match=None, payload=None):
-        additional_action()
-        return apply_change(action, _id, elem_match, payload)
-    return f
+log = logging.getLogger('scitran.api')
 
 
 class ListStorage(object):
@@ -28,8 +23,6 @@ class ListStorage(object):
         return self.dbc
 
     def get_container(self, _id):
-        if self.container is not None:
-            return self.container
         if self.dbc is None:
             raise RuntimeError('collection not initialized before calling get_container')
         if self.use_oid:
@@ -82,7 +75,13 @@ class ListStorage(object):
             mod_elem = {
                 self.list_name + '.$': payload
             }
-            query = {'_id': _id, self.list_name: elem_match, self.list_name: {'$ne': payload}}
+            query = {
+                '_id': _id,
+                '$and':[
+                    {self.list_name: elem_match},
+                    {self.list_name: {'$ne': payload} }
+                ]
+            }
         update = {
             '$set': mod_elem
         }
@@ -109,9 +108,6 @@ class ListStorage(object):
         log.debug('query {}'.format(query))
         log.debug('projection {}'.format(projection))
         return self.dbc.find_one(query, projection)
-
-
-
 
 
 class StringListStorage(ListStorage):

@@ -70,6 +70,11 @@ routes = [
                                                                         'permchecker': permchecker.default_sublist,
                                                                         'storage': storage.ListStorage('projects', 'files', True)
                                                                     }),
+        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='pj_tags',
+                                                                    defaults={
+                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'storage': storage.StringListStorage('projects', 'tags', True, 'tag')
+                                                                    }),
     ]),
     webapp2.Route(r'/api/collections',                              collections.Collections),
     webapp2_extras.routes.PathPrefixRoute(r'/api/collections', [
@@ -86,6 +91,11 @@ routes = [
                                                                     defaults={
                                                                         'permchecker': permchecker.default_sublist,
                                                                         'storage': storage.ListStorage('collections', 'files', True)
+                                                                    }),
+        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='cl_tags',
+                                                                    defaults={
+                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'storage': storage.StringListStorage('collections', 'tags', True, 'tag')
                                                                     }),
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections.CollectionAcquisitions, name='coll_acquisitions'),
@@ -104,6 +114,11 @@ routes = [
                                                                     defaults={
                                                                         'permchecker': permchecker.default_sublist,
                                                                         'storage': storage.ListStorage('sessions', 'files', True)
+                                                                    }),
+        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='se_tags',
+                                                                    defaults={
+                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'storage': storage.StringListStorage('sessions', 'tags', True, 'tag')
                                                                     }),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             acquisitions.Acquisitions, name='acquisitions'),
     ]),
