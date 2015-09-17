@@ -48,13 +48,14 @@ class RequestHandler(webapp2.RequestHandler):
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
                     self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': request_start}, upsert=True)
-                    self.app.db.users.update_one({'_id': self.uid, 'firstseen': {'$exists': False}}, {'$set': {'firstseen': request_start}})
+                    self.app.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': request_start}})
+                    self.app.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': request_start}})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
 
                     # Set user's auth provider avatar
                     # TODO: after api starts reading toml config, switch on auth.provider rather than manually comparing endpoint URL.
                     if self.app.config['oauth2_id_endpoint'] == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
-                        provider_avatar = identity.get('picture')
+                        provider_avatar = identity.get('picture', '')
                         # Remove attached size param from URL.
                         u = urlparse.urlparse(provider_avatar)
                         query = urlparse.parse_qs(u.query)
@@ -94,7 +95,7 @@ class RequestHandler(webapp2.RequestHandler):
         elif drone_request:
             self.superuser_request = True
         else:
-            user = self.app.db.users.find_one_and_update({'_id': self.uid}, {'$set': {'lastseen': request_start}}, ['root', 'wheel'])
+            user = self.app.db.users.find_one({'_id': self.uid}, ['root', 'wheel'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
             if provider_avatar:
