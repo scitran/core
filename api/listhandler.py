@@ -15,6 +15,17 @@ log = logging.getLogger('scitran.api')
 
 
 class ListHandler(base.RequestHandler):
+    """
+    This class handle operations on a generic sublist of a container like tags, group roles, user permissions, etc.
+
+    The pattern used is:
+    1) initialize request
+    2) exec request
+    3) check and return result
+
+    Specific behaviors (permissions checking logic for authenticated and not superuser users, storage interaction)
+    are specified in the routes defined in api.py
+    """
 
     def __init__(self, request=None, response=None):
         super(ListHandler, self).__init__(request, response)
@@ -23,12 +34,11 @@ class ListHandler(base.RequestHandler):
     def get(self, *args, **kwargs):
         container, perm_checker, storage = self._initialize_request(kwargs)
         _id = container["_id"]
-        list_name = storage.list_name
 
         result = perm_checker(storage.apply_change)('GET', _id, elem_match=kwargs)
 
         if result is None or result.get(list_name) is None or len(result[list_name]) == 0:
-            self.abort(404, 'Element not found in list {} of collection {} {}'.format(list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not found in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
         return result[list_name][0]
 
     def post(self, *args, **kwargs):
@@ -66,6 +76,12 @@ class ListHandler(base.RequestHandler):
             self.abort(404, 'Element not removed from list {} in collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
     def _initialize_request(self, kwargs):
+        """
+        This method loads:
+        1) the container that will be modified
+        2) the storage class that will handle the database actions
+        3) the permission checker decorator that will be used
+        """
         if self._initialized:
             return self._initialized
         perm_checker = kwargs.pop('permchecker')
@@ -87,6 +103,9 @@ class ListHandler(base.RequestHandler):
         return self._initialized
 
 class FileListHandler(ListHandler):
+    """
+    This class implements a more specific logic for list of files as the api needs to interact with the filesystem.
+    """
 
     def __init__(self, request=None, response=None):
         super(FileListHandler, self).__init__(request, response)

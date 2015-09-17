@@ -9,20 +9,37 @@ log = logging.getLogger('scitran.api')
 
 
 class ListStorage(object):
+    """
+    This class provides access to sublists of a mongodb collections elements (called containers).
+    """
 
     def __init__(self, coll_name, list_name, use_oid = False):
         self.coll_name = coll_name
         self.list_name = list_name
         self.use_oid = use_oid
-        self.container = None
+        # the collection is not loaded when the class is instantiated
+        # this allows to instantiate the class when the db is not available
+        # dbc is initialized using the load_collection method
         self.dbc = None
 
 
     def load_collection(self, db):
-        self.dbc = db.get_collection(self.coll_name)
+        """
+        Initialize the mongodb collection.
+        """
+        if self.dbc is None:
+            self.dbc = db.get_collection(self.coll_name)
         return self.dbc
 
     def get_container(self, _id):
+        """
+        Load a container from the _id.
+
+        This method is usually used to to check permission properties of the container.
+        e.g. list of users that can access the container
+
+        For simplicity we load its full content.
+        """
         if self.dbc is None:
             raise RuntimeError('collection not initialized before calling get_container')
         if self.use_oid:
@@ -33,6 +50,10 @@ class ListStorage(object):
         return self.container
 
     def apply_change(self, action, _id, elem_match=None, payload=None):
+        """
+        Generic method to apply an operation.
+        The request is dispatched to the corresponding private methods.
+        """
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         if action == 'GET':
@@ -43,7 +64,7 @@ class ListStorage(object):
             return self._update_el(_id, elem_match, payload)
         if action == 'POST':
             return self._create_el(_id, payload)
-        raise ValueError('action should be one of POST, PUT, DELETE')
+        raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
     def _create_el(self, _id, payload):
         log.debug('payload {}'.format(payload))
@@ -117,6 +138,9 @@ class StringListStorage(ListStorage):
         self.key_name = key_name
 
     def apply_change(self, action, _id, elem_match=None, payload=None):
+        """
+        This method "flattens" the query parameter and the payload to handle string lists
+        """
         if elem_match is not None:
             elem_match = elem_match[self.key_name]
         if payload is not None:

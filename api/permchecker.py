@@ -1,5 +1,9 @@
 # @author:  Renzo Frigato
+"""
+Purpose of this module is to define all the permissions checker decorators.
 
+This decorators are currently supported only by the ListHandler and FileListHandler classes.
+"""
 import logging
 
 from users import INTEGER_ROLES
@@ -14,12 +18,19 @@ def _get_access(uid, container):
     else:
         return -1
 
-
 def always_ok(apply_change):
+    """
+    This decorator leaves the original method unchanged.
+    It is used as permissions checker when the request is a superuser_request
+    """
     return apply_change
 
-
 def default_sublist(handler, container):
+    """
+    This is the default permissions checker generator.
+    The resulting permissions checker modifies the apply_change method by checking the user permissions
+    on the container before actually executing this method.
+    """
     access = _get_access(handler.uid, container)
     def g(apply_change):
         def f(method, _id, elem_match = None, payload = None):
@@ -39,13 +50,17 @@ def default_sublist(handler, container):
         return f
     return g
 
-
 def group_roles_sublist(handler, container):
+    """
+    This is the customized permissions checker for group roles operations.
+    """
     access = _get_access(handler.uid, container)
     def g(apply_change):
         def f(method, _id, elem_match = None, payload = None):
             if method == 'GET' and elem_match.get('_id') == handler.uid:
                 return apply_change(method, _id, elem_match, payload)
+            elif method == 'PUT' and elem_match.get('_id') == handler.uid:
+                handler.abort(403, 'user not authorized to modify its own permissions')
             elif access >= INTEGER_ROLES['admin']:
                 return apply_change(method, _id, elem_match, payload)
             else:
@@ -54,6 +69,9 @@ def group_roles_sublist(handler, container):
     return g
 
 def public_request(handler, container):
+    """
+    For public requests we allow only GET operations on containers marked as public.
+    """
     def g(apply_change):
         def f(method, _id, elem_match = None, payload = None):
             if method == 'GET' and container.get('public', False):

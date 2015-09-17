@@ -14,6 +14,16 @@ log = logging.getLogger('scitran.api')
 
 
 class FileRequest(object):
+    """This class provides and interface for file uploads.
+    To perform an upload the client of the class should follow these steps:
+
+    1) initialize the request
+    2) save a temporary file
+    3) check identical
+    4) move the temporary file to its destination
+
+    The operations could be safely interleaved with other actions like permission checks or database updates.
+    """
 
     def __init__(self, client_addr, filename, body, received_md5, metadata, tags, flavor):
         self.client_addr = client_addr
@@ -84,6 +94,9 @@ class FileRequest(object):
 
     @classmethod
     def from_handler(cls, handler, filename=None):
+        """
+        Convenient method to initialize an upload request from the FileListHandler receiving it.
+        """
         tags = []
         metadata = {}
         if handler.request.content_type == 'multipart/form-data':
