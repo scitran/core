@@ -9,6 +9,7 @@ import logging
 import pymongo
 import argparse
 import datetime
+import requests
 
 from api import util  # from scitran.api import util
 
@@ -22,21 +23,33 @@ def users(args):
         db.client.drop_database(db)
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
+    log.info('bootstrapping users...')
     for u in input_data.get('users', []):
+        log.info('    ' + u['_id'])
         u['created'] = now
         u['modified'] = now
         u.setdefault('email', u['_id'])
         u.setdefault('preferences', {})
-        u.setdefault('avatar', 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512&d=mm')
+        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
+        if requests.head(gravatar, params={'d': '404'}):
+            u.setdefault('avatar', gravatar)
+        u.setdefault('avatars', {})
+        u['avatars'].setdefault('gravatar', gravatar)
         db.users.insert_one(u)
+    log.info('bootstrapping groups...')
     for g in input_data.get('groups', []):
+        log.info('    ' + g['_id'])
         g['created'] = now
         g['modified'] = now
         db.groups.insert_one(g)
+    log.info('bootstrapping drones...')
     for d in input_data.get('drones', []):
+        log.info('    ' + d['_id'])
         d['created'] = now
         d['modified'] = now
         db.drones.insert_one(d)
+    log.info('bootstrapping complete')
+
 
 users_desc = """
 example:
