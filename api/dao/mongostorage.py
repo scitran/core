@@ -36,7 +36,7 @@ class ListStorage(object):
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}
-        log.debug('query {}'.format(query))
+        log.error('query {}'.format(query))
         return self.dbc.find_one(query)
 
     def exec_op(self, action, _id, query_params=None, payload=None):
