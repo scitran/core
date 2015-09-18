@@ -47,7 +47,12 @@ def initialize_list_configurations():
     for coll_name, coll_config in list_handler_configurations.iteritems():
         for list_name, list_config in coll_config.iteritems():
             storage_class = list_config['storage']
-            storage = storage_class(coll_name, list_name, use_oid = list_config.get('use_oid', False))
+            storage = storage_class(
+                coll_name,
+                list_name,
+                use_oid=list_config.get('use_oid', False),
+                key_fields=list_config.get('key_fields')
+            )
             list_config['storage'] = storage
     return list_handler_configurations
 

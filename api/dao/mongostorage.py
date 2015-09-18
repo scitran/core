@@ -13,10 +13,11 @@ class ListStorage(object):
     This class provides access to sublists of a mongodb collections elements (called containers).
     """
 
-    def __init__(self, coll_name, list_name, use_oid = False):
+    def __init__(self, coll_name, list_name, use_oid = False, key_fields = None):
         self.coll_name = coll_name
         self.list_name = list_name
         self.use_oid = use_oid
+        self.key_fields = key_fields
         # the collection is not loaded when the class is instantiated
         # this allows to instantiate the class when the db is not available
         # and load the collection later when the db is available
@@ -36,7 +37,7 @@ class ListStorage(object):
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}
-        log.error('query {}'.format(query))
+        log.debug('query {}'.format(query))
         return self.dbc.find_one(query)
 
     def exec_op(self, action, _id, query_params=None, payload=None):
@@ -58,12 +59,15 @@ class ListStorage(object):
 
     def _create_el(self, _id, payload):
         log.debug('payload {}'.format(payload))
-        if payload.get('_id') is None:
-            query_params = copy.deepcopy(payload)
-            payload['_id'] = bson.objectid.ObjectId()
-        else:
-            query_params = payload
-        query = {'_id': _id, self.list_name: {'$not': {'$elemMatch': query_params} } }
+        query = {'_id': _id }
+        if self.key_fields:
+            try:
+                query_params = {
+                    k: payload[k] for k in self.key_fields
+                }
+            except KeyError:
+                self.abort(400, 'missing key for list {}'.format(self.list_name))
+            query[self.list_name] = {'$not': {'$elemMatch': query_params} }
         update = {'$push': {self.list_name: payload} }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
@@ -75,9 +79,26 @@ class ListStorage(object):
         mod_elem = {}
         for k,v in payload.items():
             mod_elem[self.list_name + '.$.' + k] = v
-        query = {'_id': _id, self.list_name: {'$elemMatch': query_params} }
-        if payload.get('_id') is not None:
-            query[self.list_name + '._id'] = {'$ne': payload.get('_id')}
+        query = {'_id': _id }
+        if self.key_fields:
+            _eqp = {}
+            exclude_query_params = None
+            for k in self.key_fields:
+                if query_params.get(k) is None:
+                    self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
+                value_p = payload.get(k)
+                if value_p and value_p != query_params.get(k):
+                    _eqp[k] = value_p
+                    exclude_query_params = _eqp
+                else:
+                    _eqp[k] = query_params.get(k)
+        if exclude_query_params is None:
+            query[self.list_name] = {'$elemMatch': query_params}
+        else:
+            query['$and'] = [
+                {self.list_name: {'$elemMatch': query_params}},
+                {self.list_name: {'$not': {'$elemMatch': exclude_query_params} }}
+            ]
         update = {
             '$set': mod_elem
         }
@@ -87,6 +108,10 @@ class ListStorage(object):
 
     def _delete_el(self, _id, query_params):
         log.debug('query_params {}'.format(query_params))
+        if self.key_fields:
+            for k in self.key_fields:
+                if query_params.get(k) is None:
+                    self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
         query = {'_id': _id}
         update = {'$pull': {self.list_name: query_params} }
         log.debug('query {}'.format(query))
@@ -95,6 +120,10 @@ class ListStorage(object):
 
     def _get_el(self, _id, query_params):
         log.debug('query_params {}'.format(query_params))
+        if self.key_fields:
+            for k in self.key_fields:
+                if query_params.get(k) is None:
+                    self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
         query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
         projection = {self.list_name + '.$': 1}
         log.debug('query {}'.format(query))
