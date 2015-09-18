@@ -15,7 +15,7 @@ from . import sessions
 from . import acquisitions
 from . import collections
 from . import listhandler
-from . import permchecker
+from . import permissions
 from dao import storage
 
 
@@ -49,7 +49,7 @@ routes = [
         webapp2.Route(r'/<gid:[^/]+>/sessions',                     sessions.Sessions, name='g_sessions', methods=['GET']),
         webapp2.Route(r'/<cid:[^/]+>/roles/<_id:[^/]+>',            listhandler.ListHandler, name='g_roles',
                                                                     defaults={
-                                                                        'permchecker': permchecker.group_roles_sublist,
+                                                                        'permchecker': permissions.group_roles_sublist,
                                                                         'storage': storage.ListStorage('groups', 'roles')
                                                                     }),
     ]),
@@ -62,18 +62,18 @@ routes = [
         webapp2.Route(r'/<pid:[0-9a-f]{24}>/sessions',              sessions.Sessions, name='p_sessions'),
         webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='pj_files_post', methods=['POST'],
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('projects', 'files', True)
                                                                     }),
         webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='pj_files',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('projects', 'files', True)
                                                                     }),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='pj_tags',
+        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',             listhandler.ListHandler, name='pj_tags',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
-                                                                        'storage': storage.StringListStorage('projects', 'tags', True, 'tag')
+                                                                        'permchecker': permissions.default_sublist,
+                                                                        'storage': storage.StringListStorage('projects', 'tags', True)
                                                                     }),
     ]),
     webapp2.Route(r'/api/collections',                              collections.Collections),
@@ -84,18 +84,18 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          collections.Collection, name='collection'),
         webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='cl_files_post', methods=['POST'],
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('collections', 'files', True)
                                                                     }),
         webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='cl_files',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('collections', 'files', True)
                                                                     }),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='cl_tags',
+        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',             listhandler.ListHandler, name='cl_tags',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
-                                                                        'storage': storage.StringListStorage('collections', 'tags', True, 'tag')
+                                                                        'permchecker': permissions.default_sublist,
+                                                                        'storage': storage.StringListStorage('collections', 'tags', True)
                                                                     }),
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections.CollectionAcquisitions, name='coll_acquisitions'),
@@ -107,18 +107,18 @@ routes = [
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          sessions.Session, name='session'),
         webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='se_files_post', methods=['POST'],
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('sessions', 'files', True)
                                                                     }),
         webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='se_files',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('sessions', 'files', True)
                                                                     }),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='se_tags',
+        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',             listhandler.ListHandler, name='se_tags',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
-                                                                        'storage': storage.StringListStorage('sessions', 'tags', True, 'tag')
+                                                                        'permchecker': permissions.default_sublist,
+                                                                        'storage': storage.StringListStorage('sessions', 'tags', True)
                                                                     }),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             acquisitions.Acquisitions, name='acquisitions'),
     ]),
@@ -126,19 +126,19 @@ routes = [
         webapp2.Route(r'/count',                                    acquisitions.Acquisitions, handler_method='count', methods=['GET']),
         webapp2.Route(r'/schema',                                   acquisitions.Acquisition, handler_method='schema', methods=['GET']),
         webapp2.Route(r'/<:[0-9a-f]{24}>',                          acquisitions.Acquisition, name='acquisition'),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<tag:[^/]+>',             listhandler.ListHandler, name='aq_tags',
+        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',             listhandler.ListHandler, name='aq_tags',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
-                                                                        'storage': storage.StringListStorage('acquisitions', 'tags', True, 'tag')
+                                                                        'permchecker': permissions.default_sublist,
+                                                                        'storage': storage.StringListStorage('acquisitions', 'tags', True)
                                                                     }),
         webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='aq_files_post', methods=['POST'],
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('acquisitions', 'files', True)
                                                                     }),
         webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='aq_files',
                                                                     defaults={
-                                                                        'permchecker': permchecker.default_sublist,
+                                                                        'permchecker': permissions.default_sublist,
                                                                         'storage': storage.ListStorage('acquisitions', 'files', True)
                                                                     }),
     ]),

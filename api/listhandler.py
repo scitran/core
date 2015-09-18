@@ -8,7 +8,7 @@ import util
 import copy
 import os
 
-from . import permchecker
+from . import permissions
 from . import files
 
 log = logging.getLogger('scitran.api')
@@ -31,76 +31,71 @@ class ListHandler(base.RequestHandler):
         super(ListHandler, self).__init__(request, response)
         self._initialized = None
 
-    def get(self, *args, **kwargs):
-        container, perm_checker, storage = self._initialize_request(kwargs)
-        _id = container["_id"]
+    def get(self, permchecker, storage, **kwargs):
+        container, permchecker, storage = self._initialize_request(permchecker, storage, kwargs)
+        _id = container['_id']
 
-        result = perm_checker(storage.apply_change)('GET', _id, elem_match=kwargs)
+        result = permchecker(storage.exec_op)('GET', _id, query_params=kwargs)
 
-        if result is None or result.get(list_name) is None or len(result[list_name]) == 0:
+        if result is None:
             self.abort(404, 'Element not found in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
-        return result[list_name][0]
+        return result
 
-    def post(self, *args, **kwargs):
-        container, perm_checker, storage = self._initialize_request(kwargs)
-        _id = container["_id"]
+    def post(self, permchecker, storage, **kwargs):
+        container, permchecker, storage = self._initialize_request(permchecker, storage, kwargs)
+        _id = container['_id']
 
         payload = self.request.POST.mixed()
         payload.update(kwargs)
-        result = perm_checker(storage.apply_change)('POST', _id, payload=payload)
+        result = permchecker(storage.exec_op)('POST', _id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
-    def put(self, *args, **kwargs):
-        container, perm_checker, storage = self._initialize_request(kwargs)
-        _id = container["_id"]
+    def put(self, permchecker, storage, **kwargs):
+        container, permchecker, storage = self._initialize_request(permchecker, storage, kwargs)
+        _id = container['_id']
 
-        result = perm_checker(storage.apply_change)('PUT', _id, elem_match = kwargs, payload = self.request.POST.mixed())
+        result = permchecker(storage.exec_op)('PUT', _id, query_params = kwargs, payload = self.request.POST.mixed())
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
-    def delete(self, *args, **kwargs):
-        container, perm_checker, storage = self._initialize_request(kwargs)
-        _id = container["_id"]
-        result = perm_checker(storage.apply_change)('DELETE', _id, elem_match = kwargs)
+    def delete(self, permchecker, storage, **kwargs):
+        container, permchecker, storage = self._initialize_request(permchecker, storage, kwargs)
+        _id = container['_id']
+        result = permchecker(storage.exec_op)('DELETE', _id, query_params = kwargs)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not removed from list {} in collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
-    def _initialize_request(self, kwargs):
+    def _initialize_request(self, permchecker, storage, kwargs):
         """
         This method loads:
         1) the container that will be modified
         2) the storage class that will handle the database actions
         3) the permission checker decorator that will be used
         """
-        if self._initialized:
-            return self._initialized
-        perm_checker = kwargs.pop('permchecker')
-        storage = kwargs.pop('storage')
         _id = kwargs.pop('cid', None) or kwargs.pop('_id')
 
-        storage.load_collection(self.app.db)
+        storage.dbc = self.app.db[storage.coll_name]
         container = storage.get_container(_id)
         if container is not None:
             if self.superuser_request:
-                perm_checker = permchecker.always_ok
+                permchecker = permissions.always_ok
             elif self.public_request:
-                perm_checker = permchecker.public_request(self, container)
+                permchecker = permissions.public_request(self, container)
             else:
-                perm_checker = perm_checker(self, container)
+                permchecker = permchecker(self, container)
         else:
             self.abort(404, 'Element {} not found in collection {}'.format(_id, storage.coll_name))
-        self._initialized = (container, perm_checker, storage)
-        return self._initialized
+        return container, permchecker, storage
 
 class FileListHandler(ListHandler):
     """
@@ -118,17 +113,17 @@ class FileListHandler(ListHandler):
             self.abort(400, 'ticket not for this resource or source IP')
         return ticket
 
-    def get(self, *args, **kwargs):
-        container, perm_checker, storage = self._initialize_request(kwargs)
-        _id = container["_id"]
+    def get(self, permchecker, storage, **kwargs):
+        container, permchecker, storage = self._initialize_request(permchecker, storage, kwargs)
+        _id = container['_id']
         list_name = storage.list_name
         filename = kwargs.get('filename')
         ticket_id = self.request.GET.get('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
-            fileinfo = storage.apply_change('GET', _id, elem_match=kwargs)['files'][0]
+            fileinfo = storage.exec_op('GET', _id, query_params=kwargs)
         else:
-            fileinfo = perm_checker(storage.apply_change)('GET', _id, elem_match=kwargs)['files'][0]
+            fileinfo = permchecker(storage.exec_op)('GET', _id, query_params=kwargs)
         if not fileinfo:
             self.abort(404, 'no such file')
         hash_ = self.request.GET.get('hash')
@@ -170,10 +165,10 @@ class FileListHandler(ListHandler):
                     self.response.headers['Content-Type'] = 'application/octet-stream'
                     self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
-    def delete(self, *args, **kwargs):
+    def delete(self, permchecker, storage, **kwargs):
         filename = kwargs.get('filename')
         _id = kwargs.get('cid', None) or kwargs.get('_id')
-        result = super(FileListHandler, self).delete(*args, **kwargs)
+        result = super(FileListHandler, self).delete(permchecker, storage, **kwargs)
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -184,15 +179,15 @@ class FileListHandler(ListHandler):
             result['removed'] = 0
         return result
 
-    def put(self, *args, **kwargs):
-        fileinfo = super(FileListHandler, self).get(*args, **kwargs)
+    def put(self, permchecker, storage, **kwargs):
+        fileinfo = super(FileListHandler, self).get(permchecker, storage, **kwargs)
         # TODO: implement file metadata updates
         self.abort(400, 'PUT is not yet implemented')
 
-    def post(self, *args, **kwargs):
+    def post(self, permchecker, storage, **kwargs):
         force = self.request.GET.get('force', '').lower() in ('1', 'true')
-        container, perm_checker, storage = self._initialize_request(kwargs)
-        _id = container["_id"]
+        container, permchecker, storage = self._initialize_request(permchecker, storage, kwargs)
+        _id = container['_id']
         payload = self.request.POST.mixed()
         payload.update(kwargs)
         filename = payload.get('filename')
@@ -213,7 +208,7 @@ class FileListHandler(ListHandler):
         })
         dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
         if not force:
-            result = perm_checker(storage.apply_change)('POST', _id, payload=payload)
+            result = permchecker(storage.exec_op)('POST', _id, payload=payload)
         else:
             filepath = os.path.join(tempdir_path, filename)
             for f in container['files']:
@@ -224,16 +219,16 @@ class FileListHandler(ListHandler):
                         self.abort(409, 'file exists; use force to overwrite')
                     else:
                         log.debug('Replacing   %s' % filename)
-                        result = perm_checker(storage.apply_change)('PUT', _id, payload=payload)
+                        result = permchecker(storage.exec_op)('PUT', _id, payload=payload)
                     break
             else:
-                result = perm_checker(storage.apply_change)('POST', _id, payload=payload)
+                result = permchecker(storage.exec_op)('POST', _id, payload=payload)
         if result.modified_count != 1:
-            storage.apply_change('DELETE', _id, payload=payload)
+            storage.exec_op('DELETE', _id, payload=payload)
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
         try:
             file_request.move_temp_file(dest_path)
         except IOError as e:
-            result = storage.apply_change('DELETE', _id, payload=payload)
+            result = storage.exec_op('DELETE', _id, payload=payload)
             raise e
         return {'modified': result.modified_count}

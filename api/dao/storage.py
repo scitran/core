@@ -19,17 +19,8 @@ class ListStorage(object):
         self.use_oid = use_oid
         # the collection is not loaded when the class is instantiated
         # this allows to instantiate the class when the db is not available
-        # dbc is initialized using the load_collection method
+        # and load the collection later when the db is available
         self.dbc = None
-
-
-    def load_collection(self, db):
-        """
-        Initialize the mongodb collection.
-        """
-        if self.dbc is None:
-            self.dbc = db.get_collection(self.coll_name)
-        return self.dbc
 
     def get_container(self, _id):
         """
@@ -46,63 +37,47 @@ class ListStorage(object):
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}
         log.debug('query {}'.format(query))
-        self.container = self.dbc.find_one(query)
-        return self.container
+        return self.dbc.find_one(query)
 
-    def apply_change(self, action, _id, elem_match=None, payload=None):
+    def exec_op(self, action, _id, query_params=None, payload=None):
         """
-        Generic method to apply an operation.
+        Generic method to execdd an operation.
         The request is dispatched to the corresponding private methods.
         """
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         if action == 'GET':
-            return self._get_el(_id, elem_match)
+            return self._get_el(_id, query_params)
         if action == 'DELETE':
-            return self._delete_el(_id, elem_match)
+            return self._delete_el(_id, query_params)
         if action == 'PUT':
-            return self._update_el(_id, elem_match, payload)
+            return self._update_el(_id, query_params, payload)
         if action == 'POST':
             return self._create_el(_id, payload)
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
     def _create_el(self, _id, payload):
         log.debug('payload {}'.format(payload))
-        if isinstance(payload, dict):
-            if payload.get('_id') is None:
-                elem_match = copy.deepcopy(payload)
-                payload['_id'] = bson.objectid.ObjectId()
-            else:
-                elem_match = payload
-            query = {'_id': _id, self.list_name: {'$not': {'$elemMatch': elem_match} } }
+        if payload.get('_id') is None:
+            query_params = copy.deepcopy(payload)
+            payload['_id'] = bson.objectid.ObjectId()
         else:
-            query = {'_id': _id, self.list_name: {'$ne': payload } }
+            query_params = payload
+        query = {'_id': _id, self.list_name: {'$not': {'$elemMatch': query_params} } }
         update = {'$push': {self.list_name: payload} }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
-    def _update_el(self, _id, elem_match, payload):
-        log.debug('elem_match {}'.format(payload))
-        log.debug('payload {}'.format(elem_match))
-        if isinstance(payload, dict):
-            mod_elem = {}
-            for k,v in payload.items():
-                mod_elem[self.list_name + '.$.' + k] = v
-            query = {'_id': _id, self.list_name: {'$elemMatch': elem_match} }
-            if payload.get('_id') is not None:
-                query[self.list_name + '._id'] = {'$ne': payload.get('_id')}
-        else:
-            mod_elem = {
-                self.list_name + '.$': payload
-            }
-            query = {
-                '_id': _id,
-                '$and':[
-                    {self.list_name: elem_match},
-                    {self.list_name: {'$ne': payload} }
-                ]
-            }
+    def _update_el(self, _id, query_params, payload):
+        log.debug('query_params {}'.format(query_params))
+        log.debug('payload {}'.format(payload))
+        mod_elem = {}
+        for k,v in payload.items():
+            mod_elem[self.list_name + '.$.' + k] = v
+        query = {'_id': _id, self.list_name: {'$elemMatch': query_params} }
+        if payload.get('_id') is not None:
+            query[self.list_name + '._id'] = {'$ne': payload.get('_id')}
         update = {
             '$set': mod_elem
         }
@@ -110,39 +85,68 @@ class ListStorage(object):
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
-    def _delete_el(self, _id, elem_match):
-        log.debug('elem_match {}'.format(elem_match))
+    def _delete_el(self, _id, query_params):
+        log.debug('query_params {}'.format(query_params))
         query = {'_id': _id}
-        update = {'$pull': {self.list_name: elem_match} }
+        update = {'$pull': {self.list_name: query_params} }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
-    def _get_el(self, _id, elem_match = None):
-        log.debug('elem_match {}'.format(elem_match))
-        if isinstance(elem_match, str):
-            query_params = elem_match
-        else:
-            query_params = {'$elemMatch': elem_match}
-        query = {'_id': _id, self.list_name: query_params}
+    def _get_el(self, _id, query_params):
+        log.debug('query_params {}'.format(query_params))
+        query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
         projection = {self.list_name + '.$': 1}
         log.debug('query {}'.format(query))
         log.debug('projection {}'.format(projection))
-        return self.dbc.find_one(query, projection)
+        result = self.dbc.find_one(query, projection)
+        if result and result.get(self.list_name):
+            return result.get(self.list_name)[0]
 
 
 class StringListStorage(ListStorage):
 
-    def __init__(self, coll_name, list_name, use_oid, key_name):
-        super(StringListStorage, self).__init__(coll_name, list_name, use_oid)
-        self.key_name = key_name
-
-    def apply_change(self, action, _id, elem_match=None, payload=None):
+    def exec_op(self, action, _id, query_params=None, payload=None):
         """
         This method "flattens" the query parameter and the payload to handle string lists
         """
-        if elem_match is not None:
-            elem_match = elem_match[self.key_name]
+        if query_params is not None:
+            query_params = query_params['value']
         if payload is not None:
-            payload = payload[self.key_name]
-        return super(StringListStorage, self).apply_change(action, _id, elem_match, payload)
+            payload = payload.get('value')
+            if payload is None:
+                self.abort(400, 'Key "value" should be defined')
+        return super(StringListStorage, self).exec_op(action, _id, query_params, payload)
+
+    def _create_el(self, _id, payload):
+        log.debug('payload {}'.format(payload))
+        query = {'_id': _id, self.list_name: {'$ne': payload}}
+        update = {'$push': {self.list_name: payload}}
+        log.debug('query {}'.format(query))
+        log.debug('update {}'.format(update))
+        return self.dbc.update_one(query, update)
+
+    def _update_el(self, _id, query_params, payload):
+        log.debug('query_params {}'.format(payload))
+        log.debug('payload {}'.format(query_params))
+        query = {
+            '_id': _id,
+            '$and':[
+                {self.list_name: query_params},
+                {self.list_name: {'$ne': payload} }
+            ]
+        }
+        update = {'$set': {self.list_name + '.$': payload}}
+        log.debug('query {}'.format(query))
+        log.debug('update {}'.format(update))
+        return self.dbc.update_one(query, update)
+
+    def _get_el(self, _id, query_params):
+        log.debug('query_params {}'.format(query_params))
+        query = {'_id': _id, self.list_name: query_params}
+        projection = {self.list_name + '.$': 1}
+        log.debug('query {}'.format(query))
+        log.debug('projection {}'.format(projection))
+        result = self.dbc.find_one(query, projection)
+        if result and result.get(self.list_name):
+            return result.get(self.list_name)[0]
