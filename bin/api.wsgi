@@ -141,7 +141,6 @@ else:
                 log.warning('scitran central unreachable, purging all remotes info')
                 centralclient.clean_remotes(application.db, args.site_id)
 
-    @uwsgidecorators.timer(30)
     def job_creation(signum):
         for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
             for c in application.db[c_type].find({'files.dirty': True}, ['files']):
@@ -186,3 +185,14 @@ else:
                 log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
             else:
                 log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
+
+
+    # Run job creation immediately on start, then every 30 seconds thereafter.
+    # This saves sysadmin irritation waiting for the engine, or an initial job load conflicting with timed runs.
+    log.info('Loading jobs queue for initial processing. This may take some time.')
+    job_creation(None)
+    log.info('Loading jobs queue complete.')
+
+    @uwsgidecorators.timer(30)
+    def job_creation_timer(signum):
+        job_creation(signum)
