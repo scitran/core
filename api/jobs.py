@@ -166,6 +166,19 @@ def queue_job(db, algorithm_id, container_type, container_id, filename, filehash
     log.info('Running %s as job %s to process %s %s' % (algorithm_id, str(_id), container_type, container_id))
     return _id
 
+def retry_job(db, j):
+    """
+    Given a failed job, either retry the job or fail it permanently, based on the attempt number.
+    TODO: make max attempts configurable
+    """
+
+    if j['attempt'] < 3:
+        job_id = queue_job(db, j['algorithm_id'], j['container_type'], j['container_id'], j['filename'], j['filehash'], j['attempt']+1, j['_id'])
+        log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
+    else:
+        log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
+
+
 class Jobs(base.RequestHandler):
 
     """Provide /jobs API routes."""
@@ -267,3 +280,8 @@ class Job(base.RequestHandler):
         result = self.app.db.jobs.update_one(job_query, {'$set': mutation})
         if result.modified_count != 1:
             self.abort(500, 'Job modification not saved')
+
+        # If the job did not succeed, check to see if job should be retried.
+        if 'state' in mutation and mutation['state'] == 'failed':
+            job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
+            retry_job(self.app.db, job)

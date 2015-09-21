@@ -9,6 +9,7 @@ import datetime
 
 from api import app, centralclient, jobs
 from api.util import log
+from api import jobs
 
 logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
 
@@ -180,11 +181,8 @@ else:
                 )
             if j is None:
                 break
-            if j['attempt'] < 3:
-                job_id = jobs.queue_job(application.db, j['algorithm_id'], j['container_type'], j['container_id'], j['filename'], j['filehash'], j['attempt']+1, j['_id'])
-                log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
             else:
-                log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
+                jobs.retry_job(application.db, j)
 
 
     # Run job creation immediately on start, then every 30 seconds thereafter.
