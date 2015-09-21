@@ -31,6 +31,7 @@ class RequestHandler(webapp2.RequestHandler):
         self.source_site = None
         drone_request = False
 
+        user_agent = self.request.headers.get('User-Agent', '')
         access_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
 
@@ -71,18 +72,18 @@ class RequestHandler(webapp2.RequestHandler):
             self.uid = self.request.GET.get('user')
 
         # Drone shared secret authentication
-        elif drone_secret is not None and self.request.user_agent.startswith('SciTran Drone '):
+        elif drone_secret is not None and user_agent.startswith('SciTran Drone '):
             if drone_secret != self.app.config['drone_secret']:
                 self.abort(401, 'invalid drone secret')
-            log.info('drone "' + self.request.user_agent.replace('SciTran Drone ', '') + '" request accepted')
+            log.info('drone "' + user_agent.replace('SciTran Drone ', '') + '" request accepted')
             drone_request = True
 
         # Cross-site authentication
-        elif self.request.user_agent.startswith('SciTran Instance '):
+        elif user_agent.startswith('SciTran Instance '):
             if self.request.environ['SSL_CLIENT_VERIFY'] == 'SUCCESS':
                 self.uid = self.request.headers.get('X-User')
                 self.source_site = self.request.headers.get('X-Site')
-                remote_instance = self.request.user_agent.replace('SciTran Instance', '').strip()
+                remote_instance = user_agent.replace('SciTran Instance', '').strip()
                 if not self.app.db.sites.find_one({'_id': remote_instance}):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
