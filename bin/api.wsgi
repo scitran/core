@@ -189,7 +189,9 @@ else:
 
     # Run job creation immediately on start, then every 30 seconds thereafter.
     # This saves sysadmin irritation waiting for the engine, or an initial job load conflicting with timed runs.
+    log.info('Loading jobs queue for initial processing. This may take some time.')
     job_creation(None)
+    log.info('Loading jobs queue complete.')
 
     @uwsgidecorators.timer(30)
     def job_creation_timer(signum):

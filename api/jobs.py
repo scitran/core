@@ -259,11 +259,11 @@ class Job(base.RequestHandler):
         mutation['modified'] = datetime.datetime.utcnow()
 
         # Create an object with all the fields that must not have changed concurrently.
-        jobQuery =  {
+        job_query =  {
             '_id': job['_id'],
             'state': job['state'],
         }
 
-        result = self.app.db.jobs.update_one(jobQuery, {'$set': mutation})
+        result = self.app.db.jobs.update_one(job_query, {'$set': mutation})
         if result.modified_count != 1:
             self.abort(500, 'Job modification not saved')
