@@ -1,8 +1,9 @@
 # @author:  Renzo Frigato
 
 import bson.objectid
-import copy
+import datetime
 import logging
+import copy
 import re
 
 log = logging.getLogger('scitran.api')
@@ -23,7 +24,7 @@ class ListStorage(object):
         # and load the collection later when the db is available
         self.dbc = None
 
-    def get_container(self, _id):
+    def get_container(self, _id, query_params=None):
         """
         Load a container from the _id.
 
@@ -37,8 +38,14 @@ class ListStorage(object):
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}
+        projection = None
+        if query_params:
+            query[self.list_name] = {
+                '$elemMatch': query_params
+            }
+            projection = {self.list_name + '.$': 1, 'permissions': 1, 'public': 1}
         log.debug('query {}'.format(query))
-        return self.dbc.find_one(query)
+        return self.dbc.find_one(query, projection)
 
     def exec_op(self, action, _id, query_params=None, payload=None):
         """
@@ -84,7 +91,9 @@ class ListStorage(object):
             _eqp = {}
             exclude_query_params = None
             for k in self.key_fields:
-                if query_params.get(k) is None:
+                try:
+                   query_params[k]
+                except KeyError:
                     self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
                 value_p = payload.get(k)
                 if value_p and value_p != query_params.get(k):
@@ -110,7 +119,9 @@ class ListStorage(object):
         log.debug('query_params {}'.format(query_params))
         if self.key_fields:
             for k in self.key_fields:
-                if query_params.get(k) is None:
+                try:
+                   query_params[k]
+                except KeyError:
                     self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
         query = {'_id': _id}
         update = {'$pull': {self.list_name: query_params} }
@@ -122,12 +133,14 @@ class ListStorage(object):
         log.debug('query_params {}'.format(query_params))
         if self.key_fields:
             for k in self.key_fields:
-                if query_params.get(k) is None:
+                try:
+                   query_params[k]
+                except KeyError:
                     self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
         query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
         projection = {self.list_name + '.$': 1}
-        log.debug('query {}'.format(query))
-        log.debug('projection {}'.format(projection))
+        log.error('query {}'.format(query))
+        log.error('projection {}'.format(projection))
         result = self.dbc.find_one(query, projection)
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]
@@ -179,3 +192,9 @@ class StringListStorage(ListStorage):
         result = self.dbc.find_one(query, projection)
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]
+
+class NotesListStorage(ListStorage):
+    def _create_el(self, _id, payload):
+        payload['_id'] = str(bson.objectid.ObjectId())
+        payload['timestamp'] =  datetime.datetime.utcnow()
+        return super(NotesListStorage, self)._create_el(_id, payload)

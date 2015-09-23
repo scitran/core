@@ -27,7 +27,20 @@ def initialize_list_configurations():
             'permchecker': permissions.default_sublist,
             'use_oid': True,
             'key_fields': ['filename']
-        }
+        },
+        'permissions': {
+            'storage': mongostorage.ListStorage,
+            'permchecker': permissions.permissions_sublist,
+            'use_oid': True,
+            'key_fields': ['_id', 'site']
+        },
+        'notes': {
+            'storage': mongostorage.NotesListStorage,
+            'permchecker': permissions.notes_sublist,
+            'use_oid': True,
+            'key_fields': ['_id'],
+            'check_item_perms': True
+        },
     }
     list_handler_configurations = {
         'groups': {
@@ -78,8 +91,8 @@ class ListHandler(base.RequestHandler):
         self._initialized = None
 
     def get(self, coll_name, list_name, **kwargs):
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, kwargs)
-        _id = container['_id']
+        _id = kwargs.pop('cid')
+        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
 
         result = permchecker(storage.exec_op)('GET', _id, query_params=kwargs)
 
@@ -88,8 +101,8 @@ class ListHandler(base.RequestHandler):
         return result
 
     def post(self, coll_name, list_name, **kwargs):
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, kwargs)
-        _id = container['_id']
+        _id = kwargs.pop('cid')
+        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id)
 
         payload = self.request.POST.mixed()
         payload.update(kwargs)
@@ -101,10 +114,10 @@ class ListHandler(base.RequestHandler):
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
     def put(self, coll_name, list_name, **kwargs):
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, kwargs)
-        _id = container['_id']
+        _id = kwargs.pop('cid')
+        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
 
-        result = permchecker(storage.exec_op)('PUT', _id, query_params = kwargs, payload = self.request.POST.mixed())
+        result = permchecker(storage.exec_op)('PUT', _id, query_params=kwargs, payload=self.request.POST.mixed())
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -112,28 +125,29 @@ class ListHandler(base.RequestHandler):
             self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
     def delete(self, coll_name, list_name, **kwargs):
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, kwargs)
-        _id = container['_id']
-        result = permchecker(storage.exec_op)('DELETE', _id, query_params = kwargs)
+        _id = kwargs.pop('cid')
+        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        result = permchecker(storage.exec_op)('DELETE', _id, query_params=kwargs)
 
         if result.modified_count == 1:
-            return {'modified':result.modified_count}
+            return {'modified': result.modified_count}
         else:
             self.abort(404, 'Element not removed from list {} in collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
-    def _initialize_request(self, coll_name, list_name, kwargs):
+    def _initialize_request(self, coll_name, list_name, _id, query_params=None):
         """
         This method loads:
         1) the container that will be modified
         2) the storage class that will handle the database actions
         3) the permission checker decorator that will be used
         """
-        _id = kwargs.pop('cid', None) or kwargs.pop('_id')
         config = list_handler_configurations[coll_name][list_name]
         storage = config['storage']
         permchecker = config['permchecker']
         storage.dbc = self.app.db[storage.coll_name]
-        container = storage.get_container(_id)
+        if not config.get('check_item_perms'):
+            query_params = None
+        container = storage.get_container(_id, query_params)
         if container is not None:
             if self.superuser_request:
                 permchecker = permissions.always_ok
@@ -163,8 +177,8 @@ class FileListHandler(ListHandler):
         return ticket
 
     def get(self, coll_name, list_name, **kwargs):
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, kwargs)
-        _id = container['_id']
+        _id = kwargs.pop('cid')
+        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id)
         list_name = storage.list_name
         filename = kwargs.get('filename')
         ticket_id = self.request.GET.get('ticket')
@@ -216,7 +230,7 @@ class FileListHandler(ListHandler):
 
     def delete(self, coll_name, list_name, **kwargs):
         filename = kwargs.get('filename')
-        _id = kwargs.get('cid', None) or kwargs.get('_id')
+        _id = kwargs.get('cid')
         result = super(FileListHandler, self).delete(coll_name, list_name, **kwargs)
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if os.path.exists(filepath):
@@ -235,8 +249,8 @@ class FileListHandler(ListHandler):
 
     def post(self, coll_name, list_name, **kwargs):
         force = self.request.GET.get('force', '').lower() in ('1', 'true')
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, kwargs)
-        _id = container['_id']
+        _id = kwargs.pop('cid')
+        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id)
         payload = self.request.POST.mixed()
         payload.update(kwargs)
         filename = payload.get('filename')

@@ -67,6 +67,44 @@ def group_roles_sublist(handler, container):
         return f
     return g
 
+def permissions_sublist(handler, container):
+    """
+    the customized permissions checker for permissions operations.
+    """
+    access = _get_access(handler.uid, container)
+    def g(exec_op):
+        def f(method, _id, query_params = None, payload = None):
+            log.error(query_params)
+            if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid and query_params.get('site') == (handler.source_site or handler.app.config['site_id']):
+                return exec_op(method, _id, query_params, payload)
+            elif access >= INTEGER_ROLES['admin']:
+                return exec_op(method, _id, query_params, payload)
+            else:
+                handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
+        return f
+    return g
+
+def notes_sublist(handler, container):
+    """
+    permissions checker for notes_sublist
+    """
+    access = _get_access(handler.uid, container)
+    def g(exec_op):
+        def f(method, _id, query_params = None, payload = None):
+            if access >= INTEGER_ROLES['admin']:
+                pass
+            elif method == 'POST' and access >= INTEGER_ROLES['rw'] and payload['author'] == handler.uid:
+                pass
+            elif method == 'GET' and (access >= INTEGER_ROLES['ro'] or container.get('public')):
+                pass
+            elif method in ['GET', 'DELETE', 'PUT'] and container['notes'][0]['author'] == handler.uid:
+                pass
+            else:
+                handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
+            return exec_op(method, _id, query_params, payload)
+        return f
+    return g
+
 def public_request(handler, container):
     """
     For public requests we allow only GET operations on containers marked as public.
