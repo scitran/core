@@ -128,33 +128,30 @@ def queue_job(db, algorithm_id, container_type, container_id, filename, filehash
         'formula': {
             'inputs': [
                 {
-                    'type': 'scitran',
+                    'type': 'file',
+                    'uri': '/tmp/deja/flak/0/dcm_convert-0.1.1.tar',
                     'location': '/',
-                    'URI': 'TBD',
                 },
                 {
                     'type': 'scitran',
-                    'location': '/script',
-                    'URI': 'TBD',
-                },
-
+                    'uri': '/' + container_type + '/' + container_id + '/file/' + filename,
+                    'location': '/input/' + filename,
+                }
             ],
-
-            'accents': {
-                'cwd': "/script",
-                'command': [ 'TBD' ],
-                'environment': { },
+            'transform': {
+                'command': ['bash', '-c', 'mkdir /output; /scripts/run /input/' + filename + ' /output/'],
+                'env': { },
+                'dir': "/",
             },
 
             'outputs': [
                 {
                     'type': 'scitran',
+                    'uri': '/' + container_type + '/' + container_id + '/file/',
                     'location': '/output',
-                    'URI': 'TBD',
                 },
             ],
         }
-
     }
 
     if previous_job_id is not None:
