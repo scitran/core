@@ -219,9 +219,9 @@ class Collections(containers.ContainerList):
             {'$group': {'_id': "$collections", 'sessions': {'$addToSet': "$session"}}}
             ])
         # Convert to dict for easy lookup
-        session_counts = {str(coll['_id']): len(coll['sessions']) for coll in session_counts}
+        session_counts = {coll['_id']: len(coll['sessions']) for coll in session_counts}
         for coll in collections:
-            coll['session_count'] = session_counts.get(str(coll['_id']), 0)
+            coll['session_count'] = session_counts.get(coll['_id'], 0)
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])

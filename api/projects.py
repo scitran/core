@@ -126,9 +126,9 @@ class Projects(containers.ContainerList):
             {'$group': {'_id': '$project', 'count': {"$sum": 1}}}
             ])
         # Convert to dict for easy lookup
-        session_counts = {str(proj['_id']): proj['count'] for proj in session_counts}
+        session_counts = {proj['_id']: proj['count'] for proj in session_counts}
         for proj in projects:
-            proj['session_count'] = session_counts.get(str(proj['_id']), 0)
+            proj['session_count'] = session_counts.get(proj['_id'], 0)
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
