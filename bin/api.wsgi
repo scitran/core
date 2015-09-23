@@ -171,7 +171,7 @@ else:
             j = application.db.jobs.find_one_and_update(
                 {
                     'state': 'running',
-                    'heartbeat': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
+                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
                 },
                 {
                     '$set': {
