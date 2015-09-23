@@ -212,6 +212,16 @@ class Collections(containers.ContainerList):
         query = {'curator': self.request.GET.get('curator')} if self.request.GET.get('curator') else {}
         projection = ['curator', 'name']
         collections = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
+
+        session_counts = self.app.db.acquisitions.aggregate([
+            {'$match': {'collections': {'$in': [collection['_id'] for collection in collections]}}},
+            {'$unwind': "$collections"},
+            {'$group': {'_id': "$collections", 'sessions': {'$addToSet': "$session"}}}
+            ])
+        # Convert to dict for easy lookup
+        session_counts = {coll['_id']: len(coll['sessions']) for coll in session_counts}
+        for coll in collections:
+            coll['session_count'] = session_counts.get(coll['_id'], 0)
         if self.debug:
             for coll in collections:
                 cid = str(coll['_id'])

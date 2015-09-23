@@ -121,6 +121,14 @@ class Projects(containers.ContainerList):
         query = {'group': gid} if gid else {}
         projection = ['group', 'name']
         projects = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'), uid)
+        session_counts = self.app.db.sessions.aggregate([
+            {'$match': {'project': {'$in': [proj['_id'] for proj in projects]}}},
+            {'$group': {'_id': '$project', 'count': {"$sum": 1}}}
+            ])
+        # Convert to dict for easy lookup
+        session_counts = {proj['_id']: proj['count'] for proj in session_counts}
+        for proj in projects:
+            proj['session_count'] = session_counts.get(proj['_id'], 0)
         if self.debug:
             for proj in projects:
                 pid = str(proj['_id'])
