@@ -34,7 +34,7 @@ def default_sublist(handler, container):
     """
     access = _get_access(handler.uid, container)
     def g(exec_op):
-        def f(method, _id, query_params = None, payload = None):
+        def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method == 'GET' and container.get('public', False):
                 min_access = -1
             elif method == 'GET':
@@ -45,7 +45,7 @@ def default_sublist(handler, container):
                 min_access = sys.maxint
 
             if access >= min_access:
-                return exec_op(method, _id, query_params, payload)
+                return exec_op(method, _id, query_params, payload, exclude_param)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
         return f
@@ -57,11 +57,11 @@ def group_roles_sublist(handler, container):
     """
     access = _get_access(handler.uid, container)
     def g(exec_op):
-        def f(method, _id, query_params = None, payload = None):
+        def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid:
-                return exec_op(method, _id, query_params, payload)
+                return exec_op(method, _id, query_params, payload, exclude_params)
             elif access >= INTEGER_ROLES['admin']:
-                return exec_op(method, _id, query_params, payload)
+                return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
         return f
@@ -73,12 +73,12 @@ def permissions_sublist(handler, container):
     """
     access = _get_access(handler.uid, container)
     def g(exec_op):
-        def f(method, _id, query_params = None, payload = None):
+        def f(method, _id, query_params = None, payload = None, exclude_params=None):
             log.error(query_params)
             if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid and query_params.get('site') == (handler.source_site or handler.app.config['site_id']):
-                return exec_op(method, _id, query_params, payload)
+                return exec_op(method, _id, query_params, payload, exclude_params)
             elif access >= INTEGER_ROLES['admin']:
-                return exec_op(method, _id, query_params, payload)
+                return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
         return f
@@ -90,7 +90,7 @@ def notes_sublist(handler, container):
     """
     access = _get_access(handler.uid, container)
     def g(exec_op):
-        def f(method, _id, query_params = None, payload = None):
+        def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if access >= INTEGER_ROLES['admin']:
                 pass
             elif method == 'POST' and access >= INTEGER_ROLES['rw'] and payload['author'] == handler.uid:
@@ -101,7 +101,7 @@ def notes_sublist(handler, container):
                 pass
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
-            return exec_op(method, _id, query_params, payload)
+            return exec_op(method, _id, query_params, payload, exclude_params)
         return f
     return g
 
@@ -110,9 +110,9 @@ def public_request(handler, container):
     For public requests we allow only GET operations on containers marked as public.
     """
     def g(exec_op):
-        def f(method, _id, query_params = None, payload = None):
+        def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method == 'GET' and container.get('public', False):
-                return exec_op(method, _id, query_params, payload)
+                return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'not authorized to perform a {} operation on this container'.format(method))
         return f

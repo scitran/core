@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "_id": {
+        "maxLength": 32,
+        "minLength": 2,
+        "pattern": "^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$",
+        "title": "ID",
+        "type": "string"
+    },
+    "created":         { "type": "datetime" },
+    "modified":         { "type": "datetime" },
+    "user":           { "type": "string" },
+    "text":           { "type": "string" },
+  },
+  "required": ["_id", "user", "text"]
+}

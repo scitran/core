@@ -15,7 +15,6 @@ from . import sessions
 from . import acquisitions
 from . import collections
 from . import listhandler
-from . import permissions
 
 
 routes = [

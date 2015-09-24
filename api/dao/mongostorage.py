@@ -47,7 +47,7 @@ class ListStorage(object):
         log.debug('query {}'.format(query))
         return self.dbc.find_one(query, projection)
 
-    def exec_op(self, action, _id, query_params=None, payload=None):
+    def exec_op(self, action, _id, query_params=None, payload=None, exclude_params=None):
         """
         Generic method to execdd an operation.
         The request is dispatched to the corresponding private methods.
@@ -59,54 +59,34 @@ class ListStorage(object):
         if action == 'DELETE':
             return self._delete_el(_id, query_params)
         if action == 'PUT':
-            return self._update_el(_id, query_params, payload)
+            return self._update_el(_id, query_params, payload, exclude_params)
         if action == 'POST':
-            return self._create_el(_id, payload)
+            return self._create_el(_id, payload, exclude_params)
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
-    def _create_el(self, _id, payload):
+    def _create_el(self, _id, payload, exclude_params):
         log.debug('payload {}'.format(payload))
         query = {'_id': _id }
-        if self.key_fields:
-            try:
-                query_params = {
-                    k: payload[k] for k in self.key_fields
-                }
-            except KeyError:
-                self.abort(400, 'missing key for list {}'.format(self.list_name))
-            query[self.list_name] = {'$not': {'$elemMatch': query_params} }
+        if exclude_params:
+            query[self.list_name] = {'$not': {'$elemMatch': exclude_params} }
         update = {'$push': {self.list_name: payload} }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
-    def _update_el(self, _id, query_params, payload):
+    def _update_el(self, _id, query_params, payload, exclude_params):
         log.debug('query_params {}'.format(query_params))
         log.debug('payload {}'.format(payload))
         mod_elem = {}
         for k,v in payload.items():
             mod_elem[self.list_name + '.$.' + k] = v
         query = {'_id': _id }
-        if self.key_fields:
-            _eqp = {}
-            exclude_query_params = None
-            for k in self.key_fields:
-                try:
-                   query_params[k]
-                except KeyError:
-                    self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
-                value_p = payload.get(k)
-                if value_p and value_p != query_params.get(k):
-                    _eqp[k] = value_p
-                    exclude_query_params = _eqp
-                else:
-                    _eqp[k] = query_params.get(k)
-        if exclude_query_params is None:
+        if exclude_params is None:
             query[self.list_name] = {'$elemMatch': query_params}
         else:
             query['$and'] = [
                 {self.list_name: {'$elemMatch': query_params}},
-                {self.list_name: {'$not': {'$elemMatch': exclude_query_params} }}
+                {self.list_name: {'$not': {'$elemMatch': exclude_params} }}
             ]
         update = {
             '$set': mod_elem
@@ -117,12 +97,6 @@ class ListStorage(object):
 
     def _delete_el(self, _id, query_params):
         log.debug('query_params {}'.format(query_params))
-        if self.key_fields:
-            for k in self.key_fields:
-                try:
-                   query_params[k]
-                except KeyError:
-                    self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
         query = {'_id': _id}
         update = {'$pull': {self.list_name: query_params} }
         log.debug('query {}'.format(query))
@@ -131,12 +105,6 @@ class ListStorage(object):
 
     def _get_el(self, _id, query_params):
         log.debug('query_params {}'.format(query_params))
-        if self.key_fields:
-            for k in self.key_fields:
-                try:
-                   query_params[k]
-                except KeyError:
-                    self.abort(400, 'missing key {} in query params for list {}'.format(k, self.list_name))
         query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
         projection = {self.list_name + '.$': 1}
         log.error('query {}'.format(query))
@@ -148,7 +116,7 @@ class ListStorage(object):
 
 class StringListStorage(ListStorage):
 
-    def exec_op(self, action, _id, query_params=None, payload=None):
+    def exec_op(self, action, _id, query_params=None, payload=None, exclude_params=None):
         """
         This method "flattens" the query parameter and the payload to handle string lists
         """
@@ -158,9 +126,9 @@ class StringListStorage(ListStorage):
             payload = payload.get('value')
             if payload is None:
                 self.abort(400, 'Key "value" should be defined')
-        return super(StringListStorage, self).exec_op(action, _id, query_params, payload)
+        return super(StringListStorage, self).exec_op(action, _id, query_params, payload, exclude_params)
 
-    def _create_el(self, _id, payload):
+    def _create_el(self, _id, payload, exclude_params):
         log.debug('payload {}'.format(payload))
         query = {'_id': _id, self.list_name: {'$ne': payload}}
         update = {'$push': {self.list_name: payload}}
@@ -168,7 +136,7 @@ class StringListStorage(ListStorage):
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
-    def _update_el(self, _id, query_params, payload):
+    def _update_el(self, _id, query_params, payload, exclude_params):
         log.debug('query_params {}'.format(payload))
         log.debug('payload {}'.format(query_params))
         query = {
@@ -192,9 +160,3 @@ class StringListStorage(ListStorage):
         result = self.dbc.find_one(query, projection)
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]
-
-class NotesListStorage(ListStorage):
-    def _create_el(self, _id, payload):
-        payload['_id'] = str(bson.objectid.ObjectId())
-        payload['timestamp'] =  datetime.datetime.utcnow()
-        return super(NotesListStorage, self)._create_el(_id, payload)

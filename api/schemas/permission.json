@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "_id":            { "type": "string" },
+    "access":         { "enum": ["ro", "rw", "admin"] },
+    "site":           { "type": "string" }
+  },
+  "required": ["_id", "access", "site"],
+  "keys": ["_id", "site"]
+}
