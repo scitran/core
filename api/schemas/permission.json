@@ -6,5 +6,6 @@
     "site":           { "type": "string" }
   },
   "required": ["_id", "access", "site"],
-  "keys": ["_id", "site"]
+  "keys": ["_id", "site"],
+  "additionalProperties": false
 }

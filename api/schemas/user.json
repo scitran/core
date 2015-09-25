@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "User",
+  "type": "object",
+  "properties": {
+    "_id":              {"type": "string"},
+    "created":          {"type": "string", "format": "date-time"},
+    "modified":         {"type": "string", "format": "date-time"},
+    "firstname":        { "type": "string" },
+    "lastname":         { "type": "string" },
+    "email":            { "type": "string", "format": "email" },
+    "avatar":           { "type": "string", "format": "uri" },
+    "wheel":            { "type": "boolean"},
+    "root":             { "type": "boolean"},
+  },
+  "additionalProperties": false
+}

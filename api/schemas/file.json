@@ -9,8 +9,8 @@
         "type": "string"
     },
     "name":           { "type": "string" },
-    "created":        { "type": "datetime" },
-    "modified":       { "type": "datetime" },
+    "created":        {"type": "string", "format": "date-time"},
+    "modified":       {"type": "string", "format": "date-time"},
     "type":           { "type": "string" },
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },
@@ -29,7 +29,7 @@
     "metadata": {
       "type": "object"
     }
-
   },
-  "required": ["_id", "user", "text"]
+  "required": ["_id", "user", "text"],
+  "additionalProperties": false
 }

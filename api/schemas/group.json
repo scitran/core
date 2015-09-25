@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Group",
+  "type": "object",
+  "properties": {
+    "_id":              {"type": "string"},
+    "created":          {"type": "string", "format": "date-time"},
+    "modified":         {"type": "string", "format": "date-time"},
+    "name":             { "type": "string" },
+    "roles":            {"type": "array",  "items": {"$ref": "permission.json"}}
+  },
+  "additionalProperties": false
+}

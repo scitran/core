@@ -38,8 +38,9 @@ def key_check(handler, schema_file):
         return no_op
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
-            if method == 'POST' and schema.get('keys'):
-                exclude_params = _post_exclude_params(schema.get('keys'), payload)
+            if method == 'POST':
+                if schema.get('keys'):
+                    exclude_params = _post_exclude_params(schema.get('keys'), payload)
             else:
                 _check_query_params(schema.get('keys'), query_params)
                 if method == 'PUT' and schema.get('keys'):
