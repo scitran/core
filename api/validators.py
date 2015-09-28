@@ -1,50 +1,71 @@
 import os
+import copy
 import json
 import jsonschema
 
 # following https://github.com/Julian/jsonschema/issues/98
 # json schema files are expected to be in the schemas folder relative to this module
-schema_path = os.path.abspath(os.curdir)
-resolver = jsonschema.RefResolver('file://' + schema_path + '/api/schemas/', None)
+schema_path = os.path.dirname(__file__)
+resolver = jsonschema.RefResolver('file://' + schema_path + '/schemas/', None)
+
+# validate and cache schemas at start time
+for schema_file in os.listdir(schema_path + '/schemas'):
+    resolver.resolve(schema_file)
 
 def _validate_json(json_data, schema):
-    jsonschema.Draft4Validator(schema, resolver=resolver).validate(json_data)
+    jsonschema.validate(json_data, schema, resolver=resolver)
+    #jsonschema.Draft4Validator(schema, resolver=resolver).validate(json_data)
 
 def no_op(g):
     return g
 
-def from_schema_file(handler, schema_file):
+def mongo_from_schema_file(handler, schema_file):
     if schema_file is None:
         return no_op
     schema = resolver.resolve(schema_file)[1]
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, uniq_params=None):
             if method == 'PUT':
+                schema = copy.copy(schema)
                 schema.pop('required')
             if method in ['POST', 'PUT']:
                 try:
                     _validate_json(payload, schema)
                 except jsonschema.ValidationError as e:
-                    handler.abort(400, str(e))
+                    handler.abort(500, str(e))
             return exec_op(method, _id, query_params, payload, uniq_params)
         return f
+    return g
+
+def payload_from_schema_file(handler, schema_file):
+    if schema_file is None:
+        return no_op
+    schema = resolver.resolve(schema_file)[1]
+    def g(payload):
+        if method == 'PUT':
+            schema = copy.copy(schema)
+            schema.pop('required')
+        if method in ['POST', 'PUT']:
+            try:
+                _validate_json(payload, schema)
+            except jsonschema.ValidationError as e:
+                handler.abort(400, str(e))
     return g
 
 def key_check(handler, schema_file):
     if schema_file is None:
         return no_op
     schema = resolver.resolve(schema_file)[1]
-    if schema.get('keys') is None:
+    if schema.get('key') is None:
         return no_op
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method == 'POST':
-                if schema.get('keys'):
-                    exclude_params = _post_exclude_params(schema.get('keys'), payload)
+                exclude_params = _post_exclude_params(schema.get('key', []), payload)
             else:
-                _check_query_params(schema.get('keys'), query_params)
-                if method == 'PUT' and schema.get('keys'):
-                    exclude_params = _put_exclude_params(schema.get('keys'), query_params, payload)
+                _check_query_params(schema.get('key'), query_params)
+                if method == 'PUT' and schema.get('key'):
+                    exclude_params = _put_exclude_params(schema['key'], query_params, payload)
             return exec_op(method, _id, query_params, payload, exclude_params)
         return f
     return g

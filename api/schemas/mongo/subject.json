@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "firstname":        { "type": "string" },
+    "lastname":         { "type": "string" },
+    "firstname_hash":   { "type": "string" },
+    "lastname_hash":    { "type": "string" },
+    "sex":              { "enum": ["male", "female"] },
+    "code":             { "type": "string" },
+    "tags":             { "type": "array", "items": {"type": "string"} },
+    "metadata":         { "type": "object" },
+  },
+  "additionalProperties": false
+}

@@ -10,8 +10,8 @@
         "files":        {"type": "array",  "items": {"$ref": "file.json"}},
         "public":       {"type": "boolean"},
         "label":        {"type": "string"},
-        "tags": {"type": "array", "items": {"type": "string"}},
-        "metadata": {"type": "object"}
+        "tags":         {"type": "array", "items": {"type": "string"}},
+        "metadata":     {"type": "object"}
     },
     "required": ["_id"]
 }

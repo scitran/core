@@ -11,7 +11,7 @@ import os
 from . import validators
 from . import listauth
 from . import files
-from dao import mongostorage
+from dao import liststorage
 
 log = logging.getLogger('scitran.api')
 
@@ -19,35 +19,34 @@ log = logging.getLogger('scitran.api')
 def initialize_list_configurations():
     container_default_configurations = {
         'tags': {
-            'storage': mongostorage.StringListStorage,
+            'storage': liststorage.StringListStorage,
             'permchecker': listauth.default_sublist,
             'use_oid': True,
         },
         'files': {
-            'storage': mongostorage.ListStorage,
+            'storage': liststorage.ListStorage,
             'permchecker': listauth.default_sublist,
             'use_oid': True,
             'key_fields': ['filename']
         },
         'permissions': {
-            'storage': mongostorage.ListStorage,
+            'storage': liststorage.ListStorage,
             'permchecker': listauth.permissions_sublist,
             'use_oid': True,
-            'key_fields': ['_id', 'site'],
-            'schema_file': 'permission.json'
+            'mongo_schema_file': 'mongo/permission.json',
+            'input_schema_file': 'input/permission.json'
         },
         'notes': {
-            'storage': mongostorage.ListStorage,
+            'storage': liststorage.ListStorage,
             'permchecker': listauth.notes_sublist,
             'use_oid': True,
-            'key_fields': ['_id'],
             'check_item_perms': True
         },
     }
     list_handler_configurations = {
         'groups': {
             'roles':{
-                'storage': mongostorage.ListStorage,
+                'storage': liststorage.ListStorage,
                 'permchecker': listauth.group_roles_sublist,
                 'use_oid': False,
                 'key_fields': ['_id']
@@ -104,11 +103,11 @@ class ListHandler(base.RequestHandler):
 
     def post(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, validator, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
 
         payload = self.request.POST.mixed()
-        payload.update(kwargs)
-        result = keycheck(validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
+        payload_validator(payload, 'POST')
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -117,9 +116,11 @@ class ListHandler(base.RequestHandler):
 
     def put(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
 
-        result = keycheck(validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=self.request.POST.mixed())
+        payload = self.request.POST.mixed()
+        payload_validator(payload, 'PUT')
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -128,7 +129,7 @@ class ListHandler(base.RequestHandler):
 
     def delete(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
         result = keycheck(permchecker(storage.exec_op))('DELETE', _id, query_params=kwargs)
 
         if result.modified_count == 1:
@@ -159,24 +160,42 @@ class ListHandler(base.RequestHandler):
                 permchecker = permchecker(self, container)
         else:
             self.abort(404, 'Element {} not found in collection {}'.format(_id, storage.coll_name))
-        validator = validators.from_schema_file(self, config.get('schema_file'))
-        keycheck = validators.key_check(self, config.get('schema_file'))
-        return container, permchecker, storage, validator, keycheck
+        mongo_validator = validators.mongo_from_schema_file(self, config.get('mongo_schema_file'))
+        payload_validator = validators.payload_from_schema_file(self, config.get('payload_schema_file'))
+        keycheck = validators.key_check(self, config.get('mongo_schema_file'))
+        return container, permchecker, storage, mongo_validator, input_validator, keycheck
 
 class NotesListHandler(ListHandler):
+
     def post(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, validator, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
 
         payload = self.request.POST.mixed()
+        payload_validator(payload, 'POST')
         payload['_id'] = payload.get('_id') or str(bson.objectid.ObjectId())
-        payload['timestamp'] =  payload.get('timestamp') or datetime.datetime.utcnow()
+        payload['user'] = self.uid
+        payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         result = keycheck(validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+
+    def put(self, coll_name, list_name, **kwargs):
+        _id = kwargs.pop('cid')
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+
+        payload = self.request.POST.mixed()
+        payload_validator(payload, 'PUT')
+        payload['modified'] = datetime.datetime.utcnow()
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
+
+        if result.modified_count == 1:
+            return {'modified':result.modified_count}
+        else:
+            self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
 
 
 class FileListHandler(ListHandler):
@@ -197,15 +216,15 @@ class FileListHandler(ListHandler):
 
     def get(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id)
         list_name = storage.list_name
         filename = kwargs.get('filename')
         ticket_id = self.request.GET.get('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
-            fileinfo = storage.exec_op('GET', _id, query_params=kwargs)
+            fileinfo = keycheck(storage.exec_op)('GET', _id, query_params=kwargs)
         else:
-            fileinfo = permchecker(storage.exec_op)('GET', _id, query_params=kwargs)
+            fileinfo = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
         if not fileinfo:
             self.abort(404, 'no such file')
         hash_ = self.request.GET.get('hash')
@@ -269,14 +288,13 @@ class FileListHandler(ListHandler):
     def post(self, coll_name, list_name, **kwargs):
         force = self.request.GET.get('force', '').lower() in ('1', 'true')
         _id = kwargs.pop('cid')
-        container, permchecker, storage = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
         payload = self.request.POST.mixed()
-        payload.update(kwargs)
         filename = payload.get('filename')
         file_request = files.FileRequest.from_handler(self, filename)
         file_request.save_temp_file(self.app.config['upload_path'])
         file_datetime = datetime.datetime.utcnow()
-        payload.update({
+        file_properties = {
             'filesize': file_request.filesize,
             'filehash': file_request.sha1,
             'filetype': file_request.filetype,
@@ -287,10 +305,10 @@ class FileListHandler(ListHandler):
             'created': file_datetime,
             'modified': file_datetime,
             'dirty': True
-        })
+        }
         dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
         if not force:
-            result = permchecker(storage.exec_op)('POST', _id, payload=payload)
+            method = 'POST'
         else:
             filepath = os.path.join(tempdir_path, filename)
             for f in container['files']:
@@ -298,19 +316,24 @@ class FileListHandler(ListHandler):
                     if file_request.identical(os.path.join(data_path, filename), f['filehash']):
                         log.debug('Dropping    %s (identical)' % filename)
                         os.remove(filepath)
-                        self.abort(409, 'file exists; use force to overwrite')
+                        self.abort(409, 'identical file exists')
                     else:
                         log.debug('Replacing   %s' % filename)
-                        result = permchecker(storage.exec_op)('PUT', _id, payload=payload)
+                        payload_validator(payload, 'PUT')
+                        payload.update(file_properties)
+                        method = 'PUT'
                     break
             else:
-                result = permchecker(storage.exec_op)('POST', _id, payload=payload)
+                method = 'POST'
+
+        payload_validator(payload, method)
+        payload.update(file_properties)
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id, payload=payload)
         if result.modified_count != 1:
-            storage.exec_op('DELETE', _id, payload=payload)
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
         try:
             file_request.move_temp_file(dest_path)
         except IOError as e:
-            result = storage.exec_op('DELETE', _id, payload=payload)
+            result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)
             raise e
         return {'modified': result.modified_count}

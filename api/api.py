@@ -75,8 +75,7 @@ routes = [
         webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='cl_tags', defaults={'coll_name': 'collections', 'list_name': 'tags'}),
         webapp2.Route(r'/<:[0-9a-f]{24}>/sessions',                 collections.CollectionSessions, name='coll_sessions'),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             collections.CollectionAcquisitions, name='coll_acquisitions'),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions',                            listhandler.ListHandler, name='cl_perms_post', methods=['POST'], defaults={'coll_name': 'collections', 'list_name': 'permissions'}),
+        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='cl_perms_post', methods=['POST'], defaults={'coll_name': 'collections', 'list_name': 'permissions'}),
         webapp2.Route(
             r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='cl_perms', defaults={'coll_name': 'collections', 'list_name': 'permissions'}),
         webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.ListHandler, name='cl_notes_post', methods=['POST'], defaults={'coll_name': 'collections', 'list_name': 'notes'}),
@@ -91,8 +90,7 @@ routes = [
         webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='se_files', defaults={'coll_name': 'sessions', 'list_name': 'files'}),
         webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='se_tags', defaults={'coll_name': 'sessions', 'list_name': 'tags'}),
         webapp2.Route(r'/<:[0-9a-f]{24}>/acquisitions',             acquisitions.Acquisitions, name='acquisitions'),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions',                            listhandler.ListHandler, name='se_perms_post', methods=['POST'], defaults={'coll_name': 'sessions', 'list_name': 'permissions'}),
+        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='se_perms_post', methods=['POST'], defaults={'coll_name': 'sessions', 'list_name': 'permissions'}),
         webapp2.Route(
             r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='se_perms', defaults={'coll_name': 'sessions', 'list_name': 'permissions'}),
         webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.ListHandler, name='se_notes_post', methods=['POST'], defaults={'coll_name': 'sessions', 'list_name': 'notes'}),
@@ -105,8 +103,7 @@ routes = [
         webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='aq_tags', defaults={'coll_name': 'acquisitions', 'list_name': 'tags'}),
         webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='aq_files_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'files'}),
         webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='aq_files', defaults={'coll_name': 'acquisitions', 'list_name': 'files'}),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions',                            listhandler.ListHandler, name='aq_perms_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'permissions'}),
+        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='aq_perms_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'permissions'}),
         webapp2.Route(
             r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='aq_perms', defaults={'coll_name': 'acquisitions', 'list_name': 'permissions'}),
         webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.ListHandler, name='aq_notes_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'notes'}),

@@ -1,4 +1,5 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
     "_id":            { "type": "string" },
@@ -6,6 +7,6 @@
     "site":           { "type": "string" }
   },
   "required": ["_id", "access", "site"],
-  "keys": ["_id", "site"],
+  "key": ["_id", "site"],
   "additionalProperties": false
 }

@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "title": "Acquisition",
+    "title": "Project",
     "type": "object",
     "allOf": [{"$ref": "container.json"}],
     "properties": {
@@ -15,13 +15,7 @@
         "tags": {},
         "metadata": {},
 
-        "session":      {"type": "string"},
-        "collections":  {"type": "array", "items": {"type": "string" }},
-        "uid":          {"type": "string"},
-        "instrument":   {"type": "string"},
-        "measurement":  {"type": "string"},
-        "timestamp":    {"type": "string"},
-        "timezone":     {"type": "string"}
+        "group": {"type": "string"}
     },
     "additionalProperties": false,
 }

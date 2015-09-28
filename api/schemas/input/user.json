@@ -13,5 +13,6 @@
     "wheel":            { "type": "boolean"},
     "root":             { "type": "boolean"},
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required":["_id", "firstname", "lastname", "created", "modified", "wheel", "root"]
 }
