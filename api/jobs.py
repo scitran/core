@@ -248,7 +248,7 @@ class Jobs(base.RequestHandler):
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
-        if result == None:
+        if result is None:
             self.abort(400, 'No jobs to process')
 
         # Second, update document to store formula request.
@@ -262,7 +262,7 @@ class Jobs(base.RequestHandler):
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
-        if result == None:
+        if result is None:
             self.abort(500, 'Marked job as running but could not generate and save formula')
 
         return result
