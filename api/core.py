@@ -101,6 +101,17 @@ RESET_SCHEMA = {
     'additionalProperties': False
 }
 
+def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, attachments=True):
+    for f in container['files']:
+        if (not attachments or (type(attachments) == list and f['filename'] not in attachments)) and 'attachment' in f['tags']:
+            continue
+        if optional or not f.get('optional', False):
+            filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
+            if os.path.exists(filepath): # silently skip missing files
+                targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
+                total_size += f['filesize']
+                total_cnt += 1
+    return total_size, total_cnt
 
 class Core(base.RequestHandler):
 
@@ -300,20 +311,11 @@ class Core(base.RequestHandler):
                 self.abort(202, 'Quarantining %s (unparsable)' % filename)
             util.commit_file(self.app.db.acquisitions, None, datainfo, arcpath, self.app.config['data_path'])
 
+
+
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']
         arc_prefix = 'sdm'
-
-        def append_targets(targets, container, prefix, total_size, total_cnt):
-            prefix = arc_prefix + '/' + prefix
-            for f in container['files']:
-                if req_spec['optional'] or not f.get('optional', False):
-                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
-                    if os.path.exists(filepath): # silently skip missing files
-                        targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
-                        total_size += f['filesize']
-                        total_cnt += 1
-            return total_size, total_cnt
 
         file_cnt = 0
         total_size = 0
@@ -323,34 +325,82 @@ class Core(base.RequestHandler):
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
                 project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files'])
-                prefix = project['group'] + '/' + project['name']
-                total_size, file_cnt = append_targets(targets, project, prefix, total_size, file_cnt)
+                prefix = '/'.join([arc_prefix, project['group'], project['name']])
+                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
                 for session in sessions:
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
-                    total_size, file_cnt = append_targets(targets, session, session_prefix, total_size, file_cnt)
+                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path)
                     acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
                     for acq in acquisitions:
                         acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
-                        total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
+                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
                 prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled')
-                total_size, file_cnt = append_targets(targets, session, prefix, total_size, file_cnt)
+                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path)
                 acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + acq.get('label', 'untitled')
-                    total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
+                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path)
             elif item['level'] == 'acquisition':
                 acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
                 session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
                 prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
-                total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
+                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
+        self.app.db.downloads.insert_one(ticket)
+        return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+
+    def _preflight_archivestream_bids(self, req_spec):
+        data_path = self.app.config['data_path']
+        arc_prefix = 'bids'
+
+        file_cnt = 0
+        total_size = 0
+        targets = []
+        # FIXME: check permissions of everything
+        projects = []
+        for item in req_spec['nodes']:
+            item_id = bson.ObjectId(item['_id'])
+            if item['level'] == 'project':
+                project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files', 'notes'])
+                projects.append(item_id)
+                prefix = arc_prefix + '/' + project['group'] + '/' + project['name']
+                total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
+                                                       file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
+                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject_code'])
+                subject_prefixes = {}
+                sessions = {}
+                for ses_or_subj in ses_or_subj_list:
+                    subj_code = ses_or_subj.get('subject_code')
+                    if subj_code == 'subject':
+                        subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
+                        total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
+                                                               file_cnt, req_spec['optional'], data_path, False)
+                        subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
+                    elif subj_code:
+                        sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
+                for subj_code, ses_list in sessions.items():
+                    subject_prefix = subject_prefixes.get(subj_code)
+                    if not subject_prefix:
+                        continue
+                    for session in ses_list:
+                        session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
+                        total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
+                                                               file_cnt, req_spec['optional'], data_path, False)
+                        acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
+                        for acq in acquisitions:
+                            acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
+                            total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
+                                                                   file_cnt, req_spec['optional'], data_path, False)
+        log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
+        filename = 'bids`_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+        ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
         self.app.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
@@ -380,6 +430,8 @@ class Core(base.RequestHandler):
             self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+            for project_id in ticket['projects']:
+                self.app.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
             try:
                 req_spec = self.request.json_body
@@ -387,7 +439,10 @@ class Core(base.RequestHandler):
             except (ValueError, jsonschema.ValidationError) as e:
                 self.abort(400, str(e))
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
-            return self._preflight_archivestream(req_spec)
+            if self.request.GET.get('format') == 'bids':
+                return self._preflight_archivestream_bids(req_spec)
+            else:
+                return self._preflight_archivestream(req_spec)
 
     def sites(self):
         """Return local and remote sites."""
