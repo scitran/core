@@ -29,7 +29,6 @@ os.umask(0o022)
 ap = argparse.ArgumentParser()
 ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
 ap.add_argument('--data_path', help='path to storage area', required=True)
-ap.add_argument('--apps_path', help='path to apps storage')
 ap.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
 ap.add_argument('--api_uri', help='api uri, with https:// prefix')
 ap.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
@@ -73,10 +72,6 @@ if not app.config['central_uri']:
     log.warning('central_uri not configured -> SciTran Central functionality disabled')
 if not app.config['drone_secret']:
     log.warning('drone_secret not configured -> Drone functionality disabled')
-if not app.config['apps_path']:
-    log.warning('apps_path is not defined -> App functionality disabled')
-elif not os.path.exists(app.config['apps_path']):
-    os.makedirs(app.config['apps_path'])
 if not os.path.exists(app.config['data_path']):
     os.makedirs(app.config['data_path'])
 if not os.path.exists(app.config['quarantine_path']):
