@@ -54,6 +54,12 @@
     "user": {
         "$schema": "http://json-schema.org/draft-04/schema#",
         "additionalProperties": false,
+        "patternProperties": {
+            "avatars[.].*": {
+                "format": "uri",
+                "type": ["string", "null"]
+            }
+        },
         "properties": {
             "_id": {
                 "maxLength": 32,
