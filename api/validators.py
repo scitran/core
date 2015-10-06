@@ -1,22 +1,28 @@
 import os
 import copy
 import json
+import logging
 import jsonschema
 
+log = logging.getLogger('scitran.api')
 # following https://github.com/Julian/jsonschema/issues/98
 # json schema files are expected to be in the schemas folder relative to this module
-schema_path = os.path.dirname(__file__)
+schema_path = os.path.abspath(os.path.dirname(__file__))
+
 resolver = jsonschema.RefResolver('file://' + schema_path + '/schemas/', None)
 
 # validate and cache schemas at start time
-for schema_file in os.listdir(schema_path + '/schemas'):
-    resolver.resolve(schema_file)
+for schema_file in os.listdir(schema_path + '/schemas/mongo/'):
+    resolver.resolve('mongo/' + schema_file)
+
+for schema_file in os.listdir(schema_path + '/schemas/input/'):
+    resolver.resolve('input/' + schema_file)
 
 def _validate_json(json_data, schema):
     jsonschema.validate(json_data, schema, resolver=resolver)
     #jsonschema.Draft4Validator(schema, resolver=resolver).validate(json_data)
 
-def no_op(g):
+def no_op(g, *args):
     return g
 
 def mongo_from_schema_file(handler, schema_file):
@@ -24,16 +30,19 @@ def mongo_from_schema_file(handler, schema_file):
         return no_op
     schema = resolver.resolve(schema_file)[1]
     def g(exec_op):
-        def f(method, _id, query_params = None, payload = None, uniq_params=None):
-            if method == 'PUT':
-                schema = copy.copy(schema)
-                schema.pop('required')
+        def f(method, **kwargs):
+            payload = kwargs['payload']
+            if method == 'PUT' and schema.get('required'):
+                _schema = copy.copy(schema)
+                _schema.pop('required')
+            else:
+                _schema = schema
             if method in ['POST', 'PUT']:
                 try:
-                    _validate_json(payload, schema)
+                    _validate_json(payload, _schema)
                 except jsonschema.ValidationError as e:
                     handler.abort(500, str(e))
-            return exec_op(method, _id, query_params, payload, uniq_params)
+            return exec_op(method, **kwargs)
         return f
     return g
 
@@ -41,10 +50,12 @@ def payload_from_schema_file(handler, schema_file):
     if schema_file is None:
         return no_op
     schema = resolver.resolve(schema_file)[1]
-    def g(payload):
-        if method == 'PUT':
-            schema = copy.copy(schema)
-            schema.pop('required')
+    def g(payload, method):
+        if method == 'PUT' and schema.get('required'):
+            _schema = copy.copy(schema)
+            _schema.pop('required')
+        else:
+            _schema = schema
         if method in ['POST', 'PUT']:
             try:
                 _validate_json(payload, schema)

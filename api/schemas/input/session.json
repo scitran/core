@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Session",
     "type": "object",
-    "allOf": [{"$ref": "container.json"}],
+    "allOf": [{"$ref": "input/container.json"}],
     "properties": {
         "_id": {},
         "created": {},
@@ -20,7 +20,7 @@
         "uid":          {"type": "string"},
         "timestamp":    {"type": "string"},
         "timezone":     {"type": "string"},
-        "subject":      {"$ref": "subject.json"}
+        "subject":      {"$ref": "input/subject.json"}
     },
-    "additionalProperties": false,
+    "additionalProperties": false
 }

@@ -1,30 +1,16 @@
 # @author:  Renzo Frigato
 """
-Purpose of this module is to define all the permissions checker decorators.
+Purpose of this module is to define all the permissions checker decorators for the ListHandler classes.
 
-This decorators are currently supported only by the ListHandler and FileListHandler classes.
 """
 import logging
 import sys
 
-from users import INTEGER_ROLES
+from ..users import INTEGER_ROLES
 
 log = logging.getLogger('scitran.api')
 
-def _get_access(uid, container):
-    permissions_list = container.get('roles') or container.get('permissions')
-    for perm in permissions_list:
-        if perm['_id'] == uid:
-            return INTEGER_ROLES[perm['access']]
-    else:
-        return -1
-
-def always_ok(exec_op):
-    """
-    This decorator leaves the original method unchanged.
-    It is used as permissions checker when the request is a superuser_request
-    """
-    return exec_op
+from . import _get_access, always_ok
 
 def default_sublist(handler, container):
     """

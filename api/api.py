@@ -14,7 +14,9 @@ from . import projects
 from . import sessions
 from . import acquisitions
 from . import collections
-from . import listhandler
+from handlers import listhandler
+
+from . import api2
 
 
 routes = [
@@ -118,6 +120,7 @@ routes = [
     ]),
 ]
 
+routes.extend(api2.routes)
 
 with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
     schema_dict = json.load(fp)

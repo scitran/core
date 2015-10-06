@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Acquisition",
     "type": "object",
-    "allOf": [{"$ref": "container.json"}],
+    "allOf": [{"$ref": "input/container.json"}],
     "properties": {
         "_id": {},
         "created": {},

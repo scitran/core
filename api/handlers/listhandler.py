@@ -2,16 +2,17 @@
 
 import datetime
 import logging
-import base
 import json
-import util
+
 import copy
 import os
 
-from . import validators
-from . import listauth
-from . import files
-from dao import liststorage
+from .. import util
+from .. import validators
+from ..auth import listauth
+from .. import files
+from ..dao import liststorage
+from .. import base
 
 log = logging.getLogger('scitran.api')
 
@@ -64,8 +65,7 @@ def initialize_list_configurations():
             storage = storage_class(
                 coll_name,
                 list_name,
-                use_oid=list_config.get('use_oid', False),
-                key_fields=list_config.get('key_fields')
+                use_oid=list_config.get('use_oid', False)
             )
             list_config['storage'] = storage
     return list_handler_configurations
@@ -93,7 +93,7 @@ class ListHandler(base.RequestHandler):
 
     def get(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
 
         result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
 

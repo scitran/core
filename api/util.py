@@ -18,7 +18,7 @@ import logging
 import scitran.data
 
 logging.basicConfig(
-    format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
+    format='%(asctime)s %(name)16.16s %(filename)s %(lineno)d:%(levelname)4.4s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     level=logging.DEBUG,
 )

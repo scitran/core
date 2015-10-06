@@ -14,11 +14,10 @@ class ListStorage(object):
     This class provides access to sublists of a mongodb collections elements (called containers).
     """
 
-    def __init__(self, coll_name, list_name, use_oid = False, key_fields = None):
+    def __init__(self, coll_name, list_name, use_oid = False):
         self.coll_name = coll_name
         self.list_name = list_name
         self.use_oid = use_oid
-        self.key_fields = key_fields
         # the collection is not loaded when the class is instantiated
         # this allows to instantiate the class when the db is not available
         # and load the collection later when the db is available
@@ -49,7 +48,7 @@ class ListStorage(object):
 
     def exec_op(self, action, _id, query_params=None, payload=None, exclude_params=None):
         """
-        Generic method to execdd an operation.
+        Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
         """
         if self.use_oid:
@@ -107,14 +106,23 @@ class ListStorage(object):
         log.debug('query_params {}'.format(query_params))
         query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
         projection = {self.list_name + '.$': 1}
-        log.error('query {}'.format(query))
-        log.error('projection {}'.format(projection))
+        log.debug('query {}'.format(query))
+        log.debug('projection {}'.format(projection))
         result = self.dbc.find_one(query, projection)
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]
 
 
 class StringListStorage(ListStorage):
+
+    def get_container(self, _id, query_params=None):
+        if self.dbc is None:
+            raise RuntimeError('collection not initialized before calling get_container')
+        if self.use_oid:
+            _id = bson.objectid.ObjectId(_id)
+        query = {'_id': _id}
+        projection = {self.list_name : 1, 'permissions': 1, 'public': 1}
+        return self.dbc.find_one(query, projection)
 
     def exec_op(self, action, _id, query_params=None, payload=None, exclude_params=None):
         """

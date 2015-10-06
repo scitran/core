@@ -7,7 +7,7 @@
     "created":          {"type": "string", "format": "date-time"},
     "modified":         {"type": "string", "format": "date-time"},
     "name":             { "type": "string" },
-    "roles":            {"type": "array",  "items": {"$ref": "permission.json"}}
+    "roles":            {"type": "array",  "items": {"$ref": "mongo/permission.json"}}
   },
   "additionalProperties": false
 }

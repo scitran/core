@@ -8,10 +8,9 @@
         "notes":        {"type": "array",  "items": {"$ref": "note.json"}},
         "permissions":  {"type": "array",  "items": {"$ref": "permission.json"}},
         "files":        {"type": "array",  "items": {"$ref": "file.json"}},
-        "public":       {"type": "boolean"},
+        "public":       {},
         "label":        {"type": "string"},
         "tags":         {"type": "array", "items": {"type": "string"}},
         "metadata":     {"type": "object"}
-    },
-    "required": ["_id"]
+    }
 }
