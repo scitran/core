@@ -107,8 +107,11 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
                 else: # existing file has different content
                     log.debug('Replacing   %s' % filename)
                     shutil.move(filepath, target_filepath)
+                    update_set = {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}
+                    for k,v in fileinfo.iteritems():
+                        update_set['files.$.' + k] = v
                     dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']},
-                            {'$set': {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}})
+                            {'$set': update_set})
                     updated = True
                 break
     else:         # file does not exist
