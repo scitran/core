@@ -181,7 +181,7 @@ def generate_formula(i):
             }
         ],
         'transform': {
-            'command': ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/'],
+            'command': ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0] ],
             'env': { },
             'dir': "/",
         },
