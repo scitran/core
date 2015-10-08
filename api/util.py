@@ -94,6 +94,14 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
     target_filepath = container_path + '/' + fileinfo['filename']
     if not os.path.exists(container_path):
         os.makedirs(container_path)
+
+    # Copy datatype from the container to the file, if the file does not have one already.
+    container = dbc.find_one({'_id':_id})
+    if 'datatype' in container and not 'datatypes' in datainfo['fileinfo']:
+        # Whitelist data types
+        if datainfo['fileinfo'].get('filetype') in ('nifti', 'montage', 'bvec', 'bval'):
+            datainfo['fileinfo']['datatypes'] = [ container['datatype'] ]
+
     container = dbc.find_one({'_id':_id, 'files.filename': fileinfo['filename']})
     if container: # file already exists
         for f in container['files']:
@@ -295,7 +303,7 @@ def guess_filetype(filepath, mimetype):
         return 'nifti'
     elif filepath.endswith('_montage.zip'):
         return 'montage'
-    elif type_ == 'text' and subtype in ['plain'] + [mt[2] for mt in MIMETYPES]:
+    elif type_ == 'text' and subtype == 'plain':
         return 'text'
     else:
         return subtype
