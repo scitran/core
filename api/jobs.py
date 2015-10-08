@@ -171,7 +171,7 @@ def generate_formula(i):
         'inputs': [
             {
                 'type': 'file',
-                'uri': '/tmp/deja/flak/0/dcm_convert-0.1.1.tar',
+                'uri': '/opt/flywheel-temp/dcm_convert-0.1.1.tar',
                 'location': '/',
             },
             {
