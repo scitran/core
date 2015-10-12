@@ -4,9 +4,6 @@
     "type": "object",
     "allOf": [{"$ref": "input/container.json"}],
     "properties": {
-        "_id": {},
-        "created": {},
-        "modified": {},
         "notes": {},
         "permissions": {},
         "files": {},
@@ -15,7 +12,6 @@
         "tags": {},
         "metadata": {},
 
-        "group":        {"type": "string"},
         "project":      {"type": "string"},
         "uid":          {"type": "string"},
         "timestamp":    {"type": "string"},

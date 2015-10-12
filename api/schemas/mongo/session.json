@@ -16,7 +16,7 @@
         "metadata": {},
 
         "group":        {"type": "string"},
-        "project":      {"type": "string"},
+        "project":      {},
         "uid":          {"type": "string"},
         "timestamp":    {"type": "string"},
         "timezone":     {"type": "string"},

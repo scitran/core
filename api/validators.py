@@ -67,17 +67,18 @@ def key_check(handler, schema_file):
     if schema_file is None:
         return no_op
     schema = resolver.resolve(schema_file)[1]
-    if schema.get('key') is None:
+    log.debug(schema)
+    if schema.get('key_fields') is None:
         return no_op
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method == 'POST':
-                exclude_params = _post_exclude_params(schema.get('key', []), payload)
+                exclude_params = _post_exclude_params(schema.get('key_fields', []), payload)
             else:
-                _check_query_params(schema.get('key'), query_params)
-                if method == 'PUT' and schema.get('key'):
-                    exclude_params = _put_exclude_params(schema['key'], query_params, payload)
-            return exec_op(method, _id, query_params, payload, exclude_params)
+                _check_query_params(schema.get('key_fields'), query_params)
+                if method == 'PUT' and schema.get('key_fields'):
+                    exclude_params = _put_exclude_params(schema['key_fields'], query_params, payload)
+            return exec_op(method, _id=_id, query_params=query_params, payload=payload, exclude_params=exclude_params)
         return f
     return g
 

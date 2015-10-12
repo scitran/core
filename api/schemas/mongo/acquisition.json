@@ -4,7 +4,6 @@
     "type": "object",
     "allOf": [{"$ref": "mongo/container.json"}],
     "properties": {
-        "_id": {},
         "created": {},
         "modified": {},
         "notes": {},
@@ -15,7 +14,7 @@
         "tags": {},
         "metadata": {},
 
-        "session":      {"type": "string"},
+        "session":      {},
         "collections":  {"type": "array", "items": {"type": "string" }},
         "uid":          {"type": "string"},
         "instrument":   {"type": "string"},

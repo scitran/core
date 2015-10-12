@@ -3,8 +3,8 @@
     "type": "object",
     "properties": {
         "_id":          {"type": "string"},
-        "created":      {"type": "string", "format": "date-time"},
-        "modified":     {"type": "string", "format": "date-time"},
+        "created":      {"format": "date-time"},
+        "modified":     {"format": "date-time"},
         "notes":        {"type": "array",  "items": {"$ref": "note.json"}},
         "permissions":  {"type": "array",  "items": {"$ref": "permission.json"}},
         "files":        {"type": "array",  "items": {"$ref": "file.json"}},

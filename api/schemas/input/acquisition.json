@@ -4,9 +4,6 @@
     "type": "object",
     "allOf": [{"$ref": "input/container.json"}],
     "properties": {
-        "_id": {},
-        "created": {},
-        "modified": {},
         "notes": {},
         "permissions": {},
         "files": {},

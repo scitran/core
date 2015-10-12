@@ -3,7 +3,7 @@
 import datetime
 import logging
 import json
-
+import bson
 import copy
 import os
 
@@ -50,7 +50,8 @@ def initialize_list_configurations():
                 'storage': liststorage.ListStorage,
                 'permchecker': listauth.group_roles_sublist,
                 'use_oid': False,
-                'key_fields': ['_id']
+                'mongo_schema_file': 'mongo/permission.json',
+                'input_schema_file': 'input/permission.json'
             }
         },
         'projects': copy.deepcopy(container_default_configurations),
@@ -105,7 +106,7 @@ class ListHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
 
-        payload = self.request.POST.mixed()
+        payload = self.request.json_body
         payload_validator(payload, 'POST')
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
@@ -118,7 +119,7 @@ class ListHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
 
-        payload = self.request.POST.mixed()
+        payload = self.request.json_body
         payload_validator(payload, 'PUT')
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
 
@@ -161,7 +162,7 @@ class ListHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element {} not found in collection {}'.format(_id, storage.coll_name))
         mongo_validator = validators.mongo_from_schema_file(self, config.get('mongo_schema_file'))
-        payload_validator = validators.payload_from_schema_file(self, config.get('payload_schema_file'))
+        input_validator = validators.payload_from_schema_file(self, config.get('payload_schema_file'))
         keycheck = validators.key_check(self, config.get('mongo_schema_file'))
         return container, permchecker, storage, mongo_validator, input_validator, keycheck
 
@@ -169,14 +170,14 @@ class NotesListHandler(ListHandler):
 
     def post(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
 
-        payload = self.request.POST.mixed()
-        payload_validator(payload, 'POST')
+        payload = self.request.json_body
+        input_validator(payload, 'POST')
         payload['_id'] = payload.get('_id') or str(bson.objectid.ObjectId())
-        payload['user'] = self.uid
+        payload['author'] = self.uid
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
-        result = keycheck(validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -185,10 +186,10 @@ class NotesListHandler(ListHandler):
 
     def put(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
 
-        payload = self.request.POST.mixed()
-        payload_validator(payload, 'PUT')
+        payload = self.request.json_body
+        input_validator(payload, 'PUT')
         payload['modified'] = datetime.datetime.utcnow()
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
 
@@ -290,11 +291,12 @@ class FileListHandler(ListHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
         payload = self.request.POST.mixed()
-        filename = payload.get('filename')
+        filename = payload.get('filename') or kwargs.get('filename')
         file_request = files.FileRequest.from_handler(self, filename)
         file_request.save_temp_file(self.app.config['upload_path'])
         file_datetime = datetime.datetime.utcnow()
         file_properties = {
+            'filename': file_request.filename,
             'filesize': file_request.filesize,
             'filehash': file_request.sha1,
             'filetype': file_request.filetype,
@@ -310,7 +312,7 @@ class FileListHandler(ListHandler):
         if not force:
             method = 'POST'
         else:
-            filepath = os.path.join(tempdir_path, filename)
+            filepath = os.path.join(file_request.tempdir_path, filename)
             for f in container['files']:
                 if f['filename'] == filename:
                     if file_request.identical(os.path.join(data_path, filename), f['filehash']):

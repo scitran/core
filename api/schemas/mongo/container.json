@@ -3,12 +3,12 @@
     "type": "object",
     "properties": {
         "_id":          {"type": "string"},
-        "created":      {"type": "string", "format": "date-time"},
-        "modified":     {"type": "string", "format": "date-time"},
+        "created":      {},
+        "modified":     {},
         "notes":        {"type": "array",  "items": {"$ref": "note.json"}},
         "permissions":  {"type": "array",  "items": {"$ref": "permission.json"}},
         "files":        {"type": "array",  "items": {"$ref": "file.json"}},
-        "public":       {},
+        "public":       {"type": "boolean"},
         "label":        {"type": "string"},
         "tags":         {"type": "array", "items": {"type": "string"}},
         "metadata":     {"type": "object"}
