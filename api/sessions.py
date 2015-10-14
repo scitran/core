@@ -117,7 +117,15 @@ class Sessions(containers.ContainerList):
             query = {}
         projection = ['label', 'subject_code', 'subject.code', 'project', 'group', 'subject.age', 'subject.sex']
         sessions = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
+        session_measurements = {}
+        if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+            session_measurements = self.app.db.acquisitions.aggregate([
+                {'$match': {'session': {'$in': [sess['_id'] for sess in sessions]}}},
+                {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
+                ])
+            session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
         for sess in sessions:
+            sess['measurements'] = session_measurements.get(sess['_id'], None)
             if 'subject_code' not in sess:
                 sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
