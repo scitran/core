@@ -11,9 +11,9 @@ from . import core
 from . import jobs
 from . import users
 from handlers import listhandler
-
-from . import api2
-
+from handlers import containerhandler
+from handlers import collectionshandler
+from handlers import listhandler
 
 routes = [
     webapp2.Route(r'/api',                                          core.Core),
@@ -42,48 +42,6 @@ routes = [
         webapp2.Route(r'/<cid:[^/]+>/roles/<site:[^/]+>/<_id:[^/]+>',
                                                                     listhandler.ListHandler, name='g_roles', methods=['GET', 'PUT', 'DELETE'], defaults={'coll_name': 'groups', 'list_name': 'roles'}),
     ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/projects', [
-        webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='pj_files_post', methods=['POST'], defaults={'coll_name': 'projects', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='pj_files', defaults={'coll_name': 'projects', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/tags',                         listhandler.ListHandler, methods=['POST'], name='pj_tags', defaults={'coll_name': 'projects', 'list_name': 'tags'}),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='pj_tags', defaults={'coll_name': 'projects', 'list_name': 'tags'}),
-        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='pj_perms_post', methods=['POST'], defaults={'coll_name': 'projects', 'list_name': 'permissions'}),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='pj_perms', defaults={'coll_name': 'projects', 'list_name': 'permissions'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.NotesListHandler, name='pj_notes_post', methods=['POST'], defaults={'coll_name': 'projects', 'list_name': 'notes'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes/<_id:[^/]+>',            listhandler.NotesListHandler, name='pj_notes', defaults={'coll_name': 'projects', 'list_name': 'notes'}),
-
-    ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/collections', [
-        webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='cl_files_post', methods=['POST'], defaults={'coll_name': 'collections', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='cl_files', defaults={'coll_name': 'collections', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='cl_tags', defaults={'coll_name': 'collections', 'list_name': 'tags'}),
-        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='cl_perms_post', methods=['POST'], defaults={'coll_name': 'collections', 'list_name': 'permissions'}),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='cl_perms', defaults={'coll_name': 'collections', 'list_name': 'permissions'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.NotesListHandler, name='cl_notes_post', methods=['POST'], defaults={'coll_name': 'collections', 'list_name': 'notes'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes/<_id:[^/]+>',            listhandler.NotesListHandler, name='cl_notes', defaults={'coll_name': 'collections', 'list_name': 'notes'}),
-    ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/sessions', [
-        webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='se_files_post', methods=['POST'], defaults={'coll_name': 'sessions', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='se_files', defaults={'coll_name': 'sessions', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='se_tags', defaults={'coll_name': 'sessions', 'list_name': 'tags'}),
-        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='se_perms_post', methods=['POST'], defaults={'coll_name': 'sessions', 'list_name': 'permissions'}),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='se_perms', defaults={'coll_name': 'sessions', 'list_name': 'permissions'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.NotesListHandler, name='se_notes_post', methods=['POST'], defaults={'coll_name': 'sessions', 'list_name': 'notes'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes/<_id:[^/]+>',            listhandler.NotesListHandler, name='se_notes', defaults={'coll_name': 'sessions', 'list_name': 'notes'}),
-    ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/acquisitions', [
-        webapp2.Route(r'/<cid:[^/]+>/tags/<value:[^/]+>',           listhandler.ListHandler, name='aq_tags', defaults={'coll_name': 'acquisitions', 'list_name': 'tags'}),
-        webapp2.Route(r'/<cid:[^/]+>/file',                         listhandler.FileListHandler, name='aq_files_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/file/<filename:[^/]+>',        listhandler.FileListHandler, name='aq_files', defaults={'coll_name': 'acquisitions', 'list_name': 'files'}),
-        webapp2.Route(r'/<cid:[^/]+>/permissions',                  listhandler.ListHandler, name='aq_perms_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'permissions'}),
-        webapp2.Route(
-            r'/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',   listhandler.ListHandler, name='aq_perms', defaults={'coll_name': 'acquisitions', 'list_name': 'permissions'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes',                        listhandler.NotesListHandler, name='aq_notes_post', methods=['POST'], defaults={'coll_name': 'acquisitions', 'list_name': 'notes'}),
-        webapp2.Route(r'/<cid:[^/]+>/notes/<_id:[^/]+>',            listhandler.NotesListHandler, name='aq_notes', defaults={'coll_name': 'acquisitions', 'list_name': 'notes'}),
-    ]),
     webapp2.Route(r'/api/jobs',                                     jobs.Jobs),
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
         webapp2.Route(r'/next',                                     jobs.Jobs, handler_method='next', methods=['GET']),
@@ -91,9 +49,32 @@ routes = [
         webapp2.Route(r'/addTestJob',                               jobs.Jobs, handler_method='addTestJob', methods=['GET']),
         webapp2.Route(r'/<:[^/]+>',                                 jobs.Job,  name='job'),
     ]),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/tags',                       listhandler.ListHandler, methods=['POST'], name='tags_post', defaults={'list_name': 'tags'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/tags/<value:[^/]+>',         listhandler.ListHandler, name='tags', defaults={'list_name': 'tags'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/file',                       listhandler.FileListHandler, name='files_post', methods=['POST'], defaults={'list_name': 'files'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/file/<filename:[^/]+>',      listhandler.FileListHandler, name='files', defaults={'list_name': 'files'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/permissions',                listhandler.ListHandler, name='perms_post', methods=['POST'], defaults={'list_name': 'permissions'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',
+                                                                                    listhandler.ListHandler, name='perms', defaults={ 'list_name': 'permissions'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/notes',                      listhandler.NotesListHandler, name='notes_post', methods=['POST'], defaults={'list_name': 'notes'}),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>/notes/<_id:[^/]+>',          listhandler.NotesListHandler, name='notes', defaults={'list_name': 'notes'}),
+
+    webapp2.Route(r'/api/<coll_name:[^/]+>/api/collections/curators',               collectionshandler.CollectionsHandler, handler_method='curators', methods=['GET']),
+
+    webapp2.Route(r'/api/<coll_name:collections>',                                  collectionshandler.CollectionsHandler, name='colls', handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/<coll_name:collections>',                                  collectionshandler.CollectionsHandler, methods=['POST']),
+    webapp2.Route(r'/api/<coll_name:collections>/<cid:[^/]+>',                      collectionshandler.CollectionsHandler, name='coll_details', methods=['GET', 'PUT', 'DELETE']),
+    webapp2.Route(r'/api/<coll_name:collections>/<cid:[^/]+>/sessions',             collectionshandler.CollectionsHandler, name='coll_ses', handler_method='get_sessions', methods=['GET']),
+    webapp2.Route(r'/api/<coll_name:collections>/<cid:[^/]+>/acquisitions',         collectionshandler.CollectionsHandler, name='coll_acq',handler_method='get_acquisitions', methods=['GET']),
+
+    webapp2.Route(r'/api/users/<uid:[^/]+>/<coll_name:[^/]+>',                      containerhandler.ContainerHandler, name='user_conts', handler_method='get_all_for_user', methods=['GET']),
+    webapp2.Route(r'/api/projects/groups',                                          containerhandler.ContainerHandler, handler_method='get_groups_with_project', methods=['GET']),
+    webapp2.Route(r'/api/<par_coll_name:[^/]+>/<par_id:[^/]+>/<coll_name:[^/]+>',   containerhandler.ContainerHandler, name='cont_sublist', handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/<coll_name:[^/]+>',                                        containerhandler.ContainerHandler, name='cont_list', handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/<coll_name:[^/]+>',                                        containerhandler.ContainerHandler, methods=['POST']),
+    webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>',                            containerhandler.ContainerHandler, name='cont_details', methods=['GET','PUT','DELETE']),
 ]
 
-routes.extend(api2.routes)
 
 with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
     schema_dict = json.load(fp)
