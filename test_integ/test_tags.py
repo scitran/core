@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 
 adm_user = 'rfrigato@stanford.edu'
 test_data = type('',(object,),{})()
-base_url = 'https://localhost:8443/api2'
+base_url = 'https://localhost:8443/api'
 
 def _build_url_and_payload(method, tag, newtag=None, requestor=adm_user):
     if method == 'POST':
@@ -36,7 +36,7 @@ def setup_db():
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
     log.warning('pid = \'{}\''.format(test_data.pid))
-    test_data.proj_url = 'https://localhost:8443/api/projects/{}/tags'.format(test_data.pid)
+    test_data.proj_url = base_url + '/projects/{}/tags'.format(test_data.pid)
 
 def teardown_db():
     r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=rfrigato@stanford.edu', verify=False)

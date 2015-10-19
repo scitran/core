@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 adm_user = 'rfrigato@stanford.edu'
 user = 'renzo.frigato@gmail.com'
 test_data = type('',(object,),{})()
-base_url = 'https://localhost:8443/api2'
+base_url = 'https://localhost:8443/api'
 
 def _build_url(_id=None, requestor=adm_user, site='local'):
     if _id is None:
@@ -35,7 +35,7 @@ def setup_db():
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
     log.warning('pid = \'{}\''.format(test_data.pid))
-    test_data.proj_url = 'https://localhost:8443/api/projects/{}/permissions'.format(test_data.pid)
+    test_data.proj_url = base_url + '/projects/{}/permissions'.format(test_data.pid)
 
 def teardown_db():
     r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=rfrigato@stanford.edu', verify=False)

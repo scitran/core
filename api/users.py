@@ -185,8 +185,18 @@ class Groups(base.RequestHandler):
         if self.debug:
             for group in groups:
                 group['debug'] = {}
-                group['debug']['projects'] = self.uri_for('g_projects', gid=group['_id'], _full=True) + '?' + self.request.query_string
-                group['debug']['sessions'] = self.uri_for('g_sessions', gid=group['_id'], _full=True) + '?' + self.request.query_string
+                group['debug']['projects'] = self.uri_for(
+                    'cont_sublist',
+                    par_coll_name='groups',
+                    par_id=group['_id'],
+                    coll_name='projects',
+                    _full=True) + '?' + self.request.query_string
+                group['debug']['sessions'] = self.uri_for(
+                    'cont_sublist',
+                    par_coll_name='groups',
+                    par_id=group['_id'],
+                    coll_name='projects',
+                    _full=True) + '?' + self.request.query_string
                 group['debug']['details'] = self.uri_for('group', group['_id'], _full=True) + '?' + self.request.query_string
         return groups
 
@@ -216,8 +226,18 @@ class Group(base.RequestHandler):
                 self.abort(403, 'User ' + self.uid + ' is not an admin of Group ' + _id)
         if self.debug:
             group['debug'] = {}
-            group['debug']['projects'] = self.uri_for('g_projects', gid=group['_id'], _full=True) + '?' + self.request.query_string
-            group['debug']['sessions'] = self.uri_for('g_sessions', gid=group['_id'], _full=True) + '?' + self.request.query_string
+            group['debug']['projects'] = self.uri_for(
+                'cont_sublist',
+                par_coll_name='groups',
+                par_id=group['_id'],
+                coll_name='projects',
+                _full=True) + '?' + self.request.query_string
+            group['debug']['sessions'] = self.uri_for(
+                'cont_sublist',
+                par_coll_name='groups',
+                par_id=group['_id'],
+                coll_name='projects',
+                _full=True) + '?' + self.request.query_string
         return group
 
     def put(self, _id):

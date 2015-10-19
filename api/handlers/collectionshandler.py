@@ -130,7 +130,7 @@ class CollectionsHandler(ContainerHandler):
 
 
     def curators(self):
-        curator_ids = list(set((c['curator'] for c in self.get_all())))
+        curator_ids = list(set((c['curator'] for c in self.get_all('collections'))))
         return list(self.app.db.users.find({'_id': {'$in': curator_ids}}, ['firstname', 'lastname']))
 
     def get_sessions(self, coll_name, cid):

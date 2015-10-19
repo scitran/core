@@ -221,6 +221,11 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not removed from collection {} {}'.format(storage.coll_name, _id))
 
+    def get_groups_with_project(self):
+        group_ids = list(set((p['group'] for p in self.get_all('projects'))))
+        return list(self.app.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
+
+
     def _get_validators(self):
         mongo_validator = validators.mongo_from_schema_file(self, self.config.get('mongo_schema_file'))
         payload_validator = validators.payload_from_schema_file(self, self.config.get('payload_schema_file'))

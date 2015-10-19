@@ -11,7 +11,7 @@ import pymongo
 from bson.objectid import ObjectId
 db = pymongo.MongoClient('mongodb://localhost:9001/scitran').get_default_database()
 
-base_url = 'https://localhost:8443/api2'
+base_url = 'https://localhost:8443/api'
 test_data = type('',(object,),{})()
 
 def setup_db():

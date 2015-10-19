@@ -8,7 +8,7 @@ log.addHandler(sh)
 import warnings
 warnings.filterwarnings('ignore')
 
-base_url = 'https://localhost:8443/api2'
+base_url = 'https://localhost:8443/api'
 
 def test_projects():
     payload = {

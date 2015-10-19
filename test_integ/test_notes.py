@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 adm_user = 'rfrigato@stanford.edu'
 user = 'renzo.frigato@gmail.com'
 test_data = type('',(object,),{})()
-base_url = 'https://localhost:8443/api2'
+base_url = 'https://localhost:8443/api'
 
 def _build_url(_id=None, requestor=adm_user):
     if _id is None:
@@ -35,13 +35,13 @@ def setup_db():
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
     log.warning('pid = \'{}\''.format(test_data.pid))
-    test_data.proj_url = 'https://localhost:8443/api/projects/{}/notes'.format(test_data.pid)
+    test_data.proj_url = base_url + '/projects/{}/notes'.format(test_data.pid)
     data = {
         '_id': user,
         'site': 'local',
         'access': 'rw'
     }
-    url = 'https://localhost:8443/api/projects/' + test_data.pid + '/permissions?user=rfrigato@stanford.edu'
+    url = base_url + '/projects/' + test_data.pid + '/permissions?user=rfrigato@stanford.edu'
     r = requests.post(url, data=json.dumps(data), verify=False)
     assert r.ok
 
@@ -55,7 +55,7 @@ def test_notes():
     data = {'author': user, 'text':'test note'}
     r = requests.post(url_post, data=json.dumps(data), verify=False)
     assert r.ok
-    r = requests.get('https://localhost:8443/api2/projects/{}?user={}'.format(test_data.pid, adm_user), verify=False)
+    r = requests.get(base_url + '/projects/{}?user={}'.format(test_data.pid, adm_user), verify=False)
     assert r.ok
     p = json.loads(r.content)
     assert len(p['notes']) == 1

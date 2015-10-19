@@ -120,34 +120,28 @@ class Core(base.RequestHandler):
             /download                           | download
             [(/search)]                         | search
             [(/users)]                          | list of users
-            [(/users/count)]                    | count of users
             [(/users/self)]                     | user identity
             [(/users/roles)]                    | user roles
             [(/users/*<uid>*)]                  | details for user *<uid>*
             [(/users/*<uid>*/groups)]           | groups for user *<uid>*
             [(/users/*<uid>*/projects)]         | projects for user *<uid>*
             [(/groups)]                         | list of groups
-            [(/groups/count)]                   | count of groups
             /groups/*<gid>*                     | details for group *<gid>*
             /groups/*<gid>*/projects            | list of projects for group *<gid>*
             /groups/*<gid>*/sessions            | list of sessions for group *<gid>*
             [(/projects)]                       | list of projects
-            [(/projects/count)]                 | count of projects
             [(/projects/groups)]                | groups for projects
             [(/projects/schema)]                | schema for single project
             /projects/*<pid>*                   | details for project *<pid>*
             /projects/*<pid>*/sessions          | list sessions for project *<pid>*
             [(/sessions)]                       | list of sessions
-            [(/sessions/count)]                 | count of sessions
             [(/sessions/schema)]                | schema for single session
             /sessions/*<sid>*                   | details for session *<sid>*
             /sessions/*<sid>*/move              | move session *<sid>* to a different project
             /sessions/*<sid>*/acquisitions      | list acquisitions for session *<sid>*
-            [(/acquisitions/count)]             | count of acquisitions
             [(/acquisitions/schema)]            | schema for single acquisition
             /acquisitions/*<aid>*               | details for acquisition *<aid>*
             [(/collections)]                    | list of collections
-            [(/collections/count)]              | count of collections
             [(/collections/schema)]             | schema for single collection
             /collections/*<cid>*                | details for collection *<cid>*
             /collections/*<cid>*/sessions       | list of sessions for collection *<cid>*
