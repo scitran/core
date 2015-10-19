@@ -109,6 +109,13 @@ class CollectionsHandler(ContainerHandler):
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         if self.request.GET.get('counts', '').lower() in ('1', 'true'):
             self._add_results_counts(results)
+        if self.debug:
+            for coll in results:
+                coll['debug'] = {}
+                cid = str(coll['_id'])
+                coll['debug']['details'] =  self.uri_for('coll_details', coll_name='collections', cid=cid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                coll['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                coll['debug']['sessions'] =     self.uri_for('coll_ses', coll_name='collections', cid=cid, _full=True) + '?user=' + self.request.GET.get('user', '')
         return results
 
     def _add_results_counts(self, results):
@@ -149,9 +156,10 @@ class CollectionsHandler(ContainerHandler):
             sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
             for sess in sessions:
+                sess['debug'] = {}
                 sid = str(sess['_id'])
-                sess['details'] = self.uri_for('session', sid, _full=True) + '?user=' + self.request.GET.get('user', '')
-                sess['acquisitions'] = self.uri_for('coll_acquisitions', cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.GET.get('user', ''))
+                sess['debug']['details'] = self.uri_for('cont_details', coll_name='sessions', cid=sid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                sess['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.GET.get('user', ''))
         return sessions
 
     def get_acquisitions(self, cid, **kwargs):
@@ -176,8 +184,9 @@ class CollectionsHandler(ContainerHandler):
             acq.setdefault('timestamp', datetime.datetime.utcnow())
         if self.debug:
             for acq in acquisitions:
+                acq['debug'] = {}
                 aid = str(acq['_id'])
-                acq['details'] = self.uri_for('acquisition', aid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                acq['debug']['details'] = self.uri_for('cont_details', coll_name='acquisitions', cid=aid, _full=True) + '?user=' + self.request.GET.get('user', '')
         return acquisitions
 
 

@@ -14,6 +14,7 @@ from .. import files
 from ..dao import containerstorage
 from .. import base
 from .. import util
+from .. import debuginfo
 
 log = logging.getLogger('scitran.api')
 
@@ -30,32 +31,37 @@ class ContainerHandler(base.RequestHandler):
     Specific behaviors (permissions checking logic for authenticated and not superuser users, storage interaction)
     are specified in the container_handler_configurations
     """
-
+    use_oid = {
+        'groups': False,
+        'projects': True,
+        'sessions': True,
+        'acquisitions': True
+    }
     default_list_projection = ['files', 'notes', 'timestamp', 'timezone', 'public']
 
     container_handler_configurations = {
         'projects': {
-            'storage': containerstorage.CollectionStorage('projects', use_oid=True),
+            'storage': containerstorage.CollectionStorage('projects', use_oid=use_oid['projects']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.CollectionStorage('groups', use_oid=False),
+            'parent_storage': containerstorage.CollectionStorage('groups', use_oid=use_oid['groups']),
             'mongo_schema_file': 'mongo/project.json',
             'payload_schema_file': 'input/project.json',
             'list_projection': ['label', 'subject.code', 'project', 'group'] + default_list_projection,
             'children_dbc': 'sessions'
         },
         'sessions': {
-            'storage': containerstorage.CollectionStorage('sessions', use_oid=True),
+            'storage': containerstorage.CollectionStorage('sessions', use_oid=use_oid['sessions']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.CollectionStorage('projects', use_oid=True),
+            'parent_storage': containerstorage.CollectionStorage('projects', use_oid=use_oid['projects']),
             'mongo_schema_file': 'mongo/session.json',
             'payload_schema_file': 'input/session.json',
             'list_projection': ['label', 'subject.code', 'project', 'group'] + default_list_projection,
             'children_dbc': 'acquisitions'
         },
         'acquisitions': {
-            'storage': containerstorage.CollectionStorage('acquisitions', use_oid=True),
+            'storage': containerstorage.CollectionStorage('acquisitions', use_oid=use_oid['acquisitions']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.CollectionStorage('sessions', use_oid=True),
+            'parent_storage': containerstorage.CollectionStorage('sessions', use_oid=use_oid['sessions']),
             'mongo_schema_file': 'mongo/acquisition.json',
             'payload_schema_file': 'input/acquisition.json',
             'list_projection': ['label', 'subject.code', 'project', 'group'] + default_list_projection
@@ -99,7 +105,7 @@ class ContainerHandler(base.RequestHandler):
         if par_coll_name:
             if not par_id:
                 self.abort(500, 'par_id is required when par_coll_name is provided')
-            if self.config['parent_storage'].use_oid:
+            if self.use_oid.get(par_coll_name):
                 par_id = bson.objectid.ObjectId(par_id)
             query = {par_coll_name[:-1]: par_id}
         else:
@@ -109,6 +115,8 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         if self.request.GET.get('counts', '').lower() in ('1', 'true'):
             self._add_results_counts(results, coll_name)
+        if self.debug:
+            debuginfo.add_debuginfo(self, coll_name, results)
         return results
 
     def _add_results_counts(self, results):
@@ -139,10 +147,12 @@ class ContainerHandler(base.RequestHandler):
             '_id': uid,
             'site': self.app.config['site_id']
         }
-        result = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
-        if result is None:
+        results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
+        if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
-        return result
+        if self.debug:
+            debuginfo.add_debuginfo(self, coll_name, results)
+        return results
 
     def post(self, coll_name, **kwargs):
         self.config = self.container_handler_configurations[coll_name]
