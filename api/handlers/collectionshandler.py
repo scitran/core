@@ -72,6 +72,8 @@ class CollectionsHandler(ContainerHandler):
             return
         acq_ids = []
         for item in contents['nodes']:
+            if not bson.ObjectId.is_valid(item.get('_id')):
+                self.abort(400, 'not a valid object id')
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
                 sess_ids = [s['_id'] for s in self.app.db.sessions.find({'project': item_id}, [])]
@@ -82,10 +84,14 @@ class CollectionsHandler(ContainerHandler):
                 acq_ids += [item_id]
         operator = '$addToSet' if contents['operation'] == 'add' else '$pull'
         log.info(' '.join(['collection', _id, operator, str(acq_ids)]))
+        if not bson.ObjectId.is_valid(_id):
+            self.abort(400, 'not a valid object id')
         self.app.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': bson.ObjectId(_id)}})
 
     def delete(self, coll_name, **kwargs):
         _id = kwargs.get('cid')
+        if not bson.ObjectId.is_valid(_id):
+            self.abort(400, 'not a valid object id')
         super(CollectionsHandler, self).delete(coll_name, **kwargs)
         self.app.db.acquisitions.update_many({'collections': bson.ObjectId(_id)}, {'$pull': {'collections': bson.ObjectId(_id)}})
 
@@ -139,6 +145,8 @@ class CollectionsHandler(ContainerHandler):
         # FIXME use storage and permission checking abstractions
         self.config = self.container_handler_configurations['collections']
         self._init_storage()
+        if not bson.ObjectId.is_valid(cid):
+            self.abort(400, 'not a valid object id')
         _id = bson.ObjectId(cid)
         if not self.storage.dbc.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
@@ -168,6 +176,8 @@ class CollectionsHandler(ContainerHandler):
         # FIXME use storage and permission checking abstractions
         self.config = self.container_handler_configurations['collections']
         self._init_storage()
+        if not bson.ObjectId.is_valid(cid):
+            self.abort(400, 'not a valid object id')
         _id = bson.ObjectId(cid)
         if not self.storage.dbc.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')

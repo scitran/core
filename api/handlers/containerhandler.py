@@ -106,7 +106,9 @@ class ContainerHandler(base.RequestHandler):
             if not par_id:
                 self.abort(500, 'par_id is required when par_coll_name is provided')
             if self.use_oid.get(par_coll_name):
-                par_id = bson.objectid.ObjectId(par_id)
+                if not bsons.ObjectId.is_valid(par_id):
+                    self.abort(400, 'not a valid object id')
+                par_id = bson.ObjectId(par_id)
             query = {par_coll_name[:-1]: par_id}
         else:
             query = {}

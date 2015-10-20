@@ -5,8 +5,7 @@ log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
 
-import warnings
-warnings.filterwarnings('ignore')
+requests.packages.urllib3.disable_warnings()
 
 base_url = 'https://localhost:8443/api'
 
