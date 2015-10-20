@@ -102,7 +102,14 @@ class RequestHandler(webapp2.RequestHandler):
             if provider_avatar:
                 self.app.db.users.update_one({'_id': self.uid, 'avatar': None}, {'$set':{'avatar': provider_avatar, 'modified': request_start}})
                 self.app.db.users.update_one({'_id': self.uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': request_start}})
-            self.superuser_request = self.request.GET.get('root', '').lower() in ('1', 'true') and user.get('root')
+            if self.request.GET.get('root', '').lower() in ('1', 'true'):
+                if user.get('root'):
+                    self.superuser_request = True
+                else:
+                    self.abort(403, 'user ' + self.uid + ' is not authorized to make superuser requests')
+            else:
+                self.superuser_request = False
+
 
     def dispatch(self):
         """dispatching and request forwarding"""
