@@ -17,7 +17,7 @@
       "email": "user1@example.com",
       "firstname": "First",
       "lastname": "User",
-      "wheel": true
+      "root": true
     }
   ],
   "drones": [

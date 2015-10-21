@@ -96,9 +96,6 @@
             },
             "root": {
                 "type": "boolean"
-            },
-            "wheel": {
-                "type": "boolean"
             }
         },
         "required": [

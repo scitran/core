@@ -126,7 +126,7 @@ class User(base.RequestHandler):
             jsonschema.validate(json_body, self.put_schema)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, e)
-        if _id == self.uid and 'wheel' in json_body and json_body['wheel'] != user['wheel']:
+        if _id == self.uid and 'root' in json_body and json_body['root'] != user['root']:
             self.abort(400, 'user cannot alter own superuser privilege')
         json_body['modified'] = datetime.datetime.utcnow()
         self.dbc.update_one({'_id': _id}, {'$set': util.mongo_dict(json_body)})
