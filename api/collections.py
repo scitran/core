@@ -315,11 +315,19 @@ class CollectionSessions(sessions.Sessions):
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1, 'subject.age': 1, 'subject.sex': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection)) # avoid permissions checking by not using ContainerList._get()
+        session_measurements = {}
+        if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+            session_measurements = self.app.db.acquisitions.aggregate([
+                {'$match': {'session': {'$in': [sess['_id'] for sess in sessions]}}},
+                {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
+                ])
+            session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
         for sess in sessions:
-            sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+            sess['measurements'] = session_measurements.get(sess['_id'], None)
+            sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
