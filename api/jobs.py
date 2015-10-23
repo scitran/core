@@ -41,7 +41,17 @@ ALGORITHMS = [
 # TODO: json schema
 
 
-def spawn_jobs(db, containers, file):
+def create_jobs(db, container, container_type, file):
+
+    # CHANGES:
+    # This no longer takes an array, should take string container type and container object
+    # This calls rules.check_rules
+    # Some of this lookup logic moves to rules.check_rules
+    # Rethink what exact data is being stored on a job
+    # generate_formula gets smarted
+    #
+    # OLD DOCS + LOGIC FOLLOW
+
     """
     Spawn some number of queued jobs to process a file.
 
