@@ -36,8 +36,8 @@ class FileRequest(object):
         self.filetype = util.guess_filetype(filename, self.mimetype)
         self.flavor = flavor
 
-    def save_temp_file(self, upload_path):
-        self.tempdir_path = tempfile.mkdtemp(prefix='.tmp', dir=upload_path)
+    def save_temp_file(self, tempdir_path):
+        self.tempdir_path = tempdir_path
         success, duration = self._save_temp_file(self.tempdir_path)
         if not success:
             self.abort(400, 'Content-MD5 mismatch.')

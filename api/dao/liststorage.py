@@ -1,10 +1,13 @@
 # @author:  Renzo Frigato
 
 import bson.objectid
+import bson.errors
 import datetime
 import logging
 import copy
 import re
+
+from . import APIStorageException
 
 log = logging.getLogger('scitran.api')
 
@@ -52,7 +55,10 @@ class ListStorage(object):
         The request is dispatched to the corresponding private methods.
         """
         if self.use_oid:
-            _id = bson.objectid.ObjectId(_id)
+            try:
+                _id = bson.objectid.ObjectId(_id)
+            except bson.errors.InvalidId as e:
+                raise APIStorageException(e.message)
         if action == 'GET':
             return self._get_el(_id, query_params)
         if action == 'DELETE':
@@ -119,7 +125,10 @@ class StringListStorage(ListStorage):
         if self.dbc is None:
             raise RuntimeError('collection not initialized before calling get_container')
         if self.use_oid:
-            _id = bson.objectid.ObjectId(_id)
+            try:
+                _id = bson.objectid.ObjectId(_id)
+            except bson.errors.InvalidId as e:
+                raise APIStorageException(e.message)
         query = {'_id': _id}
         projection = {self.list_name : 1, 'permissions': 1, 'public': 1}
         return self.dbc.find_one(query, projection)

@@ -15,6 +15,7 @@ from ..dao import containerstorage
 from .. import base
 from .. import util
 from .. import debuginfo
+from ..dao import APIStorageException
 
 log = logging.getLogger('scitran.api')
 
@@ -78,8 +79,10 @@ class ContainerHandler(base.RequestHandler):
         self._init_storage()
         container= self._get_container(_id)
         permchecker = self._get_permchecker(container)
-
-        result = permchecker(self.storage.exec_op)('GET', _id)
+        try:
+            result = permchecker(self.storage.exec_op)('GET', _id)
+        except APIStorageException as e:
+            self.abort(400, e.message)
 
         if result is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
@@ -149,7 +152,10 @@ class ContainerHandler(base.RequestHandler):
             '_id': uid,
             'site': self.app.config['site_id']
         }
-        results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
+        try:
+            results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
+        except APIStorageException as e:
+            self.abort(400, e.message)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         if self.debug:
@@ -201,7 +207,10 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker = self._get_permchecker(container, target_parent_container)
         payload['modified'] = datetime.datetime.utcnow()
-        result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
+        try:
+            result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
 
         if result.modified_count == 1:
             return {'modified': result.modified_count}
@@ -215,8 +224,10 @@ class ContainerHandler(base.RequestHandler):
         container= self._get_container(_id)
         parent_container = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, parent_container)
-
-        result = permchecker(self.storage.exec_op)('DELETE', _id)
+        try:
+            result = permchecker(self.storage.exec_op)('DELETE', _id)
+        except APIStorageException as e:
+            self.abort(400, e.message)
 
         if result.deleted_count == 1:
             return {'deleted': result.deleted_count}

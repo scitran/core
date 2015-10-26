@@ -13,6 +13,7 @@ from ..auth import listauth
 from .. import files
 from ..dao import liststorage
 from .. import base
+from ..dao import APIStorageException
 
 log = logging.getLogger('scitran.api')
 
@@ -95,8 +96,10 @@ class ListHandler(base.RequestHandler):
     def get(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
-
-        result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
+        try:
+            result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
 
         if result is None:
             self.abort(404, 'Element not found in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
@@ -121,8 +124,10 @@ class ListHandler(base.RequestHandler):
 
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
-        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
-
+        try:
+            result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
@@ -131,8 +136,10 @@ class ListHandler(base.RequestHandler):
     def delete(self, coll_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
-        result = keycheck(permchecker(storage.exec_op))('DELETE', _id, query_params=kwargs)
-
+        try:
+            result = keycheck(permchecker(storage.exec_op))('DELETE', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
         if result.modified_count == 1:
             return {'modified': result.modified_count}
         else:
@@ -175,7 +182,7 @@ class NotesListHandler(ListHandler):
         payload = self.request.json_body
         input_validator(payload, 'POST')
         payload['_id'] = payload.get('_id') or str(bson.objectid.ObjectId())
-        payload['author'] = self.uid
+        payload['author'] = payload.get('author', self.uid)
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
@@ -223,9 +230,15 @@ class FileListHandler(ListHandler):
         ticket_id = self.request.GET.get('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
-            fileinfo = keycheck(storage.exec_op)('GET', _id, query_params=kwargs)
+            try:
+                fileinfo = keycheck(storage.exec_op)('GET', _id, query_params=kwargs)
+            except APIStorageException as e:
+                self.abort(400, e.message)
         else:
-            fileinfo = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
+            try:
+                fileinfo = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
+            except APIStorageException as e:
+                self.abort(400, e.message)
         if not fileinfo:
             self.abort(404, 'no such file')
         hash_ = self.request.GET.get('hash')
@@ -293,49 +306,52 @@ class FileListHandler(ListHandler):
         payload = self.request.POST.mixed()
         filename = payload.get('filename') or kwargs.get('filename')
         file_request = files.FileRequest.from_handler(self, filename)
-        file_request.save_temp_file(self.app.config['upload_path'])
-        file_datetime = datetime.datetime.utcnow()
-        file_properties = {
-            'filename': file_request.filename,
-            'filesize': file_request.filesize,
-            'filehash': file_request.sha1,
-            'filetype': file_request.filetype,
-            'flavor': file_request.flavor,
-            'mimetype': file_request.mimetype,
-            'tags': file_request.tags,
-            'metadata': file_request.metadata,
-            'created': file_datetime,
-            'modified': file_datetime,
-            'dirty': True
-        }
-        dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
-        if not force:
-            method = 'POST'
-        else:
-            filepath = os.path.join(file_request.tempdir_path, filename)
-            for f in container['files']:
-                if f['filename'] == filename:
-                    if file_request.identical(os.path.join(data_path, filename), f['filehash']):
-                        log.debug('Dropping    %s (identical)' % filename)
-                        os.remove(filepath)
-                        self.abort(409, 'identical file exists')
-                    else:
-                        log.debug('Replacing   %s' % filename)
-                        payload_validator(payload, 'PUT')
-                        payload.update(file_properties)
-                        method = 'PUT'
-                    break
-            else:
+        result = None
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
+            file_request.save_temp_file(tempdir_path)
+            file_datetime = datetime.datetime.utcnow()
+            file_properties = {
+                'filename': file_request.filename,
+                'filesize': file_request.filesize,
+                'filehash': file_request.sha1,
+                'filetype': file_request.filetype,
+                'flavor': file_request.flavor,
+                'mimetype': file_request.mimetype,
+                'tags': file_request.tags,
+                'metadata': file_request.metadata,
+                'created': file_datetime,
+                'modified': file_datetime,
+                'dirty': True
+            }
+            dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
+            if not force:
                 method = 'POST'
+            else:
+                filepath = os.path.join(file_request.tempdir_path, filename)
+                for f in container['files']:
+                    if f['filename'] == filename:
+                        if file_request.identical(os.path.join(data_path, filename), f['filehash']):
+                            log.debug('Dropping    %s (identical)' % filename)
+                            os.remove(filepath)
+                            self.abort(409, 'identical file exists')
+                        else:
+                            log.debug('Replacing   %s' % filename)
+                            payload_validator(payload, 'PUT')
+                            payload.update(file_properties)
+                            method = 'PUT'
+                        break
+                else:
+                    method = 'POST'
 
-        payload_validator(payload, method)
-        payload.update(file_properties)
-        result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id, payload=payload)
-        if result.modified_count != 1:
-            self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
-        try:
-            file_request.move_temp_file(dest_path)
-        except IOError as e:
-            result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)
-            raise e
-        return {'modified': result.modified_count}
+            payload_validator(payload, method)
+            payload.update(file_properties)
+            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id, payload=payload)
+            if result.modified_count != 1:
+                self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            try:
+                file_request.move_temp_file(dest_path)
+            except IOError as e:
+                result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)
+                raise e
+        modified_count = result.modified_count if result else 0
+        return {'modified': modified_count}

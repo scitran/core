@@ -1,11 +1,13 @@
 # @author:  Renzo Frigato
 
 import bson.objectid
+import bson.errors
 import datetime
 import logging
 import copy
 from .. import util
 import re
+from . import APIStorageException
 
 log = logging.getLogger('scitran.api')
 
@@ -55,17 +57,26 @@ class CollectionStorage(object):
             '$set': util.mongo_dict(payload)
         }
         if self.use_oid:
-            _id = bson.objectid.ObjectId(_id)
+            try:
+                _id = bson.objectid.ObjectId(_id)
+            except bson.errors.InvalidId as e:
+                raise APIStorageException(e.message)
         return self.dbc.update_one({'_id': _id}, update)
 
     def _delete_el(self, _id):
         if self.use_oid:
-            _id = bson.objectid.ObjectId(_id)
+            try:
+                _id = bson.objectid.ObjectId(_id)
+            except bson.errors.InvalidId as e:
+                raise APIStorageException(e.message)
         return self.dbc.delete_one({'_id':_id})
 
     def _get_el(self, _id, projection=None):
         if self.use_oid:
-            _id = bson.objectid.ObjectId(_id)
+            try:
+                _id = bson.objectid.ObjectId(_id)
+            except bson.errors.InvalidId as e:
+                raise APIStorageException(e.message)
         return self.dbc.find_one(_id, projection)
 
     def _get_all_el(self, query, user, public, projection):

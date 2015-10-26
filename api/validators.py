@@ -11,12 +11,33 @@ schema_path = os.path.abspath(os.path.dirname(__file__))
 
 resolver = jsonschema.RefResolver('file://' + schema_path + '/schemas/', None)
 
+expected_schemas = set([
+    'acquisition.json',
+    'collection.json',
+    'container.json',
+    'file.json',
+    'group.json',
+    'note.json',
+    'permission.json',
+    'project.json',
+    'session.json',
+    'subject.json',
+    'user.json'
+ ])
+mongo_schemas = set()
+input_schemas = set()
 # validate and cache schemas at start time
 for schema_file in os.listdir(schema_path + '/schemas/mongo/'):
+    mongo_schemas.add(schema_file)
     resolver.resolve('mongo/' + schema_file)
 
+assert mongo_schemas == expected_schemas, '{} is different from {}'.format(mongo_schemas, expected_schemas)
+
 for schema_file in os.listdir(schema_path + '/schemas/input/'):
+    input_schemas.add(schema_file)
     resolver.resolve('input/' + schema_file)
+
+assert input_schemas == expected_schemas, '{} is different from {}'.format(input_schemas, expected_schemas)
 
 def _validate_json(json_data, schema):
     jsonschema.validate(json_data, schema, resolver=resolver)
@@ -104,5 +125,10 @@ def _post_exclude_params(keys, payload):
     return exclude_params
 
 def _check_query_params(keys, query_params):
-    if set(keys) != set(query_params.keys()):
-        raise ValueError('unexpected query_params key set')
+    set_keys = set(keys)
+    set_query_params_keys = set(query_params.keys())
+    assert set(keys) == set(query_params.keys()), """
+    {}
+    is different from expected:
+    {}
+    """.format(query_params.keys(), keys)

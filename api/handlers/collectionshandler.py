@@ -59,7 +59,10 @@ class CollectionsHandler(ContainerHandler):
         payload_validator(payload, 'PUT')
         permchecker = self._get_permchecker(container)
         payload['modified'] = str(datetime.datetime.utcnow())
-        result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
+        try:
+            result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
 
         if result.modified_count == 1:
             self._add_contents(contents, _id)
@@ -90,8 +93,6 @@ class CollectionsHandler(ContainerHandler):
 
     def delete(self, coll_name, **kwargs):
         _id = kwargs.get('cid')
-        if not bson.ObjectId.is_valid(_id):
-            self.abort(400, 'not a valid object id')
         super(CollectionsHandler, self).delete(coll_name, **kwargs)
         self.app.db.acquisitions.update_many({'collections': bson.ObjectId(_id)}, {'$pull': {'collections': bson.ObjectId(_id)}})
 

@@ -253,16 +253,6 @@ def container_fileinfo(container, filename):
         return None
 
 
-def upload_ticket(ip, **kwargs):
-    ticket = {
-        '_id': str(uuid.uuid4()),
-        'timestamp': datetime.datetime.utcnow(),
-        'ip': ip,
-    }
-    ticket.update(kwargs)
-    return ticket
-
-
 def download_ticket(ip, type_, target, filename, size):
     return {
         '_id': str(uuid.uuid4()),
