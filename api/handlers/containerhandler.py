@@ -77,7 +77,10 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
-        container= self._get_container(_id)
+        try:
+            container= self._get_container(_id)
+        except APIStorageException as e:
+            self.abort(400, e.message)
         permchecker = self._get_permchecker(container)
         try:
             result = permchecker(self.storage.exec_op)('GET', _id)
@@ -174,8 +177,11 @@ class ContainerHandler(base.RequestHandler):
         if coll_name == 'sessions':
             payload['group'] = parent_container['group']
         payload[parent_id_property] = parent_container['_id']
-        payload['permissions'] = parent_container.get('roles')
-        if payload['permissions'] is None:
+        if self.request.GET.get('inherit', '').lower() in ('1', 'true') and coll_name == 'projects':
+            payload['permissions'] = parent_container.get('roles')
+        elif coll_name =='projects':
+            payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
+        else:
             payload['permissions'] = parent_container.get('permissions', [])
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         permchecker = self._get_permchecker(parent_container=parent_container)

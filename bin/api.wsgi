@@ -114,16 +114,6 @@ else:
 
     import uwsgidecorators
 
-    @uwsgidecorators.cron(0, -1, -1, -1, -1)  # top of every hour
-    def upload_storage_cleaning(signum):
-        upload_path = application.config['upload_path']
-        for f in os.listdir(upload_path):
-            fp = os.path.join(upload_path, f)
-            timestamp = datetime.datetime.utcfromtimestamp(int(os.stat(fp).st_mtime))
-            if timestamp < (datetime.datetime.utcnow() - datetime.timedelta(hours=1)):
-                log.debug('upload %s was last modified %s' % (fp, str(timestamp)))
-                os.remove(fp)
-
     if centralclient_enabled:
         fail_count = 0
         @uwsgidecorators.timer(60)

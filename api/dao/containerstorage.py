@@ -13,7 +13,7 @@ log = logging.getLogger('scitran.api')
 
 class CollectionStorage(object):
     """
-    This class provides access to sublists of a mongodb collections elements (called containers).
+    This class provides access to sublists of mongodb collection elements (called containers).
     """
 
     def __init__(self, coll_name, use_oid = False):
