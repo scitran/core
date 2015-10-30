@@ -184,6 +184,8 @@ class NotesListHandler(ListHandler):
         payload['_id'] = payload.get('_id') or str(bson.objectid.ObjectId())
         payload['author'] = payload.get('author', self.uid)
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
+        if payload.get('timestamp'):
+            payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
@@ -198,6 +200,8 @@ class NotesListHandler(ListHandler):
         payload = self.request.json_body
         input_validator(payload, 'PUT')
         payload['modified'] = datetime.datetime.utcnow()
+        if payload.get('timestamp'):
+            payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
 
         if result.modified_count == 1:

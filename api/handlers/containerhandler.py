@@ -184,6 +184,8 @@ class ContainerHandler(base.RequestHandler):
         else:
             payload['permissions'] = parent_container.get('permissions', [])
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
+        if payload.get('timestamp'):
+            payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         permchecker = self._get_permchecker(parent_container=parent_container)
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
 
@@ -213,6 +215,8 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker = self._get_permchecker(container, target_parent_container)
         payload['modified'] = datetime.datetime.utcnow()
+        if payload.get('timestamp'):
+            payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         try:
             result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         except APIStorageException as e:

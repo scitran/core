@@ -297,7 +297,3 @@ def guess_filetype(filepath, mimetype):
         return 'text'
     else:
         return subtype
-
-
-def parse_timestamp(iso_timestamp):
-    return dateutil.parser.parse(iso_timestamp)
