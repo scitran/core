@@ -53,6 +53,7 @@ def mongo_from_schema_file(handler, schema_file):
     def g(exec_op):
         def f(method, **kwargs):
             payload = kwargs['payload']
+            log.warn(payload)
             if method == 'PUT' and schema.get('required'):
                 _schema = copy.copy(schema)
                 _schema.pop('required')
@@ -79,7 +80,7 @@ def payload_from_schema_file(handler, schema_file):
             _schema = schema
         if method in ['POST', 'PUT']:
             try:
-                _validate_json(payload, schema)
+                _validate_json(payload, _schema)
             except jsonschema.ValidationError as e:
                 handler.abort(400, str(e))
     return g

@@ -14,6 +14,8 @@ from handlers import listhandler
 from handlers import containerhandler
 from handlers import collectionshandler
 from handlers import listhandler
+from handlers import userhandler
+from handlers import grouphandler
 
 routes = [
     webapp2.Route(r'/api',                                          core.Core),
@@ -22,20 +24,18 @@ routes = [
         webapp2.Route(r'/reaper',                                   core.Core, handler_method='reaper', methods=['POST']),
         webapp2.Route(r'/sites',                                    core.Core, handler_method='sites', methods=['GET'])
     ]),
-    webapp2_extras.routes.PathPrefixRoute(r'/api/schema', [
-        webapp2.Route(r'/group',                                    users.Group, handler_method='schema', methods=['GET']),
-        webapp2.Route(r'/user',                                     users.User, handler_method='schema', methods=['GET']),
-    ]),
-    webapp2.Route(r'/api/users',                                    users.Users),
+    webapp2.Route(r'/api/users',                                    userhandler.UserHandler, handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/users',                                    userhandler.UserHandler, methods=['POST']),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
-        webapp2.Route(r'/self',                                     users.User, handler_method='self', methods=['GET']),
-        webapp2.Route(r'/roles',                                    users.User, handler_method='roles', methods=['GET']),
-        webapp2.Route(r'/<:[^/]+>',                                 users.User, name='user'),
-        webapp2.Route(r'/<:[^/]+>/groups',                          users.Groups, name='groups'),
+        webapp2.Route(r'/self',                                     userhandler.UserHandler, handler_method='self', methods=['GET']),
+        webapp2.Route(r'/roles',                                    userhandler.UserHandler, handler_method='roles', methods=['GET']),
+        webapp2.Route(r'/<_id:[^/]+>',                              userhandler.UserHandler, name='user'),
+        webapp2.Route(r'/<uid:[^/]+>/groups',                       grouphandler.GroupHandler, handler_method='get_all', methods=['GET'], name='groups'),
     ]),
-    webapp2.Route(r'/api/groups',                                   users.Groups),
+    webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, methods=['POST']),
     webapp2_extras.routes.PathPrefixRoute(r'/api/groups', [
-        webapp2.Route(r'/<:[^/]+>',                                 users.Group, name='group'),
+        webapp2.Route(r'/<_id:[^/]+>',                              grouphandler.GroupHandler, name='group'),
         webapp2.Route(r'/<cid:[^/]+>/roles',                        listhandler.ListHandler, name='g_roles', methods=['POST'], defaults={'coll_name': 'groups', 'list_name': 'roles'}),
         webapp2.Route(r'/<cid:[^/]+>/roles/<site:[^/]+>/<_id:[^/]+>',
                                                                     listhandler.ListHandler, name='g_roles', methods=['GET', 'PUT', 'DELETE'], defaults={'coll_name': 'groups', 'list_name': 'roles'}),

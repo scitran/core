@@ -1,16 +1,14 @@
 import logging
 import sys
 
-from ..users import INTEGER_ROLES
-
 log = logging.getLogger('scitran.api')
 
-from . import _get_access, always_ok
+from . import _get_access, always_ok, INTEGER_ROLES
 
 
 def default(handler, group=None):
     def g(exec_op):
-        def f(method, _id, query_params=None, payload=None, projection=None):
+        def f(method, _id=None, query=None, payload=None, projection=None):
             if handler.superuser_request:
                 pass
             elif handler.public_request:
@@ -21,7 +19,7 @@ def default(handler, group=None):
                 pass
             else:
                 handler.abort(403, 'not allowed to perform operation')
-            return exec_op(method, query_params, payload, projection)
+            return exec_op(method, _id=_id, query=query, payload=payload, projection=projection)
         return f
     return g
 
@@ -40,10 +38,12 @@ def list_permission_checker(handler, uid=None):
                     query = query or {}
                     projection = projection or {}
                     if self.request.GET.get('admin', '').lower() in ('1', 'true'):
-                        query['roles'] = {'$elemMatch': {'_id': handler.uid, 'access': 'admin'}}}
+                        query['roles'] = {'$elemMatch': {'_id': handler.uid, 'access': 'admin'}}
                     else:
                         query['roles._id'] = handler.uid
                     projection['roles.$'] = 1
-            return exec_op(method, query, projection)
+            log.warn(query)
+            log.warn(projection)
+            return exec_op(method, query=query, projection=projection)
         return f
     return g

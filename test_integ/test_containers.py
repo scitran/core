@@ -42,8 +42,8 @@ def test_sessions():
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
-    pid = json.loads(r.content)['_id']
     assert r.ok
+    pid = json.loads(r.content)['_id']
     payload = {
         'files': [],
         'project': pid,
@@ -93,9 +93,8 @@ def test_acquisitions():
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
-    pid = json.loads(r.content)['_id']
     assert r.ok
-
+    pid = json.loads(r.content)['_id']
     payload = {
         'files': [],
         'project': pid,

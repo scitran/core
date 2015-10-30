@@ -2,7 +2,7 @@ import logging
 import datetime
 
 from .. import validators
-from ..auth import userauth, always_ok
+from ..auth import groupauth, always_ok
 from ..dao import containerstorage
 from .. import base
 from .. import util
@@ -12,7 +12,7 @@ log = logging.getLogger('scitran.api')
 class GroupHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
-        super(base.RequestHandler, self).__init__(request, response)
+        super(GroupHandler, self).__init__(request, response)
 
     def get(self, _id):
         self._init_storage()
@@ -35,14 +35,14 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'User {} not removed'.format(_id))
         return result
 
-    def get_all(self, uid):
+    def get_all(self, uid=None):
         self._init_storage()
         query = None
         projection = {'name': 1, 'created': 1, 'modified': 1}
-        permchecker = groupauth.list_permission_checker(handler, uid)
+        permchecker = groupauth.list_permission_checker(self, uid)
         result = permchecker(self.storage.exec_op)('GET', projection=projection)
         if result is None:
-            self.abort(404, 'User does not exist'))
+            self.abort(404, 'Not found')
         return result
 
     def put(self, _id):
@@ -51,9 +51,9 @@ class GroupHandler(base.RequestHandler):
         if not group:
             self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
-        payload = self.result.json_body
-        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/groups.json')
-        payload_validator = validators.payload_from_schema_file(self, 'input/groups.json')
+        payload = self.request.json_body
+        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/group.json')
+        payload_validator = validators.payload_from_schema_file(self, 'input/group.json')
         payload_validator(payload, 'PUT')
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         if result.modified_count == 1:
@@ -64,12 +64,12 @@ class GroupHandler(base.RequestHandler):
     def post(self):
         self._init_storage()
         permchecker = groupauth.default(self, None)
-        payload = self.result.json_body
-        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/users.json')
-        payload_validator = validators.payload_from_schema_file(self, 'input/users.json')
+        payload = self.request.json_body
+        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/group.json')
+        payload_validator = validators.payload_from_schema_file(self, 'input/group.json')
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
-        result = mongo_validator(permchecker(self.storage.exec_op))('POST', _id=_id, payload=payload)
+        result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:

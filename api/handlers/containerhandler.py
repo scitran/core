@@ -228,8 +228,8 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
         container= self._get_container(_id)
-        parent_container = self._get_parent_container(container)
-        permchecker = self._get_permchecker(container, parent_container)
+        target_parent_container, parent_id_property = self._get_parent_container(container)
+        permchecker = self._get_permchecker(container, target_parent_container)
         try:
             result = permchecker(self.storage.exec_op)('DELETE', _id)
         except APIStorageException as e:
@@ -252,7 +252,7 @@ class ContainerHandler(base.RequestHandler):
 
     def _get_parent_container(self, payload):
         if not self.config.get('parent_storage'):
-            return None
+            return None, None
         log.debug(payload)
         parent_storage = self.config['parent_storage']
         parent_id_property = parent_storage.coll_name[:-1]

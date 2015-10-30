@@ -2,7 +2,7 @@ import logging
 import datetime
 
 from .. import validators
-from ..auth import userauth, always_ok
+from ..auth import userauth, always_ok, ROLES
 from ..dao import containerstorage
 from .. import base
 from .. import util
@@ -13,7 +13,7 @@ log = logging.getLogger('scitran.api')
 class UserHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
-        super(base.RequestHandler, self).__init__(request, response)
+        super(UserHandler, self).__init__(request, response)
 
     def get(self, _id):
         self._init_storage()
@@ -26,15 +26,26 @@ class UserHandler(base.RequestHandler):
             projection += ['status']
         result = permchecker(self.storage.exec_op)('GET', _id, projection=projection or None)
         if result is None:
-            self.abort(404, 'User does not exist'))
+            self.abort(404, 'User does not exist')
         return result
+
+    def self(self):
+        """Return details for the current User."""
+        self._init_storage()
+        user = self.storage.exec_op('GET', self.uid)
+        if not user:
+            self.abort(400, 'no user is logged in')
+        return user
+
+    def roles(self):
+        return ROLES
 
     def get_all(self):
         self._init_storage()
         permchecker = userauth.list_permission_checker(handler)
         result = permchecker(self.storage.exec_op)('GET', projection={'preferences': False})
         if result is None:
-            self.abort(404, 'User does not exist'))
+            self.abort(404, 'Not found')
         return result
 
     def delete(self, _id):
@@ -52,9 +63,9 @@ class UserHandler(base.RequestHandler):
         self._init_storage()
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
-        payload = self.result.json_body
-        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/users.json')
-        payload_validator = validators.payload_from_schema_file(self, 'input/users.json')
+        payload = self.request.json_body
+        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/user.json')
+        payload_validator = validators.payload_from_schema_file(self, 'input/user.json')
         payload_validator(payload, 'PUT')
         payload['modified'] = datetime.datetime.utcnow()
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
@@ -66,12 +77,13 @@ class UserHandler(base.RequestHandler):
     def post(self):
         self._init_storage()
         permchecker = userauth.default(self)
-        payload = self.result.json_body
-        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/users.json')
-        payload_validator = validators.payload_from_schema_file(self, 'input/users.json')
+        payload = self.request.json_body
+        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/user.json')
+        payload_validator = validators.payload_from_schema_file(self, 'input/user.json')
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
-        result = mongo_validator(permchecker(self.storage.exec_op))('POST', _id=_id, payload=payload)
+        payload['root'] = payload.get('root', False)
+        result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:

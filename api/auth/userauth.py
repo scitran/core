@@ -1,16 +1,14 @@
 import logging
 import sys
 
-from ..users import INTEGER_ROLES
-
 log = logging.getLogger('scitran.api')
 
-from . import _get_access, always_ok
+from . import _get_access, always_ok, INTEGER_ROLES
 
 
 def default(handler, user=None):
     def g(exec_op):
-        def f(method, _id, query=None, payload=None, projection=None):
+        def f(method, _id=None, query=None, payload=None, projection=None):
             if handler.public_request:
                 handler.abort(403, 'public request is not authorized')
             elif method == 'PUT' and (handler.uid == _id or handler.superuser_request):
@@ -28,7 +26,7 @@ def default(handler, user=None):
                 pass
             else:
                 handler.abort(403, 'not allowed to perform operation')
-            return exec_op(method, query, payload, projection)
+            return exec_op(method, _id=_id, query=query, payload=payload, projection=projection)
         return f
     return g
 

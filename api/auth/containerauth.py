@@ -5,11 +5,9 @@ Purpose of this module is to define all the permissions checker decorators for t
 import logging
 import sys
 
-from ..users import INTEGER_ROLES
-
 log = logging.getLogger('scitran.api')
 
-from . import _get_access, always_ok
+from . import _get_access, always_ok, INTEGER_ROLES
 
 def default_container(handler, container=None, target_parent_container=None):
     """
@@ -18,13 +16,18 @@ def default_container(handler, container=None, target_parent_container=None):
     on the container before actually executing this method.
     """
     def g(exec_op):
-        def f(method, _id=None, payload = None):
+        def f(method, _id=None, payload=None):
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
                 has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['ro']
-            elif method in ['POST', 'DELETE']:
+            elif method == 'POST':
                 has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_ROLES['admin']
+            elif method == 'DELETE':
+                if target_parent_container:
+                    has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_ROLES['admin']
+                else:
+                    has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['admin']
             elif method == 'PUT' and target_parent_container is not None:
                 has_access = (
                     _get_access(handler.uid, container) >= INTEGER_ROLES['admin'] and

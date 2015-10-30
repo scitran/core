@@ -1,5 +1,20 @@
 # @author:  Renzo Frigato
-from ..users import INTEGER_ROLES
+ROLES = [
+    {
+        'rid': 'ro',
+        'name': 'Read-Only',
+    },
+    {
+        'rid': 'rw',
+        'name': 'Read-Write',
+    },
+    {
+        'rid': 'admin',
+        'name': 'Admin',
+    },
+]
+
+INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
 
 def _get_access(uid, container):
     permissions_list = container.get('roles', container.get('permissions', []))
