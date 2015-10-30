@@ -1,5 +1,6 @@
 from api import validators
 import logging
+import nose.tools
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
@@ -12,6 +13,7 @@ class StubHandler:
 
 default_handler = StubHandler()
 
+@nose.tools.raises(Exception)
 def test_payload():
     payload = {
         'files': [],
