@@ -41,6 +41,6 @@ def _add_di(handler, coll_name, response):
     if response.get('group'):
         response['debug']['group'] = handler.uri_for(
             'group',
-            response['group'],
+            _id=response['group'],
             _full=True) + '?' + handler.request.query_string
 

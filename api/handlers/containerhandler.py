@@ -112,7 +112,7 @@ class ContainerHandler(base.RequestHandler):
             if not par_id:
                 self.abort(500, 'par_id is required when par_coll_name is provided')
             if self.use_oid.get(par_coll_name):
-                if not bsons.ObjectId.is_valid(par_id):
+                if not bson.ObjectId.is_valid(par_id):
                     self.abort(400, 'not a valid object id')
                 par_id = bson.ObjectId(par_id)
             query = {par_coll_name[:-1]: par_id}
@@ -123,6 +123,8 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         if self.request.GET.get('counts', '').lower() in ('1', 'true'):
             self._add_results_counts(results, coll_name)
+        if coll_name == 'sessions' and self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+            self._add_session_measurements(results)
         if self.debug:
             debuginfo.add_debuginfo(self, coll_name, results)
         return results
@@ -138,6 +140,17 @@ class ContainerHandler(base.RequestHandler):
         counts = {elem['_id']: elem['count'] for elem in counts}
         for elem in results:
             elem[dbc_name[:-1] + '_count'] = counts.get(elem['_id'], 0)
+
+    def _add_session_measurements(self, results):
+        session_measurements = {}
+        if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+            session_measurements = self.app.db.acquisitions.aggregate([
+                {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
+                {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
+                ])
+            session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
+        for sess in results:
+            sess['measurements'] = session_measurements.get(sess['_id'], None)
 
     def get_all_for_user(self, coll_name, uid):
         self.config = self.container_handler_configurations[coll_name]

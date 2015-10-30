@@ -161,8 +161,8 @@ class CollectionsHandler(ContainerHandler):
         log.error(query)
         log.error(projection)
         sessions = list(self.app.db.sessions.find(query, projection))
-        for sess in sessions:
-            sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+        if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+            self._add_session_measurements(sessions)
         if self.debug:
             for sess in sessions:
                 sess['debug'] = {}

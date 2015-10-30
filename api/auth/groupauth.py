@@ -28,7 +28,7 @@ def list_permission_checker(handler, uid=None):
         def f(method, query=None, projection=None):
             if uid is not None:
                 if uid != handler.uid and not handler.superuser_request:
-                    self.abort(403, 'User ' + handler.uid + ' may not see the Groups of User ' + uid)
+                    handler.abort(403, 'User ' + handler.uid + ' may not see the Groups of User ' + uid)
                 query = query or {}
                 query['roles._id'] = uid
                 projection = projection or {}
@@ -37,7 +37,7 @@ def list_permission_checker(handler, uid=None):
                 if not handler.superuser_request:
                     query = query or {}
                     projection = projection or {}
-                    if self.request.GET.get('admin', '').lower() in ('1', 'true'):
+                    if handler.request.GET.get('admin', '').lower() in ('1', 'true'):
                         query['roles'] = {'$elemMatch': {'_id': handler.uid, 'access': 'admin'}}
                     else:
                         query['roles._id'] = handler.uid
