@@ -95,6 +95,8 @@ def list_permission_checker(handler, admin_only=False):
             if user and (user['_id'] != handler.uid or user['site'] != handler_site):
                 handler.abort(403, 'User ' + handler.uid + ' may not see the Projects of User ' + user['_id'])
             query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'site': handler.source_site or handler.app.config['site_id']}}
+            if handler.request.GET.get('public', '').lower() in [1, True]:
+                query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
             return exec_op(method, query=query, user=user, public=public, projection=projection)
         return f
     return g

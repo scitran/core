@@ -81,10 +81,10 @@ class CollectionStorage(object):
 
     def _get_all_el(self, query, user, public, projection):
         if user:
-            if not query.get('permissions'):
-                query['permissions'] = {'$elemMatch': user}
-            else:
+            if query.get('permissions'):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
+            else:
+                query['permissions'] = {'$elemMatch': user}
         if public:
             query['public'] = True
         log.warn(query)

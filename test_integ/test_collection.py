@@ -23,7 +23,7 @@ def setup_db():
         'permissions': []
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
+    r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
     log.warning('pid = \'{}\''.format(test_data.pid))
@@ -36,7 +36,7 @@ def setup_db():
         'permissions': []
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu', data=payload, verify=False)
+    r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
     assert r.ok
     test_data.sid = json.loads(r.content)['_id']
     log.warning('sid = \'{}\''.format(test_data.sid))
@@ -49,17 +49,17 @@ def setup_db():
         'permissions': []
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/acquisitions?user=rfrigato@stanford.edu', data=payload, verify=False)
+    r = requests.post(base_url + '/acquisitions?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
     assert r.ok
     test_data.aid = json.loads(r.content)['_id']
     log.warning('aid = \'{}\''.format(test_data.aid))
 
 def teardown_db():
-    r = requests.delete(base_url + '/acquisitions/' + test_data.aid + '?user=rfrigato@stanford.edu', verify=False)
+    r = requests.delete(base_url + '/acquisitions/' + test_data.aid + '?user=rfrigato@stanford.edu&root=true', verify=False)
     assert r.ok
-    r = requests.delete(base_url + '/sessions/' + test_data.sid + '?user=rfrigato@stanford.edu', verify=False)
+    r = requests.delete(base_url + '/sessions/' + test_data.sid + '?user=rfrigato@stanford.edu&root=true', verify=False)
     assert r.ok
-    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=rfrigato@stanford.edu', verify=False)
+    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=rfrigato@stanford.edu&root=true', verify=False)
     assert r.ok
 
 

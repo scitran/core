@@ -68,8 +68,8 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(401, 'invalid oauth2 token', headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
-        elif self.debug and self.request.GET.get('user'):
-            self.uid = self.request.GET.get('user')
+        elif self.debug and self.get_param('user'):
+            self.uid = self.get_param('user')
 
         # Drone shared secret authentication
         elif drone_secret is not None and user_agent.startswith('SciTran Drone '):
@@ -110,6 +110,11 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
+    def is_true(self, param):
+        return self.request.GET.get(param, '').lower() in ['1', 'true']
+
+    def get_param(self, param):
+        return self.request.GET.get(param)
 
     def dispatch(self):
         """dispatching and request forwarding"""
