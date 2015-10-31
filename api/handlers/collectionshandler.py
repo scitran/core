@@ -40,6 +40,12 @@ class CollectionsHandler(ContainerHandler):
             'access': 'admin'
         }]
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
+        payload.setdefault('email', payload['_id'])
+        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(payload['email']).hexdigest() + '?s=512'
+        if requests.head(gravatar, params={'d': '404'}):
+            payload.setdefault('avatar', gravatar)
+        payload.setdefault('avatars', {})
+        payload['avatars'].setdefault('gravatar', gravatar)
         result = mongo_validator(self.storage.exec_op)('POST', payload=payload)
 
         if result.acknowledged:
