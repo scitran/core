@@ -1,22 +1,24 @@
 # @author:  Renzo Frigato
 
-import datetime
-import logging
-import json
+import os
 import bson
 import copy
-import os
+import json
+import logging
+import datetime
 
-from .. import util
-from .. import validators
-from ..auth import listauth
-from .. import files
-from ..dao import liststorage
+
+
 from .. import base
+from .. import util
+from .. import files
+from .. import validators
+from .. import tempdir as tempfile
+from ..auth import listauth
+from ..dao import liststorage
 from ..dao import APIStorageException
 
 log = logging.getLogger('scitran.api')
-
 
 def initialize_list_configurations():
     container_default_configurations = {
@@ -334,7 +336,7 @@ class FileListHandler(ListHandler):
                 filepath = os.path.join(file_request.tempdir_path, filename)
                 for f in container['files']:
                     if f['filename'] == filename:
-                        if file_request.identical(os.path.join(data_path, filename), f['filehash']):
+                        if file_request.check_identical(os.path.join(data_path, filename), f['filehash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
                             self.abort(409, 'identical file exists')
@@ -350,12 +352,12 @@ class FileListHandler(ListHandler):
             payload_validator(payload, method)
             payload.update(file_properties)
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id, payload=payload)
-            if result.modified_count != 1:
+            if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
             try:
                 file_request.move_temp_file(dest_path)
+
             except IOError as e:
                 result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)
                 raise e
-        modified_count = result.modified_count if result else 0
-        return {'modified': modified_count}
+        return {'modified': result.modified_count}

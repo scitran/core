@@ -23,38 +23,6 @@ from . import tempdir as tempfile
 # silence Markdown library logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
 
-DOWNLOAD_SCHEMA = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
-    'title': 'Download',
-    'type': 'object',
-    'properties': {
-        'optional': {
-            'type': 'boolean',
-        },
-        'nodes': {
-            'type': 'array',
-            'minItems': 1,
-            'items': {
-                'type': 'object',
-                'properties': {
-                    'level': {
-                        'type': 'string',
-                        'enum': ['project', 'session', 'acquisition'],
-                    },
-                    '_id': {
-                        'type': 'string',
-                        'pattern': '^[0-9a-f]{24}$',
-                    },
-                },
-                'required': ['level', '_id'],
-                'additionalProperties': False
-            },
-        },
-    },
-    'required': ['optional', 'nodes'],
-    'additionalProperties': False
-}
-
 
 class Core(base.RequestHandler):
 
@@ -103,7 +71,7 @@ class Core(base.RequestHandler):
             """
 
         if self.debug and self.uid:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s)' % self.uid, resources)
+            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s&root=%r)' % (self.uid, self.superuser_request), resources)
             resources = re.sub(r'(\(.*)\*<uid>\*(.*\))', r'\1%s\2' % self.uid, resources)
         else:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
@@ -130,6 +98,7 @@ class Core(base.RequestHandler):
         if self.debug and not self.request.GET.get('user', None):
             self.response.write('<form name="username" action="" method="get">\n')
             self.response.write('Username: <input type="text" name="user">\n')
+            self.response.write('Root: <input type="checkbox" name="root" value="1">\n')
             self.response.write('<input type="submit" value="Generate Custom Links">\n')
             self.response.write('</form>\n')
         self.response.write(markdown.markdown(resources, ['extra']))
@@ -246,11 +215,9 @@ class Core(base.RequestHandler):
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
-            try:
-                req_spec = self.request.json_body
-                jsonschema.validate(req_spec, DOWNLOAD_SCHEMA)
-            except (ValueError, jsonschema.ValidationError) as e:
-                self.abort(400, str(e))
+            req_spec = self.request.json_body
+            validator = validators.payload_from_schema_file(self, 'input/download.json')
+            validator(req_spec, 'POST')
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
             return self._preflight_archivestream(req_spec)
 

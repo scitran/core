@@ -1,7 +1,6 @@
 # @author:  Renzo Frigato
 
 import datetime
-import tempfile
 import hashlib
 import logging
 import shutil
@@ -53,7 +52,7 @@ class FileRequest(object):
         if not os.path.exists(container_path):
             os.makedirs(container_path)
         shutil.move(temp_filepath, target_filepath)
-        os.rmdir(self.tempdir_path)
+        #os.rmdir(self.tempdir_path)
 
     def _save_temp_file(self, folder):
         filepath = os.path.join(folder, self.filename)

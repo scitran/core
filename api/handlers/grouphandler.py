@@ -4,6 +4,7 @@ import datetime
 from .. import validators
 from ..auth import groupauth, always_ok
 from ..dao import containerstorage
+from .. import debuginfo
 from .. import base
 from .. import util
 
@@ -21,6 +22,7 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('GET', _id)
+        return result
 
     def delete(self, _id):
         self._init_storage()
@@ -40,10 +42,12 @@ class GroupHandler(base.RequestHandler):
         query = None
         projection = {'name': 1, 'created': 1, 'modified': 1}
         permchecker = groupauth.list_permission_checker(self, uid)
-        result = permchecker(self.storage.exec_op)('GET', projection=projection)
-        if result is None:
+        results = permchecker(self.storage.exec_op)('GET', projection=projection)
+        if results is None:
             self.abort(404, 'Not found')
-        return result
+        if self.debug:
+            debuginfo.add_debuginfo(self, 'groups', results)
+        return results
 
     def put(self, _id):
         self._init_storage()

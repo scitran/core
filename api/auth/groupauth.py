@@ -42,8 +42,8 @@ def list_permission_checker(handler, uid=None):
                     else:
                         query['roles._id'] = handler.uid
                     projection['roles.$'] = 1
-            log.warn(query)
-            log.warn(projection)
+            log.debug(query)
+            log.debug(projection)
             return exec_op(method, query=query, projection=projection)
         return f
     return g

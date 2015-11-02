@@ -137,15 +137,9 @@ class ContainerHandler(base.RequestHandler):
 
     def _filter_all_permissions(self, results, uid, site):
         for result in results:
-            result['permissions'] = util.user_perm(result.get('permissions', []), uid, site)
+            user_perm = util.user_perm(result.get('permissions', []), uid, site)
+            result['permissions'] = [user_perm] if user_perm else []
         return results
-
-    def _filter_all_content(self, results, coll_name):
-        if coll_name =='sessions':
-            for result in results:
-                result['subject'] = {
-                    'code': result['subject']['code']
-                }
 
     def _add_results_counts(self, results):
         dbc_name = self.config.get('children_dbc')

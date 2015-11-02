@@ -10,11 +10,10 @@ import webapp2_extras.routes
 from . import core
 from . import jobs
 from handlers import listhandler
-from handlers import containerhandler
-from handlers import collectionshandler
-from handlers import listhandler
 from handlers import userhandler
 from handlers import grouphandler
+from handlers import containerhandler
+from handlers import collectionshandler
 
 routes = [
     webapp2.Route(r'/api',                                          core.Core),

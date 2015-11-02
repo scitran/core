@@ -31,6 +31,6 @@
       "type": "object"
     }
   },
-  "required": ["_id", "user", "text"],
+  "required": ["_id"],
   "additionalProperties": false
 }

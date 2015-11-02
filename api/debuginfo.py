@@ -4,7 +4,8 @@ log = logging.getLogger('scitran.api')
 
 child_collections = {
     'projects': 'sessions',
-    'sessions': 'acquisitions'
+    'sessions': 'acquisitions',
+    'groups': 'projects'
 }
 
 def add_debuginfo(handler, coll_name, response):

@@ -49,7 +49,7 @@ class CollectionStorage(object):
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
     def _create_el(self, payload):
-        log.warn(payload)
+        log.debug(payload)
         return self.dbc.insert_one(payload)
 
     def _update_el(self, _id, payload):
@@ -87,10 +87,8 @@ class CollectionStorage(object):
                 query['permissions'] = {'$elemMatch': user}
         if public:
             query['public'] = True
-        log.warn(query)
-        log.warn(projection)
+        log.debug(query)
+        log.debug(projection)
         result = self.dbc.find(query, projection)
-        r = list(result)
-        log.warn(r)
-        return r
+        return list(result)
 

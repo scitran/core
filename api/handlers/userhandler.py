@@ -45,7 +45,7 @@ class UserHandler(base.RequestHandler):
 
     def get_all(self):
         self._init_storage()
-        permchecker = userauth.list_permission_checker(handler)
+        permchecker = userauth.list_permission_checker(self)
         result = permchecker(self.storage.exec_op)('GET', projection={'preferences': False})
         if result is None:
             self.abort(404, 'Not found')
