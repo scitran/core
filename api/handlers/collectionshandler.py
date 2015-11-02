@@ -23,7 +23,7 @@ class CollectionsHandler(ContainerHandler):
         'storage': containerstorage.CollectionStorage('collections', use_oid=True),
         'mongo_schema_file': 'mongo/collection.json',
         'payload_schema_file': 'input/collection.json',
-        'list_projection': ['label', 'session_count', 'curator'] + ContainerHandler.default_list_projection,
+        'list_projection': {'metadata': 0}
     }
 
     def post(self, **kwargs):
@@ -40,12 +40,6 @@ class CollectionsHandler(ContainerHandler):
             'access': 'admin'
         }]
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
-        payload.setdefault('email', payload['_id'])
-        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(payload['email']).hexdigest() + '?s=512'
-        if requests.head(gravatar, params={'d': '404'}):
-            payload.setdefault('avatar', gravatar)
-        payload.setdefault('avatars', {})
-        payload['avatars'].setdefault('gravatar', gravatar)
         result = mongo_validator(self.storage.exec_op)('POST', payload=payload)
 
         if result.acknowledged:
@@ -106,8 +100,7 @@ class CollectionsHandler(ContainerHandler):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
         public = self.request.GET.get('public', '').lower() in ('1', 'true')
-        projection = {p: 1 for p in self.config['list_projection']}
-        projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site or self.app.config['site_id']}}
+        projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
@@ -120,6 +113,7 @@ class CollectionsHandler(ContainerHandler):
         results = permchecker(self.storage.exec_op)('GET', query=query, public=public, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+        self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
         if self.request.GET.get('counts', '').lower() in ('1', 'true'):
             self._add_results_counts(results)
         if self.debug:
@@ -162,11 +156,11 @@ class CollectionsHandler(ContainerHandler):
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
-        projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
+        projection = self.container_handler_configurations['sessions']['list_projection']
         log.error(query)
         log.error(projection)
         sessions = list(self.app.db.sessions.find(query, projection))
+        self._filter_all_permissions(sessions, self.uid, self.source_site or self.app.config['site_id'])
         if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
             self._add_session_measurements(sessions)
         if self.debug:
@@ -194,9 +188,9 @@ class CollectionsHandler(ContainerHandler):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = {p: 1 for p in ['label', 'description', 'modality', 'datatype', 'notes', 'timestamp', 'timezone', 'files']}
-        projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
+        projection = self.container_handler_configurations['acquisitions']['list_projection']
         acquisitions = list(self.app.db.acquisitions.find(query, projection))
+        self._filter_all_permissions(acquisitions, self.uid, self.source_site or self.app.config['site_id'])
         for acq in acquisitions:
             acq.setdefault('timestamp', datetime.datetime.utcnow())
         if self.debug:

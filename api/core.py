@@ -18,7 +18,6 @@ import jsonschema
 from . import base
 from . import util
 from .util import log
-from . import users
 from . import tempdir as tempfile
 
 # silence Markdown library logging

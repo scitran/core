@@ -9,7 +9,6 @@ import webapp2_extras.routes
 
 from . import core
 from . import jobs
-from . import users
 from handlers import listhandler
 from handlers import containerhandler
 from handlers import collectionshandler
@@ -72,18 +71,6 @@ routes = [
     webapp2.Route(r'/api/<coll_name:[^/]+>',                                        containerhandler.ContainerHandler, methods=['POST']),
     webapp2.Route(r'/api/<coll_name:[^/]+>/<cid:[^/]+>',                            containerhandler.ContainerHandler, name='cont_details', methods=['GET','PUT','DELETE']),
 ]
-
-
-with open(os.path.join(os.path.dirname(__file__), 'schema.json')) as fp:
-    schema_dict = json.load(fp)
-for cls in [
-        users.Group,
-        users.User,
-        ]:
-    cls.post_schema = copy.deepcopy(schema_dict[cls.__name__.lower()])
-    cls.put_schema = copy.deepcopy(cls.post_schema)
-    cls.put_schema['properties'].pop('_id', None)
-    cls.put_schema.pop('required')
 
 
 def custom_json_serializer(obj):

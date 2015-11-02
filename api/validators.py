@@ -22,7 +22,8 @@ expected_schemas = set([
     'project.json',
     'session.json',
     'subject.json',
-    'user.json'
+    'user.json',
+    'avatars.json'
  ])
 mongo_schemas = set()
 input_schemas = set()

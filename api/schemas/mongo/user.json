@@ -3,14 +3,43 @@
   "title": "User",
   "type": "object",
   "properties": {
-    "_id":              {"type": "string"},
+    "_id":              {
+                          "maxLength": 32,
+                          "minLength": 2,
+                          "pattern": "^[0-9a-z.@_-]*$",
+                          "title": "ID",
+                          "type": "string"
+                        },
     "created":          {},
     "modified":         {},
-    "firstname":        { "type": "string" },
-    "lastname":         { "type": "string" },
-    "email":            { "type": "string", "format": "email" },
-    "avatar":           { "type": "string", "format": "uri" },
-    "root":             { "type": "boolean"}
+    "firstname":        {
+                          "maxLength": 32,
+                          "minLength": 2,
+                          "title": "First Name",
+                          "type": "string"
+                        },
+    "lastname":         {
+                          "maxLength": 32,
+                          "minLength": 2,
+                          "title": "Last Name",
+                          "type": "string"
+                        },
+    "email":            {
+                          "format": "email",
+                          "title": "Email",
+                          "type": "string"
+                        },
+    "avatars":          { "$ref": "mongo/avatars.json"},
+    "avatar":           {
+                          "format": "uri",
+                          "title": "Avatar",
+                          "type": "string"
+                        },
+    "root":             { "type": "boolean"},
+    "preferences":      {
+                          "title": "Preferences",
+                          "type": "object"
+                        }
   },
   "additionalProperties": false,
   "required":["_id", "firstname", "lastname", "created", "modified", "root"]

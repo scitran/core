@@ -1,11 +1,14 @@
-import logging
 import datetime
+import logging
+import hashlib
+import requests
 
 from .. import validators
 from ..auth import userauth, always_ok, ROLES
 from ..dao import containerstorage
 from .. import base
 from .. import util
+
 
 log = logging.getLogger('scitran.api')
 
@@ -83,6 +86,12 @@ class UserHandler(base.RequestHandler):
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         payload['root'] = payload.get('root', False)
+        payload.setdefault('email', payload['_id'])
+        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(payload['email']).hexdigest() + '?s=512'
+        if requests.head(gravatar, params={'d': '404'}):
+            payload.setdefault('avatar', gravatar)
+        payload.setdefault('avatars', {})
+        payload['avatars'].setdefault('gravatar', gravatar)
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             return {'_id': result.inserted_id}

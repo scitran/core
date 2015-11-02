@@ -3,11 +3,29 @@
   "title": "Group",
   "type": "object",
   "properties": {
-    "_id":              {"type": "string"},
+    "_id":              {
+                          "maxLength": 32,
+                          "minLength": 2,
+                          "pattern": "^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$",
+                          "title": "ID",
+                          "type": "string"
+                        },
     "created":          {},
     "modified":         {},
-    "name":             {"type": "string"},
-    "roles":            {"type": "array",  "items": {"$ref": "mongo/permission.json"}}
+    "name":             {
+                          "maxLength": 32,
+                          "minLength": 2,
+                          "pattern": "^[0-9A-Za-z][0-9A-Za-z .@_-]{0,30}[0-9A-Za-z]$",
+                          "title": "Name",
+                          "type": "string"
+                        },
+    "roles":            {
+                          "type": "array",
+                          "items": {"$ref": "mongo/permission.json"},
+                          "title": "Roles",
+                          "default": [],
+                          "uniqueItems": true
+                        }
   },
   "additionalProperties": false,
   "required": ["_id", "created", "modified"]

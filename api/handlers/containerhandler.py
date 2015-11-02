@@ -8,14 +8,14 @@ import bson
 import copy
 import os
 
-from .. import validators
+from ..dao import APIStorageException, containerstorage
 from ..auth import containerauth, always_ok
+from .. import validators
+from .. import debuginfo
 from .. import files
-from ..dao import containerstorage
 from .. import base
 from .. import util
-from .. import debuginfo
-from ..dao import APIStorageException
+
 
 log = logging.getLogger('scitran.api')
 
@@ -47,7 +47,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.CollectionStorage('groups', use_oid=use_oid['groups']),
             'mongo_schema_file': 'mongo/project.json',
             'payload_schema_file': 'input/project.json',
-            'list_projection': ['label', 'subject.code', 'project', 'group'] + default_list_projection,
+            'list_projection': {'metadata': 0},
             'children_dbc': 'sessions'
         },
         'sessions': {
@@ -56,7 +56,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.CollectionStorage('projects', use_oid=use_oid['projects']),
             'mongo_schema_file': 'mongo/session.json',
             'payload_schema_file': 'input/session.json',
-            'list_projection': ['label', 'subject.code', 'project', 'group'] + default_list_projection,
+            'list_projection': {'metadata': 0},
             'children_dbc': 'acquisitions'
         },
         'acquisitions': {
@@ -65,10 +65,9 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.CollectionStorage('sessions', use_oid=use_oid['sessions']),
             'mongo_schema_file': 'mongo/acquisition.json',
             'payload_schema_file': 'input/acquisition.json',
-            'list_projection': ['label', 'subject.code', 'project', 'group'] + default_list_projection
+            'list_projection': {'metadata': 0}
         }
     }
-
 
     def __init__(self, request=None, response=None):
         super(ContainerHandler, self).__init__(request, response)
@@ -89,17 +88,23 @@ class ContainerHandler(base.RequestHandler):
 
         if result is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+        if not self.superuser_request:
+            self._filter_permissions(result, self.uid, self.source_site or self.app.config['site_id'])
         if self.request.GET.get('paths', '').lower() in ('1', 'true'):
             for fileinfo in result['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         return result
 
+    def _filter_permissions(self, result, uid, site):
+        user_perm = util.user_perm(result.get('permissions', []), uid, site)
+        if user_perm.get('access') != 'admin':
+            result['permissions'] = [user_perm] if user_perm else []
+
     def get_all(self, coll_name, par_coll_name=None, par_id=None):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
         public = self.request.GET.get('public', '').lower() in ('1', 'true')
-        projection = {p: 1 for p in self.config['list_projection']}
-        projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site or self.app.config['site_id']}}
+        projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
@@ -121,6 +126,7 @@ class ContainerHandler(base.RequestHandler):
         results = permchecker(self.storage.exec_op)('GET', query=query, public=public, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+        self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
         if self.request.GET.get('counts', '').lower() in ('1', 'true'):
             self._add_results_counts(results, coll_name)
         if coll_name == 'sessions' and self.request.GET.get('measurements', '').lower() in ('1', 'true'):
@@ -128,6 +134,18 @@ class ContainerHandler(base.RequestHandler):
         if self.debug:
             debuginfo.add_debuginfo(self, coll_name, results)
         return results
+
+    def _filter_all_permissions(self, results, uid, site):
+        for result in results:
+            result['permissions'] = util.user_perm(result.get('permissions', []), uid, site)
+        return results
+
+    def _filter_all_content(self, results, coll_name):
+        if coll_name =='sessions':
+            for result in results:
+                result['subject'] = {
+                    'code': result['subject']['code']
+                }
 
     def _add_results_counts(self, results):
         dbc_name = self.config.get('children_dbc')
@@ -155,8 +173,7 @@ class ContainerHandler(base.RequestHandler):
     def get_all_for_user(self, coll_name, uid):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
-        projection = {p: 1 for p in self.config['list_projection']}
-        projection['permissions'] = {'$elemMatch': {'_id': uid, 'site': self.app.config['site_id']}}
+        projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
@@ -174,6 +191,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+        self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
         if self.debug:
             debuginfo.add_debuginfo(self, coll_name, results)
         return results
@@ -201,7 +219,6 @@ class ContainerHandler(base.RequestHandler):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         permchecker = self._get_permchecker(parent_container=parent_container)
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
-
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
