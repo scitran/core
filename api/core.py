@@ -95,7 +95,7 @@ class Core(base.RequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body style="min-width:900px">\n')
-        if self.debug and not self.request.GET.get('user', None):
+        if self.debug and not self.get_param('user'):
             self.response.write('<form name="username" action="" method="get">\n')
             self.response.write('Username: <input type="text" name="user">\n')
             self.response.write('Root: <input type="checkbox" name="root" value="1">\n')
@@ -204,7 +204,7 @@ class Core(base.RequestHandler):
         stream.close()
 
     def download(self):
-        ticket_id = self.request.GET.get('ticket')
+        ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
@@ -225,7 +225,7 @@ class Core(base.RequestHandler):
         """Return local and remote sites."""
         projection = ['name', 'onload']
         # TODO onload for local is true
-        if self.public_request or self.request.GET.get('all', '').lower() in ('1', 'true'):
+        if self.public_request or self.is_true('all'):
             sites = list(self.app.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs

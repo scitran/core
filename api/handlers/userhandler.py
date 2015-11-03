@@ -23,9 +23,9 @@ class UserHandler(base.RequestHandler):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         projection = []
-        if self.request.GET.get('remotes', '').lower() in ('1', 'true'):
+        if self.is_true('remotes'):
             projection += ['remotes']
-        if self.request.GET.get('status', '').lower() in ('1', 'true'):
+        if self.is_true('status'):
             projection += ['status']
         result = permchecker(self.storage.exec_op)('GET', _id, projection=projection or None)
         if result is None:

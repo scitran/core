@@ -90,7 +90,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         if not self.superuser_request:
             self._filter_permissions(result, self.uid, self.source_site or self.app.config['site_id'])
-        if self.request.GET.get('paths', '').lower() in ('1', 'true'):
+        if self.is_true('paths'):
             for fileinfo in result['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         return result
@@ -103,7 +103,7 @@ class ContainerHandler(base.RequestHandler):
     def get_all(self, coll_name, par_coll_name=None, par_id=None):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
-        public = self.request.GET.get('public', '').lower() in ('1', 'true')
+        public = self.is_true('public')
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
@@ -111,7 +111,7 @@ class ContainerHandler(base.RequestHandler):
             public = True
             permchecker = always_ok
         else:
-            admin_only = self.request.GET.get('admin', '').lower() in ('1', 'true')
+            admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self, admin_only)
         if par_coll_name:
             if not par_id:
@@ -127,9 +127,9 @@ class ContainerHandler(base.RequestHandler):
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
-        if self.request.GET.get('counts', '').lower() in ('1', 'true'):
+        if self.is_true('counts'):
             self._add_results_counts(results, coll_name)
-        if coll_name == 'sessions' and self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+        if coll_name == 'sessions' and self.is_true('measurements'):
             self._add_session_measurements(results)
         if self.debug:
             debuginfo.add_debuginfo(self, coll_name, results)
@@ -155,12 +155,11 @@ class ContainerHandler(base.RequestHandler):
 
     def _add_session_measurements(self, results):
         session_measurements = {}
-        if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
-            session_measurements = self.app.db.acquisitions.aggregate([
-                {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
-                {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
-                ])
-            session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
+        session_measurements = self.app.db.acquisitions.aggregate([
+            {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
+            {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
+            ])
+        session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
         for sess in results:
             sess['measurements'] = session_measurements.get(sess['_id'], None)
 
@@ -202,7 +201,7 @@ class ContainerHandler(base.RequestHandler):
         if coll_name == 'sessions':
             payload['group'] = parent_container['group']
         payload[parent_id_property] = parent_container['_id']
-        if self.request.GET.get('inherit', '').lower() in ('1', 'true') and coll_name == 'projects':
+        if self.is_true('inherit') and coll_name == 'projects':
             payload['permissions'] = parent_container.get('roles')
         elif coll_name =='projects':
             payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}]

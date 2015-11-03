@@ -99,7 +99,7 @@ class CollectionsHandler(ContainerHandler):
     def get_all(self, coll_name):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
-        public = self.request.GET.get('public', '').lower() in ('1', 'true')
+        public = self.is_true('public')
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
@@ -107,22 +107,22 @@ class CollectionsHandler(ContainerHandler):
             public = True
             permchecker = always_ok
         else:
-            admin_only = self.request.GET.get('admin', '').lower() in ('1', 'true')
+            admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self, admin_only)
         query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=public, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
-        if self.request.GET.get('counts', '').lower() in ('1', 'true'):
+        if self.is_true('counts'):
             self._add_results_counts(results)
         if self.debug:
             for coll in results:
                 coll['debug'] = {}
                 cid = str(coll['_id'])
-                coll['debug']['details'] =  self.uri_for('coll_details', coll_name='collections', cid=cid, _full=True) + '?user=' + self.request.GET.get('user', '')
-                coll['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?user=' + self.request.GET.get('user', '')
-                coll['debug']['sessions'] =     self.uri_for('coll_ses', coll_name='collections', cid=cid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                coll['debug']['details'] =  self.uri_for('coll_details', coll_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
+                coll['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
+                coll['debug']['sessions'] =     self.uri_for('coll_ses', coll_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
         return results
 
     def _add_results_counts(self, results):
@@ -161,14 +161,14 @@ class CollectionsHandler(ContainerHandler):
         log.error(projection)
         sessions = list(self.app.db.sessions.find(query, projection))
         self._filter_all_permissions(sessions, self.uid, self.source_site or self.app.config['site_id'])
-        if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
+        if self.is_true('measurements'):
             self._add_session_measurements(sessions)
         if self.debug:
             for sess in sessions:
                 sess['debug'] = {}
                 sid = str(sess['_id'])
-                sess['debug']['details'] = self.uri_for('cont_details', coll_name='sessions', cid=sid, _full=True) + '?user=' + self.request.GET.get('user', '')
-                sess['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.request.GET.get('user', ''))
+                sess['debug']['details'] = self.uri_for('cont_details', coll_name='sessions', cid=sid, _full=True) + '?user=' + self.get_param('user', '')
+                sess['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.get_param('user', ''))
         return sessions
 
     def get_acquisitions(self, cid, **kwargs):
@@ -183,7 +183,7 @@ class CollectionsHandler(ContainerHandler):
         if not self.storage.dbc.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
         query = {'collections': _id}
-        sid = self.request.GET.get('session', '')
+        sid = self.get_param('session', '')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
@@ -197,7 +197,7 @@ class CollectionsHandler(ContainerHandler):
             for acq in acquisitions:
                 acq['debug'] = {}
                 aid = str(acq['_id'])
-                acq['debug']['details'] = self.uri_for('cont_details', coll_name='acquisitions', cid=aid, _full=True) + '?user=' + self.request.GET.get('user', '')
+                acq['debug']['details'] = self.uri_for('cont_details', coll_name='acquisitions', cid=aid, _full=True) + '?user=' + self.get_param('user', '')
         return acquisitions
 
 

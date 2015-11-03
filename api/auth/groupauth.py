@@ -37,7 +37,7 @@ def list_permission_checker(handler, uid=None):
                 if not handler.superuser_request:
                     query = query or {}
                     projection = projection or {}
-                    if handler.request.GET.get('admin', '').lower() in ('1', 'true'):
+                    if handler.is_true('admin'):
                         query['roles'] = {'$elemMatch': {'_id': handler.uid, 'access': 'admin'}}
                     else:
                         query['roles._id'] = handler.uid

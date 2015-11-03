@@ -250,7 +250,7 @@ class FileListHandler(ListHandler):
         container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id)
         list_name = storage.list_name
         filename = kwargs.get('filename')
-        ticket_id = self.request.GET.get('ticket')
+        ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
             try:
@@ -264,22 +264,22 @@ class FileListHandler(ListHandler):
                 self.abort(400, e.message)
         if not fileinfo:
             self.abort(404, 'no such file')
-        hash_ = self.request.GET.get('hash')
+        hash_ = self.get_param('hash')
         if hash_ and hash_ != fileinfo['hash']:
             self.abort(409, 'file exists, hash mismatch')
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
-        if self.request.GET.get('ticket') == '':    # request for download ticket
+        if self.get_param('ticket') == '':    # request for download ticket
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])
             return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
         else:                                       # authenticated or ticketed (unauthenticated) download
-            zip_member = self.request.GET.get('member')
-            if self.request.GET.get('info', '').lower() in ('1', 'true'):
+            zip_member = self.get_param('member')
+            if self.is_true('info'):
                 try:
                     with zipfile.ZipFile(filepath) as zf:
                         return [(zi.filename, zi.file_size, datetime.datetime(*zi.date_time)) for zi in zf.infolist()]
                 except zipfile.BadZipfile:
                     self.abort(400, 'not a zip file')
-            elif self.request.GET.get('comment', '').lower() in ('1', 'true'):
+            elif self.is_true('comment'):
                 try:
                     with zipfile.ZipFile(filepath) as zf:
                         self.response.write(zf.comment)
@@ -297,7 +297,7 @@ class FileListHandler(ListHandler):
             else:
                 self.response.app_iter = open(filepath, 'rb')
                 self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
-                if self.request.GET.get('view', '').lower() in ('1', 'true'):
+                if self.is_true('view'):
                     self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
                 else:
                     self.response.headers['Content-Type'] = 'application/octet-stream'
@@ -323,7 +323,7 @@ class FileListHandler(ListHandler):
         self.abort(400, 'PUT is not yet implemented')
 
     def post(self, coll_name, list_name, **kwargs):
-        force = self.request.GET.get('force', '').lower() in ('1', 'true')
+        force = self.is_true('force')
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
         payload = self.request.POST.mixed()

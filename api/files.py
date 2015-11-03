@@ -131,15 +131,15 @@ class FileRequest(object):
             if 'Content-MD5' not in handler.request.headers:
                 handler.abort(400, 'Request must contain a valid "Content-MD5" header.')
             try:
-                tags = json.loads(handler.request.GET.get('tags', '[]'))
+                tags = json.loads(handler.get_param('tags', '[]'))
             except ValueError:
                 handler.abort(400, 'invalid "tags" parameter')
             try:
-                metadata = json.loads(handler.request.GET.get('metadata', '{}'))
+                metadata = json.loads(handler.get_param('metadata', '{}'))
             except ValueError:
                 handler.abort(400, 'invalid "metadata" parameter')
             body = handler.request.body_file
-        flavor = handler.request.GET.get('flavor', 'data') # TODO: flavor should go away
+        flavor = handler.get_param('flavor', 'data') # TODO: flavor should go away
         if flavor not in ['data', 'attachment']:
             handler.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
         md5 = handler.request.headers.get('Content-MD5')
