@@ -71,7 +71,7 @@ class ListStorage(object):
 
     def _create_el(self, _id, payload, exclude_params):
         log.debug('payload {}'.format(payload))
-        query = {'_id': _id }
+        query = {'_id': _id}
         if exclude_params:
             query[self.list_name] = {'$not': {'$elemMatch': exclude_params} }
         update = {'$push': {self.list_name: payload} }

@@ -7,8 +7,6 @@ import json
 import logging
 import datetime
 
-
-
 from .. import base
 from .. import util
 from .. import files
@@ -116,6 +114,8 @@ class ListHandler(base.RequestHandler):
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
+            if coll_name == 'projects' and list_name == 'permissions':
+                self._propagate_project_permissions(_id)
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
@@ -131,6 +131,8 @@ class ListHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
+            if coll_name == 'projects' and list_name == 'permissions':
+                self._propagate_project_permissions(_id)
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
@@ -143,6 +145,8 @@ class ListHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
+            if coll_name == 'projects' and list_name == 'permissions':
+                self._propagate_project_permissions(_id)
             return {'modified': result.modified_count}
         else:
             self.abort(404, 'Element not removed from list {} in collection {} {}'.format(storage.list_name, storage.coll_name, _id))
@@ -174,6 +178,19 @@ class ListHandler(base.RequestHandler):
         input_validator = validators.payload_from_schema_file(self, config.get('payload_schema_file'))
         keycheck = validators.key_check(self, config.get('mongo_schema_file'))
         return container, permchecker, storage, mongo_validator, input_validator, keycheck
+
+    def _propagate_project_permissions(self, _id):
+        try:
+            log.warn(_id)
+            oid = bson.ObjectId(_id)
+            update = {
+                'permissions': self.app.db.projects.find_one(oid)['permissions']
+            }
+            session_ids = [s['_id'] for s in self.app.db.sessions.find({'project': oid}, [])]
+            self.app.db.sessions.update_many({'project': oid}, {'$set': update})
+            self.app.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': update})
+        except:
+            self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
 class NotesListHandler(ListHandler):
 
