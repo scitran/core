@@ -7,6 +7,7 @@ import logging
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
+log.setLevel(logging.INFO)
 warnings.filterwarnings('ignore')
 
 adm_user = 'rfrigato@stanford.edu'
@@ -34,7 +35,7 @@ def setup_db():
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
-    log.warning('pid = \'{}\''.format(test_data.pid))
+    log.debug('pid = \'{}\''.format(test_data.pid))
     test_data.proj_url = base_url + '/projects/{}/notes'.format(test_data.pid)
     data = {
         '_id': user,

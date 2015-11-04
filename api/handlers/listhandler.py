@@ -161,7 +161,6 @@ class ListHandler(base.RequestHandler):
         config = list_handler_configurations[coll_name][list_name]
         storage = config['storage']
         permchecker = config['permchecker']
-        storage.dbc = self.app.db[storage.coll_name]
         if not config.get('check_item_perms'):
             query_params = None
         container = storage.get_container(_id, query_params)
@@ -181,7 +180,7 @@ class ListHandler(base.RequestHandler):
 
     def _propagate_project_permissions(self, _id):
         try:
-            log.warn(_id)
+            log.debug(_id)
             oid = bson.ObjectId(_id)
             update = {
                 'permissions': self.app.db.projects.find_one(oid)['permissions']

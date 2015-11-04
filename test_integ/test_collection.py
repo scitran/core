@@ -4,6 +4,7 @@ import logging
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
+log.setLevel(logging.INFO)
 import warnings
 warnings.filterwarnings('ignore')
 from nose.tools import with_setup
@@ -26,7 +27,7 @@ def setup_db():
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
-    log.warning('pid = \'{}\''.format(test_data.pid))
+    log.debug('pid = \'{}\''.format(test_data.pid))
 
     payload = {
         'files': [],
@@ -39,7 +40,7 @@ def setup_db():
     r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
     assert r.ok
     test_data.sid = json.loads(r.content)['_id']
-    log.warning('sid = \'{}\''.format(test_data.sid))
+    log.debug('sid = \'{}\''.format(test_data.sid))
 
     payload = {
         'files': [],
@@ -52,7 +53,7 @@ def setup_db():
     r = requests.post(base_url + '/acquisitions?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
     assert r.ok
     test_data.aid = json.loads(r.content)['_id']
-    log.warning('aid = \'{}\''.format(test_data.aid))
+    log.debug('aid = \'{}\''.format(test_data.aid))
 
 def teardown_db():
     r = requests.delete(base_url + '/acquisitions/' + test_data.aid + '?user=rfrigato@stanford.edu&root=true', verify=False)
@@ -74,7 +75,7 @@ def test_sequence():
     r = requests.post(base_url + '/collections?user=rfrigato@stanford.edu', data=json.dumps(payload), verify=False)
     assert r.ok
     _id = json.loads(r.content)['_id']
-    log.warning('_id = \'{}\''.format(_id))
+    log.debug('_id = \'{}\''.format(_id))
     r = requests.get(base_url + '/collections/' + _id + '?user=rfrigato@stanford.edu', verify=False)
     assert r.ok
     payload = {

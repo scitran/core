@@ -81,7 +81,6 @@ class GroupHandler(base.RequestHandler):
 
     def _init_storage(self):
         self.storage = containerstorage.CollectionStorage('groups', use_oid=False)
-        self.storage.dbc = self.app.db[self.storage.coll_name]
 
     def _get_group(self, _id):
         group = self.storage.get_container(_id)

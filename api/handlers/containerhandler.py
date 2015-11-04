@@ -75,7 +75,7 @@ class ContainerHandler(base.RequestHandler):
     def get(self, coll_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         try:
             container= self._get_container(_id)
         except APIStorageException as e:
@@ -102,7 +102,7 @@ class ContainerHandler(base.RequestHandler):
 
     def get_all(self, coll_name, par_coll_name=None, par_id=None):
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
@@ -163,7 +163,7 @@ class ContainerHandler(base.RequestHandler):
 
     def get_all_for_user(self, coll_name, uid):
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
@@ -189,7 +189,7 @@ class ContainerHandler(base.RequestHandler):
 
     def post(self, coll_name, **kwargs):
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body
@@ -218,7 +218,7 @@ class ContainerHandler(base.RequestHandler):
     def put(self, coll_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         container = self._get_container(_id)
         mongo_validator, payload_validator = self._get_validators()
 
@@ -251,7 +251,7 @@ class ContainerHandler(base.RequestHandler):
     def delete(self, coll_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         container= self._get_container(_id)
         target_parent_container, parent_id_property = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
@@ -294,9 +294,6 @@ class ContainerHandler(base.RequestHandler):
         log.debug(parent_container)
         return parent_container, parent_id_property
 
-    def _init_storage(self):
-        self.storage = self.config['storage']
-        self.storage.dbc = self.app.db[self.storage.coll_name]
 
     def _get_container(self, _id):
         container = self.storage.get_container(_id)

@@ -28,7 +28,7 @@ class CollectionsHandler(ContainerHandler):
 
     def post(self, **kwargs):
         self.config = self.container_handler_configurations['collections']
-        self._init_storage()
+        self.storage = self.config['storage']
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body
@@ -50,7 +50,7 @@ class CollectionsHandler(ContainerHandler):
     def put(self, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations['collections']
-        self._init_storage()
+        self.storage = self.config['storage']
         container = self._get_container(_id)
         mongo_validator, payload_validator = self._get_validators()
 
@@ -98,7 +98,7 @@ class CollectionsHandler(ContainerHandler):
 
     def get_all(self, coll_name):
         self.config = self.container_handler_configurations[coll_name]
-        self._init_storage()
+        self.storage = self.config['storage']
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
@@ -143,7 +143,7 @@ class CollectionsHandler(ContainerHandler):
 
         # FIXME use storage and permission checking abstractions
         self.config = self.container_handler_configurations['collections']
-        self._init_storage()
+        self.storage = self.config['storage']
         if not bson.ObjectId.is_valid(cid):
             self.abort(400, 'not a valid object id')
         _id = bson.ObjectId(cid)
@@ -174,7 +174,7 @@ class CollectionsHandler(ContainerHandler):
 
         # FIXME use storage and permission checking abstractions
         self.config = self.container_handler_configurations['collections']
-        self._init_storage()
+        self.storage = self.config['storage']
         if not bson.ObjectId.is_valid(cid):
             self.abort(400, 'not a valid object id')
         _id = bson.ObjectId(cid)

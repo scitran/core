@@ -100,7 +100,6 @@ class UserHandler(base.RequestHandler):
 
     def _init_storage(self):
         self.storage = containerstorage.CollectionStorage('users', use_oid=False)
-        self.storage.dbc = self.app.db[self.storage.coll_name]
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

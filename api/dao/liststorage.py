@@ -1,12 +1,13 @@
 # @author:  Renzo Frigato
 
-import bson.objectid
-import bson.errors
-import datetime
-import logging
-import copy
 import re
+import copy
+import logging
+import datetime
+import bson.errors
+import bson.objectid
 
+from .. import mongo
 from . import APIStorageException
 
 log = logging.getLogger('scitran.api')
@@ -24,7 +25,7 @@ class ListStorage(object):
         # the collection is not loaded when the class is instantiated
         # this allows to instantiate the class when the db is not available
         # and load the collection later when the db is available
-        self.dbc = None
+        self.dbc = mongo.db[coll_name]
 
     def get_container(self, _id, query_params=None):
         """

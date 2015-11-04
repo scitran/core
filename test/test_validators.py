@@ -8,7 +8,6 @@ log.addHandler(sh)
 class StubHandler:
     def abort(iself, code, message):
         err_m = str(code) + ' ' + message
-        #log.error(err_m)
         raise Exception(err_m)
 
 default_handler = StubHandler()
