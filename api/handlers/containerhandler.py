@@ -103,13 +103,11 @@ class ContainerHandler(base.RequestHandler):
     def get_all(self, coll_name, par_coll_name=None, par_id=None):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
-        public = self.is_true('public')
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
-            public = True
-            permchecker = always_ok
+            permchecker = containerauth.list_public_request
         else:
             admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self, admin_only)
@@ -123,7 +121,7 @@ class ContainerHandler(base.RequestHandler):
             query = {par_coll_name[:-1]: par_id}
         else:
             query = {}
-        results = permchecker(self.storage.exec_op)('GET', query=query, public=public, projection=projection)
+        results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])

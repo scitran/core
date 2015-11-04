@@ -99,18 +99,16 @@ class CollectionsHandler(ContainerHandler):
     def get_all(self, coll_name):
         self.config = self.container_handler_configurations[coll_name]
         self._init_storage()
-        public = self.is_true('public')
         projection = self.config['list_projection']
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
-            public = True
-            permchecker = always_ok
+            permchecker = containerauth.list_public_request
         else:
             admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self, admin_only)
         query = {}
-        results = permchecker(self.storage.exec_op)('GET', query=query, public=public, projection=projection)
+        results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
@@ -157,8 +155,8 @@ class CollectionsHandler(ContainerHandler):
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
         projection = self.container_handler_configurations['sessions']['list_projection']
-        log.error(query)
-        log.error(projection)
+        log.debug(query)
+        log.debug(projection)
         sessions = list(self.app.db.sessions.find(query, projection))
         self._filter_all_permissions(sessions, self.uid, self.source_site or self.app.config['site_id'])
         if self.is_true('measurements'):

@@ -101,3 +101,10 @@ def list_permission_checker(handler, admin_only=False):
         return f
     return g
 
+
+def list_public_request(exec_op):
+    def f(method, query=None, user=None, public=False, projection=None):
+        if public:
+            query['public'] = True
+        return exec_op(method, query=query, user=user, public=public, projection=projection)
+    return f

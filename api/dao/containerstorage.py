@@ -85,8 +85,6 @@ class CollectionStorage(object):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
             else:
                 query['permissions'] = {'$elemMatch': user}
-        if public:
-            query['public'] = True
         log.debug(query)
         log.debug(projection)
         result = self.dbc.find(query, projection)
