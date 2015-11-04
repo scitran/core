@@ -80,7 +80,7 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'User {} not updated'.format(_id))
 
     def _init_storage(self):
-        self.storage = containerstorage.CollectionStorage('groups', use_oid=False)
+        self.storage = containerstorage.ContainerStorage('groups', use_oid=False)
 
     def _get_group(self, _id):
         group = self.storage.get_container(_id)

@@ -42,27 +42,27 @@ class ContainerHandler(base.RequestHandler):
 
     container_handler_configurations = {
         'projects': {
-            'storage': containerstorage.CollectionStorage('projects', use_oid=use_oid['projects']),
+            'storage': containerstorage.ContainerStorage('projects', use_oid=use_oid['projects']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.CollectionStorage('groups', use_oid=use_oid['groups']),
+            'parent_storage': containerstorage.ContainerStorage('groups', use_oid=use_oid['groups']),
             'mongo_schema_file': 'mongo/project.json',
             'payload_schema_file': 'input/project.json',
             'list_projection': {'metadata': 0},
             'children_dbc': 'sessions'
         },
         'sessions': {
-            'storage': containerstorage.CollectionStorage('sessions', use_oid=use_oid['sessions']),
+            'storage': containerstorage.ContainerStorage('sessions', use_oid=use_oid['sessions']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.CollectionStorage('projects', use_oid=use_oid['projects']),
+            'parent_storage': containerstorage.ContainerStorage('projects', use_oid=use_oid['projects']),
             'mongo_schema_file': 'mongo/session.json',
             'payload_schema_file': 'input/session.json',
             'list_projection': {'metadata': 0},
             'children_dbc': 'acquisitions'
         },
         'acquisitions': {
-            'storage': containerstorage.CollectionStorage('acquisitions', use_oid=use_oid['acquisitions']),
+            'storage': containerstorage.ContainerStorage('acquisitions', use_oid=use_oid['acquisitions']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.CollectionStorage('sessions', use_oid=use_oid['sessions']),
+            'parent_storage': containerstorage.ContainerStorage('sessions', use_oid=use_oid['sessions']),
             'mongo_schema_file': 'mongo/acquisition.json',
             'payload_schema_file': 'input/acquisition.json',
             'list_projection': {'metadata': 0}
@@ -72,9 +72,9 @@ class ContainerHandler(base.RequestHandler):
     def __init__(self, request=None, response=None):
         super(ContainerHandler, self).__init__(request, response)
 
-    def get(self, coll_name, **kwargs):
+    def get(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
-        self.config = self.container_handler_configurations[coll_name]
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         try:
             container= self._get_container(_id)
@@ -87,7 +87,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
 
         if result is None:
-            self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
         if not self.superuser_request:
             self._filter_permissions(result, self.uid, self.source_site or self.app.config['site_id'])
         if self.is_true('paths'):
@@ -100,8 +100,8 @@ class ContainerHandler(base.RequestHandler):
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
 
-    def get_all(self, coll_name, par_coll_name=None, par_id=None):
-        self.config = self.container_handler_configurations[coll_name]
+    def get_all(self, cont_name, par_cont_name=None, par_id=None):
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         projection = self.config['list_projection']
         if self.superuser_request:
@@ -111,26 +111,26 @@ class ContainerHandler(base.RequestHandler):
         else:
             admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self, admin_only)
-        if par_coll_name:
+        if par_cont_name:
             if not par_id:
-                self.abort(500, 'par_id is required when par_coll_name is provided')
-            if self.use_oid.get(par_coll_name):
+                self.abort(500, 'par_id is required when par_cont_name is provided')
+            if self.use_oid.get(par_cont_name):
                 if not bson.ObjectId.is_valid(par_id):
                     self.abort(400, 'not a valid object id')
                 par_id = bson.ObjectId(par_id)
-            query = {par_coll_name[:-1]: par_id}
+            query = {par_cont_name[:-1]: par_id}
         else:
             query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
-            self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
         if self.is_true('counts'):
-            self._add_results_counts(results, coll_name)
-        if coll_name == 'sessions' and self.is_true('measurements'):
+            self._add_results_counts(results, cont_name)
+        if cont_name == 'sessions' and self.is_true('measurements'):
             self._add_session_measurements(results)
         if self.debug:
-            debuginfo.add_debuginfo(self, coll_name, results)
+            debuginfo.add_debuginfo(self, cont_name, results)
         return results
 
     def _filter_all_permissions(self, results, uid, site):
@@ -141,11 +141,11 @@ class ContainerHandler(base.RequestHandler):
 
     def _add_results_counts(self, results):
         dbc_name = self.config.get('children_dbc')
-        el_coll_name = coll_name[:-1]
+        el_cont_name = cont_name[:-1]
         dbc = self.app.db.get(dbc_name)
         counts =  dbc.aggregate([
-            {'$match': {el_coll_name: {'$in': [proj['_id'] for proj in projects]}}},
-            {'$group': {'_id': '$' + el_coll_name, 'count': {"$sum": 1}}}
+            {'$match': {el_cont_name: {'$in': [proj['_id'] for proj in projects]}}},
+            {'$group': {'_id': '$' + el_cont_name, 'count': {"$sum": 1}}}
             ])
         counts = {elem['_id']: elem['count'] for elem in counts}
         for elem in results:
@@ -161,8 +161,8 @@ class ContainerHandler(base.RequestHandler):
         for sess in results:
             sess['measurements'] = session_measurements.get(sess['_id'], None)
 
-    def get_all_for_user(self, coll_name, uid):
-        self.config = self.container_handler_configurations[coll_name]
+    def get_all_for_user(self, cont_name, uid):
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         projection = self.config['list_projection']
         if self.superuser_request:
@@ -181,14 +181,14 @@ class ContainerHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if results is None:
-            self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
         if self.debug:
-            debuginfo.add_debuginfo(self, coll_name, results)
+            debuginfo.add_debuginfo(self, cont_name, results)
         return results
 
-    def post(self, coll_name, **kwargs):
-        self.config = self.container_handler_configurations[coll_name]
+    def post(self, cont_name, **kwargs):
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         mongo_validator, payload_validator = self._get_validators()
 
@@ -196,12 +196,12 @@ class ContainerHandler(base.RequestHandler):
         log.debug(payload)
         payload_validator(payload, 'POST')
         parent_container, parent_id_property = self._get_parent_container(payload)
-        if coll_name == 'sessions':
+        if cont_name == 'sessions':
             payload['group'] = parent_container['group']
         payload[parent_id_property] = parent_container['_id']
-        if self.is_true('inherit') and coll_name == 'projects':
+        if self.is_true('inherit') and cont_name == 'projects':
             payload['permissions'] = parent_container.get('roles')
-        elif coll_name =='projects':
+        elif cont_name =='projects':
             payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
         else:
             payload['permissions'] = parent_container.get('permissions', [])
@@ -213,11 +213,11 @@ class ContainerHandler(base.RequestHandler):
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
-            self.abort(404, 'Element not added in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not added in container {} {}'.format(storage.cont_name, _id))
 
-    def put(self, coll_name, **kwargs):
+    def put(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
-        self.config = self.container_handler_configurations[coll_name]
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container = self._get_container(_id)
         mongo_validator, payload_validator = self._get_validators()
@@ -228,7 +228,7 @@ class ContainerHandler(base.RequestHandler):
         target_parent_container, parent_id_property = self._get_parent_container(payload)
         if target_parent_container:
             payload[parent_id_property] = target_parent_container['_id']
-            if coll_name == 'sessions':
+            if cont_name == 'sessions':
                 payload['group'] = target_parent_container['group']
             payload['permissions'] = target_parent_container.get('roles')
             if payload['permissions'] is None:
@@ -246,11 +246,11 @@ class ContainerHandler(base.RequestHandler):
         if result.modified_count == 1:
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'Element not updated in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not updated in container {} {}'.format(storage.cont_name, _id))
 
-    def delete(self, coll_name, **kwargs):
+    def delete(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
-        self.config = self.container_handler_configurations[coll_name]
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container= self._get_container(_id)
         target_parent_container, parent_id_property = self._get_parent_container(container)
@@ -263,7 +263,7 @@ class ContainerHandler(base.RequestHandler):
         if result.deleted_count == 1:
             return {'deleted': result.deleted_count}
         else:
-            self.abort(404, 'Element not removed from collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not removed from container {} {}'.format(storage.cont_name, _id))
 
     def get_groups_with_project(self):
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
@@ -280,15 +280,15 @@ class ContainerHandler(base.RequestHandler):
             return None, None
         log.debug(payload)
         parent_storage = self.config['parent_storage']
-        parent_id_property = parent_storage.coll_name[:-1]
+        parent_id_property = parent_storage.cont_name[:-1]
         log.debug(parent_id_property)
         parent_id = payload.get(parent_id_property)
         log.debug(parent_id)
         if parent_id:
-            parent_storage.dbc = self.app.db[parent_storage.coll_name]
+            parent_storage.dbc = self.app.db[parent_storage.cont_name]
             parent_container = parent_storage.get_container(parent_id)
             if parent_container is None:
-                self.abort(404, 'Element {} not found in collection {}'.format(parent_id, parent_storage.coll_name))
+                self.abort(404, 'Element {} not found in container {}'.format(parent_id, parent_storage.cont_name))
         else:
             parent_container = None
         log.debug(parent_container)
@@ -300,7 +300,7 @@ class ContainerHandler(base.RequestHandler):
         if container is not None:
             return container
         else:
-            self.abort(404, 'Element {} not found in collection {}'.format(_id, self.storage.coll_name))
+            self.abort(404, 'Element {} not found in container {}'.format(_id, self.storage.cont_name))
 
     def _get_permchecker(self, container=None, parent_container=None):
         if self.superuser_request:

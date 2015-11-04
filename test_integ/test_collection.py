@@ -1,15 +1,20 @@
 import requests
 import json
 import logging
+
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
 log.setLevel(logging.INFO)
+
 import warnings
+
 warnings.filterwarnings('ignore')
+
 from nose.tools import with_setup
 import pymongo
 from bson.objectid import ObjectId
+
 db = pymongo.MongoClient('mongodb://localhost:9001/scitran').get_default_database()
 
 base_url = 'https://localhost:8443/api'

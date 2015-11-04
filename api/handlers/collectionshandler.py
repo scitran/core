@@ -20,7 +20,7 @@ class CollectionsHandler(ContainerHandler):
 
     container_handler_configurations['collections'] = {
         'permchecker': containerauth.collection_permissions,
-        'storage': containerstorage.CollectionStorage('collections', use_oid=True),
+        'storage': containerstorage.ContainerStorage('collections', use_oid=True),
         'mongo_schema_file': 'mongo/collection.json',
         'payload_schema_file': 'input/collection.json',
         'list_projection': {'metadata': 0}
@@ -45,7 +45,7 @@ class CollectionsHandler(ContainerHandler):
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
-            self.abort(404, 'Element not added in collection "collections" {}'.format(_id))
+            self.abort(404, 'Element not added in collection {}'.format(_id))
 
     def put(self, **kwargs):
         _id = kwargs.pop('cid')
@@ -68,7 +68,7 @@ class CollectionsHandler(ContainerHandler):
             self._add_contents(contents, _id)
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'Element not updated in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not updated in collection {} {}'.format(storage.cont_name, _id))
 
     def _add_contents(self, contents, _id):
         if not contents:
@@ -91,13 +91,13 @@ class CollectionsHandler(ContainerHandler):
             self.abort(400, 'not a valid object id')
         self.app.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': bson.ObjectId(_id)}})
 
-    def delete(self, coll_name, **kwargs):
+    def delete(self, cont_name, **kwargs):
         _id = kwargs.get('cid')
-        super(CollectionsHandler, self).delete(coll_name, **kwargs)
+        super(CollectionsHandler, self).delete(cont_name, **kwargs)
         self.app.db.acquisitions.update_many({'collections': bson.ObjectId(_id)}, {'$pull': {'collections': bson.ObjectId(_id)}})
 
-    def get_all(self, coll_name):
-        self.config = self.container_handler_configurations[coll_name]
+    def get_all(self, cont_name):
+        self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         projection = self.config['list_projection']
         if self.superuser_request:
@@ -110,7 +110,7 @@ class CollectionsHandler(ContainerHandler):
         query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
-            self.abort(404, 'Element not found in collection {} {}'.format(storage.coll_name, _id))
+            self.abort(404, 'Element not found in collection {} {}'.format(storage.cont_name, _id))
         self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
         if self.is_true('counts'):
             self._add_results_counts(results)
@@ -118,9 +118,9 @@ class CollectionsHandler(ContainerHandler):
             for coll in results:
                 coll['debug'] = {}
                 cid = str(coll['_id'])
-                coll['debug']['details'] =  self.uri_for('coll_details', coll_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
-                coll['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
-                coll['debug']['sessions'] =     self.uri_for('coll_ses', coll_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
+                coll['debug']['details'] =  self.uri_for('coll_details', cont_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
+                coll['debug']['acquisitions'] = self.uri_for('coll_acq', cont_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
+                coll['debug']['sessions'] =     self.uri_for('coll_ses', cont_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
         return results
 
     def _add_results_counts(self, results):
@@ -138,7 +138,7 @@ class CollectionsHandler(ContainerHandler):
         curator_ids = list(set((c['curator'] for c in self.get_all('collections'))))
         return list(self.app.db.users.find({'_id': {'$in': curator_ids}}, ['firstname', 'lastname']))
 
-    def get_sessions(self, coll_name, cid):
+    def get_sessions(self, cont_name, cid):
         """Return the list of sessions in a collection."""
 
         # FIXME use storage and permission checking abstractions
@@ -165,8 +165,8 @@ class CollectionsHandler(ContainerHandler):
             for sess in sessions:
                 sess['debug'] = {}
                 sid = str(sess['_id'])
-                sess['debug']['details'] = self.uri_for('cont_details', coll_name='sessions', cid=sid, _full=True) + '?user=' + self.get_param('user', '')
-                sess['debug']['acquisitions'] = self.uri_for('coll_acq', coll_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.get_param('user', ''))
+                sess['debug']['details'] = self.uri_for('cont_details', cont_name='sessions', cid=sid, _full=True) + '?user=' + self.get_param('user', '')
+                sess['debug']['acquisitions'] = self.uri_for('coll_acq', cont_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.get_param('user', ''))
         return sessions
 
     def get_acquisitions(self, cid, **kwargs):
@@ -195,7 +195,7 @@ class CollectionsHandler(ContainerHandler):
             for acq in acquisitions:
                 acq['debug'] = {}
                 aid = str(acq['_id'])
-                acq['debug']['details'] = self.uri_for('cont_details', coll_name='acquisitions', cid=aid, _full=True) + '?user=' + self.get_param('user', '')
+                acq['debug']['details'] = self.uri_for('cont_details', cont_name='acquisitions', cid=aid, _full=True) + '?user=' + self.get_param('user', '')
         return acquisitions
 
 

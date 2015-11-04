@@ -18,14 +18,11 @@ class ListStorage(object):
     This class provides access to sublists of a mongodb collections elements (called containers).
     """
 
-    def __init__(self, coll_name, list_name, use_oid = False):
-        self.coll_name = coll_name
+    def __init__(self, cont_name, list_name, use_oid = False):
+        self.cont_name = cont_name
         self.list_name = list_name
         self.use_oid = use_oid
-        # the collection is not loaded when the class is instantiated
-        # this allows to instantiate the class when the db is not available
-        # and load the collection later when the db is available
-        self.dbc = mongo.db[coll_name]
+        self.dbc = mongo.db[cont_name]
 
     def get_container(self, _id, query_params=None):
         """
@@ -36,8 +33,6 @@ class ListStorage(object):
 
         For simplicity we load its full content.
         """
-        if self.dbc is None:
-            raise RuntimeError('collection not initialized before calling get_container')
         if self.use_oid:
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}

@@ -99,7 +99,7 @@ class UserHandler(base.RequestHandler):
             self.abort(404, 'User {} not updated'.format(_id))
 
     def _init_storage(self):
-        self.storage = containerstorage.CollectionStorage('users', use_oid=False)
+        self.storage = containerstorage.ContainerStorage('users', use_oid=False)
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

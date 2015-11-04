@@ -11,23 +11,17 @@ from . import APIStorageException
 
 log = logging.getLogger('scitran.api')
 
-class CollectionStorage(object):
+class ContainerStorage(object):
     """
     This class provides access to sublists of mongodb collection elements (called containers).
     """
 
-    def __init__(self, coll_name, use_oid = False):
-        self.coll_name = coll_name
+    def __init__(self, cont_name, use_oid = False):
+        self.cont_name = cont_name
         self.use_oid = use_oid
-        # the collection is not loaded when the class is instantiated
-        # this allows to instantiate the class when the db is not available
-        # and load the collection later when the db is available
-        self.dbc = mongo.db[coll_name]
+        self.dbc = mongo.db[cont_name]
 
     def get_container(self, _id):
-        if self.dbc is None:
-            raise RuntimeError('collection not initialized before calling get_container')
-        #projection = {'permissions': 1, 'public': 1}
         return self._get_el(_id)
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None, public=False, projection=None):

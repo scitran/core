@@ -61,11 +61,11 @@ def initialize_list_configurations():
         'collections': copy.deepcopy(container_default_configurations)
     }
     # preload the Storage instances for all configurations
-    for coll_name, coll_config in list_handler_configurations.iteritems():
-        for list_name, list_config in coll_config.iteritems():
+    for cont_name, cont_config in list_handler_configurations.iteritems():
+        for list_name, list_config in cont_config.iteritems():
             storage_class = list_config['storage']
             storage = storage_class(
-                coll_name,
+                cont_name,
                 list_name,
                 use_oid=list_config.get('use_oid', False)
             )
@@ -93,36 +93,36 @@ class ListHandler(base.RequestHandler):
         super(ListHandler, self).__init__(request, response)
         self._initialized = None
 
-    def get(self, coll_name, list_name, **kwargs):
+    def get(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
         try:
             result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
         except APIStorageException as e:
             self.abort(400, e.message)
 
         if result is None:
-            self.abort(404, 'Element not found in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not found in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
         return result
 
-    def post(self, coll_name, list_name, **kwargs):
+    def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         payload = self.request.json_body
         payload_validator(payload, 'POST')
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
-            if coll_name == 'projects' and list_name == 'permissions':
+            if cont_name == 'projects' and list_name == 'permissions':
                 self._propagate_project_permissions(_id)
             return {'modified':result.modified_count}
         else:
-            self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
-    def put(self, coll_name, list_name, **kwargs):
+    def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
@@ -131,34 +131,34 @@ class ListHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
-            if coll_name == 'projects' and list_name == 'permissions':
+            if cont_name == 'projects' and list_name == 'permissions':
                 self._propagate_project_permissions(_id)
             return {'modified':result.modified_count}
         else:
-            self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
-    def delete(self, coll_name, list_name, **kwargs):
+    def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
         try:
             result = keycheck(permchecker(storage.exec_op))('DELETE', _id, query_params=kwargs)
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
-            if coll_name == 'projects' and list_name == 'permissions':
+            if cont_name == 'projects' and list_name == 'permissions':
                 self._propagate_project_permissions(_id)
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'Element not removed from list {} in collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
-    def _initialize_request(self, coll_name, list_name, _id, query_params=None):
+    def _initialize_request(self, cont_name, list_name, _id, query_params=None):
         """
         This method loads:
         1) the container that will be modified
         2) the storage class that will handle the database actions
         3) the permission checker decorator that will be used
         """
-        config = list_handler_configurations[coll_name][list_name]
+        config = list_handler_configurations[cont_name][list_name]
         storage = config['storage']
         permchecker = config['permchecker']
         if not config.get('check_item_perms'):
@@ -172,7 +172,7 @@ class ListHandler(base.RequestHandler):
             else:
                 permchecker = permchecker(self, container)
         else:
-            self.abort(404, 'Element {} not found in collection {}'.format(_id, storage.coll_name))
+            self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
         mongo_validator = validators.mongo_from_schema_file(self, config.get('mongo_schema_file'))
         input_validator = validators.payload_from_schema_file(self, config.get('payload_schema_file'))
         keycheck = validators.key_check(self, config.get('mongo_schema_file'))
@@ -193,9 +193,9 @@ class ListHandler(base.RequestHandler):
 
 class NotesListHandler(ListHandler):
 
-    def post(self, coll_name, list_name, **kwargs):
+    def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         payload = self.request.json_body
         input_validator(payload, 'POST')
@@ -209,11 +209,11 @@ class NotesListHandler(ListHandler):
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
-            self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
-    def put(self, coll_name, list_name, **kwargs):
+    def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(coll_name, list_name, _id, query_params=kwargs)
+        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         payload = self.request.json_body
         input_validator(payload, 'PUT')
@@ -225,7 +225,7 @@ class NotesListHandler(ListHandler):
         if result.modified_count == 1:
             return {'modified':result.modified_count}
         else:
-            self.abort(404, 'Element not updated in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
 
 class FileListHandler(ListHandler):
@@ -244,9 +244,9 @@ class FileListHandler(ListHandler):
             self.abort(400, 'ticket not for this resource or source IP')
         return ticket
 
-    def get(self, coll_name, list_name, **kwargs):
+    def get(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         list_name = storage.list_name
         filename = kwargs.get('filename')
         ticket_id = self.get_param('ticket')
@@ -302,10 +302,10 @@ class FileListHandler(ListHandler):
                     self.response.headers['Content-Type'] = 'application/octet-stream'
                     self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
-    def delete(self, coll_name, list_name, **kwargs):
+    def delete(self, cont_name, list_name, **kwargs):
         filename = kwargs.get('filename')
         _id = kwargs.get('cid')
-        result = super(FileListHandler, self).delete(coll_name, list_name, **kwargs)
+        result = super(FileListHandler, self).delete(cont_name, list_name, **kwargs)
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -316,15 +316,15 @@ class FileListHandler(ListHandler):
             result['removed'] = 0
         return result
 
-    def put(self, coll_name, list_name, **kwargs):
-        fileinfo = super(FileListHandler, self).get(coll_name, list_name, **kwargs)
+    def put(self, cont_name, list_name, **kwargs):
+        fileinfo = super(FileListHandler, self).get(cont_name, list_name, **kwargs)
         # TODO: implement file metadata updates
         self.abort(400, 'PUT is not yet implemented')
 
-    def post(self, coll_name, list_name, **kwargs):
+    def post(self, cont_name, list_name, **kwargs):
         force = self.is_true('force')
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(coll_name, list_name, _id)
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
         payload = self.request.POST.mixed()
         filename = payload.get('filename') or kwargs.get('filename')
         file_request = files.FileRequest.from_handler(self, filename)
@@ -369,7 +369,7 @@ class FileListHandler(ListHandler):
             payload.update(file_properties)
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id, payload=payload)
             if not result or result.modified_count != 1:
-                self.abort(404, 'Element not added in list {} of collection {} {}'.format(storage.list_name, storage.coll_name, _id))
+                self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
             try:
                 file_request.move_temp_file(dest_path)
 
