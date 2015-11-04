@@ -22,11 +22,9 @@ test_data = type('',(object,),{})()
 
 def setup_db():
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
@@ -35,11 +33,9 @@ def setup_db():
     log.debug('pid = \'{}\''.format(test_data.pid))
 
     payload = {
-        'files': [],
         'project': test_data.pid,
         'label': 'session_testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
@@ -48,11 +44,9 @@ def setup_db():
     log.debug('sid = \'{}\''.format(test_data.sid))
 
     payload = {
-        'files': [],
         'session': test_data.sid,
         'label': 'acq_testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/acquisitions?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
@@ -72,7 +66,6 @@ def teardown_db():
 @with_setup(setup_db, teardown_db)
 def test_sequence():
     payload = {
-        'files': [],
         'curator': 'rfrigato@stanford.edu',
         'label': 'SciTran/Testing',
         'public': True

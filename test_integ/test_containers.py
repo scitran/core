@@ -11,11 +11,9 @@ base_url = 'https://localhost:8443/api'
 
 def test_projects():
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
@@ -34,22 +32,18 @@ def test_projects():
 
 def test_sessions():
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
     assert r.ok
     pid = json.loads(r.content)['_id']
     payload = {
-        'files': [],
         'project': pid,
         'label': 'session_testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu', data=payload, verify=False)
@@ -58,11 +52,9 @@ def test_sessions():
     r = requests.get(base_url + '/sessions/' + _id + '?user=rfrigato@stanford.edu', verify=False)
     assert r.ok
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing 2',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
@@ -85,22 +77,18 @@ def test_sessions():
 
 def test_acquisitions():
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
     assert r.ok
     pid = json.loads(r.content)['_id']
     payload = {
-        'files': [],
         'project': pid,
         'label': 'session_testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu', data=payload, verify=False)
@@ -108,11 +96,9 @@ def test_acquisitions():
     sid = json.loads(r.content)['_id']
 
     payload = {
-        'files': [],
         'project': pid,
         'label': 'session_testing_1',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/sessions?user=rfrigato@stanford.edu', data=payload, verify=False)
@@ -120,11 +106,9 @@ def test_acquisitions():
     new_sid = json.loads(r.content)['_id']
 
     payload = {
-        'files': [],
         'session': sid,
         'label': 'acq_testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/acquisitions?user=rfrigato@stanford.edu', data=payload, verify=False)

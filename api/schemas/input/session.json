@@ -4,12 +4,8 @@
     "type": "object",
     "allOf": [{"$ref": "input/container.json"}],
     "properties": {
-        "notes": {},
-        "permissions": {},
-        "files": {},
         "public": {},
         "label": {},
-        "tags": {},
         "metadata": {},
 
         "project":      {"type": "string"},

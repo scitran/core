@@ -5,15 +5,11 @@
     "allOf": [{"$ref": "input/container.json"}],
     "properties": {
         "notes": {},
-        "permissions": {},
-        "files": {},
         "public": {},
         "label": {},
-        "tags": {},
         "metadata": {},
 
         "session":      {"type": "string"},
-        "collections":  {"type": "array", "items": {"type": "string" }},
         "uid":          {"type": "string"},
         "instrument":   {"type": "string"},
         "measurement":  {"type": "string"},

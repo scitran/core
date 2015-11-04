@@ -25,11 +25,9 @@ def _build_url(_id=None, requestor=adm_user, site='local'):
 
 def setup_db():
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing',
-        'public': False,
-        'permissions': []
+        'public': False
     }
     payload = json.dumps(payload)
     r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)

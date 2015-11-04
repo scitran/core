@@ -10,8 +10,6 @@
                           "title": "ID",
                           "type": "string"
                         },
-    "created":          {},
-    "modified":         {},
     "firstname":        {
                           "maxLength": 32,
                           "minLength": 2,

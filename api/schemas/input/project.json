@@ -5,14 +5,8 @@
     "allOf": [{"$ref": "input/container.json"}],
     "properties": {
         "_id": {},
-        "created": {},
-        "modified": {},
-        "notes": {},
-        "permissions": {},
-        "files": {},
         "public": {},
         "label": {},
-        "tags": {},
         "metadata": {},
 
         "group": {"type": "string"}

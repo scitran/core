@@ -14,11 +14,9 @@ projects = db.projects
 
 def test_extra_param():
     payload = {
-        'files': [],
         'group': 'unknown',
         'label': 'SciTran/Testing',
         'public': False,
-        'permissions': [],
         'extra_param': 'some_value'
     }
     payload = json.dumps(payload)
