@@ -20,21 +20,21 @@ def default_container(handler, container=None, target_parent_container=None):
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['ro']
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['ro']
             elif method == 'POST':
-                has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_ROLES['admin']
+                has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
             elif method == 'DELETE':
                 if target_parent_container:
-                    has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_ROLES['admin']
+                    has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
                 else:
-                    has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['admin']
+                    has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['admin']
             elif method == 'PUT' and target_parent_container is not None:
                 has_access = (
-                    _get_access(handler.uid, container) >= INTEGER_ROLES['admin'] and
-                    _get_access(handler.uid, target_parent_container) >= INTEGER_ROLES['admin']
+                    _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['admin'] and
+                    _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
                 )
             elif method == 'PUT' and target_parent_container is None:
-                has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['rw']
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['rw']
             else:
                 has_access = False
 
@@ -56,13 +56,13 @@ def collection_permissions(handler, container=None, target_parent_container=None
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['ro']
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['ro']
             elif method == 'DELETE':
-                has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['admin']
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['admin']
             elif method == 'POST':
                 has_access = True
             elif method == 'PUT':
-                has_access = _get_access(handler.uid, container) >= INTEGER_ROLES['rw']
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['rw']
             else:
                 has_access = False
 
@@ -91,10 +91,10 @@ def public_request(handler, container=None, parent_container=None):
 def list_permission_checker(handler, admin_only=False):
     def g(exec_op):
         def f(method, query=None, user=None, public=False, projection=None):
-            handler_site = handler.source_site or handler.app.config['site_id']
+            handler_site = handler.user_site
             if user and (user['_id'] != handler.uid or user['site'] != handler_site):
                 handler.abort(403, 'User ' + handler.uid + ' may not see the Projects of User ' + user['_id'])
-            query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'site': handler.source_site or handler.app.config['site_id']}}
+            query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'site': handler.user_site}}
             if handler.is_true('public'):
                 query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
             return exec_op(method, query=query, user=user, public=public, projection=projection)

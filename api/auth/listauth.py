@@ -16,7 +16,7 @@ def default_sublist(handler, container):
     The resulting permissions checker modifies the exec_op method by checking the user permissions
     on the container before actually executing this method.
     """
-    access = _get_access(handler.uid, container)
+    access = _get_access(handler.uid, handler.user_site, container)
     def g(exec_op):
         def f(method, _id, query_params=None, payload=None, exclude_params=None):
             if method == 'GET' and container.get('public', False):
@@ -39,7 +39,7 @@ def group_roles_sublist(handler, container):
     """
     This is the customized permissions checker for group roles operations.
     """
-    access = _get_access(handler.uid, container)
+    access = _get_access(handler.uid, handler.user_site, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid:
@@ -55,11 +55,11 @@ def permissions_sublist(handler, container):
     """
     the customized permissions checker for permissions operations.
     """
-    access = _get_access(handler.uid, container)
+    access = _get_access(handler.uid, handler.user_site, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             log.debug(query_params)
-            if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid and query_params.get('site') == (handler.source_site or handler.app.config['site_id']):
+            if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid and query_params.get('site') == handler.user_site:
                 return exec_op(method, _id, query_params, payload, exclude_params)
             elif access >= INTEGER_ROLES['admin']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
@@ -72,7 +72,7 @@ def notes_sublist(handler, container):
     """
     permissions checker for notes_sublist
     """
-    access = _get_access(handler.uid, container)
+    access = _get_access(handler.uid, handler.user_site, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if access >= INTEGER_ROLES['admin']:

@@ -89,7 +89,7 @@ class ContainerHandler(base.RequestHandler):
         if result is None:
             self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
         if not self.superuser_request:
-            self._filter_permissions(result, self.uid, self.source_site or self.app.config['site_id'])
+            self._filter_permissions(result, self.uid, self.user_site)
         if self.is_true('paths'):
             for fileinfo in result['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
@@ -124,7 +124,7 @@ class ContainerHandler(base.RequestHandler):
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
-        self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
+        self._filter_all_permissions(results, self.uid, self.user_site)
         if self.is_true('counts'):
             self._add_results_counts(results, cont_name)
         if cont_name == 'sessions' and self.is_true('measurements'):
@@ -182,7 +182,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
-        self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
+        self._filter_all_permissions(results, self.uid, self.user_site)
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, results)
         return results
@@ -202,7 +202,7 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('inherit') and cont_name == 'projects':
             payload['permissions'] = parent_container.get('roles')
         elif cont_name =='projects':
-            payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}]
+            payload['permissions'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}]
         else:
             payload['permissions'] = parent_container.get('permissions', [])
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()

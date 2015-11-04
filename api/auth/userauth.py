@@ -1,9 +1,9 @@
-import logging
 import sys
+import logging
 
 log = logging.getLogger('scitran.api')
 
-from . import _get_access, always_ok, INTEGER_ROLES
+from . import always_ok, INTEGER_ROLES
 
 
 def default(handler, user=None):

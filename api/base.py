@@ -88,6 +88,7 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
                 self.abort(401, 'no valid SSL client certificate')
+        self.user_site = self.source_site or self.app.config['site_id']
 
         self.public_request = not drone_request and not self.uid
 

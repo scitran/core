@@ -15,7 +15,7 @@ def default(handler, group=None):
                 handler.abort(400, 'public request is not valid')
             elif method in ['DELETE', 'POST']:
                 handler.abort(403, 'not allowed to perform operation')
-            elif _get_access(handler.uid, group) >= INTEGER_ROLES['admin']:
+            elif _get_access(handler.uid, handler.user_site, group) >= INTEGER_ROLES['admin']:
                 pass
             else:
                 handler.abort(403, 'not allowed to perform operation')

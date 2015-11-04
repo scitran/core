@@ -16,10 +16,10 @@ ROLES = [
 
 INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
 
-def _get_access(uid, container):
+def _get_access(uid, site, container):
     permissions_list = container.get('roles', container.get('permissions', []))
     for perm in permissions_list:
-        if perm['_id'] == uid:
+        if perm['_id'] == uid and perm['site'] == site:
             return INTEGER_ROLES[perm['access']]
     else:
         return -1

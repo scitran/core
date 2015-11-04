@@ -36,7 +36,7 @@ class CollectionsHandler(ContainerHandler):
         payload_validator(payload, 'POST')
         payload['permissions'] = [{
             '_id': self.uid,
-            'site': self.source_site or self.app.config['site_id'],
+            'site': self.user_site,
             'access': 'admin'
         }]
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
@@ -111,7 +111,7 @@ class CollectionsHandler(ContainerHandler):
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in collection {} {}'.format(storage.cont_name, _id))
-        self._filter_all_permissions(results, self.uid, self.source_site or self.app.config['site_id'])
+        self._filter_all_permissions(results, self.uid, self.user_site)
         if self.is_true('counts'):
             self._add_results_counts(results)
         if self.debug:
@@ -158,7 +158,7 @@ class CollectionsHandler(ContainerHandler):
         log.debug(query)
         log.debug(projection)
         sessions = list(self.app.db.sessions.find(query, projection))
-        self._filter_all_permissions(sessions, self.uid, self.source_site or self.app.config['site_id'])
+        self._filter_all_permissions(sessions, self.uid, self.user_site)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
         if self.debug:
@@ -188,7 +188,7 @@ class CollectionsHandler(ContainerHandler):
             self.abort(400, sid + ' is not a valid ObjectId')
         projection = self.container_handler_configurations['acquisitions']['list_projection']
         acquisitions = list(self.app.db.acquisitions.find(query, projection))
-        self._filter_all_permissions(acquisitions, self.uid, self.source_site or self.app.config['site_id'])
+        self._filter_all_permissions(acquisitions, self.uid, self.user_site)
         for acq in acquisitions:
             acq.setdefault('timestamp', datetime.datetime.utcnow())
         if self.debug:
