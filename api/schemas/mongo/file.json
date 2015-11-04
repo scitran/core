@@ -4,8 +4,8 @@
   "properties": {
     "_id":            { "type": "string"},
     "name":           { "type": "string" },
-    "created":        { "type": "string", "format": "date-time"},
-    "modified":       { "type": "string", "format": "date-time"},
+    "created":        {},
+    "modified":       {},
     "type":           { "type": "string" },
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },

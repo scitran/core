@@ -1,4 +1,3 @@
-# @author:  Renzo Frigato
 ROLES = [
     {
         'rid': 'ro',

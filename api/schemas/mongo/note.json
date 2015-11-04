@@ -3,8 +3,8 @@
   "type": "object",
   "properties": {
     "_id":              {"type": "string"},
-    "created":          {"type": "string", "format": "date-time"},
-    "modified":         {"type": "string", "format": "date-time"},
+    "created":          {},
+    "modified":         {},
     "user":             {"type": "string"},
     "text":             {"type": "string"}
   },

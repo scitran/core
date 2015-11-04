@@ -51,14 +51,14 @@ def teardown_db():
 @with_setup(setup_db, teardown_db)
 def test_notes():
     url_post = _build_url(requestor=user)
-    data = {'author': user, 'text':'test note'}
+    data = {'user': user, 'text':'test note'}
     r = requests.post(url_post, data=json.dumps(data), verify=False)
     assert r.ok
     r = requests.get(base_url + '/projects/{}?user={}'.format(test_data.pid, adm_user), verify=False)
     assert r.ok
     p = json.loads(r.content)
     assert len(p['notes']) == 1
-    assert p['notes'][0]['author'] == user
+    assert p['notes'][0]['user'] == user
     note_id = p['notes'][0]['_id']
     url_get = _build_url(note_id, user)
     r = requests.get(url_get, verify=False)

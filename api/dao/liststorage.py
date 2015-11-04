@@ -1,5 +1,3 @@
-# @author:  Renzo Frigato
-
 import re
 import copy
 import logging
@@ -45,7 +43,7 @@ class ListStorage(object):
         log.debug('query {}'.format(query))
         return self.dbc.find_one(query, projection)
 
-    def exec_op(self, action, _id, query_params=None, payload=None, exclude_params=None):
+    def exec_op(self, action, _id=None, query_params=None, payload=None, exclude_params=None):
         """
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
@@ -129,7 +127,7 @@ class StringListStorage(ListStorage):
         projection = {self.list_name : 1, 'permissions': 1, 'public': 1}
         return self.dbc.find_one(query, projection)
 
-    def exec_op(self, action, _id, query_params=None, payload=None, exclude_params=None):
+    def exec_op(self, action, _id=None, query_params=None, payload=None, exclude_params=None):
         """
         This method "flattens" the query parameter and the payload to handle string lists
         """

@@ -34,7 +34,7 @@ def list_permission_checker(handler):
     def g(exec_op):
         def f(method, query=None, projection=None):
             if handler.public_request:
-                self.abort(403, 'public request is not authorized')
+                handler.abort(403, 'public request is not authorized')
             return exec_op(method, query, projection)
         return f
     return g

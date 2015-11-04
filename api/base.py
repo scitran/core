@@ -1,5 +1,3 @@
-# @author:  Gunnar Schaefer, Kevin S. Hahn
-
 import copy
 import json
 import urllib

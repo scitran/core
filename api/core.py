@@ -1,5 +1,3 @@
-# @author:  Gunnar Schaefer, Kevin S. Hahn
-
 import logging
 import os
 import re

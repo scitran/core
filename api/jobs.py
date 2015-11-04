@@ -1,5 +1,3 @@
-# @author:  Kevin S Hahn
-
 """
 API request handlers for process-job-handling.
 """

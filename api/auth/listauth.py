@@ -1,4 +1,3 @@
-# @author:  Renzo Frigato
 """
 Purpose of this module is to define all the permissions checker decorators for the ListHandler classes.
 
@@ -77,11 +76,11 @@ def notes_sublist(handler, container):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if access >= INTEGER_ROLES['admin']:
                 pass
-            elif method == 'POST' and access >= INTEGER_ROLES['rw'] and payload['author'] == handler.uid:
+            elif method == 'POST' and access >= INTEGER_ROLES['rw'] and payload['user'] == handler.uid:
                 pass
             elif method == 'GET' and (access >= INTEGER_ROLES['ro'] or container.get('public')):
                 pass
-            elif method in ['GET', 'DELETE', 'PUT'] and container['notes'][0]['author'] == handler.uid:
+            elif method in ['GET', 'DELETE', 'PUT'] and container['notes'][0]['user'] == handler.uid:
                 pass
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))

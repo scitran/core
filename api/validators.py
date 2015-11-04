@@ -23,7 +23,8 @@ expected_mongo_schemas = set([
     'session.json',
     'subject.json',
     'user.json',
-    'avatars.json'
+    'avatars.json',
+    'tag.json'
 ])
 expected_input_schemas = set([
     'acquisition.json',
@@ -38,7 +39,8 @@ expected_input_schemas = set([
     'subject.json',
     'user.json',
     'avatars.json',
-    'download.json'
+    'download.json',
+    'tag.json'
 ])
 mongo_schemas = set()
 input_schemas = set()
@@ -67,7 +69,7 @@ def mongo_from_schema_file(handler, schema_file):
         return no_op
     schema = resolver.resolve(schema_file)[1]
     def g(exec_op):
-        def f(method, **kwargs):
+        def mongo_val(method, **kwargs):
             payload = kwargs['payload']
             log.debug(payload)
             if method == 'PUT' and schema.get('required'):
@@ -81,7 +83,7 @@ def mongo_from_schema_file(handler, schema_file):
                 except jsonschema.ValidationError as e:
                     handler.abort(500, str(e))
             return exec_op(method, **kwargs)
-        return f
+        return mongo_val
     return g
 
 def payload_from_schema_file(handler, schema_file):

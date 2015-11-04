@@ -1,5 +1,3 @@
-# @author:  Renzo Frigato
-
 import os
 import bson
 import copy
@@ -24,12 +22,13 @@ def initialize_list_configurations():
             'storage': liststorage.StringListStorage,
             'permchecker': listauth.default_sublist,
             'use_oid': True,
+            'mongo_schema_file': 'mongo/tag.json',
+            'input_schema_file': 'input/tag.json'
         },
         'files': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.default_sublist,
-            'use_oid': True,
-            'key_fields': ['filename']
+            'use_oid': True
         },
         'permissions': {
             'storage': liststorage.ListStorage,
@@ -42,7 +41,9 @@ def initialize_list_configurations():
             'storage': liststorage.ListStorage,
             'permchecker': listauth.notes_sublist,
             'use_oid': True,
-            'check_item_perms': True
+            'check_item_perms': True,
+            'mongo_schema_file': 'mongo/note.json',
+            'input_schema_file': 'input/note.json'
         },
     }
     list_handler_configurations = {
@@ -110,7 +111,7 @@ class ListHandler(base.RequestHandler):
 
         payload = self.request.json_body
         payload_validator(payload, 'POST')
-        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id=_id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -124,7 +125,7 @@ class ListHandler(base.RequestHandler):
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
         try:
-            result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
+            result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id=_id, query_params=kwargs, payload=payload)
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
@@ -220,11 +221,11 @@ class NotesListHandler(ListHandler):
         payload = self.request.json_body
         input_validator(payload, 'POST')
         payload['_id'] = payload.get('_id') or str(bson.objectid.ObjectId())
-        payload['author'] = payload.get('author', self.uid)
+        payload['user'] = payload.get('user', self.uid)
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
-        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id=_id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -240,7 +241,7 @@ class NotesListHandler(ListHandler):
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
-        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id, query_params=kwargs, payload=payload)
+        result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id=_id, query_params=kwargs, payload=payload)
 
         if result.modified_count == 1:
             return {'modified':result.modified_count}
@@ -387,7 +388,7 @@ class FileListHandler(ListHandler):
 
             payload_validator(payload, method)
             payload.update(file_properties)
-            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id, payload=payload)
+            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
             try:

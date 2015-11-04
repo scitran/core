@@ -1,5 +1,3 @@
-# @author:  Renzo Frigato
-
 import datetime
 import logging
 

@@ -1,5 +1,3 @@
-# @author:  Gunnar Schaefer
-
 import os
 import copy
 import pytz

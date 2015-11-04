@@ -1,4 +1,3 @@
-# @author:  Renzo Frigato
 """
 Purpose of this module is to define all the permissions checker decorators for the ContainerHandler classes.
 """

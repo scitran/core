@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# @author:  Gunnar Schaefer, Kevin S. Hahn
 """
 Client registers this instance with a central instance registery.
 
