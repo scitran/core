@@ -22,7 +22,7 @@ class FileRequest(object):
     The operations could be safely interleaved with other actions like permission checks or database updates.
     """
 
-    def __init__(self, client_addr, filename, body, received_md5, metadata, tags, flavor):
+    def __init__(self, client_addr, filename, body, received_md5, metadata, tags):
         self.client_addr = client_addr
         self.filename = filename
         self.body = body
@@ -31,7 +31,6 @@ class FileRequest(object):
         self.tags = tags
         self.mimetype = util.guess_mimetype(filename)
         self.filetype = util.guess_filetype(filename, self.mimetype)
-        self.flavor = flavor
 
     def save_temp_file(self, tempdir_path):
         self.tempdir_path = tempdir_path
@@ -137,8 +136,5 @@ class FileRequest(object):
             except ValueError:
                 handler.abort(400, 'invalid "metadata" parameter')
             body = handler.request.body_file
-        flavor = handler.get_param('flavor', 'data') # TODO: flavor should go away
-        if flavor not in ['data', 'attachment']:
-            handler.abort(400, 'Query must contain flavor parameter: "data" or "attachment".')
         md5 = handler.request.headers.get('Content-MD5')
-        return cls(handler.request.client_addr, filename, body, md5, metadata, tags, flavor)
+        return cls(handler.request.client_addr, filename, body, md5, metadata, tags)

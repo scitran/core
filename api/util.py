@@ -54,7 +54,7 @@ def parse_file(filepath, digest):
             'filehash': digest,
             'modality': dataset.nims_file_domain,
             'datatypes': dataset.nims_file_kinds,
-            'flavor': 'data',
+            'tags': ['data'],
             }
     datainfo = {
             'acquisition_id': dataset.nims_acquisition_id,

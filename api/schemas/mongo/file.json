@@ -2,7 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "_id":            { "type": "string"},
     "name":           { "type": "string" },
     "created":        {},
     "modified":       {},
@@ -25,6 +24,6 @@
       "type": "object"
     }
   },
-  "required": ["_id", "user", "text"],
+  "required": ["name", "created", "modified", "type", "size", "hash", "unprocessed"],
   "additionalProperties": false
 }

@@ -28,7 +28,9 @@ def initialize_list_configurations():
         'files': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.default_sublist,
-            'use_oid': True
+            'use_oid': True,
+            'mongo_schema_file': 'mongo/file.json',
+            'input_schema_file': 'input/file.json'
         },
         'permissions': {
             'storage': liststorage.ListStorage,
@@ -354,38 +356,34 @@ class FileListHandler(ListHandler):
             file_request.save_temp_file(tempdir_path)
             file_datetime = datetime.datetime.utcnow()
             file_properties = {
-                'filename': file_request.filename,
-                'filesize': file_request.filesize,
-                'filehash': file_request.sha1,
-                'filetype': file_request.filetype,
-                'flavor': file_request.flavor,
-                'mimetype': file_request.mimetype,
+                'name': file_request.filename,
+                'size': file_request.filesize,
+                'hash': file_request.sha1,
+                'type': file_request.mimetype,
                 'tags': file_request.tags,
                 'metadata': file_request.metadata,
                 'created': file_datetime,
                 'modified': file_datetime,
-                'dirty': True
+                'unprocessed': True
             }
+            file_properties['tags'] = file_properties.get('tags', [])
             dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
             if not force:
                 method = 'POST'
             else:
                 filepath = os.path.join(file_request.tempdir_path, filename)
                 for f in container['files']:
-                    if f['filename'] == filename:
-                        if file_request.check_identical(os.path.join(data_path, filename), f['filehash']):
+                    if f['name'] == filename:
+                        if file_request.check_identical(os.path.join(data_path, filename), f['hash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
                             self.abort(409, 'identical file exists')
                         else:
                             log.debug('Replacing   %s' % filename)
-                            payload_validator(payload, 'PUT')
-                            payload.update(file_properties)
                             method = 'PUT'
                         break
                 else:
                     method = 'POST'
-
             payload_validator(payload, method)
             payload.update(file_properties)
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, payload=payload)

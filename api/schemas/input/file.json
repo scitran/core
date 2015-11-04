@@ -2,13 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "_id": {
-        "maxLength": 32,
-        "minLength": 2,
-        "pattern": "^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$",
-        "title": "ID",
-        "type": "string"
-    },
     "name":           { "type": "string" },
     "created":        {"type": "string", "format": "date-time"},
     "modified":       {"type": "string", "format": "date-time"},
@@ -31,6 +24,5 @@
       "type": "object"
     }
   },
-  "required": ["_id"],
   "additionalProperties": false
 }
