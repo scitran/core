@@ -50,9 +50,9 @@ routes = [
     webapp2.Route(r'/api/<cont_name:[^/]+>/<cid:[^/]+>/file',                       listhandler.FileListHandler, name='files_post', methods=['POST'], defaults={'list_name': 'files'}),
     webapp2.Route(r'/api/<cont_name:[^/]+>/<cid:[^/]+>/file/<filename:[^/]+>',      listhandler.FileListHandler, name='files', defaults={'list_name': 'files'}),
     webapp2.Route(r'/api/<cont_name:collections|projects>/<cid:[^/]+>/permissions',
-                                                                                    listhandler.ListHandler, name='perms_post', methods=['POST'], defaults={'list_name': 'permissions'}),
+                                                                                    listhandler.PermissionsListHandler, name='perms_post', methods=['POST'], defaults={'list_name': 'permissions'}),
     webapp2.Route(r'/api/<cont_name:collections|projects>/<cid:[^/]+>/permissions/<site:[^/]+>/<_id:[^/]+>',
-                                                                                    listhandler.ListHandler, name='perms', defaults={ 'list_name': 'permissions'}),
+                                                                                    listhandler.PermissionsListHandler, name='perms', defaults={ 'list_name': 'permissions'}),
     webapp2.Route(r'/api/<cont_name:[^/]+>/<cid:[^/]+>/notes',                      listhandler.NotesListHandler, name='notes_post', methods=['POST'], defaults={'list_name': 'notes'}),
     webapp2.Route(r'/api/<cont_name:[^/]+>/<cid:[^/]+>/notes/<_id:[^/]+>',          listhandler.NotesListHandler, name='notes', defaults={'list_name': 'notes'}),
 

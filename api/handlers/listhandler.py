@@ -91,7 +91,6 @@ class ListHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(ListHandler, self).__init__(request, response)
-        self._initialized = None
 
     def get(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -114,8 +113,6 @@ class ListHandler(base.RequestHandler):
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id, payload=payload)
 
         if result.modified_count == 1:
-            if cont_name == 'projects' and list_name == 'permissions':
-                self._propagate_project_permissions(_id)
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
@@ -131,8 +128,6 @@ class ListHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
-            if cont_name == 'projects' and list_name == 'permissions':
-                self._propagate_project_permissions(_id)
             return {'modified':result.modified_count}
         else:
             self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
@@ -145,8 +140,6 @@ class ListHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
-            if cont_name == 'projects' and list_name == 'permissions':
-                self._propagate_project_permissions(_id)
             return {'modified': result.modified_count}
         else:
             self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
@@ -178,6 +171,32 @@ class ListHandler(base.RequestHandler):
         keycheck = validators.key_check(self, config.get('mongo_schema_file'))
         return container, permchecker, storage, mongo_validator, input_validator, keycheck
 
+
+class PermissionsListHandler(ListHandler):
+    """
+    PermissionsListHandler overrides post, put and delete methods to propagate permissions
+    """
+    def post(self, cont_name, list_name, **kwargs):
+        _id = kwargs.get('cid')
+        result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
+        if cont_name == 'projects':
+            self._propagate_project_permissions(_id)
+        return result
+
+    def put(self, cont_name, list_name, **kwargs):
+        _id = kwargs.get('cid')
+        result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
+        if cont_name == 'projects':
+            self._propagate_project_permissions(_id)
+        return result
+
+    def delete(self, cont_name, list_name, **kwargs):
+        _id = kwargs.get('cid')
+        result = super(PermissionsListHandler, self).delete(cont_name, list_name, **kwargs)
+        if cont_name == 'projects':
+            self._propagate_project_permissions(_id)
+        return result
+
     def _propagate_project_permissions(self, _id):
         try:
             log.debug(_id)
@@ -190,6 +209,7 @@ class ListHandler(base.RequestHandler):
             self.app.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': update})
         except:
             self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+
 
 class NotesListHandler(ListHandler):
 
