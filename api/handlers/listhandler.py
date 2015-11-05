@@ -17,6 +17,12 @@ from ..dao import APIStorageException
 log = logging.getLogger('scitran.api')
 
 def initialize_list_configurations():
+    """
+    This configurations are used by the ListHandler class to load the storage, the permissions checker
+    and the json schema validators used to handle a request.
+
+    "use_oid" implies that the container ids is converted to ObjectId
+    """
     container_default_configurations = {
         'tags': {
             'storage': liststorage.StringListStorage,
@@ -153,6 +159,9 @@ class ListHandler(base.RequestHandler):
         1) the container that will be modified
         2) the storage class that will handle the database actions
         3) the permission checker decorator that will be used
+        4) the payload_validator checking the payload sent by the client against a json schema
+        5) the mongo_validator that will check what will be sent to mongo against a json schema
+        6) the keycheck decorator validating the request key
         """
         config = list_handler_configurations[cont_name][list_name]
         storage = config['storage']
@@ -177,7 +186,7 @@ class ListHandler(base.RequestHandler):
 
 class PermissionsListHandler(ListHandler):
     """
-    PermissionsListHandler overrides post, put and delete methods to propagate permissions
+    PermissionsListHandler overrides post, put and delete methods of ListHandler to propagate permissions
     """
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
@@ -201,6 +210,9 @@ class PermissionsListHandler(ListHandler):
         return result
 
     def _propagate_project_permissions(self, _id):
+        """
+        method to propagate permissions from a project to its sessions and acquisitions
+        """
         try:
             log.debug(_id)
             oid = bson.ObjectId(_id)
@@ -215,6 +227,10 @@ class PermissionsListHandler(ListHandler):
 
 
 class NotesListHandler(ListHandler):
+    """
+    NotesListHandler overrides post, put methods of ListHandler to add custom fields to the payload.
+    e.g. _id, user, created, etc.
+    """
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
