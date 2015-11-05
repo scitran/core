@@ -23,9 +23,14 @@ class ContainerHandler(base.RequestHandler):
     This class handle operations on a generic container
 
     The pattern used is:
-    1) initialize request
-    2) exec request
-    3) check and return result
+    1) load the storage class used to interact with mongo
+    2) configure the permissions checker and the json payload validators
+    3) validate the input payload
+    4) augment the payload when appropriate
+    5) exec the request (using the mongo validator and the permissions checker)
+    6) check the result
+    7) augment the result when needed
+    8) return the result
 
     Specific behaviors (permissions checking logic for authenticated and not superuser users, storage interaction)
     are specified in the container_handler_configurations
@@ -38,6 +43,11 @@ class ContainerHandler(base.RequestHandler):
     }
     default_list_projection = ['files', 'notes', 'timestamp', 'timezone', 'public']
 
+    # This configurations are used by the ContainerHandler class to load the storage,
+    # the permissions checker and the json schema validators used to handle a request.
+    #
+    # "children_cont" represents the children container.
+    # "list projection" is used to filter data in mongo.
     container_handler_configurations = {
         'projects': {
             'storage': containerstorage.ContainerStorage('projects', use_oid=use_oid['projects']),
@@ -46,7 +56,7 @@ class ContainerHandler(base.RequestHandler):
             'mongo_schema_file': 'mongo/project.json',
             'payload_schema_file': 'input/project.json',
             'list_projection': {'metadata': 0},
-            'children_dbc': 'sessions'
+            'children_cont': 'sessions'
         },
         'sessions': {
             'storage': containerstorage.ContainerStorage('sessions', use_oid=use_oid['sessions']),
@@ -55,7 +65,7 @@ class ContainerHandler(base.RequestHandler):
             'mongo_schema_file': 'mongo/session.json',
             'payload_schema_file': 'input/session.json',
             'list_projection': {'metadata': 0},
-            'children_dbc': 'acquisitions'
+            'children_cont': 'acquisitions'
         },
         'acquisitions': {
             'storage': containerstorage.ContainerStorage('acquisitions', use_oid=use_oid['acquisitions']),
@@ -74,26 +84,28 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        try:
-            container= self._get_container(_id)
-        except APIStorageException as e:
-            self.abort(400, e.message)
+        container= self._get_container(_id)
+
         permchecker = self._get_permchecker(container)
         try:
+            # This line exec the actual get checking permissions using the decorator permchecker
             result = permchecker(self.storage.exec_op)('GET', _id)
         except APIStorageException as e:
             self.abort(400, e.message)
-
         if result is None:
             self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
         if not self.superuser_request:
             self._filter_permissions(result, self.uid, self.user_site)
+        # build and insert file paths if they are requested
         if self.is_true('paths'):
             for fileinfo in result['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
         return result
 
     def _filter_permissions(self, result, uid, site):
+        """
+        if the user is not admin only her permissions are returned.
+        """
         user_perm = util.user_perm(result.get('permissions', []), uid, site)
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
@@ -102,13 +114,17 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         projection = self.config['list_projection']
+        # select which permission filter will be applied to the list of results.
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
             permchecker = containerauth.list_public_request
         else:
+            # admin_only flag will limit the results to the set on which the user is an admin
             admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self, admin_only)
+        # if par_cont_name (parent container name) and par_id are not null we return only results
+        # within that container
         if par_cont_name:
             if not par_id:
                 self.abort(500, 'par_id is required when par_cont_name is provided')
@@ -119,12 +135,17 @@ class ContainerHandler(base.RequestHandler):
             query = {par_cont_name[:-1]: par_id}
         else:
             query = {}
+        # this request executes the actual reqeust filtering containers based on the user permissions
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
+        # return only permissions of the current user
         self._filter_all_permissions(results, self.uid, self.user_site)
+        # the "count" flag add a count for each container returned
         if self.is_true('counts'):
             self._add_results_counts(results, cont_name)
+        # the "measurements" flag applies only to query for sessions
+        # and add a list of the measurements in the child acquisitions
         if cont_name == 'sessions' and self.is_true('measurements'):
             self._add_session_measurements(results)
         if self.debug:
@@ -138,11 +159,11 @@ class ContainerHandler(base.RequestHandler):
         return results
 
     def _add_results_counts(self, results):
-        dbc_name = self.config.get('children_dbc')
+        dbc_name = self.config.get('children_cont')
         el_cont_name = cont_name[:-1]
         dbc = self.app.db.get(dbc_name)
         counts =  dbc.aggregate([
-            {'$match': {el_cont_name: {'$in': [proj['_id'] for proj in projects]}}},
+            {'$match': {el_cont_name: {'$in': [res['_id'] for result in results]}}},
             {'$group': {'_id': '$' + el_cont_name, 'count': {"$sum": 1}}}
             ])
         counts = {elem['_id']: elem['count'] for elem in counts}
@@ -163,6 +184,7 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         projection = self.config['list_projection']
+        # select which permission filter will be applied to the list of results.
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
@@ -192,21 +214,32 @@ class ContainerHandler(base.RequestHandler):
 
         payload = self.request.json_body
         log.debug(payload)
+        #validate the input payload
         payload_validator(payload, 'POST')
+        # Load the parent container in which the new container will be created
+        # to check permissions.
         parent_container, parent_id_property = self._get_parent_container(payload)
+        # If the new container is a session add the group of the parent project in the payload
         if cont_name == 'sessions':
             payload['group'] = parent_container['group']
+        # Always add the id of the parent to the container
         payload[parent_id_property] = parent_container['_id']
+        # Optionally inherit permissions of a project from the parent group. The default behaviour
+        # for projects is to give admin permissions to the requestor.
+        # The default for other containers is to inherit.
         if self.is_true('inherit') and cont_name == 'projects':
             payload['permissions'] = parent_container.get('roles')
         elif cont_name =='projects':
             payload['permissions'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}]
         else:
             payload['permissions'] = parent_container.get('permissions', [])
+        # Created and modified timestamps are added here to the payload
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         permchecker = self._get_permchecker(parent_container=parent_container)
+        # This line exec the actual request validating the payload that will create the new container
+        # and checking permissions using respectively the two decorators, mongo_validator and permchecker
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             return {'_id': result.inserted_id}
@@ -222,10 +255,10 @@ class ContainerHandler(base.RequestHandler):
 
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
-
+        # Check if we are updating the parent container of the element (ie we are moving the container)
+        # In this case, we will check permissions on it.
         target_parent_container, parent_id_property = self._get_parent_container(payload)
         if target_parent_container:
-            payload[parent_id_property] = target_parent_container['_id']
             if cont_name == 'sessions':
                 payload['group'] = target_parent_container['group']
             payload['permissions'] = target_parent_container.get('roles')
@@ -237,6 +270,8 @@ class ContainerHandler(base.RequestHandler):
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         try:
+            # This line exec the actual request validating the payload that will update the container
+            # and checking permissions using respectively the two decorators, mongo_validator and permchecker
             result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         except APIStorageException as e:
             self.abort(400, e.message)
@@ -254,6 +289,7 @@ class ContainerHandler(base.RequestHandler):
         target_parent_container, parent_id_property = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
+            # This line exec the actual delete checking permissions using the decorator permchecker
             result = permchecker(self.storage.exec_op)('DELETE', _id)
         except APIStorageException as e:
             self.abort(400, e.message)
@@ -264,6 +300,9 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'Element not removed from container {} {}'.format(storage.cont_name, _id))
 
     def get_groups_with_project(self):
+        """
+        method to return the list of groups for which there are projects accessible to the user
+        """
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
         return list(self.app.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
 
@@ -294,7 +333,10 @@ class ContainerHandler(base.RequestHandler):
 
 
     def _get_container(self, _id):
-        container = self.storage.get_container(_id)
+        try:
+            container = self.storage.get_container(_id)
+        except APIStorageException as e:
+            self.abort(400, e.message)
         if container is not None:
             return container
         else:
