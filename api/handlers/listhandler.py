@@ -22,6 +22,7 @@ def initialize_list_configurations():
     and the json schema validators used to handle a request.
 
     "use_oid" implies that the container ids is converted to ObjectId
+    "get_full_container" allows the handler to load the full content of the container and not only the sublist element (this is used for permissions for example)
     """
     container_default_configurations = {
         'tags': {
@@ -42,6 +43,7 @@ def initialize_list_configurations():
             'storage': liststorage.ListStorage,
             'permchecker': listauth.permissions_sublist,
             'use_oid': True,
+            'get_full_container': True,
             'mongo_schema_file': 'mongo/permission.json',
             'input_schema_file': 'input/permission.json'
         },
@@ -49,7 +51,6 @@ def initialize_list_configurations():
             'storage': liststorage.ListStorage,
             'permchecker': listauth.notes_sublist,
             'use_oid': True,
-            'check_item_perms': True,
             'mongo_schema_file': 'mongo/note.json',
             'input_schema_file': 'input/note.json'
         },
@@ -60,6 +61,7 @@ def initialize_list_configurations():
                 'storage': liststorage.ListStorage,
                 'permchecker': listauth.group_roles_sublist,
                 'use_oid': False,
+                'get_full_container': True,
                 'mongo_schema_file': 'mongo/permission.json',
                 'input_schema_file': 'input/permission.json'
             }
@@ -166,8 +168,8 @@ class ListHandler(base.RequestHandler):
         config = list_handler_configurations[cont_name][list_name]
         storage = config['storage']
         permchecker = config['permchecker']
-        if not config.get('check_item_perms'):
-            query_params = None
+        if config.get('get_full_container'):
+             query_params = None
         container = storage.get_container(_id, query_params)
         if container is not None:
             if self.superuser_request:
