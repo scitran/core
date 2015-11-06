@@ -54,18 +54,18 @@ class FileRequest(object):
     def _save_temp_file(self, folder):
         filepath = os.path.join(folder, self.filename)
         md5 = hashlib.md5()
-        sha1 = hashlib.sha1()
+        sha384 = hashlib.sha384()
         filesize = 0
         start_time = datetime.datetime.utcnow()
         with open(filepath, 'wb') as fd:
             for chunk in iter(lambda: self.body.read(2**20), ''):
                 md5.update(chunk)
-                sha1.update(chunk)
+                sha384.update(chunk)
                 filesize += len(chunk)
                 fd.write(chunk)
         self.filesize = filesize
         self.md5 = md5.hexdigest()
-        self.sha1 = sha1.hexdigest()
+        self.sha384 = sha384.hexdigest()
         duration = datetime.datetime.utcnow() - start_time
         success = (self.md5 == self.received_md5) if self.received_md5 is not None else True
         return success, duration

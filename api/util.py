@@ -267,18 +267,23 @@ def download_ticket(ip, type_, target, filename, size):
 
 
 def receive_stream_and_validate(stream, filepath, received_md5):
-    md5 = hashlib.md5()
-    sha1 = hashlib.sha1()
+    skip_md5 = False
+    if received_md5 is not None:
+        md5 = hashlib.md5()
+    else:
+        skip_md5 = True
+    sha384 = hashlib.sha384()
     filesize = 0
     start_time = datetime.datetime.utcnow()
     with open(filepath, 'wb') as fd:
         for chunk in iter(lambda: stream.read(2**20), ''):
-            md5.update(chunk)
-            sha1.update(chunk)
+            if received_md5 is not None:
+                md5.update(chunk)
+            sha384.update(chunk)
             filesize += len(chunk)
             fd.write(chunk)
     duration = datetime.datetime.utcnow() - start_time
-    return (md5.hexdigest() == received_md5) if received_md5 is not None else True, sha1.hexdigest(), filesize, duration
+    return skip_md5 or (md5.hexdigest() == received_md5), sha384.hexdigest(), filesize, duration
 
 
 def guess_mimetype(filepath):

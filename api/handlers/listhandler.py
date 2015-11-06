@@ -376,7 +376,7 @@ class FileListHandler(ListHandler):
             file_properties = {
                 'name': file_request.filename,
                 'size': file_request.filesize,
-                'hash': file_request.sha1,
+                'hash': file_request.sha384,
                 'type': file_request.mimetype,
                 'tags': file_request.tags,
                 'metadata': file_request.metadata,

@@ -78,7 +78,7 @@ def sort(args):
     log.info('found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt)
     for i, filepath in enumerate(files):
         log.info('sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
-        hash_ = hashlib.sha1()
+        hash_ = hashlib.sha384()
         if not args.quick:
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(2**20), ''):
