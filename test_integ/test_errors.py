@@ -20,7 +20,7 @@ def test_extra_param():
         'extra_param': 'some_value'
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
+    r = requests.post(base_url + '/projects?user=admin@user.com', data=payload, verify=False)
     assert r.status_code == 400
     r = projects.delete_many({'label': 'SciTran/Testing'})
     assert r.deleted_count == 0

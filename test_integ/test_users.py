@@ -11,9 +11,9 @@ base_url = 'https://localhost:8443/api'
 
 def test_users():
     _id = 'test@user.com'
-    r = requests.get(base_url + '/users/self?user=rfrigato@stanford.edu', verify=False)
+    r = requests.get(base_url + '/users/self?user=admin@user.com', verify=False)
     assert r.ok
-    r = requests.get(base_url + '/users/' + _id + '?user=rfrigato@stanford.edu&root=true', verify=False)
+    r = requests.get(base_url + '/users/' + _id + '?user=admin@user.com&root=true', verify=False)
     assert r.status_code == 404
     payload = {
         '_id': _id,
@@ -21,15 +21,15 @@ def test_users():
         'lastname': 'User',
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/users?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
+    r = requests.post(base_url + '/users?user=admin@user.com&root=true', data=payload, verify=False)
     assert r.ok
-    r = requests.get(base_url + '/users/' + _id + '?user=rfrigato@stanford.edu&root=true', verify=False)
+    r = requests.get(base_url + '/users/' + _id + '?user=admin@user.com&root=true', verify=False)
     assert r.ok
     payload = {
         'firstname': 'New'
     }
     payload = json.dumps(payload)
-    r = requests.put(base_url + '/users/' + _id + '?user=rfrigato@stanford.edu&root=true', data=payload, verify=False)
+    r = requests.put(base_url + '/users/' + _id + '?user=admin@user.com&root=true', data=payload, verify=False)
     assert r.ok
-    r = requests.delete(base_url + '/users/' + _id + '?user=rfrigato@stanford.edu&root=true', verify=False)
+    r = requests.delete(base_url + '/users/' + _id + '?user=admin@user.com&root=true', verify=False)
     assert r.ok

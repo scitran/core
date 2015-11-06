@@ -1,0 +1,40 @@
+{
+    "groups": [
+            {
+                    "_id": "scitran",
+                    "name": "Scientific Transparency",
+                    "roles": [
+                            {
+                                    "_id": "rfrigato@stanford.edu",
+                                    "access": "admin"
+                            }
+                    ]
+            },
+            {
+                    "_id": "unknown",
+                    "name": "Unknown",
+                    "roles": [
+                            {
+                                    "_id": "rfrigato@stanford.edu",
+                                    "access": "admin"
+                            }
+                    ]
+            }
+    ],
+    "users": [
+            {
+                    "_id": "rfrigato@stanford.edu",
+                    "email": "rfrigato@stanford.edu",
+                    "firstname": "Renzo",
+                    "lastname": "Frigato",
+                    "root": true
+            },
+            {
+                    "_id": "renzo.frigato@gmail.com",
+                    "email": "renzo.frigato@gmail.com",
+                    "firstname": "Renzo",
+                    "lastname": "Frigato",
+                    "root": true
+            }
+    ]
+}

@@ -20,8 +20,8 @@ def _build_url_and_payload(method, user, access, requestor, site='local'):
         url = base_url + '/' + site + '/' + user + '?user=' + requestor
         return url, None
 
-adm_user = 'rfrigato@stanford.edu'
-user = 'renzo.frigato@gmail.com'
+adm_user = 'admin@user.com'
+user = 'test@user.com'
 
 def test_roles():
     url_get, _ = _build_url_and_payload('GET', user, None, adm_user)

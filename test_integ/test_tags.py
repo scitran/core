@@ -10,7 +10,7 @@ log.addHandler(sh)
 log.setLevel(logging.INFO)
 warnings.filterwarnings('ignore')
 
-adm_user = 'rfrigato@stanford.edu'
+adm_user = 'admin@user.com'
 test_data = type('',(object,),{})()
 base_url = 'https://localhost:8443/api'
 
@@ -31,14 +31,14 @@ def setup_db():
         'public': False
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=rfrigato@stanford.edu', data=payload, verify=False)
+    r = requests.post(base_url + '/projects?user=admin@user.com', data=payload, verify=False)
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
     log.debug('pid = \'{}\''.format(test_data.pid))
     test_data.proj_url = base_url + '/projects/{}/tags'.format(test_data.pid)
 
 def teardown_db():
-    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=rfrigato@stanford.edu', verify=False)
+    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=admin@user.com', verify=False)
     assert r.ok
 
 @with_setup(setup_db, teardown_db)
