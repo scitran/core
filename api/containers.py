@@ -167,7 +167,7 @@ class Container(base.RequestHandler):
         elif not self.superuser_request:
             if not container.get('public') and not user_perm:
                 self.abort(403, self.uid + ' does not have permissions on this ' + dbc_name)
-            if min_role and users.INTEGER_ROLES[user_perm['access']] < users.INTEGER_ROLES[min_role]:
+            if not container.get('public') and min_role and (not user_perm or users.INTEGER_ROLES[user_perm['access']] < users.INTEGER_ROLES[min_role]):
                 self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this ' + dbc_name)
             if not user_perm:
                 container['permissions'] = []

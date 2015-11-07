@@ -115,8 +115,11 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
                 else: # existing file has different content
                     log.debug('Replacing   %s' % filename)
                     shutil.move(filepath, target_filepath)
+                    update_set = {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}
+                    for k,v in fileinfo.iteritems():
+                        update_set['files.$.' + k] = v
                     dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']},
-                            {'$set': {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}})
+                            {'$set': update_set})
                     updated = True
                 break
     else:         # file does not exist
@@ -263,7 +266,7 @@ def upload_ticket(ip, **kwargs):
     return ticket
 
 
-def download_ticket(ip, type_, target, filename, size):
+def download_ticket(ip, type_, target, filename, size, projects = None):
     return {
         '_id': str(uuid.uuid4()),
         'timestamp': datetime.datetime.utcnow(),
@@ -272,6 +275,7 @@ def download_ticket(ip, type_, target, filename, size):
         'target': target,
         'filename': filename,
         'size': size,
+        'projects': projects or []
     }
 
 
