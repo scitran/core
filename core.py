@@ -668,6 +668,10 @@ class Core(base.RequestHandler):
             if search_project and project['name'] != search_project:
                 continue
             group = project['group']
+            acq['_id'] = str(acq['_id'])
+            acq['session'] = str(acq['session'])
+            session['_id'] = str(session['_id'])
+            session['project'] = str(session['project'])
             if search_group and group['name'] != search_group:
                 continue
             session['subject_code'] = session.get('subject', {}).get('code', '')
