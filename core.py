@@ -564,6 +564,14 @@ class Core(base.RequestHandler):
                     'title': 'Description',
                     'type': 'string',
                 },
+                'project_name': {
+                    'title': 'Project Name',
+                    'type': 'string',
+                },
+                'group_name': {
+                    'title': 'Group Name',
+                    'type': 'string',
+                }
             },
             # 'required': ['subj_code', 'scan_type', 'date_from', 'date_to', 'psd_name', 'operator', 'subj_age_max', 'subj_age_min', 'exam'],
             # 'additionalProperties': False
@@ -572,6 +580,7 @@ class Core(base.RequestHandler):
             return SEARCH_POST_SCHEMA
         try:
             json_body = self.request.json_body
+            log.error(json_body)
             jsonschema.validate(json_body, SEARCH_POST_SCHEMA)
         except (ValueError, jsonschema.ValidationError) as e:
             self.abort(400, str(e))
@@ -606,6 +615,7 @@ class Core(base.RequestHandler):
         elif age_min:
             session_query.update({'subject.age': {'$gte': age_min}})
 
+
         # TODO: don't build these, want to get as close to dump the data from the request
         acq_query = {}
         psd = json_body.get('psd')
@@ -613,6 +623,9 @@ class Core(base.RequestHandler):
         time_fmt = '%Y-%m-%d'  # assume that dates will come in as "2014-01-01"
         description = json_body.get('description')
         date_to = json_body.get('date_to')  # need to do some datetime conversion
+        search_group = json_body.get('group_name')
+        search_project = json_body.get('project_name')
+        log.error(search_project)
         if date_to:
             date_to = datetime.datetime.strptime(date_to, time_fmt)
         date_from = json_body.get('date_from')      # need to do some datetime conversion
@@ -629,8 +642,8 @@ class Core(base.RequestHandler):
         elif date_from:
             acq_query.update({'timestamp': {'$gte': date_from}})
         if description:
-            # glob style matching, whole word must exist within description
-            pass
+            acq_query.update({'description': _parse_query_string(description)})
+
 
         # also query sessions
         # permissions exist at the session level, which will limit the acquisition queries to sessions user has access to
@@ -648,16 +661,15 @@ class Core(base.RequestHandler):
         projects = []
         sessions = []
         acqs = list(self.app.db.acquisitions.find(aquery))
+        selected_acqs = []
         for acq in acqs:
             session = self.app.db.sessions.find_one({'_id': acq['session']})
             project = self.app.db.projects.find_one({'_id': session['project']})
+            if search_project and project['name'] != search_project:
+                continue
             group = project['group']
-            del project['group']
-            project['group'] = group
-            acq['_id'] = str(acq['_id'])
-            acq['session'] = str(acq['session'])
-            session['_id'] = str(session['_id'])
-            session['project'] = str(session['project'])
+            if search_group and group['name'] != search_group:
+                continue
             session['subject_code'] = session.get('subject', {}).get('code', '')
             project['_id'] = str(project['_id'])
             if session not in sessions:
@@ -666,12 +678,13 @@ class Core(base.RequestHandler):
                 projects.append(project)
             if group not in groups:
                 groups.append(group)
+            selected_acqs.append(acq)
 
         results = {
             'groups': groups,
             'projects': projects,
             'sessions': sessions,
-            'acquisitions': acqs,
+            'acquisitions': selected_acqs,
         }
 
         return results

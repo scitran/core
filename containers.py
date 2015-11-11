@@ -122,7 +122,7 @@ class ContainerList(base.RequestHandler):
         return json_body
 
     def _get(self, query, projection, admin_only=False):
-        projection = {p: 1 for p in projection + ['files']}
+        projection = {p: 1 for p in projection + ['files', 'public']}
         if self.public_request:
             query['public'] = True
         else:
