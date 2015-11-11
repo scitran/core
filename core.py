@@ -568,7 +568,7 @@ class Core(base.RequestHandler):
                     'title': 'Project Name',
                     'type': 'string',
                 },
-                'group_name': {
+                'group_id': {
                     'title': 'Group Name',
                     'type': 'string',
                 }
@@ -623,7 +623,7 @@ class Core(base.RequestHandler):
         time_fmt = '%Y-%m-%d'  # assume that dates will come in as "2014-01-01"
         description = json_body.get('description')
         date_to = json_body.get('date_to')  # need to do some datetime conversion
-        search_group = json_body.get('group_name')
+        search_group_id = json_body.get('group_id')
         search_project = json_body.get('project_name')
         log.error(search_project)
         if date_to:
@@ -672,7 +672,7 @@ class Core(base.RequestHandler):
             acq['session'] = str(acq['session'])
             session['_id'] = str(session['_id'])
             session['project'] = str(session['project'])
-            if search_group and group['name'] != search_group:
+            if search_group_id and group != search_group_id:
                 continue
             session['subject_code'] = session.get('subject', {}).get('code', '')
             project['_id'] = str(project['_id'])
