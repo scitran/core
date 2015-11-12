@@ -81,7 +81,8 @@ if not os.path.exists(app.config['upload_path']):
 
 for x in range(10):
     try:
-        app.db = pymongo.MongoClient(args.db_uri).get_default_database()
+        # j option specifies writes must commit to journal before response is received.
+        app.db = pymongo.MongoClient(host=args.db_uri, j=True).get_default_database()
     except:
         time.sleep(6)
     else:
