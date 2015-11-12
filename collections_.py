@@ -301,12 +301,12 @@ class CollectionSessions(sessions.Sessions):
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = {'label': 1, 'subject': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1, 'files': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection)) # avoid permissions checking by not using ContainerList._get()
         for sess in sessions:
             sess['_id'] = str(sess['_id']) # do this manually, since not going through ContainerList._get()
-            sess['subject_code'] = sess.pop('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+            sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
             sess.setdefault('timestamp', datetime.datetime.utcnow())
             sess['timestamp'], sess['timezone'] = util.format_timestamp(sess['timestamp'], sess.get('timezone'))
         if self.debug:
@@ -340,7 +340,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-        projection = {'label': 1, 'description': 1, 'modality': 1, 'datatype': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1}
+        projection = {'label': 1, 'description': 1, 'modality': 1, 'datatype': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1, 'files': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
