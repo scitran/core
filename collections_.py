@@ -309,6 +309,7 @@ class CollectionSessions(sessions.Sessions):
             sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
             sess.setdefault('timestamp', datetime.datetime.utcnow())
             sess['timestamp'], sess['timezone'] = util.format_timestamp(sess['timestamp'], sess.get('timezone'))
+            sess['attachment_count'] = len([f for f in sess.get('files', []) if f.get('flavor') == 'attachment'])
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -347,6 +348,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
             acq['_id'] = str(acq['_id']) # do this manually, since not going through ContainerList._get()
             acq.setdefault('timestamp', datetime.datetime.utcnow())
             acq['timestamp'], acq['timezone'] = util.format_timestamp(acq['timestamp'], acq.get('timezone'))
+            acq['attachment_count'] = len([f for f in acq.get('files', []) if f.get('flavor') == 'attachment'])
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
