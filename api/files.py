@@ -60,18 +60,20 @@ class FileRequest(object):
         start_time = datetime.datetime.utcnow()
         with open(filepath, 'wb') as fd:
             for chunk in iter(lambda: self.body.read(2**20), ''):
-                md5.update(chunk)
+                if self.received_md5 is not None:
+                    md5.update(chunk)
                 sha384.update(chunk)
                 filesize += len(chunk)
                 fd.write(chunk)
         self.filesize = filesize
-        self.md5 = md5.hexdigest()
+        if self.received_md5 is not None:
+            self.md5 = md5.hexdigest()
         self.sha384 = sha384.hexdigest()
         duration = datetime.datetime.utcnow() - start_time
         success = (self.md5 == self.received_md5) if self.received_md5 is not None else True
         return success, duration
 
-    def check_identical(self, filepath, md5):
+    def check_identical(self, filepath, sha384):
         filepath1 = os.path.join(self.tempdir_path, filename)
         if zipfile.is_zipfile(filepath) and zipfile.is_zipfile(filepath1):
             with zipfile.ZipFile(filepath) as zf1, zipfile.ZipFile(filepath1) as zf2:
@@ -87,7 +89,7 @@ class FileRequest(object):
                 else:
                     return True
         else:
-            return md5 == self.received_md5
+            return sha384 == self.sha384
 
     @classmethod
     def from_handler(cls, handler, filename=None):
@@ -125,9 +127,6 @@ class FileRequest(object):
             handler.abort(400, 'Request must contain a filename parameter.')
         else:
             _, filename = os.path.split(filename)
-
-            if 'Content-MD5' not in handler.request.headers:
-                handler.abort(400, 'Request must contain a valid "Content-MD5" header.')
             try:
                 tags = json.loads(handler.get_param('tags', '[]'))
             except ValueError:

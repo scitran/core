@@ -107,8 +107,6 @@ class Core(base.RequestHandler):
         """Receive a sortable reaper upload."""
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-        if 'Content-MD5' not in self.request.headers:
-            self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         filename = cgi.parse_header(self.request.headers.get('Content-Disposition', ''))[1].get('filename')
         if not filename:
             self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
