@@ -16,11 +16,19 @@ from api import util  # from scitran.api import util
 log = logging.getLogger('scitran.api.bootstrap')
 
 
+def clean(args):
+    db = pymongo.MongoClient(args.db_uri).get_default_database()
+    db.client.drop_database(db)
+
+clean_desc = """
+example:
+./bin/bootstrap.py clean mongodb://localhost/scitran
+"""
+
+
 def users(args):
     db = pymongo.MongoClient(args.db_uri).get_default_database()
     now = datetime.datetime.utcnow()
-    if args.force:
-        db.client.drop_database(db)
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
     log.info('bootstrapping users...')
@@ -52,17 +60,16 @@ def users(args):
         db.drones.update_one({'_id': d['_id']}, {'$setOnInsert': d}, upsert=True)
     log.info('bootstrapping complete')
 
-
 users_desc = """
 example:
 ./bin/bootstrap.py users mongodb://localhost/scitran users_and_groups.json
 """
 
 
-def sort(args):
-    quarantine_path = os.path.join(args.sort_path, 'quarantine')
-    if not os.path.exists(args.sort_path):
-        os.makedirs(args.sort_path)
+def data(args):
+    quarantine_path = os.path.join(args.storage_path, 'quarantine')
+    if not os.path.exists(args.storage_path):
+        os.makedirs(args.storage_path)
     if not os.path.exists(quarantine_path):
         os.makedirs(quarantine_path)
     log.info('initializing DB')
@@ -88,11 +95,11 @@ def sort(args):
             util.quarantine_file(filepath, quarantine_path)
             log.info('quarantining %s (unparsable)' % os.path.basename(filepath))
         else:
-            util.commit_file(db.acquisitions, None, datainfo, filepath, args.sort_path)
+            util.commit_file(db.acquisitions, None, datainfo, filepath, args.storage_path)
 
-sort_desc = """
+data_desc = """
 example:
-./bin/bootstrap.py sort mongodb://localhost/scitran /tmp/data /tmp/sorted
+./bin/bootstrap.py data mongodb://localhost/scitran /tmp/data /tmp/sorted
 """
 
 
@@ -101,29 +108,37 @@ subparsers = parser.add_subparsers(help='operation to perform')
 
 parser.add_argument('--log_level', help='log level [info]', default='info')
 
+clean_parser = subparsers.add_parser(
+        name='clean',
+        help='reset database to clean state',
+        description=clean_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+clean_parser.add_argument('db_uri', help='DB URI')
+clean_parser.set_defaults(func=clean)
+
 users_parser = subparsers.add_parser(
         name='users',
         help='bootstrap users and groups',
         description=users_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-users_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
 users_parser.add_argument('db_uri', help='DB URI')
 users_parser.add_argument('json', help='JSON file containing users and groups')
 users_parser.add_argument('site_id', help='Site ID')
 users_parser.set_defaults(func=users)
 
-sort_parser = subparsers.add_parser(
-        name='sort',
-        help='sort files in a dicrectory tree',
-        description=sort_desc,
+data_parser = subparsers.add_parser(
+        name='data',
+        help='bootstrap files in a dicrectory tree',
+        description=data_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-sort_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
-sort_parser.add_argument('db_uri', help='database URI')
-sort_parser.add_argument('path', help='filesystem path to data')
-sort_parser.add_argument('sort_path', help='filesystem path to sorted data')
-sort_parser.set_defaults(func=sort)
+data_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
+data_parser.add_argument('db_uri', help='database URI')
+data_parser.add_argument('path', help='filesystem path to data')
+data_parser.add_argument('storage_path', help='filesystem path to sorted data')
+data_parser.set_defaults(func=data)
 
 args = parser.parse_args()
 logging.getLogger().setLevel(getattr(logging, args.log_level.upper()))
