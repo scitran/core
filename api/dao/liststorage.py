@@ -14,12 +14,14 @@ log = logging.getLogger('scitran.api')
 class ListStorage(object):
     """
     This class provides access to sublists of a mongodb collections elements (called containers).
+    It is used by ListHandler istances for get, create, update and delete operations on sublist of the containers.
+    Examples: permissions in projects, roles in groups, notes in projects, sessions, acquisitions, etc
     """
 
-    def __init__(self, cont_name, list_name, use_oid = False):
+    def __init__(self, cont_name, list_name, use_object_id = False):
         self.cont_name = cont_name
         self.list_name = list_name
-        self.use_oid = use_oid
+        self.use_object_id = use_object_id
         self.dbc = mongo.db[cont_name]
 
     def get_container(self, _id, query_params=None):
@@ -31,7 +33,7 @@ class ListStorage(object):
 
         For simplicity we load its full content.
         """
-        if self.use_oid:
+        if self.use_object_id:
             _id = bson.objectid.ObjectId(_id)
         query = {'_id': _id}
         projection = None
@@ -48,7 +50,7 @@ class ListStorage(object):
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
         """
-        if self.use_oid:
+        if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
@@ -114,11 +116,15 @@ class ListStorage(object):
 
 
 class StringListStorage(ListStorage):
+    """
+    This class provides access to string sublists of a mongodb collections elements (called containers).
+    The difference with other sublists is that the elements are not object but strings.
+    """
 
     def get_container(self, _id, query_params=None):
         if self.dbc is None:
             raise RuntimeError('collection not initialized before calling get_container')
-        if self.use_oid:
+        if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:

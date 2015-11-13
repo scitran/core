@@ -64,7 +64,7 @@ def teardown_db():
 
 
 @with_setup(setup_db, teardown_db)
-def test_sequence():
+def test_collections():
     payload = {
         'curator': 'admin@user.com',
         'label': 'SciTran/Testing',

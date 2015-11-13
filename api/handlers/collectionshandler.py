@@ -20,8 +20,8 @@ class CollectionsHandler(ContainerHandler):
 
     container_handler_configurations['collections'] = {
         'permchecker': containerauth.collection_permissions,
-        'storage': containerstorage.ContainerStorage('collections', use_oid=True),
-        'mongo_schema_file': 'mongo/collection.json',
+        'storage': containerstorage.ContainerStorage('collections', use_object_id=True),
+        'storage_schema_file': 'mongo/collection.json',
         'payload_schema_file': 'input/collection.json',
         'list_projection': {'metadata': 0}
     }

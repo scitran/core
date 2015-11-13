@@ -5,17 +5,7 @@
                     "name": "Scientific Transparency",
                     "roles": [
                             {
-                                    "_id": "rfrigato@stanford.edu",
-                                    "access": "admin"
-                            }
-                    ]
-            },
-            {
-                    "_id": "unknown",
-                    "name": "Unknown",
-                    "roles": [
-                            {
-                                    "_id": "rfrigato@stanford.edu",
+                                    "_id": "admin@user.com",
                                     "access": "admin"
                             }
                     ]
@@ -23,17 +13,17 @@
     ],
     "users": [
             {
-                    "_id": "rfrigato@stanford.edu",
-                    "email": "rfrigato@stanford.edu",
-                    "firstname": "Renzo",
-                    "lastname": "Frigato",
+                    "_id": "admin@user.com",
+                    "email": "admin@user.com",
+                    "firstname": "Admin",
+                    "lastname": "User",
                     "root": true
             },
             {
-                    "_id": "renzo.frigato@gmail.com",
-                    "email": "renzo.frigato@gmail.com",
-                    "firstname": "Renzo",
-                    "lastname": "Frigato",
+                    "_id": "test@user.com",
+                    "email": "test@user.com",
+                    "firstname": "Test",
+                    "lastname": "User",
                     "root": true
             }
     ]

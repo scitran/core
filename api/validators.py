@@ -104,6 +104,17 @@ def payload_from_schema_file(handler, schema_file):
     return g
 
 def key_check(handler, schema_file):
+    """
+    for sublists of mongo container there is no automatic key check when creating, updating or deleting an object.
+    We are adding a custom array field to the json schemas ("key_fields").
+    The uniqueness is checked on the combination of all the elements of "key_fields".
+    For an example check api/schemas/input/permission.json
+
+    So this method ensures that:
+    1. after a POST and PUT request we don't have two items with the same values for the key set
+    2. a GET will retrieve a single item
+    3. a DELETE (most importantly) will delete a single item
+    """
     if schema_file is None:
         return no_op
     schema = resolver.resolve(schema_file)[1]

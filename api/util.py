@@ -114,6 +114,8 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
                     log.debug('Replacing   %s' % filename)
                     shutil.move(filepath, target_filepath)
                     update_set = {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}
+                    # in this branch of the code, we are overriding an existing file.
+                    # update_set allows to update all the fileinfo like size, hash, etc.
                     for k,v in fileinfo.iteritems():
                         update_set['files.$.' + k] = v
                     dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']},

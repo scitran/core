@@ -40,9 +40,6 @@ class UserHandler(base.RequestHandler):
             self.abort(400, 'no user is logged in')
         return user
 
-    def roles(self):
-        return ROLES
-
     def get_all(self):
         self._init_storage()
         permchecker = userauth.list_permission_checker(self)
@@ -99,7 +96,7 @@ class UserHandler(base.RequestHandler):
             self.abort(404, 'User {} not updated'.format(_id))
 
     def _init_storage(self):
-        self.storage = containerstorage.ContainerStorage('users', use_oid=False)
+        self.storage = containerstorage.ContainerStorage('users', use_object_id=False)
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

@@ -41,6 +41,7 @@ args.upload_path = os.path.join(args.data_path, 'upload')
 from api import mongo
 mongo.configure_db(args.db_uri, args.site_id, args.site_name, args.api_uri)
 
+# imports delayed after mongo has been fully initialized
 from api.util import log
 from api import api
 from api import centralclient, jobs

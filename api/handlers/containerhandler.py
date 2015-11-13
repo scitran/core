@@ -35,7 +35,7 @@ class ContainerHandler(base.RequestHandler):
     Specific behaviors (permissions checking logic for authenticated and not superuser users, storage interaction)
     are specified in the container_handler_configurations
     """
-    use_oid = {
+    use_object_id = {
         'groups': False,
         'projects': True,
         'sessions': True,
@@ -48,30 +48,31 @@ class ContainerHandler(base.RequestHandler):
     #
     # "children_cont" represents the children container.
     # "list projection" is used to filter data in mongo.
+    # "use_object_id" implies that the container ids are converted to ObjectId
     container_handler_configurations = {
         'projects': {
-            'storage': containerstorage.ContainerStorage('projects', use_oid=use_oid['projects']),
+            'storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('groups', use_oid=use_oid['groups']),
-            'mongo_schema_file': 'mongo/project.json',
+            'parent_storage': containerstorage.ContainerStorage('groups', use_object_id=use_object_id['groups']),
+            'storage_schema_file': 'mongo/project.json',
             'payload_schema_file': 'input/project.json',
             'list_projection': {'metadata': 0},
             'children_cont': 'sessions'
         },
         'sessions': {
-            'storage': containerstorage.ContainerStorage('sessions', use_oid=use_oid['sessions']),
+            'storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('projects', use_oid=use_oid['projects']),
-            'mongo_schema_file': 'mongo/session.json',
+            'parent_storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
+            'storage_schema_file': 'mongo/session.json',
             'payload_schema_file': 'input/session.json',
             'list_projection': {'metadata': 0},
             'children_cont': 'acquisitions'
         },
         'acquisitions': {
-            'storage': containerstorage.ContainerStorage('acquisitions', use_oid=use_oid['acquisitions']),
+            'storage': containerstorage.ContainerStorage('acquisitions', use_object_id=use_object_id['acquisitions']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('sessions', use_oid=use_oid['sessions']),
-            'mongo_schema_file': 'mongo/acquisition.json',
+            'parent_storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
+            'storage_schema_file': 'mongo/acquisition.json',
             'payload_schema_file': 'input/acquisition.json',
             'list_projection': {'metadata': 0}
         }
@@ -128,7 +129,7 @@ class ContainerHandler(base.RequestHandler):
         if par_cont_name:
             if not par_id:
                 self.abort(500, 'par_id is required when par_cont_name is provided')
-            if self.use_oid.get(par_cont_name):
+            if self.use_object_id.get(par_cont_name):
                 if not bson.ObjectId.is_valid(par_id):
                     self.abort(400, 'not a valid object id')
                 par_id = bson.ObjectId(par_id)
@@ -265,10 +266,11 @@ class ContainerHandler(base.RequestHandler):
             if payload['permissions'] is None:
                 payload['permissions'] = target_parent_container['permissions']
 
-        permchecker = self._get_permchecker(container, target_parent_container)
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
+
+        permchecker = self._get_permchecker(container, target_parent_container)
         try:
             # This line exec the actual request validating the payload that will update the container
             # and checking permissions using respectively the two decorators, mongo_validator and permchecker
@@ -308,7 +310,7 @@ class ContainerHandler(base.RequestHandler):
 
 
     def _get_validators(self):
-        mongo_validator = validators.mongo_from_schema_file(self, self.config.get('mongo_schema_file'))
+        mongo_validator = validators.mongo_from_schema_file(self, self.config.get('storage_schema_file'))
         payload_validator = validators.payload_from_schema_file(self, self.config.get('payload_schema_file'))
         return mongo_validator, payload_validator
 

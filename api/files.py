@@ -32,16 +32,17 @@ class FileRequest(object):
         self.mimetype = util.guess_mimetype(filename)
         self.filetype = util.guess_filetype(filename, self.mimetype)
 
-    def save_temp_file(self, tempdir_path):
+    def save_temp_file(self, tempdir_path, handler):
         self.tempdir_path = tempdir_path
         success, duration = self._save_temp_file(self.tempdir_path)
         if not success:
-            self.abort(400, 'Content-MD5 mismatch.')
+            return False
         throughput = self.filesize / duration.total_seconds()
         log.info('Received    %s [%s, %s/s] from %s' % (
             self.filename,
             util.hrsize(self.filesize), util.hrsize(throughput),
             self.client_addr))
+        return success
 
     def move_temp_file(self, container_path):
         target_filepath = container_path + '/' + self.filename

@@ -13,12 +13,14 @@ log = logging.getLogger('scitran.api')
 
 class ContainerStorage(object):
     """
-    This class provides access to sublists of mongodb collection elements (called containers).
+    This class provides access to mongodb collection elements (called containers).
+    It is used by ContainerHandler istances for get, create, update and delete operations on containers.
+    Examples: projects, sessions, acquisitions and collections
     """
 
-    def __init__(self, cont_name, use_oid = False):
+    def __init__(self, cont_name, use_object_id = False):
         self.cont_name = cont_name
-        self.use_oid = use_oid
+        self.use_object_id = use_object_id
         self.dbc = mongo.db[cont_name]
 
     def get_container(self, _id):
@@ -50,7 +52,7 @@ class ContainerStorage(object):
         update = {
             '$set': util.mongo_dict(payload)
         }
-        if self.use_oid:
+        if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
@@ -58,7 +60,7 @@ class ContainerStorage(object):
         return self.dbc.update_one({'_id': _id}, update)
 
     def _delete_el(self, _id):
-        if self.use_oid:
+        if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
@@ -66,7 +68,7 @@ class ContainerStorage(object):
         return self.dbc.delete_one({'_id':_id})
 
     def _get_el(self, _id, projection=None):
-        if self.use_oid:
+        if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:

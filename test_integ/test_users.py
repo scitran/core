@@ -10,14 +10,14 @@ requests.packages.urllib3.disable_warnings()
 base_url = 'https://localhost:8443/api'
 
 def test_users():
-    _id = 'test@user.com'
+    _id = 'new@user.com'
     r = requests.get(base_url + '/users/self?user=admin@user.com', verify=False)
     assert r.ok
     r = requests.get(base_url + '/users/' + _id + '?user=admin@user.com&root=true', verify=False)
     assert r.status_code == 404
     payload = {
         '_id': _id,
-        'firstname': 'Test',
+        'firstname': 'New',
         'lastname': 'User',
     }
     payload = json.dumps(payload)
@@ -26,7 +26,7 @@ def test_users():
     r = requests.get(base_url + '/users/' + _id + '?user=admin@user.com&root=true', verify=False)
     assert r.ok
     payload = {
-        'firstname': 'New'
+        'firstname': 'Realname'
     }
     payload = json.dumps(payload)
     r = requests.put(base_url + '/users/' + _id + '?user=admin@user.com&root=true', data=payload, verify=False)

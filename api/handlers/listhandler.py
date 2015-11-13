@@ -21,37 +21,37 @@ def initialize_list_configurations():
     This configurations are used by the ListHandler class to load the storage, the permissions checker
     and the json schema validators used to handle a request.
 
-    "use_oid" implies that the container ids is converted to ObjectId
+    "use_object_id" implies that the container ids are converted to ObjectId
     "get_full_container" allows the handler to load the full content of the container and not only the sublist element (this is used for permissions for example)
     """
     container_default_configurations = {
         'tags': {
             'storage': liststorage.StringListStorage,
             'permchecker': listauth.default_sublist,
-            'use_oid': True,
-            'mongo_schema_file': 'mongo/tag.json',
+            'use_object_id': True,
+            'storage_schema_file': 'mongo/tag.json',
             'input_schema_file': 'input/tag.json'
         },
         'files': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.default_sublist,
-            'use_oid': True,
-            'mongo_schema_file': 'mongo/file.json',
+            'use_object_id': True,
+            'storage_schema_file': 'mongo/file.json',
             'input_schema_file': 'input/file.json'
         },
         'permissions': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.permissions_sublist,
-            'use_oid': True,
+            'use_object_id': True,
             'get_full_container': True,
-            'mongo_schema_file': 'mongo/permission.json',
+            'storage_schema_file': 'mongo/permission.json',
             'input_schema_file': 'input/permission.json'
         },
         'notes': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.notes_sublist,
-            'use_oid': True,
-            'mongo_schema_file': 'mongo/note.json',
+            'use_object_id': True,
+            'storage_schema_file': 'mongo/note.json',
             'input_schema_file': 'input/note.json'
         },
     }
@@ -60,9 +60,9 @@ def initialize_list_configurations():
             'roles':{
                 'storage': liststorage.ListStorage,
                 'permchecker': listauth.group_roles_sublist,
-                'use_oid': False,
+                'use_object_id': False,
                 'get_full_container': True,
-                'mongo_schema_file': 'mongo/permission.json',
+                'storage_schema_file': 'mongo/permission.json',
                 'input_schema_file': 'input/permission.json'
             }
         },
@@ -78,7 +78,7 @@ def initialize_list_configurations():
             storage = storage_class(
                 cont_name,
                 list_name,
-                use_oid=list_config.get('use_oid', False)
+                use_object_id=list_config.get('use_object_id', False)
             )
             list_config['storage'] = storage
     return list_handler_configurations
@@ -180,9 +180,9 @@ class ListHandler(base.RequestHandler):
                 permchecker = permchecker(self, container)
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
-        mongo_validator = validators.mongo_from_schema_file(self, config.get('mongo_schema_file'))
+        mongo_validator = validators.mongo_from_schema_file(self, config.get('storage_schema_file'))
         input_validator = validators.payload_from_schema_file(self, config.get('payload_schema_file'))
-        keycheck = validators.key_check(self, config.get('mongo_schema_file'))
+        keycheck = validators.key_check(self, config.get('storage_schema_file'))
         return container, permchecker, storage, mongo_validator, input_validator, keycheck
 
 
@@ -357,11 +357,6 @@ class FileListHandler(ListHandler):
             result['removed'] = 0
         return result
 
-    def put(self, cont_name, list_name, **kwargs):
-        fileinfo = super(FileListHandler, self).get(cont_name, list_name, **kwargs)
-        # TODO: implement file metadata updates
-        self.abort(400, 'PUT is not yet implemented')
-
     def post(self, cont_name, list_name, **kwargs):
         force = self.is_true('force')
         _id = kwargs.pop('cid')
@@ -371,7 +366,9 @@ class FileListHandler(ListHandler):
         file_request = files.FileRequest.from_handler(self, filename)
         result = None
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
-            file_request.save_temp_file(tempdir_path)
+            success = file_request.save_temp_file(tempdir_path)
+            if not success:
+                self.abort(400, 'Content-MD5 mismatch.')
             file_datetime = datetime.datetime.utcnow()
             file_properties = {
                 'name': file_request.filename,
