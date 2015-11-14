@@ -12,7 +12,7 @@ def configure_db(db_uri, site_id, site_name, api_uri):
     global db
     for i in range(3):
         try:
-            db = pymongo.MongoClient(db_uri).get_default_database()
+            db = pymongo.MongoClient(db_uri, j=True).get_default_database()
             # TODO jobs indexes
             # TODO review all indexes
             db.projects.create_index([('gid', 1), ('name', 1)])
