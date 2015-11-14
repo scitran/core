@@ -10,7 +10,6 @@ import pymongo
 import datetime
 
 from . import base
-from . import util
 
 JOB_STATES = [
     'pending',  # Job is queued

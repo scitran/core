@@ -1,16 +1,11 @@
-import datetime
-import logging
-
-import json
 import bson
-import copy
-import os
+import logging
+import datetime
 
 from ..dao import APIStorageException, containerstorage
 from ..auth import containerauth, always_ok
 from .. import validators
 from .. import debuginfo
-from .. import files
 from .. import base
 from .. import util
 

@@ -5,13 +5,12 @@ import uuid
 import shutil
 import difflib
 import hashlib
+import logging
 import pymongo
 import zipfile
 import datetime
 import mimetypes
-import dateutil.parser
 import tempdir as tempfile
-import logging
 
 import scitran.data
 

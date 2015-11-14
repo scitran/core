@@ -1,5 +1,3 @@
-import os
-import copy
 import json
 import pytz
 import webapp2

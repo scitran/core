@@ -1,17 +1,14 @@
-import logging
 import os
 import re
 import cgi
 import bson
 import json
-import hashlib
+import logging
 import tarfile
 import zipfile
 import datetime
-import lockfile
 import markdown
 import cStringIO
-import jsonschema
 
 from . import base
 from . import util

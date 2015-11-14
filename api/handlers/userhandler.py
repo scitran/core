@@ -7,7 +7,6 @@ from .. import validators
 from ..auth import userauth, always_ok, ROLES
 from ..dao import containerstorage
 from .. import base
-from .. import util
 
 
 log = logging.getLogger('scitran.api')

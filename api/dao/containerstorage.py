@@ -1,7 +1,4 @@
-import re
-import copy
 import logging
-import datetime
 import bson.errors
 import bson.objectid
 
