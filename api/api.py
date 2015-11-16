@@ -27,7 +27,7 @@ routing_regexes = {
     # site id regex
     # length less than 24 characters
     # allowed characters are [0-9a-z]
-    'site_re': '[0-9a-z]{0,24}',
+    'site_id_re': '[0-9a-z]{0,24}',
     # user id regex
     # any length, allowed chars are [0-9a-z.@_-]
     'user_id_re': '[0-9a-z.@_-]*',
@@ -76,7 +76,7 @@ routes = [
     webapp2.Route(_format(r'/api/groups/<_id:{group_id_re}>'),      grouphandler.GroupHandler, name='group'),
 
     webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:roles>'),                                        listhandler.ListHandler, name='group'),
-    webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:roles>/<site:{site_re}>/<_id:{user_id_re}>'),    listhandler.ListHandler, name='group', methods=['GET', 'PUT', 'DELETE']),
+    webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:roles>/<site:{site_id_re}>/<_id:{user_id_re}>'),    listhandler.ListHandler, name='group', methods=['GET', 'PUT', 'DELETE']),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>'),                                      listhandler.ListHandler, methods=['POST'], name='tags_post'),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.ListHandler, name='tags'),
@@ -85,7 +85,7 @@ routes = [
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>/<filename:{filename_re}>'),            listhandler.FileListHandler, name='files'),
 
     webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>'),                                     listhandler.PermissionsListHandler, name='perms_post', methods=['POST']),
-    webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>/<site:{site_re}>/<_id:{user_id_re}>'), listhandler.PermissionsListHandler, name='perms'),
+    webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>/<site:{site_id_re}>/<_id:{user_id_re}>'), listhandler.PermissionsListHandler, name='perms'),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:notes>'),                                     listhandler.NotesListHandler, name='notes_post', methods=['POST']),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:notes>/<_id:{note_id_re}>'),                  listhandler.NotesListHandler, name='notes'),

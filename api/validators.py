@@ -108,7 +108,10 @@ def key_check(handler, schema_file):
     for sublists of mongo container there is no automatic key check when creating, updating or deleting an object.
     We are adding a custom array field to the json schemas ("key_fields").
     The uniqueness is checked on the combination of all the elements of "key_fields".
-    For an example check api/schemas/input/permission.json
+
+    For an example check api/schemas/input/permission.json:
+    The key fields are the _id and the site. Uniqueness is checked on the combination
+    of the values of the _id and the site of the permissions.
 
     So this method ensures that:
     1. after a POST and PUT request we don't have two items with the same values for the key set

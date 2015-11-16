@@ -1,13 +1,16 @@
+import time
+import logging
 import pymongo
 import datetime
-import time
+
+log = logging.getLogger('scitran.api')
 
 db = None
 
 
 def configure_db(db_uri, site_id, site_name, api_uri):
     global db
-    for i in range(0,3):
+    for i in range(3):
         try:
             db = pymongo.MongoClient(db_uri).get_default_database()
             # TODO jobs indexes
@@ -28,5 +31,6 @@ def configure_db(db_uri, site_id, site_name, api_uri):
             return
         except Exception as e:
             db = None
-            time.sleep(5)
+            log.warning('DB not available...trying again in {} seconds'.format((i + 1) * 2))
+            time.sleep((i + 1) * 2)
     raise e
