@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Acquisition",
+    "type": "object",
+    "allOf": [{"$ref": "mongo/container.json"}],
+    "properties": {
+        "created": {},
+        "modified": {},
+        "notes": {},
+        "permissions": {},
+        "files": {},
+        "public": {},
+        "label": {},
+        "tags": {},
+        "metadata": {},
+
+        "session":      {},
+        "collections":  {"type": "array", "items": {"type": "string" }},
+        "uid":          {"type": "string"},
+        "instrument":   {"type": "string"},
+        "measurement":  {"type": "string"},
+        "timestamp":    {"type": "string"},
+        "timezone":     {"type": "string"}
+    },
+    "additionalProperties": false
+}

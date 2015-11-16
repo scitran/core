@@ -35,19 +35,21 @@ def users(args):
             u.setdefault('avatar', gravatar)
         u.setdefault('avatars', {})
         u['avatars'].setdefault('gravatar', gravatar)
-        db.users.insert_one(u)
+        db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
     log.info('bootstrapping groups...')
     for g in input_data.get('groups', []):
         log.info('    ' + g['_id'])
         g['created'] = now
         g['modified'] = now
-        db.groups.insert_one(g)
+        for r in g['roles']:
+            r.setdefault('site', args.site_id)
+        db.groups.update_one({'_id': g['_id']}, {'$setOnInsert': g}, upsert=True)
     log.info('bootstrapping drones...')
     for d in input_data.get('drones', []):
         log.info('    ' + d['_id'])
         d['created'] = now
         d['modified'] = now
-        db.drones.insert_one(d)
+        db.drones.update_one({'_id': d['_id']}, {'$setOnInsert': d}, upsert=True)
     log.info('bootstrapping complete')
 
 
@@ -76,7 +78,7 @@ def sort(args):
     log.info('found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt)
     for i, filepath in enumerate(files):
         log.info('sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
-        hash_ = hashlib.sha1()
+        hash_ = hashlib.sha384()
         if not args.quick:
             with open(filepath, 'rb') as fd:
                 for chunk in iter(lambda: fd.read(2**20), ''):
@@ -108,6 +110,7 @@ users_parser = subparsers.add_parser(
 users_parser.add_argument('-f', '--force', action='store_true', help='wipe out any existing data')
 users_parser.add_argument('db_uri', help='DB URI')
 users_parser.add_argument('json', help='JSON file containing users and groups')
+users_parser.add_argument('site_id', help='Site ID')
 users_parser.set_defaults(func=users)
 
 sort_parser = subparsers.add_parser(

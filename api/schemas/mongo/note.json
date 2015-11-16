@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "_id":              {"type": "string"},
+    "created":          {},
+    "modified":         {},
+    "user":             {"type": "string"},
+    "text":             {"type": "string"}
+  },
+  "required": ["_id", "user", "created", "modified", "text"],
+  "additionalProperties": false
+}

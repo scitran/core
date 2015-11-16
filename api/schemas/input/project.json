@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Project",
+    "type": "object",
+    "allOf": [{"$ref": "input/container.json"}],
+    "properties": {
+        "_id": {},
+        "public": {},
+        "label": {},
+        "metadata": {},
+
+        "group": {"type": "string"}
+    },
+    "additionalProperties": false
+}

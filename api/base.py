@@ -1,5 +1,3 @@
-# @author:  Gunnar Schaefer, Kevin S. Hahn
-
 import copy
 import json
 import urllib
@@ -68,8 +66,8 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(401, 'invalid oauth2 token', headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
-        elif self.debug and self.request.GET.get('user'):
-            self.uid = self.request.GET.get('user')
+        elif self.debug and self.get_param('user'):
+            self.uid = self.get_param('user')
 
         # Drone shared secret authentication
         elif drone_secret is not None and user_agent.startswith('SciTran Drone '):
@@ -88,6 +86,7 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
                 self.abort(401, 'no valid SSL client certificate')
+        self.user_site = self.source_site or self.app.config['site_id']
 
         self.public_request = not drone_request and not self.uid
 
@@ -102,7 +101,7 @@ class RequestHandler(webapp2.RequestHandler):
             if provider_avatar:
                 self.app.db.users.update_one({'_id': self.uid, 'avatar': None}, {'$set':{'avatar': provider_avatar, 'modified': request_start}})
                 self.app.db.users.update_one({'_id': self.uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': request_start}})
-            if self.request.GET.get('root', '').lower() in ('1', 'true'):
+            if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
                 else:
@@ -110,10 +109,15 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
+    def is_true(self, param):
+        return self.request.GET.get(param, '').lower() in ('1', 'true')
+
+    def get_param(self, param, default=None):
+        return self.request.GET.get(param, default)
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        target_site = self.request.GET.get('site', self.app.config['site_id'])
+        target_site = self.get_param('site', self.app.config['site_id'])
         if target_site == self.app.config['site_id']:
             log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             return super(RequestHandler, self).dispatch()

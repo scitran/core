@@ -3,24 +3,8 @@
 import os
 import time
 import logging
-import pymongo
 import argparse
 import datetime
-
-from api import app, centralclient, jobs
-from api.util import log
-from api import jobs
-
-logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
-
-try:
-    import newrelic.agent
-    newrelic.agent.initialize('../../newrelic.ini')
-    log.info('New Relic detected and loaded. Monitoring enabled.')
-except ImportError:
-    log.info('New Relic not detected. Monitoring disabled.')
-except newrelic.api.exceptions.ConfigurationError:
-    log.warn('New Relic detected but configuration was not valid. Please ensure newrelic.ini is present. Monitoring disabled.')
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
@@ -47,7 +31,6 @@ if __name__ == '__main__':
     ap.add_argument('--port', default='8080', help='TCP port to listen on [8080]')
 
 args = ap.parse_args()
-log.setLevel(getattr(logging, args.log_level.upper()))
 
 # uwsgi-related HACK to allow --site_name 'Example Site' or --site_name "Example Site"
 args.site_name = ' '.join(args.site_name).strip('"\'')
@@ -55,74 +38,64 @@ args.site_name = ' '.join(args.site_name).strip('"\'')
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 args.upload_path = os.path.join(args.data_path, 'upload')
 
-app.config = vars(args)
+from api import mongo
+mongo.configure_db(args.db_uri, args.site_id, args.site_name, args.api_uri)
+
+# imports delayed after mongo has been fully initialized
+from api.util import log
+from api import api
+from api import centralclient, jobs
+from api import jobs
+
+
+logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
+
+try:
+    import newrelic.agent
+    newrelic.agent.initialize('../../newrelic.ini')
+    log.info('New Relic detected and loaded. Monitoring enabled.')
+except ImportError:
+    log.info('New Relic not detected. Monitoring disabled.')
+except newrelic.api.exceptions.ConfigurationError:
+    log.warn('New Relic detected but configuration was not valid. Please ensure newrelic.ini is present. Monitoring disabled.')
+
+log.setLevel(getattr(logging, args.log_level.upper()))
+
+api.app.config = vars(args)
 
 centralclient_enabled = True
-if not app.config['ssl_cert']:
+if not api.app.config['ssl_cert']:
     centralclient_enabled = False
     log.warning('ssl_cert not configured -> SciTran Central functionality disabled')
-if app.config['site_id'] == 'local':
+if api.app.config['site_id'] == 'local':
     centralclient_enabled = False
     log.warning('site_id not configured -> SciTran Central functionality disabled')
-elif not app.config['api_uri']:
+elif not api.app.config['api_uri']:
     centralclient_enabled = False
     log.warning('api_uri not configured -> SciTran Central functionality disabled')
-if not app.config['central_uri']:
+if not api.app.config['central_uri']:
     centralclient_enabled = False
     log.warning('central_uri not configured -> SciTran Central functionality disabled')
-if not app.config['drone_secret']:
+if not api.app.config['drone_secret']:
     log.warning('drone_secret not configured -> Drone functionality disabled')
-if not os.path.exists(app.config['data_path']):
-    os.makedirs(app.config['data_path'])
-if not os.path.exists(app.config['quarantine_path']):
-    os.makedirs(app.config['quarantine_path'])
-if not os.path.exists(app.config['upload_path']):
-    os.makedirs(app.config['upload_path'])
+if not os.path.exists(api.app.config['data_path']):
+    os.makedirs(api.app.config['data_path'])
+if not os.path.exists(api.app.config['quarantine_path']):
+    os.makedirs(api.app.config['quarantine_path'])
+if not os.path.exists(api.app.config['upload_path']):
+    os.makedirs(api.app.config['upload_path'])
 
-for x in range(10):
-    try:
-        app.db = pymongo.MongoClient(args.db_uri).get_default_database()
-    except:
-        time.sleep(6)
-    else:
-        break
-else:
-    raise Exception('Could not connect to MongoDB')
 
-# TODO jobs indexes
-# TODO review all indexes
-app.db.projects.create_index([('gid', 1), ('name', 1)])
-app.db.sessions.create_index('project')
-app.db.sessions.create_index('uid')
-app.db.acquisitions.create_index('session')
-app.db.acquisitions.create_index('uid')
-app.db.acquisitions.create_index('collections')
-app.db.authtokens.create_index('timestamp', expireAfterSeconds=600)
-app.db.uploads.create_index('timestamp', expireAfterSeconds=60)
-app.db.downloads.create_index('timestamp', expireAfterSeconds=60)
-
-now = datetime.datetime.utcnow()
-app.db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
-app.db.sites.replace_one({'_id': args.site_id}, {'name': args.site_name, 'api_uri': args.api_uri}, upsert=True)
+api.app.db = mongo.db
 
 
 if __name__ == '__main__':
-    app.debug = True # send stack trace for uncaught exceptions to client
-    paste.httpserver.serve(app, host=args.host, port=args.port, ssl_pem=args.ssl_cert)
+    api.app.debug = True # send stack trace for uncaught exceptions to client
+    paste.httpserver.serve(api.app, host=args.host, port=args.port, ssl_pem=args.ssl_cert)
 else:
-    application = app # needed for uwsgi
+    application = api.app # needed for uwsgi
 
     import uwsgidecorators
-
-    @uwsgidecorators.cron(0, -1, -1, -1, -1)  # top of every hour
-    def upload_storage_cleaning(signum):
-        upload_path = application.config['upload_path']
-        for f in os.listdir(upload_path):
-            fp = os.path.join(upload_path, f)
-            timestamp = datetime.datetime.utcfromtimestamp(int(os.stat(fp).st_mtime))
-            if timestamp < (datetime.datetime.utcnow() - datetime.timedelta(hours=1)):
-                log.debug('upload %s was last modified %s' % (fp, str(timestamp)))
-                os.remove(fp)
 
     if centralclient_enabled:
         fail_count = 0

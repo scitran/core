@@ -1,5 +1,3 @@
-# @author:  Gunnar Schaefer
-
 import os
 import copy
 import pytz
@@ -18,7 +16,7 @@ import logging
 import scitran.data
 
 logging.basicConfig(
-    format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
+    format='%(asctime)s %(name)16.16s %(filename)24.24s %(lineno)5d:%(levelname)4.4s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     level=logging.DEBUG,
 )
@@ -56,7 +54,7 @@ def parse_file(filepath, digest):
             'filehash': digest,
             'modality': dataset.nims_file_domain,
             'datatypes': dataset.nims_file_kinds,
-            'flavor': 'data',
+            'tags': ['data'],
             }
     datainfo = {
             'acquisition_id': dataset.nims_acquisition_id,
@@ -115,8 +113,13 @@ def commit_file(dbc, _id, datainfo, filepath, data_path, force=False):
                 else: # existing file has different content
                     log.debug('Replacing   %s' % filename)
                     shutil.move(filepath, target_filepath)
+                    update_set = {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}
+                    # in this branch of the code, we are overriding an existing file.
+                    # update_set allows to update all the fileinfo like size, hash, etc.
+                    for k,v in fileinfo.iteritems():
+                        update_set['files.$.' + k] = v
                     dbc.update_one({'_id':_id, 'files.filename': fileinfo['filename']},
-                            {'$set': {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}})
+                            {'$set': update_set})
                     updated = True
                 break
     else:         # file does not exist
@@ -253,16 +256,6 @@ def container_fileinfo(container, filename):
         return None
 
 
-def upload_ticket(ip, **kwargs):
-    ticket = {
-        '_id': str(uuid.uuid4()),
-        'timestamp': datetime.datetime.utcnow(),
-        'ip': ip,
-    }
-    ticket.update(kwargs)
-    return ticket
-
-
 def download_ticket(ip, type_, target, filename, size):
     return {
         '_id': str(uuid.uuid4()),
@@ -276,18 +269,23 @@ def download_ticket(ip, type_, target, filename, size):
 
 
 def receive_stream_and_validate(stream, filepath, received_md5):
-    md5 = hashlib.md5()
-    sha1 = hashlib.sha1()
+    skip_md5 = False
+    if received_md5 is not None:
+        md5 = hashlib.md5()
+    else:
+        skip_md5 = True
+    sha384 = hashlib.sha384()
     filesize = 0
     start_time = datetime.datetime.utcnow()
     with open(filepath, 'wb') as fd:
         for chunk in iter(lambda: stream.read(2**20), ''):
-            md5.update(chunk)
-            sha1.update(chunk)
+            if received_md5 is not None:
+                md5.update(chunk)
+            sha384.update(chunk)
             filesize += len(chunk)
             fd.write(chunk)
     duration = datetime.datetime.utcnow() - start_time
-    return (md5.hexdigest() == received_md5) if received_md5 is not None else True, sha1.hexdigest(), filesize, duration
+    return skip_md5 or (md5.hexdigest() == received_md5), sha384.hexdigest(), filesize, duration
 
 
 def guess_mimetype(filepath):
@@ -307,7 +305,3 @@ def guess_filetype(filepath, mimetype):
         return 'text'
     else:
         return subtype
-
-
-def parse_timestamp(iso_timestamp):
-    return dateutil.parser.parse(iso_timestamp)

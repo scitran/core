@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "name":           { "type": "string" },
+    "created":        {},
+    "modified":       {},
+    "type":           { "type": "string" },
+    "size":           { "type": "integer" },
+    "hash":           { "type": "string" },
+    "instrument":     { "type": "string" },
+    "unprocessed":    { "type": "boolean"},
+    "measurements": {
+      "items": { "type": "string"},
+      "type": "array",
+      "uniqueItems": true
+    },
+    "tags": {
+      "items": { "type": "string"},
+      "type": "array",
+      "uniqueItems": true
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "required": ["name", "created", "modified", "type", "size", "hash", "unprocessed"],
+  "additionalProperties": false
+}

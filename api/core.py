@@ -1,5 +1,3 @@
-# @author:  Gunnar Schaefer, Kevin S. Hahn
-
 import logging
 import os
 import re
@@ -18,88 +16,10 @@ import jsonschema
 from . import base
 from . import util
 from .util import log
-from . import users
 from . import tempdir as tempfile
 
 # silence Markdown library logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
-
-UPLOAD_SCHEMA = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
-    'title': 'Upload',
-    'type': 'object',
-    'properties': {
-        'filetype': {
-            'type': 'string',
-        },
-        'overwrite': {
-            'type': 'object',
-            'properties': {
-                'group_name': {
-                    'type': 'string',
-                },
-                'project_name': {
-                    'type': 'string',
-                },
-                'series_uid': {
-                    'type': 'string',
-                },
-                'acq_no': {
-                    'type': 'integer',
-                },
-            },
-            'required': ['group_name', 'project_name', 'series_uid'],
-            'additionalProperties': False,
-        },
-    },
-    'required': ['filetype', 'overwrite'],
-    'additionalProperties': False,
-}
-
-DOWNLOAD_SCHEMA = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
-    'title': 'Download',
-    'type': 'object',
-    'properties': {
-        'optional': {
-            'type': 'boolean',
-        },
-        'nodes': {
-            'type': 'array',
-            'minItems': 1,
-            'items': {
-                'type': 'object',
-                'properties': {
-                    'level': {
-                        'type': 'string',
-                        'enum': ['project', 'session', 'acquisition'],
-                    },
-                    '_id': {
-                        'type': 'string',
-                        'pattern': '^[0-9a-f]{24}$',
-                    },
-                },
-                'required': ['level', '_id'],
-                'additionalProperties': False
-            },
-        },
-    },
-    'required': ['optional', 'nodes'],
-    'additionalProperties': False
-}
-
-RESET_SCHEMA = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
-    'title': 'Reset',
-    'type': 'object',
-    'properties': {
-        'reset': {
-            'type': 'boolean',
-        },
-    },
-    'required': ['reset'],
-    'additionalProperties': False
-}
 
 
 class Core(base.RequestHandler):
@@ -116,38 +36,30 @@ class Core(base.RequestHandler):
             Resource                            | Description
             :-----------------------------------|:-----------------------
             [(/sites)]                          | local and remote sites
-            /upload                             | upload
             /download                           | download
-            [(/search)]                         | search
             [(/users)]                          | list of users
-            [(/users/count)]                    | count of users
             [(/users/self)]                     | user identity
             [(/users/roles)]                    | user roles
             [(/users/*<uid>*)]                  | details for user *<uid>*
             [(/users/*<uid>*/groups)]           | groups for user *<uid>*
             [(/users/*<uid>*/projects)]         | projects for user *<uid>*
             [(/groups)]                         | list of groups
-            [(/groups/count)]                   | count of groups
             /groups/*<gid>*                     | details for group *<gid>*
             /groups/*<gid>*/projects            | list of projects for group *<gid>*
             /groups/*<gid>*/sessions            | list of sessions for group *<gid>*
             [(/projects)]                       | list of projects
-            [(/projects/count)]                 | count of projects
             [(/projects/groups)]                | groups for projects
             [(/projects/schema)]                | schema for single project
             /projects/*<pid>*                   | details for project *<pid>*
             /projects/*<pid>*/sessions          | list sessions for project *<pid>*
             [(/sessions)]                       | list of sessions
-            [(/sessions/count)]                 | count of sessions
             [(/sessions/schema)]                | schema for single session
             /sessions/*<sid>*                   | details for session *<sid>*
             /sessions/*<sid>*/move              | move session *<sid>* to a different project
             /sessions/*<sid>*/acquisitions      | list acquisitions for session *<sid>*
-            [(/acquisitions/count)]             | count of acquisitions
             [(/acquisitions/schema)]            | schema for single acquisition
             /acquisitions/*<aid>*               | details for acquisition *<aid>*
             [(/collections)]                    | list of collections
-            [(/collections/count)]              | count of collections
             [(/collections/schema)]             | schema for single collection
             /collections/*<cid>*                | details for collection *<cid>*
             /collections/*<cid>*/sessions       | list of sessions for collection *<cid>*
@@ -157,7 +69,7 @@ class Core(base.RequestHandler):
             """
 
         if self.debug and self.uid:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s)' % self.uid, resources)
+            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s&root=%r)' % (self.uid, self.superuser_request), resources)
             resources = re.sub(r'(\(.*)\*<uid>\*(.*\))', r'\1%s\2' % self.uid, resources)
         else:
             resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
@@ -181,9 +93,10 @@ class Core(base.RequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body style="min-width:900px">\n')
-        if self.debug and not self.request.GET.get('user', None):
+        if self.debug and not self.get_param('user'):
             self.response.write('<form name="username" action="" method="get">\n')
             self.response.write('Username: <input type="text" name="user">\n')
+            self.response.write('Root: <input type="checkbox" name="root" value="1">\n')
             self.response.write('<input type="submit" value="Generate Custom Links">\n')
             self.response.write('</form>\n')
         self.response.write(markdown.markdown(resources, ['extra']))
@@ -194,8 +107,6 @@ class Core(base.RequestHandler):
         """Receive a sortable reaper upload."""
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-        if 'Content-MD5' not in self.request.headers:
-            self.abort(400, 'Request must contain a valid "Content-MD5" header.')
         filename = cgi.parse_header(self.request.headers.get('Content-Disposition', ''))[1].get('filename')
         if not filename:
             self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
@@ -218,87 +129,6 @@ class Core(base.RequestHandler):
             throughput = filesize / duration.total_seconds()
             log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
 
-    def upload(self):
-        """
-        Recieve a multi-file upload.
-
-        3 phases:
-            1 - upload metadata, obtain upload ticket
-            2 - upload files, one at a time, but in parallel
-            3 - send a 'complete' message
-        """
-
-        def store_file(fd, filename, md5, arcpath, arcname):
-            with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
-                filepath = os.path.join(tempdir_path, filename)
-                success, _, _, _ = util.receive_stream_and_validate(fd, filepath, md5)
-                if not success:
-                    self.abort(400, 'Content-MD5 mismatch.')
-                with lockfile.LockFile(arcpath):
-                    with zipfile.ZipFile(arcpath, 'a', zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
-                        archive.write(filepath, os.path.join(arcname, filename))
-
-        if self.public_request:
-            self.abort(403, 'must be logged in to upload data')
-
-        filename = self.request.GET.get('filename')
-        ticket_id = self.request.GET.get('ticket')
-
-        if not ticket_id:
-            if filename != 'METADATA.json':
-                self.abort(400, 'first file must be METADATA.json')
-            try:
-                json_body = self.request.json_body
-                jsonschema.validate(json_body, UPLOAD_SCHEMA)
-            except (ValueError, jsonschema.ValidationError) as e:
-                self.abort(400, str(e))
-            filetype = json_body['filetype']
-            overwrites = json_body['overwrite']
-
-            query = {'name': overwrites['project_name'], 'group': overwrites['group_name']}
-            project = self.app.db.projects.find_one(query) # verify permissions
-            if not self.superuser_request:
-                user_perm = util.user_perm(project['permissions'], self.uid)
-                if not user_perm:
-                    self.abort(403, self.uid + ' does not have permissions on this project')
-                if users.INTEGER_ROLES[user_perm['access']] < users.INTEGER_ROLES['rw']:
-                    self.abort(403, self.uid + ' does not have at least ' + min_role + ' permissions on this project')
-
-            acq_no = overwrites.get('acq_no')
-            arcname = overwrites['series_uid'] + ('_' + str(acq_no) if acq_no is not None else '') + '_' + filetype
-            ticket = util.upload_ticket(self.request.client_addr, arcname=arcname) # store arcname for later reference
-            self.app.db.uploads.insert_one(ticket)
-            arcpath = os.path.join(self.app.config['upload_path'], ticket['_id'] + '.zip')
-            with zipfile.ZipFile(arcpath, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
-                archive.comment = json.dumps(json_body)
-            return {'ticket': ticket['_id']}
-
-        ticket = self.app.db.uploads.find_one({'_id': ticket_id})
-        if not ticket:
-            self.abort(404, 'no such ticket')
-        if ticket['ip'] != self.request.client_addr:
-            self.abort(400, 'ticket not for this source IP')
-        arcpath = os.path.join(self.app.config['upload_path'], ticket_id + '.zip')
-
-        if self.request.GET.get('complete', '').lower() not in ('1', 'true'):
-            if 'Content-MD5' not in self.request.headers:
-                self.app.db.uploads.delete_one({'_id': ticket_id}) # delete ticket
-                self.abort(400, 'Request must contain a valid "Content-MD5" header.')
-            if not filename:
-                self.app.db.uploads.delete_one({'_id': ticket_id}) # delete ticket
-                self.abort(400, 'Request must contain a filename query parameter.')
-            self.app.db.uploads.update_one({'_id': ticket_id}, {'$set': {'timestamp': datetime.datetime.utcnow()}}) # refresh ticket
-            store_file(self.request.body_file, filename, self.request.headers['Content-MD5'], arcpath, ticket['arcname'])
-        else: # complete -> hash, commit
-            sha1 = hashlib.sha1()
-            with open(arcpath, 'rb') as fd:
-                for chunk in iter(lambda: fd.read(2**20), ''):
-                    sha1.update(chunk)
-            datainfo = util.parse_file(arcpath, sha1.hexdigest())
-            if datainfo is None:
-                util.quarantine_file(arcpath, self.app.config['quarantine_path'])
-                self.abort(202, 'Quarantining %s (unparsable)' % filename)
-            util.commit_file(self.app.db.acquisitions, None, datainfo, arcpath, self.app.config['data_path'])
 
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']
@@ -370,7 +200,7 @@ class Core(base.RequestHandler):
         stream.close()
 
     def download(self):
-        ticket_id = self.request.GET.get('ticket')
+        ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = self.app.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
@@ -381,11 +211,9 @@ class Core(base.RequestHandler):
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
-            try:
-                req_spec = self.request.json_body
-                jsonschema.validate(req_spec, DOWNLOAD_SCHEMA)
-            except (ValueError, jsonschema.ValidationError) as e:
-                self.abort(400, str(e))
+            req_spec = self.request.json_body
+            validator = validators.payload_from_schema_file(self, 'input/download.json')
+            validator(req_spec, 'POST')
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
             return self._preflight_archivestream(req_spec)
 
@@ -393,7 +221,7 @@ class Core(base.RequestHandler):
         """Return local and remote sites."""
         projection = ['name', 'onload']
         # TODO onload for local is true
-        if self.public_request or self.request.GET.get('all', '').lower() in ('1', 'true'):
+        if self.public_request or self.is_true('all'):
             sites = list(self.app.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs
@@ -405,261 +233,3 @@ class Core(base.RequestHandler):
                 s['onload'] = True
                 break
         return sites
-
-    search_schema = {
-        'title': 'Search',
-        'type': 'array',
-        'items': [
-            {
-                'title': 'Session',
-                'type': 'array',
-                'items': [
-                    {
-                        'title': 'Date',
-                        'type': 'date',
-                        'field': 'session.date',
-                    },
-                    {
-                        'title': 'Subject',
-                        'type': 'array',
-                        'items': [
-                            {
-                                'title': 'Name',
-                                'type': 'array',
-                                'items': [
-                                    {
-                                        'title': 'First',
-                                        'type': 'string',
-                                        'field': 'session.subject.firstname',
-                                    },
-                                    {
-                                        'title': 'Last',
-                                        'type': 'string',
-                                        'field': 'session.subject.lastname',
-                                    },
-                                ],
-                            },
-                            {
-                                'title': 'Date of Birth',
-                                'type': 'date',
-                                'field': 'session.subject.dob',
-                            },
-                            {
-                                'title': 'Sex',
-                                'type': 'string',
-                                'enum': ['male', 'female'],
-                                'field': 'session.subject.sex',
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                'title': 'MR',
-                'type': 'array',
-                'items': [
-                    {
-                        'title': 'Scan Type',
-                        'type': 'string',
-                        'enum': ['anatomical', 'fMRI', 'DTI'],
-                        'field': 'acquisition.type',
-                    },
-                    {
-                        'title': 'Echo Time',
-                        'type': 'number',
-                        'field': 'acquisition.echo_time',
-                    },
-                    {
-                        'title': 'Size',
-                        'type': 'array',
-                        'items': [
-                            {
-                                'title': 'X',
-                                'type': 'integer',
-                                'field': 'acquisition.size.x',
-                            },
-                            {
-                                'title': 'Y',
-                                'type': 'integer',
-                                'field': 'acquisition.size.y',
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                'title': 'EEG',
-                'type': 'array',
-                'items': [
-                    {
-                        'title': 'Electrode Count',
-                        'type': 'integer',
-                        'field': 'acquisition.electrode_count',
-                    },
-                ],
-            },
-        ],
-    }
-
-    def search(self):
-        """Search."""
-        SEARCH_POST_SCHEMA = {
-            '$schema': 'http://json-schema.org/draft-04/schema#',
-            'title': 'File',
-            'type': 'object',
-            'properties': {
-                'subj_code': {
-                    'title': 'Subject Code',
-                    'type': 'string',
-                },
-                'subj_firstname': {
-                    'title': 'Subject First Name',   # hash
-                    'type': 'string',
-                },
-                'subj_lastname': {
-                    'title': 'Subject Last Name',
-                    'type': 'string',
-                },
-                'sex': {
-                    'title': 'Subject Sex',
-                    'type': 'string',
-                    'enum': ['male', 'female'],
-                },
-                'scan_type': {  # MR SPECIFIC!!!
-                    'title': 'Scan Type',
-                    'enum': self.app.db.acquisitions.distinct('datatype')
-                },
-                'date_from': {
-                    'title': 'Date From',
-                    'type': 'string',
-                },
-                'date_to': {
-                    'title': 'Date To',
-                    'type': 'string',
-                },
-                'psd': {  # MR SPECIFIC!!!
-                    'title': 'PSD Name',
-                    'type': 'string',   # 'enum': self.app.db.acquisitions.distinct('psd'),
-                },
-                'subj_age_max': {  # age in years
-                    'title': 'Subject Age Max',
-                    'type': 'integer',
-                },
-                'subj_age_min': {  # age in years
-                    'title': 'Subject Age Min',
-                    'type': 'integer',
-                },
-                'exam': {
-                    'title': 'Exam Number',
-                    'type': 'string',
-                },
-                'description': {
-                    'title': 'Description',
-                    'type': 'string',
-                },
-            },
-            # 'required': ['subj_code', 'scan_type', 'date_from', 'date_to', 'psd_name', 'operator', 'subj_age_max', 'subj_age_min', 'exam'],
-            # 'additionalProperties': False
-        }
-        if self.request.method == 'GET':
-            return SEARCH_POST_SCHEMA
-        try:
-            json_body = self.request.json_body
-            jsonschema.validate(json_body, SEARCH_POST_SCHEMA)
-        except (ValueError, jsonschema.ValidationError) as e:
-            self.abort(400, str(e))
-
-        # TODO: search needs to include operator details? do types of datasets have an 'operator'?
-        # TODO: provide a schema that allows directly using the request data, rather than
-        # requiring construction of the queries....
-        def _parse_query_string(query_string):
-            if '*' in query_string:
-                regex = re.sub('\*', '.*', query_string)
-                return {'$regex': '^' + regex + '$', '$options': 'i'}
-            else:
-                return query_string
-
-
-        session_query = {}
-        exam = json_body.get('exam')
-        subj_code = json_body.get('subj_code')
-        age_max = json_body.get('subj_age_max')
-        age_min = json_body.get('subj_age_min')
-        sex = json_body.get('sex')
-        if exam:
-            session_query.update({'exam': _parse_query_string(exam)})
-        if subj_code:
-            session_query.update({'subject.code': _parse_query_string(subj_code)})
-        if sex:
-            session_query.update({'subject.sex': sex})
-        if age_min and age_max:
-            session_query.update({'subject.age': {'$gte': age_min, '$lte': age_max}})
-        elif age_max:
-            session_query.update({'subject.age': {'$lte': age_max}})
-        elif age_min:
-            session_query.update({'subject.age': {'$gte': age_min}})
-
-        # TODO: don't build these, want to get as close to dump the data from the request
-        acq_query = {}
-        psd = json_body.get('psd')
-        types_kind = json_body.get('scan_type')
-        time_fmt = '%Y-%m-%d'  # assume that dates will come in as "2014-01-01"
-        description = json_body.get('description')
-        date_to = json_body.get('date_to')  # need to do some datetime conversion
-        if date_to:
-            date_to = datetime.datetime.strptime(date_to, time_fmt)
-        date_from = json_body.get('date_from')      # need to do some datetime conversion
-        if date_from:
-            date_from = datetime.datetime.strptime(date_from, time_fmt)
-        if psd:
-            acq_query.update({'psd': _parse_query_string(psd)})
-        if types_kind:
-            acq_query.update({'datatype': types_kind})
-        if date_to and date_from:
-            acq_query.update({'timestamp': {'$gte': date_from, '$lte': date_to}})
-        elif date_to:
-            acq_query.update({'timestamp': {'$lte': date_to}})
-        elif date_from:
-            acq_query.update({'timestamp': {'$gte': date_from}})
-        if description:
-            # glob style matching, whole word must exist within description
-            pass
-
-        # also query sessions
-        # permissions exist at the session level, which will limit the acquisition queries to sessions user has access to
-        if not self.superuser_request:
-            session_query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
-            acq_query['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
-        sessions = list(self.app.db.sessions.find(session_query))
-        session_ids = [s['_id'] for s in sessions]
-        # first find the acquisitions that meet the acquisition level query params
-        aquery = {'session': {'$in': session_ids}}
-        aquery.update(acq_query)
-
-        # build a more complex response, and clean out database specifics
-        groups = []
-        projects = []
-        sessions = []
-        acqs = list(self.app.db.acquisitions.find(aquery))
-        for acq in acqs:
-            session = self.app.db.sessions.find_one({'_id': acq['session']})
-            project = self.app.db.projects.find_one({'_id': session['project']})
-            group = project['group']
-            del project['group']
-            project['group'] = group
-            session['subject_code'] = session.get('subject', {}).get('code', '')
-            if session not in sessions:
-                sessions.append(session)
-            if project not in projects:
-                projects.append(project)
-            if group not in groups:
-                groups.append(group)
-
-        results = {
-            'groups': groups,
-            'projects': projects,
-            'sessions': sessions,
-            'acquisitions': acqs,
-        }
-
-        return results
