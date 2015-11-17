@@ -8,7 +8,7 @@ log = logging.getLogger('scitran.api')
 db = None
 
 
-def configure_db(db_uri, site_id, site_name, api_uri):
+def configure_db(db_uri, site_id=None, site_name=None, api_uri=None):
     global db
     for i in range(3):
         try:
@@ -24,10 +24,10 @@ def configure_db(db_uri, site_id, site_name, api_uri):
             db.authtokens.create_index('timestamp', expireAfterSeconds=600)
             db.uploads.create_index('timestamp', expireAfterSeconds=60)
             db.downloads.create_index('timestamp', expireAfterSeconds=60)
-
             now = datetime.datetime.utcnow()
             db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
-            db.sites.replace_one({'_id': site_id}, {'name': site_name, 'api_uri': api_uri}, upsert=True)
+            if site_id and site_name and api_uri:
+                db.sites.replace_one({'_id': site_id}, {'name': site_name, 'api_uri': api_uri}, upsert=True)
             return
         except Exception as e:
             db = None

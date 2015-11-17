@@ -47,9 +47,6 @@ from api import api
 from api import centralclient, jobs
 from api import jobs
 
-
-logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
-
 try:
     import newrelic.agent
     newrelic.agent.initialize('../../newrelic.ini')

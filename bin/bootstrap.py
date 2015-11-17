@@ -4,15 +4,19 @@
 
 import os
 import json
+
+import shutil
 import hashlib
 import logging
 import pymongo
+import zipfile
 import argparse
 import datetime
 import requests
 
+from api.dao import reaperutil
 from api import util  # from scitran.api import util
-
+from api import mongo
 log = logging.getLogger('scitran.api.bootstrap')
 
 
@@ -67,13 +71,11 @@ example:
 
 
 def data(args):
-    quarantine_path = os.path.join(args.storage_path, 'quarantine')
     if not os.path.exists(args.storage_path):
         os.makedirs(args.storage_path)
-    if not os.path.exists(quarantine_path):
-        os.makedirs(quarantine_path)
     log.info('initializing DB')
-    db = pymongo.MongoClient(args.db_uri).get_default_database()
+    mongo.configure_db(args.db_uri)
+    #db = pymongo.MongoClient(args.db_uri).get_default_database()
     log.info('inspecting %s' % args.path)
     files = []
     for dirpath, dirnames, filenames in os.walk(args.path):
@@ -84,18 +86,26 @@ def data(args):
     file_cnt = len(files)
     log.info('found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt)
     for i, filepath in enumerate(files):
-        log.info('sorting     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
+        log.info('loading    %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
         hash_ = hashlib.sha384()
-        if not args.quick:
-            with open(filepath, 'rb') as fd:
-                for chunk in iter(lambda: fd.read(2**20), ''):
-                    hash_.update(chunk)
-        datainfo = util.parse_file(filepath, hash_.hexdigest())
-        if datainfo is None:
-            util.quarantine_file(filepath, quarantine_path)
-            log.info('quarantining %s (unparsable)' % os.path.basename(filepath))
-        else:
-            util.commit_file(db.acquisitions, None, datainfo, filepath, args.storage_path)
+        size = os.path.getsize(filepath)
+        metadata = json.loads(zipfile.ZipFile(filepath).comment)
+        log.error(metadata)
+        container = reaperutil.create_container_hierarchy(metadata)
+        with open(filepath, 'rb') as fd:
+            for chunk in iter(lambda: fd.read(2**20), ''):
+                hash_.update(chunk)
+        destpath = os.path.join(args.storage_path, container.path)
+        if not os.path.exists(destpath):
+            os.makedirs(destpath)
+        shutil.move(filepath, destpath)
+        fileinfo = {
+            'size': size,
+            'hash': hash_.hexdigest(),
+            'unprocessed': True
+        }
+        container.add_file(fileinfo)
+
 
 data_desc = """
 example:

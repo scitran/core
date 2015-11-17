@@ -362,20 +362,20 @@ class FileListHandler(ListHandler):
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
         payload = self.request.POST.mixed()
         filename = payload.get('filename') or kwargs.get('filename')
-        file_request = files.FileRequest.from_handler(self, filename)
+
         result = None
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
-            success = file_request.save_temp_file(tempdir_path)
+            file_store = files.FileStore(self.request, tempdir_path, filename=filename)
+            success = file_store.save_temp_file(tempdir_path)
             if not success:
                 self.abort(400, 'Content-MD5 mismatch.')
             file_datetime = datetime.datetime.utcnow()
             file_properties = {
-                'name': file_request.filename,
-                'size': file_request.filesize,
-                'hash': file_request.sha384,
-                'type': file_request.mimetype,
-                'tags': file_request.tags,
-                'metadata': file_request.metadata,
+                'name': file_store.filename,
+                'size': file_store.filesize,
+                'hash': file_store.sha384,
+                'tags': file_store.tags,
+                'metadata': file_store.metadata,
                 'created': file_datetime,
                 'modified': file_datetime,
                 'unprocessed': True
@@ -385,10 +385,10 @@ class FileListHandler(ListHandler):
             if not force:
                 method = 'POST'
             else:
-                filepath = os.path.join(file_request.tempdir_path, filename)
+                filepath = os.path.join(file_store.tempdir_path, filename)
                 for f in container['files']:
                     if f['name'] == filename:
-                        if file_request.check_identical(os.path.join(data_path, filename), f['hash']):
+                        if file_store.identical(os.path.join(data_path, filename), f['hash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
                             self.abort(409, 'identical file exists')
@@ -404,7 +404,7 @@ class FileListHandler(ListHandler):
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
             try:
-                file_request.move_temp_file(dest_path)
+                file_store.move_file(dest_path)
 
             except IOError as e:
                 result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)
