@@ -4,7 +4,6 @@
 
 import os
 import json
-
 import shutil
 import hashlib
 import logging
@@ -13,6 +12,7 @@ import zipfile
 import argparse
 import datetime
 import requests
+
 
 from api.dao import reaperutil
 from api import util  # from scitran.api import util
@@ -116,8 +116,11 @@ def data(_, args):
         log.info('loading    %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
         hash_ = hashlib.sha384()
         size = os.path.getsize(filepath)
-        metadata = json.loads(zipfile.ZipFile(filepath).comment)
-        log.error(metadata)
+        try:
+            metadata = json.loads(zipfile.ZipFile(filepath).comment)
+        except ValueError as e:
+            log.warning(str(e))
+            continue
         container = reaperutil.create_container_hierarchy(metadata)
         with open(filepath, 'rb') as fd:
             for chunk in iter(lambda: fd.read(2**20), ''):
@@ -125,7 +128,11 @@ def data(_, args):
         destpath = os.path.join(args.storage_path, container.path)
         if not os.path.exists(destpath):
             os.makedirs(destpath)
-        shutil.move(filepath, destpath)
+        if args.copy:
+            destpath = os.path.join(destpath, os.path.basename(filepath))
+            shutil.copyfile(filepath, destpath)
+        else:
+            shutil.move(filepath, destpath)
         fileinfo = {
             'size': size,
             'hash': hash_.hexdigest(),
@@ -183,6 +190,7 @@ data_parser = subparsers.add_parser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 data_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
+data_parser.add_argument('-c', '--copy', action='store_true', help='copy data instead of moving it')
 data_parser.add_argument('db_uri', help='database URI')
 data_parser.add_argument('path', help='filesystem path to data')
 data_parser.add_argument('storage_path', help='filesystem path to sorted data')

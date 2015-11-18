@@ -37,44 +37,6 @@ class HashingFieldStorage(cgi.FieldStorage):
     def make_file(self, binary=None):
         return HashingFile(os.path.join(self.upload_dir, self.filename), self.hash_alg)
 
-# def put(self):
-#     before = resource.getrusage(resource.RUSAGE_SELF)
-#     before_io = psutil.disk_io_counters()
-
-#     upload_source = '%s (%s)' % (self.request.user_agent, self.request.client_addr)
-#     log.debug('incoming upload from ' + upload_source)
-#     log.debug('type: ' + self.request.content_type)
-
-#     if (self.request.content_type == 'multipart/form-data'):
-#         # Any incoming file(s) are hashed and written to disk on construction of the HashingFieldStorage class
-#         form = HashingFieldStorage(upload_dir=self.app.path, fp=self.request.body_file, environ=self.request.environ, keep_blank_values=True, hash_alg='sha384')
-
-#         received_file = form['file']
-#         received_sha = received_file.get_hash()
-#         received_filename = received_file.filename
-#         received_size = os.path.getsize(os.path.join(self.app.path, received_filename))
-
-#     else:
-#         received_filename = 'upload.dat'
-#         received_file = HashingFile(os.path.join(self.app.path, received_filename))
-#         for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
-#             received_file.write(chunk)
-#         received_sha = received_file.get_hash()
-#         received_size = os.path.getsize(os.path.join(self.app.path, received_filename))
-
-#     log.debug('received %s [%s] from %s' % (received_filename, hrsize(received_size), upload_source))
-#     log.debug('sha1: ' + received_sha)
-#     os.rename(
-#         os.path.join(self.app.path, received_filename),
-#         os.path.join(self.app.path, received_sha + '_' + received_filename))
-
-#     after = resource.getrusage(resource.RUSAGE_SELF)
-#     after_io = psutil.disk_io_counters()
-#     print('Memory Used (High-water mark): %s' % (hrsize(after.ru_maxrss)))
-#     print('CPU Time: %d seconds' % ((after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)))
-#     print('Disk I/O: %s bytes written, %s bytes read' % (hrsize(after_io.write_bytes - before_io.write_bytes), hrsize(after_io.read_bytes - before_io.read_bytes)))
-
-
 
 class FileStore(object):
     """This class provides and interface for file uploads.

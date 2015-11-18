@@ -3,6 +3,8 @@ import difflib
 import logging
 import pymongo
 import datetime
+import dateutil.parser
+
 from .. import mongo
 from . import APIStorageException
 
@@ -74,7 +76,7 @@ def create_container_hierarchy(metadata):
     # Fail if some fields are missing
     try:
         group = metadata['group']
-        group_name = group['name']
+        group_name = group['_id']
         project = metadata['project']
         project_label = project['label']
         session = metadata['session']
@@ -87,17 +89,19 @@ def create_container_hierarchy(metadata):
     subject = metadata.get('subject')
     file_ = metadata.get('file')
 
+    now = datetime.datetime.utcnow()
+
     session_obj = mongo.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
-        project_obj = mongo.db.projects.find_one({'_id': session['project']}, projection=PROJECTION_FIELDS + ['name'])
+        project_obj = mongo.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
     else:
-        created = modified = datetime.datetime.utcnow()
-        project_obj = _find_or_create_destination_project(group_name, project_label, created, modified)
+        project_obj = _find_or_create_destination_project(group_name, project_label, now, now)
     if subject:
         session['subject'] = subject
     #FIXME session modified date should be updated on updates
     if session.get('timestamp'):
-        session['timestamp'] = session['timestamp']['$date']
+        session['timestamp'] = dateutil.parser.parse(session['timestamp'])
+    session['modified'] = now
     session_obj = mongo.db.sessions.find_one_and_update(
         {'uid': session_uid},
         {
@@ -106,8 +110,7 @@ def create_container_hierarchy(metadata):
                 project=project_obj['_id'],
                 permissions=project_obj['permissions'],
                 public=project_obj['public'],
-                created=created,
-                modified=modified
+                created=now
             ),
             '$set': session,
         },
@@ -117,14 +120,14 @@ def create_container_hierarchy(metadata):
     )
     log.info('Setting     group_id="%s", project_name="%s", and session_uid="%s"' % (project_obj['group'], project_obj['label'], session_uid))
     if acquisition.get('timestamp'):
-        acquisition['timestamp'] = acquisition['timestamp']['$date']
+        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
+    acquisition['modified'] = now
     acq_operations = {
         '$setOnInsert': dict(
             session=session_obj['_id'],
             permissions=session_obj['permissions'],
             public=session_obj['public'],
-            created=created,
-            modified=modified
+            created=now
         ),
         '$set': acquisition
     }

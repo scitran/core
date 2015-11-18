@@ -10,3 +10,5 @@ requests
 tzlocal
 webapp2
 webob
+rfc3987
+nose
