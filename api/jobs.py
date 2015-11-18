@@ -172,8 +172,10 @@ def generate_formula(i):
         A job's intent that holds everything needed to generate a formula.
     """
 
-    if i['algorithm_id'] not in ALGORITHMS:
-        raise Exception('Usupported algorithm ' + algorithm_id)
+    alg_id = i['algorithm_id']
+
+    if alg_id not in ALGORITHMS:
+        raise Exception('Usupported algorithm ' + alg_id)
 
     # Currently hard-coded for a single algorithm: dcm2nii
     f = {
@@ -190,7 +192,7 @@ def generate_formula(i):
             }
         ],
         'transform': {
-            'command': [ 'echo', 'No command specified for ' + algorithm_id],
+            'command': [ 'echo', 'No command specified for ' + alg_id],
             'env': { },
             'dir': "/",
         },
@@ -204,13 +206,13 @@ def generate_formula(i):
         ],
     }
 
-    if i['algorithm_id'] == 'dcm2nii':
+    if alg_id == 'dcm2nii':
         f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
 
-    elif i['algorithm_id'] == 'qa':
+    elif alg_id == 'qa':
         pass
     else:
-        raise Exception('Command for algorithm ' + algorithm_id + ' not specified')
+        raise Exception('Command for algorithm ' + alg_id + ' not specified')
 
     return f
 
