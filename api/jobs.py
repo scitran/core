@@ -28,16 +28,17 @@ JOB_STATES_ALLOWED_MUTATE = [
 ]
 
 JOB_TRANSITIONS = [
-    "pending --> running",
-    "running --> failed",
-    "running --> complete",
+    'pending --> running',
+    'running --> failed',
+    'running --> complete',
 ]
 
 def valid_transition(from_state, to_state):
     return (from_state + " --> " + to_state) in JOB_TRANSITIONS or from_state == to_state
 
 ALGORITHMS = [
-    "dcm2nii"
+    'dcm2nii',
+    'qa'
 ]
 
 
@@ -62,7 +63,15 @@ def spawn_jobs(db, containers, file):
         File object that is used to spawn 0 or more jobs.
     """
 
-    if file['filetype'] != 'dicom':
+    alg = ''
+    filetype = file['filetype']
+
+    if filetype == 'dicom':
+        alg = 'dcm2nii'
+    elif filetype == 'nifti':
+        # alg = 'qa'
+        return
+    else:
         return
 
     # File information
@@ -79,7 +88,7 @@ def spawn_jobs(db, containers, file):
     # Spawn rules currently do not look at container hierarchy, and only care about a single file.
     # Further, one algorithm is unconditionally triggered for each dirty file.
 
-    queue_job(db, 'dcm2nii', container_type, container_id, filename, filehash)
+    queue_job(db, alg, container_type, container_id, filename, filehash)
 
 
 def queue_job(db, algorithm_id, container_type, container_id, filename, filehash, attempt_n=1, previous_job_id=None):
@@ -181,7 +190,7 @@ def generate_formula(i):
             }
         ],
         'transform': {
-            'command': ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0] ],
+            'command': [ 'echo', 'No command specified for ' + algorithm_id],
             'env': { },
             'dir': "/",
         },
@@ -194,6 +203,14 @@ def generate_formula(i):
             },
         ],
     }
+
+    if i['algorithm_id'] == 'dcm2nii':
+        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
+
+    elif i['algorithm_id'] == 'qa':
+        pass
+    else:
+        raise Exception('Command for algorithm ' + algorithm_id + ' not specified')
 
     return f
 
