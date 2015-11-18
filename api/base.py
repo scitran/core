@@ -8,6 +8,7 @@ import requests
 import urlparse
 import jsonschema
 
+from . import config
 from .util import log
 
 # silence Requests library logging
@@ -62,7 +63,7 @@ class RequestHandler(webapp2.RequestHandler):
                         u = u._replace(query=urllib.urlencode(query, True))
                         provider_avatar = urlparse.urlunparse(u)
                 else:
-                    headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % self.app.config['site_id']}
+                    headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % config.site_id()}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
@@ -86,7 +87,7 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
                 self.abort(401, 'no valid SSL client certificate')
-        self.user_site = self.source_site or self.app.config['site_id']
+        self.user_site = self.source_site or config.site_id()
 
         self.public_request = not drone_request and not self.uid
 
@@ -117,13 +118,13 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        target_site = self.get_param('site', self.app.config['site_id'])
-        if target_site == self.app.config['site_id']:
+        target_site = self.get_param('site', config.site_id())
+        if target_site == config.site_id():
             log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             return super(RequestHandler, self).dispatch()
         else:
-            if not self.app.config['site_id']:
-                self.abort(500, 'api site_id is not configured')
+            if not config.site_id():
+                self.abort(500, 'api config.site_id() is not configured')
             if not self.app.config['ssl_cert']:
                 self.abort(500, 'api ssl_cert is not configured')
             target = self.app.db.sites.find_one({'_id': target_site}, ['api_uri'])
@@ -131,9 +132,9 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers
             self.headers = self.request.headers
-            self.headers['User-Agent'] = 'SciTran Instance ' + self.app.config['site_id']
+            self.headers['User-Agent'] = 'SciTran Instance ' + config.site_id()
             self.headers['X-User'] = self.uid
-            self.headers['X-Site'] = self.app.config['site_id']
+            self.headers['X-Site'] = config.site_id()
             self.headers['Content-Length'] = len(self.request.body)
             del self.headers['Host']
             if 'Authorization' in self.headers: del self.headers['Authorization']

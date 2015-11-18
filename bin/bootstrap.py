@@ -20,8 +20,7 @@ from api import mongo
 log = logging.getLogger('scitran.api.bootstrap')
 
 
-def clean(args):
-    db = pymongo.MongoClient(args.db_uri).get_default_database()
+def clean(db, args):
     db.client.drop_database(db)
 
 clean_desc = """
@@ -30,8 +29,37 @@ example:
 """
 
 
-def users(args):
-    db = pymongo.MongoClient(args.db_uri).get_default_database()
+def dbinit(db, args):
+    # TODO jobs indexes
+    # TODO review all indexes
+    db.projects.create_index([('gid', 1), ('name', 1)])
+    db.sessions.create_index('project')
+    db.sessions.create_index('uid')
+    db.acquisitions.create_index('session')
+    db.acquisitions.create_index('uid')
+    db.acquisitions.create_index('collections')
+    db.authtokens.create_index('timestamp', expireAfterSeconds=600)
+    db.uploads.create_index('timestamp', expireAfterSeconds=60)
+    db.downloads.create_index('timestamp', expireAfterSeconds=60)
+
+    now = datetime.datetime.utcnow()
+    db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
+
+    db.config.update_one({'latest': True}, {'$set': {
+        'site_id': args.site_id,
+        'site_name': args.site_name,
+        'site_url': args.site_url,
+        }}, upsert=True)
+
+    db.sites.replace_one({'_id': args.site_id}, {'name': args.site_name, 'site_url': args.site_url}, upsert=True)
+
+dbinit_desc = """
+example:
+./bin/bootstrap.py dbinit mongodb://localhost/scitran local Local https://localhost/api
+"""
+
+
+def users(db, args):
     now = datetime.datetime.utcnow()
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
@@ -49,12 +77,14 @@ def users(args):
         u['avatars'].setdefault('gravatar', gravatar)
         db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
     log.info('bootstrapping groups...')
+    config = db.config.find_one({'latest': True})
+    site_id = config.get('site_id')
     for g in input_data.get('groups', []):
         log.info('    ' + g['_id'])
         g['created'] = now
         g['modified'] = now
         for r in g['roles']:
-            r.setdefault('site', args.site_id)
+            r.setdefault('site', site_id)
         db.groups.update_one({'_id': g['_id']}, {'$setOnInsert': g}, upsert=True)
     log.info('bootstrapping drones...')
     for d in input_data.get('drones', []):
@@ -70,12 +100,9 @@ example:
 """
 
 
-def data(args):
+def data(_, args):
     if not os.path.exists(args.storage_path):
         os.makedirs(args.storage_path)
-    log.info('initializing DB')
-    mongo.configure_db(args.db_uri)
-    #db = pymongo.MongoClient(args.db_uri).get_default_database()
     log.info('inspecting %s' % args.path)
     files = []
     for dirpath, dirnames, filenames in os.walk(args.path):
@@ -127,6 +154,18 @@ clean_parser = subparsers.add_parser(
 clean_parser.add_argument('db_uri', help='DB URI')
 clean_parser.set_defaults(func=clean)
 
+dbinit_parser = subparsers.add_parser(
+        name='dbinit',
+        help='initialize database and indexes',
+        description=dbinit_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+dbinit_parser.add_argument('db_uri', help='DB URI')
+dbinit_parser.add_argument('site_id', help='Site ID')
+dbinit_parser.add_argument('site_name', help='Site Name')
+dbinit_parser.add_argument('site_url', help='Site URL')
+dbinit_parser.set_defaults(func=dbinit)
+
 users_parser = subparsers.add_parser(
         name='users',
         help='bootstrap users and groups',
@@ -135,7 +174,6 @@ users_parser = subparsers.add_parser(
         )
 users_parser.add_argument('db_uri', help='DB URI')
 users_parser.add_argument('json', help='JSON file containing users and groups')
-users_parser.add_argument('site_id', help='Site ID')
 users_parser.set_defaults(func=users)
 
 data_parser = subparsers.add_parser(
@@ -151,5 +189,6 @@ data_parser.add_argument('storage_path', help='filesystem path to sorted data')
 data_parser.set_defaults(func=data)
 
 args = parser.parse_args()
+mongo.configure_db(args.db_uri)
 logging.getLogger().setLevel(getattr(logging, args.log_level.upper()))
-args.func(args)
+args.func(mongo.db, args)

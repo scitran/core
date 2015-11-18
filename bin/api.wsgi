@@ -13,15 +13,14 @@ os.umask(0o022)
 ap = argparse.ArgumentParser()
 ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
 ap.add_argument('--data_path', help='path to storage area', required=True)
-ap.add_argument('--ssl_cert', help='path to SSL certificate file, containing private key and certificate chain', required=True)
-ap.add_argument('--api_uri', help='api uri, with https:// prefix')
-ap.add_argument('--site_id', help='site ID for Scitran Central [local]', default='local')
-ap.add_argument('--site_name', help='site name', nargs='*', default=['Local'])  # hack for uwsgi --pyargv
+ap.add_argument('--ssl', action='store_true', help='enable SSL')
+ap.add_argument('--ssl_cert', default='*', help='path to SSL key and cert file')
 ap.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
 ap.add_argument('--insecure', help='allow user info as urlencoded param', action='store_true', default=False)
 ap.add_argument('--central_uri', help='scitran central api', default='https://sdmc.scitran.io/api')
 ap.add_argument('--log_level', help='log level [info]', default='info')
 ap.add_argument('--drone_secret', help='shared drone secret')
+
 
 if __name__ == '__main__':
     import paste.httpserver
@@ -32,14 +31,12 @@ if __name__ == '__main__':
 
 args = ap.parse_args()
 
-# uwsgi-related HACK to allow --site_name 'Example Site' or --site_name "Example Site"
-args.site_name = ' '.join(args.site_name).strip('"\'')
-
 args.quarantine_path = os.path.join(args.data_path, 'quarantine')
 args.upload_path = os.path.join(args.data_path, 'upload')
+args.ssl = args.ssl or args.ssl_cert != '*'
 
 from api import mongo
-mongo.configure_db(args.db_uri, args.site_id, args.site_name, args.api_uri)
+mongo.configure_db(args.db_uri)
 
 # imports delayed after mongo has been fully initialized
 from api.util import log
@@ -64,12 +61,6 @@ centralclient_enabled = True
 if not api.app.config['ssl_cert']:
     centralclient_enabled = False
     log.warning('ssl_cert not configured -> SciTran Central functionality disabled')
-if api.app.config['site_id'] == 'local':
-    centralclient_enabled = False
-    log.warning('site_id not configured -> SciTran Central functionality disabled')
-elif not api.app.config['api_uri']:
-    centralclient_enabled = False
-    log.warning('api_uri not configured -> SciTran Central functionality disabled')
 if not api.app.config['central_uri']:
     centralclient_enabled = False
     log.warning('central_uri not configured -> SciTran Central functionality disabled')
@@ -83,6 +74,7 @@ if not os.path.exists(api.app.config['upload_path']):
     os.makedirs(api.app.config['upload_path'])
 
 
+# FIXME All code shoud use the mongo module and this line should be deleted.
 api.app.db = mongo.db
 
 
@@ -99,13 +91,13 @@ else:
         @uwsgidecorators.timer(60)
         def centralclient_timer(signum):
             global fail_count
-            if not centralclient.update(application.db, args.api_uri, args.site_name, args.site_id, args.ssl_cert, args.central_uri):
+            if not centralclient.update(mongo.db, args.ssl_cert, args.central_uri):
                 fail_count += 1
             else:
                 fail_count = 0
             if fail_count == 3:
                 log.warning('scitran central unreachable, purging all remotes info')
-                centralclient.clean_remotes(application.db, args.site_id)
+                centralclient.clean_remotes(mongo.db)
 
     def job_creation(signum):
         for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
