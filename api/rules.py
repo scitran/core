@@ -5,6 +5,7 @@ log = logging.getLogger('scitran.api.jobs')
 import bson
 import pymongo
 import datetime
+import fnmatch
 
 from . import base
 from . import util
@@ -46,18 +47,31 @@ def eval_match(match_type, match_param, file_, container):
     if not match_type in MATCH_TYPES:
         raise Exception('Unsupported match type ' + match_type)
 
+    # Match the file's type
     if match_type == 'file.type':
-        pass
+        return file_['type'] == match_param
+
+    # Match a shell glob for the file name
     elif match_type == 'file.name':
-        pass
+        return  fnmatch.fnmatch(file_['type'], match_param)
+
+    # Match any of the file's measurements
     elif match_type == 'file.measurements':
-        pass
+        return match_param in file_[measurements]
+
+    # Match the container's primary measurment
     elif match_type == 'container.measurement':
-        pass
+        return container['measurement'] == match_param
+
+    # Match the container having any file (including this one) with this type
     elif match_type == 'container.has-type':
-        pass
-    else
-        raise Exception('Unimplemented match type ' + match_type)
+        for c_file in container['files']:
+            if match_param in c_file['measurements']:
+                return True
+
+        return False
+
+    raise Exception('Unimplemented match type ' + match_type)
 
 
 def eval_rule(rule, file_, container):
