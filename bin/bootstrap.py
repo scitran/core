@@ -126,17 +126,22 @@ def data(_, args):
             for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
         destpath = os.path.join(args.storage_path, container.path)
+        filename = os.path.basename(filepath)
         if not os.path.exists(destpath):
             os.makedirs(destpath)
         if args.copy:
-            destpath = os.path.join(destpath, os.path.basename(filepath))
+            destpath = os.path.join(destpath, filename)
             shutil.copyfile(filepath, destpath)
         else:
             shutil.move(filepath, destpath)
+        created = modified = datetime.datetime.utcnow()
         fileinfo = {
+            'name': filename,
             'size': size,
             'hash': hash_.hexdigest(),
-            'unprocessed': True
+            'unprocessed': True,
+            'created': created,
+            'modified': modified
         }
         container.add_file(fileinfo)
 

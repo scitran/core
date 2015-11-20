@@ -344,7 +344,7 @@ class FileListHandler(ListHandler):
                     self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
     def delete(self, cont_name, list_name, **kwargs):
-        filename = kwargs.get('filename')
+        filename = kwargs.get('name')
         _id = kwargs.get('cid')
         result = super(FileListHandler, self).delete(cont_name, list_name, **kwargs)
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
@@ -362,46 +362,46 @@ class FileListHandler(ListHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
         payload = self.request.POST.mixed()
-        filename = payload.get('filename') or kwargs.get('filename')
+        filename = payload.get('filename') or kwargs.get('name')
 
         result = None
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             file_store = files.FileStore(self.request, tempdir_path, filename=filename)
-            success = file_store.save_temp_file(tempdir_path)
-            if not success:
-                self.abort(400, 'Content-MD5 mismatch.')
             file_datetime = datetime.datetime.utcnow()
             file_properties = {
                 'name': file_store.filename,
-                'size': file_store.filesize,
-                'hash': file_store.sha384,
-                'tags': file_store.tags,
-                'metadata': file_store.metadata,
+                'size': file_store.size,
+                'hash': file_store.hash,
                 'created': file_datetime,
                 'modified': file_datetime,
                 'unprocessed': True
             }
-            file_properties['tags'] = file_properties.get('tags', [])
+            if file_store.metadata:
+                file_properties['metadata'] = file_store.metadata
+            if file_store.tags:
+                file_properties['tags'] = file_store.tags
             dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
+            query_params = None
             if not force:
                 method = 'POST'
             else:
-                filepath = os.path.join(file_store.tempdir_path, filename)
+                filepath = os.path.join(file_store.path, filename)
                 for f in container['files']:
                     if f['name'] == filename:
-                        if file_store.identical(os.path.join(data_path, filename), f['hash']):
+                        if file_store.identical(os.path.join(tempdir_path, filename), f['hash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
                             self.abort(409, 'identical file exists')
                         else:
                             log.debug('Replacing   %s' % filename)
                             method = 'PUT'
+                            query_params = {'name':filename}
                         break
                 else:
                     method = 'POST'
             payload_validator(payload, method)
             payload.update(file_properties)
-            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, payload=payload)
+            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
             try:

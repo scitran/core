@@ -16,7 +16,7 @@ class FileStoreException(Exception):
 
 class HashingFile(file):
     def __init__(self, file_path, hash_alg):
-        super(HashingFile, self).__init__(file_path, "w+b")
+        super(HashingFile, self).__init__(file_path, "wb")
         self.hash_alg = hashlib.new(hash_alg)
 
     def write(self, data):
@@ -83,8 +83,9 @@ class FileStore(object):
     def _save_body_file(self, dest_path, filename, hash_alg):
         if not filename:
             raise FileStoreException('filename is required for body uploads')
-        self.received_file = HashingFile(os.path.join(dest_path, filename))
-        for chunk in iter(lambda: self.request.body_file.read(2**20), ''):
+        self.filename = filename
+        self.received_file = HashingFile(os.path.join(dest_path, filename), hash_alg)
+        for chunk in iter(lambda: self.body.read(2**20), ''):
             self.received_file.write(chunk)
         self.tags = None
         self.metadata = None
@@ -97,7 +98,7 @@ class FileStore(object):
         shutil.move(filepath, target_filepath)
         self.path = target_path
 
-    def identical(self, filepath, sha384):
+    def identical(self, filepath, hash_):
         filepath1 = os.path.join(self.path, self.filename)
         if zipfile.is_zipfile(filepath) and zipfile.is_zipfile(filepath1):
             with zipfile.ZipFile(filepath) as zf1, zipfile.ZipFile(filepath1) as zf2:
@@ -113,4 +114,4 @@ class FileStore(object):
                 else:
                     return True
         else:
-            return sha384 == self.sha38
+            return hash_ == self.hash
