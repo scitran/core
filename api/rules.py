@@ -9,6 +9,7 @@ import fnmatch
 
 from . import base
 from . import util
+from . import jobs
 
 
 #
@@ -100,18 +101,23 @@ def eval_rule(rule, file_, container):
     return True
 
 
-def check_rules(db, file_, container):
+def create_jobs(db, container, container_type, file_):
     """
-    Check all rules that apply to this file.
+    Check all rules that apply to this file, and enqueue the jobs that should be run.
+    Returns the algorithm names that were queued.
     """
 
+    job_list = []
     project = get_project_for_container(db, container)
     rules = project['rules']
 
     for rule in rules:
         if eval_rule(rule, file_, container):
-            pass
+            alg_name = rule['alg']
+            jobs.create_job(db, container, container_type, file_, alg_name)
+            job_list.append(alg_name)
 
+    return job_list
 
 # TODO: consider moving to a module that has a variety of hierarchy-management helper functions
 def get_project_for_container(db, container):

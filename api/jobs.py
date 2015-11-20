@@ -40,45 +40,26 @@ ALGORITHMS = [
 
 # TODO: json schema
 
-
-def create_jobs(db, container, container_type, file):
-
-    # CHANGES:
-    # This no longer takes an array, should take string container type and container object
-    # This calls rules.check_rules
-    # Some of this lookup logic moves to rules.check_rules
-    # Rethink what exact data is being stored on a job
-    # generate_formula gets smarted
-    #
-    # OLD DOCS + LOGIC FOLLOW
-
+def create_job(db, container, container_type, file_, alg_name):
     """
-    Spawn some number of queued jobs to process a file.
+    Spawn a job to process a file.
 
     Parameters
     ----------
     db: pymongo.database.Database
         Reference to the database instance
-    containers: [ tuple(string, scitran.Container) ]
-        An array of tuples, each containing a container type name, and a container object.
-        Contract is:
-            1) The first container in the array will be the container which owns file passed in the file param.
-            2) Following array indexes, if any, will be higher in the ownership heirarchy than the first container.
-            3) Array is not guaranteed to be strictly hierarchically ordered.
+    container: scitran.Container
+        A container object that the file is held by
     file: scitran.File
         File object that is used to spawn 0 or more jobs.
     """
 
     if file['type'] != 'dicom':
         return
-
     # File information
     filename = file['name']
     filehash = file['hash']
-
     # File container information
-    last = len(containers) - 1
-    container_type, container = containers[last]
     container_id = str(container['_id'])
 
     log.info('File ' + filename + 'is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
@@ -86,7 +67,7 @@ def create_jobs(db, container, container_type, file):
     # Spawn rules currently do not look at container hierarchy, and only care about a single file.
     # Further, one algorithm is unconditionally triggered for each dirty file.
 
-    queue_job(db, 'dcm2nii', container_type, container_id, filename, filehash)
+    queue_job(db, alg_name, container_type, container_id, filename, filehash)
 
 
 def queue_job(db, algorithm_id, container_type, container_id, filename, filehash, attempt_n=1, previous_job_id=None):
