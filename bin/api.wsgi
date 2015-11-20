@@ -137,7 +137,7 @@ else:
                 containers = [(c_type, c)] # TODO: this should be the full container hierarchy
                 for f in c['files']:
                     if f.get('unprocessed'):
-                        jobs.spawn_jobs(application.db, containers, f)
+                        jobs.create_jobs(application.db, containers, f)
                         r = application.db[c_type].update_one(
                                 {
                                     '_id': c['_id'],
