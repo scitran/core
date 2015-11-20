@@ -26,8 +26,8 @@ from . import util
 #   "all": [
 #   ]
 #
-#   Algorithm to
-#   "alg": "d2n"
+#   Algorithm to run if both sets of rules match
+#   "alg": "dcm2nii"
 # }
 #
 
@@ -105,10 +105,24 @@ def check_rules(db, file_, container):
     Check all rules that apply to this file.
     """
 
-    rules = []
-
-    # TODO: fetch rules from the project
+    project = get_project_for_container(db, container)
+    rules = project['rules']
 
     for rule in rules:
         if eval_rule(rule, file_, container):
+            pass
 
+
+# TODO: consider moving to a module that has a variety of hierarchy-management helper functions
+def get_project_for_container(db, container):
+    """
+    Recursively walk the hierarchy until the project object is found.
+    """
+    if 'session' in container:
+        session = db.sessions.find_one({'_id': container['session']})
+        return get_project_for_container(db, session)
+    elif 'project' in container:
+        project = db.projects.find_one({'_id': container['project']})
+        return project
+
+    raise Exception('Hierarchy walking not implemented for container ' + container('_id'))
