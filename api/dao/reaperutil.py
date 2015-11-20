@@ -20,7 +20,8 @@ class ReapedAcquisition(object):
         self.fileinfo = fileinfo or {}
 
     def find(self, filename):
-        for f in self.acquisition['files']:
+
+        for f in self.acquisition.get('files', []):
             if f['name'] == filename:
                 return f
         return None
@@ -84,6 +85,7 @@ def create_container_hierarchy(metadata):
         acquisition = metadata['acquisition']
         acquisition_uid = acquisition['uid']
     except Exception as e:
+        log.error(metadata)
         raise APIStorageException(str(e))
 
     subject = metadata.get('subject')

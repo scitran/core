@@ -9,7 +9,8 @@ import zipfile
 import datetime
 import markdown
 import cStringIO
-from . import dao
+
+from .dao import reaperutil
 from . import base
 from . import util
 from .util import log
@@ -108,8 +109,9 @@ class Core(base.RequestHandler):
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
             try:
                 file_store = files.FileStore(self.request, tempdir_path)
-            except InvalidFileError as e:
+            except files.FileStoreException as e:
                 self.abort(400, str(e))
+            created = modified = datetime.datetime.now()
             fileinfo = dict(
                 name=file_store.filename,
                 created=created,
@@ -120,7 +122,7 @@ class Core(base.RequestHandler):
                 tags=file_store.tags,
                 metadata=file_store.metadata
             )
-            container = dao.reaperutil.create_container_hierarchy(file_store.metadata)
+            container = reaperutil.create_container_hierarchy(file_store.metadata)
             f = container.find(file_store.filename)
             created = modified = datetime.datetime.utcnow()
             target_path = os.path.join(self.app.config['data_path'], container.path)
@@ -130,8 +132,8 @@ class Core(base.RequestHandler):
             elif not file_store.identical(os.path.join(target_path, file_store.filename), f['hash']):
                 file_store.move_file(target_path)
                 container.update_file(fileinfo)
-            throughput = file_store.size / duration.total_seconds()
-            log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
+            throughput = file_store.size / file_store.duration.total_seconds()
+            log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']

@@ -15,7 +15,7 @@ from nose.tools import with_setup
 import pymongo
 from bson.objectid import ObjectId
 
-db = pymongo.MongoClient('mongodb://localhost:9001/scitran').get_default_database()
+db = pymongo.MongoClient('mongodb://localhost/scitran').get_default_database()
 
 base_url = 'https://localhost:8443/api'
 test_data = type('',(object,),{})()

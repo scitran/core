@@ -9,7 +9,7 @@ from .. import util
 from .. import files
 from .. import validators
 from .. import tempdir as tempfile
-from ..auth import listauth
+from ..auth import listauth, always_ok
 from ..dao import liststorage
 from ..dao import APIStorageException
 
@@ -172,7 +172,7 @@ class ListHandler(base.RequestHandler):
         container = storage.get_container(_id, query_params)
         if container is not None:
             if self.superuser_request:
-                permchecker = listauth.always_ok
+                permchecker = always_ok
             elif self.public_request:
                 permchecker = listauth.public_request(self, container)
             else:
@@ -285,10 +285,11 @@ class FileListHandler(ListHandler):
         return ticket
 
     def get(self, cont_name, list_name, **kwargs):
+        log.error('{} {} {}'.format(cont_name, list_name, kwargs))
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         list_name = storage.list_name
-        filename = kwargs.get('filename')
+        filename = kwargs.get('name')
         ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
@@ -308,7 +309,7 @@ class FileListHandler(ListHandler):
             self.abort(409, 'file exists, hash mismatch')
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.get_param('ticket') == '':    # request for download ticket
-            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])
+            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'])
             return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
         else:                                       # authenticated or ticketed (unauthenticated) download
             zip_member = self.get_param('member')
@@ -335,7 +336,7 @@ class FileListHandler(ListHandler):
                     self.abort(400, 'zip file contains no such member')
             else:
                 self.response.app_iter = open(filepath, 'rb')
-                self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
+                self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
                 if self.is_true('view'):
                     self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
                 else:

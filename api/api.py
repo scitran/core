@@ -39,7 +39,7 @@ routing_regexes = {
     # filename regex
     # length between 3 and 60 characters
     # any character allowed except '/'
-    'filename_re': '[^/]{3,60}',
+    'filename_re': '[^/]+',
     # note id regex
     # hexadecimal string exactly of length 24
     'note_id_re': '[0-9a-f]{24}'
@@ -80,7 +80,7 @@ routes = [
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.ListHandler, name='tags'),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>'),                                     listhandler.FileListHandler, name='files_post', methods=['POST']),
-    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>/<filename:{filename_re}>'),            listhandler.FileListHandler, name='files'),
+    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>/<name:{filename_re}>'),            listhandler.FileListHandler, name='files'),
 
     webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>'),                                     listhandler.PermissionsListHandler, name='perms_post', methods=['POST']),
     webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>/<site:{site_id_re}>/<_id:{user_id_re}>'), listhandler.PermissionsListHandler, name='perms'),
