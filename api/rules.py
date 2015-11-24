@@ -40,6 +40,17 @@ MATCH_TYPES = [
     'container.has-type'
 ]
 
+# TODO: replace with default rules, which get persisted, maintained, upgraded, and reasoned intelligently
+HARDCODED_RULES = [
+    # dcm2nii
+    {
+        'all': [
+            ['file.type', 'dicom']
+        ],
+        'alg': 'dcm2nii'
+    }
+]
+
 def eval_match(match_type, match_param, file_, container):
     """
     Given a match entry, return if the match succeeded.
@@ -50,11 +61,11 @@ def eval_match(match_type, match_param, file_, container):
 
     # Match the file's type
     if match_type == 'file.type':
-        return file_['type'] == match_param
+        return file_['filetype'] == match_param
 
     # Match a shell glob for the file name
     elif match_type == 'file.name':
-        return  fnmatch.fnmatch(file_['type'], match_param)
+        return fnmatch.fnmatch(file_['filename'], match_param)
 
     # Match any of the file's measurements
     elif match_type == 'file.measurements':
@@ -108,13 +119,20 @@ def create_jobs(db, container, container_type, file_):
     """
 
     job_list = []
+
+    # Get configured rules for this project
     project = get_project_for_container(db, container)
-    rules = project['rules']
+    rules = project. get('rules', [])
+
+    # Add hardcoded rules that cannot be removed or changed
+    for hardcoded_rule in HARDCODED_RULES:
+        rules.append(hardcoded_rule)
 
     for rule in rules:
         if eval_rule(rule, file_, container):
             alg_name = rule['alg']
-            jobs.create_job(db, container, container_type, file_, alg_name)
+            input = jobs.create_fileinput_from_reference(container, container_type, file_)
+            jobs.queue_job(db, alg_name, input)
             job_list.append(alg_name)
 
     return job_list
@@ -130,5 +148,4 @@ def get_project_for_container(db, container):
     elif 'project' in container:
         project = db.projects.find_one({'_id': container['project']})
         return project
-
-    raise Exception('Hierarchy walking not implemented for container ' + container('_id'))
+    raise Exception('Hierarchy walking not implemented for container ' + str(container['_id']))
