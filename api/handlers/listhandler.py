@@ -365,7 +365,7 @@ class FileListHandler(ListHandler):
         filename = payload.get('filename') or kwargs.get('name')
 
         result = None
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
             file_store = files.FileStore(self.request, tempdir_path, filename=filename)
             file_datetime = datetime.datetime.utcnow()
             file_properties = {

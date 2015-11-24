@@ -106,7 +106,7 @@ class Core(base.RequestHandler):
         """Receive a sortable reaper upload."""
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
             try:
                 file_store = files.FileStore(self.request, tempdir_path)
             except files.FileStoreException as e:

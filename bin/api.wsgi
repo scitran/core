@@ -12,7 +12,7 @@ os.umask(0o022)
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
-ap.add_argument('--data_path', help='path to storage area', required=True)
+ap.add_argument('--data_path', help='path to storage area', default=os.path.join(os.path.dirname(__file__), '../persistent/data'))
 ap.add_argument('--ssl', action='store_true', help='enable SSL')
 ap.add_argument('--ssl_cert', default='*', help='path to SSL key and cert file')
 ap.add_argument('--oauth2_id_endpoint', help='OAuth2 provider ID endpoint', default='https://www.googleapis.com/plus/v1/people/me/openIdConnect')
@@ -31,8 +31,6 @@ if __name__ == '__main__':
 
 args = ap.parse_args()
 
-args.quarantine_path = os.path.join(args.data_path, 'quarantine')
-args.upload_path = os.path.join(args.data_path, 'upload')
 args.ssl = args.ssl or args.ssl_cert != '*'
 
 from api import mongo
@@ -68,10 +66,6 @@ if not api.app.config['drone_secret']:
     log.warning('drone_secret not configured -> Drone functionality disabled')
 if not os.path.exists(api.app.config['data_path']):
     os.makedirs(api.app.config['data_path'])
-if not os.path.exists(api.app.config['quarantine_path']):
-    os.makedirs(api.app.config['quarantine_path'])
-if not os.path.exists(api.app.config['upload_path']):
-    os.makedirs(api.app.config['upload_path'])
 
 
 # FIXME All code shoud use the mongo module and this line should be deleted.
