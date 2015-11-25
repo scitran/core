@@ -69,8 +69,7 @@ def spawn_jobs(db, containers, file):
     if filetype == 'dicom':
         alg = 'dcm2nii'
     elif filetype == 'nifti':
-        # alg = 'qa'
-        return
+        alg = 'qa'
     else:
         return
 
@@ -182,7 +181,7 @@ def generate_formula(i):
         'inputs': [
             {
                 'type': 'file',
-                'uri': '/opt/flywheel-temp/dcm_convert-0.1.1.tar',
+                'uri': '/nope.txt',
                 'location': '/',
             },
             {
@@ -207,10 +206,12 @@ def generate_formula(i):
     }
 
     if alg_id == 'dcm2nii':
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/dcm_convert-0.1.1.tar'
         f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
 
     elif alg_id == 'qa':
-        pass
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/qa_report_fmri.tar'
+        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run; exit 0']
     else:
         raise Exception('Command for algorithm ' + alg_id + ' not specified')
 
