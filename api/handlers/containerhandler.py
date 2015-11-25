@@ -97,6 +97,8 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('paths'):
             for fileinfo in result['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
+        if self.debug:
+            debuginfo.add_debuginfo(self, cont_name, result)
         return result
 
     def _filter_permissions(self, result, uid, site):
