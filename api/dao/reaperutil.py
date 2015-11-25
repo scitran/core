@@ -52,8 +52,8 @@ def _find_or_create_destination_project(group_name, project_label, created, modi
     if len(group_id_matches) == 1:
         group_name = group_id_matches[0]
     else:
+        project_label = group_name + '_' + project_label
         group_name = 'unknown'
-        project_label = group_name + '/' + project_label
     group = mongo.db.groups.find_one({'_id': group_name})
     project = mongo.db.projects.find_one_and_update(
         {'group': group['_id'], 'label': project_label},
@@ -74,22 +74,23 @@ def create_container_hierarchy(metadata):
     #      same for the session and acquisition
     #      queries might be more efficient that way
 
+
+    group = metadata.get('group', {})
+    project = metadata.get('project', {})
+    session = metadata.get('session', {})
+    acquisition = metadata.get('acquisition', {})
+    subject = metadata.get('subject')
+    file_ = metadata.get('file')
+
     # Fail if some fields are missing
     try:
-        group = metadata['group']
-        group_name = group['_id']
-        project = metadata['project']
+        group_id = group['_id']
         project_label = project['label']
-        session = metadata['session']
         session_uid = session['uid']
-        acquisition = metadata['acquisition']
         acquisition_uid = acquisition['uid']
     except Exception as e:
         log.error(metadata)
         raise APIStorageException(str(e))
-
-    subject = metadata.get('subject')
-    file_ = metadata.get('file')
 
     now = datetime.datetime.utcnow()
 
@@ -97,7 +98,7 @@ def create_container_hierarchy(metadata):
     if session_obj: # skip project creation, if session exists
         project_obj = mongo.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
     else:
-        project_obj = _find_or_create_destination_project(group_name, project_label, now, now)
+        project_obj = _find_or_create_destination_project(group_id, project_label, now, now)
     if subject:
         session['subject'] = subject
     #FIXME session modified date should be updated on updates
@@ -120,7 +121,7 @@ def create_container_hierarchy(metadata):
         upsert=True,
         return_document=pymongo.collection.ReturnDocument.AFTER,
     )
-    log.info('Setting     group_id="%s", project_name="%s", and session_uid="%s"' % (project_obj['group'], project_obj['label'], session_uid))
+    log.info('Storing as  %s -> %s -> %s' % (project_obj['group'], project_obj['label'], session_uid))
     if acquisition.get('timestamp'):
         acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
     acquisition['modified'] = now
