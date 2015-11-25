@@ -20,7 +20,6 @@ def _add_di_list(handler, cont_name, response):
         if cont_name == 'groups':
             elem['debug']['details'] = handler.uri_for(
                 'group_details' if cont_name == 'groups' else 'cont_details',
-                cont_name=cont_name,
                 _id=elem['_id'],
                 _full=True) + '?' + handler.request.query_string
         else:
@@ -50,7 +49,7 @@ def _add_di(handler, cont_name, response):
             _full=True) + '?' + handler.request.query_string
     if response.get('group'):
         response['debug']['group'] = handler.uri_for(
-            'group',
+            'group_details',
             _id=response['group'],
             _full=True) + '?' + handler.request.query_string
 

@@ -10,12 +10,14 @@ import datetime
 import markdown
 import cStringIO
 
-from .dao import reaperutil
 from . import base
-from . import util
-from .util import log
-from . import tempdir as tempfile
 from . import files
+from . import util
+from . import config
+from .util import log
+from .dao import reaperutil
+from . import tempdir as tempfile
+
 
 # silence Markdown library logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
@@ -230,11 +232,12 @@ class Core(base.RequestHandler):
             sites = list(self.app.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs
+            site_id = config.site_id()
             remotes = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
-            remote_ids = [r['_id'] for r in remotes] + [self.app.config['site_id']]
+            remote_ids = [r['_id'] for r in remotes] + [site_id]
             sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, projection))
         for s in sites:  # TODO: this for loop will eventually move to public case
-            if s['_id'] == self.app.config['site_id']:
+            if s['_id'] == site_id:
                 s['onload'] = True
                 break
         return sites
