@@ -2,3 +2,5 @@
 .*sw[op]
 *.py[co]
 *.egg-info
+/persistent
+/runtime

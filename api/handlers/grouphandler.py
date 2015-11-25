@@ -6,7 +6,6 @@ from ..auth import groupauth, always_ok
 from ..dao import containerstorage
 from .. import debuginfo
 from .. import base
-from .. import util
 
 log = logging.getLogger('scitran.api')
 

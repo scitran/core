@@ -1,18 +1,14 @@
-import datetime
-import logging
-
-import json
 import bson
-import copy
-import os
+import logging
+import datetime
 
-from ..dao import APIStorageException, containerstorage
-from ..auth import containerauth, always_ok
-from .. import validators
-from .. import debuginfo
-from .. import files
 from .. import base
 from .. import util
+from .. import config
+from .. import debuginfo
+from .. import validators
+from ..auth import containerauth, always_ok
+from ..dao import APIStorageException, containerstorage
 
 
 log = logging.getLogger('scitran.api')
@@ -101,6 +97,8 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('paths'):
             for fileinfo in result['files']:
                 fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
+        if self.debug:
+            debuginfo.add_debuginfo(self, cont_name, result)
         return result
 
     def _filter_permissions(self, result, uid, site):
@@ -195,7 +193,7 @@ class ContainerHandler(base.RequestHandler):
         query = {}
         user = {
             '_id': uid,
-            'site': self.app.config['site_id']
+            'site': config.site_id()
         }
         try:
             results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)

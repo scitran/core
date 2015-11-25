@@ -1,16 +1,48 @@
-import datetime
+import os
+import cgi
+import json
+import shutil
 import hashlib
 import logging
-import shutil
-import json
-import os
+import zipfile
+import datetime
 
 from . import util
 
 log = logging.getLogger('scitran.api')
 
+class FileStoreException(Exception):
+    pass
 
-class FileRequest(object):
+class HashingFile(file):
+    def __init__(self, file_path, hash_alg):
+        super(HashingFile, self).__init__(file_path, "wb")
+        self.hash_alg = hashlib.new(hash_alg)
+
+    def write(self, data):
+        self.hash_alg.update(data)
+        return file.write(self, data)
+
+    def get_hash(self):
+        return self.hash_alg.hexdigest()
+
+
+
+
+def getHashingFieldStorage(upload_dir, hash_alg):
+    class HashingFieldStorage(cgi.FieldStorage):
+        bufsize = 2**20
+        def make_file(self, binary=None):
+            self.open_file = HashingFile(os.path.join(upload_dir, self.filename), hash_alg)
+            return self.open_file
+
+        def get_hash(self):
+            return self.open_file.get_hash()
+
+    return HashingFieldStorage
+
+
+class FileStore(object):
     """This class provides and interface for file uploads.
     To perform an upload the client of the class should follow these steps:
 
@@ -22,59 +54,52 @@ class FileRequest(object):
     The operations could be safely interleaved with other actions like permission checks or database updates.
     """
 
-    def __init__(self, client_addr, filename, body, received_md5, metadata, tags):
-        self.client_addr = client_addr
-        self.filename = filename
-        self.body = body
-        self.received_md5 = received_md5
-        self.metadata = metadata
-        self.tags = tags
-        self.mimetype = util.guess_mimetype(filename)
-        self.filetype = util.guess_filetype(filename, self.mimetype)
-
-    def save_temp_file(self, tempdir_path, handler):
-        self.tempdir_path = tempdir_path
-        success, duration = self._save_temp_file(self.tempdir_path)
-        if not success:
-            return False
-        throughput = self.filesize / duration.total_seconds()
-        log.info('Received    %s [%s, %s/s] from %s' % (
-            self.filename,
-            util.hrsize(self.filesize), util.hrsize(throughput),
-            self.client_addr))
-        return success
-
-    def move_temp_file(self, container_path):
-        target_filepath = container_path + '/' + self.filename
-        temp_filepath = self.tempdir_path + '/' + self.filename
-        if not os.path.exists(container_path):
-            os.makedirs(container_path)
-        shutil.move(temp_filepath, target_filepath)
-        #os.rmdir(self.tempdir_path)
-
-    def _save_temp_file(self, folder):
-        filepath = os.path.join(folder, self.filename)
-        md5 = hashlib.md5()
-        sha384 = hashlib.sha384()
-        filesize = 0
+    def __init__(self, request, dest_path, filename=None, hash_alg='sha384'):
+        self.client_addr = request.client_addr
+        self.body = request.body_file
+        self.environ = request.environ.copy()
+        self.environ.setdefault('CONTENT_LENGTH', '0')
+        self.environ['QUERY_STRING'] = ''
+        self.hash_alg = hash_alg
+        self.path = dest_path
         start_time = datetime.datetime.utcnow()
-        with open(filepath, 'wb') as fd:
-            for chunk in iter(lambda: self.body.read(2**20), ''):
-                if self.received_md5 is not None:
-                    md5.update(chunk)
-                sha384.update(chunk)
-                filesize += len(chunk)
-                fd.write(chunk)
-        self.filesize = filesize
-        if self.received_md5 is not None:
-            self.md5 = md5.hexdigest()
-        self.sha384 = sha384.hexdigest()
-        duration = datetime.datetime.utcnow() - start_time
-        success = (self.md5 == self.received_md5) if self.received_md5 is not None else True
-        return success, duration
+        if request.content_type == 'multipart/form-data':
+            self._save_multipart_file(dest_path, hash_alg)
+        else:
+            self._save_body_file(dest_path, filename, hash_alg)
+        self.duration = datetime.datetime.utcnow() - start_time
+        self.mimetype = util.guess_mimetype(self.filename)
+        self.filetype = util.guess_filetype(self.filename, self.mimetype)
+        self.hash = self.received_file.get_hash()
+        self.size = os.path.getsize(os.path.join(self.path, self.filename))
 
-    def check_identical(self, filepath, sha384):
-        filepath1 = os.path.join(self.tempdir_path, filename)
+    def _save_multipart_file(self, dest_path, hash_alg):
+        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
+        self.received_file = form['file'].file
+        self.filename = form['file'].filename
+        self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
+        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
+
+    def _save_body_file(self, dest_path, filename, hash_alg):
+        if not filename:
+            raise FileStoreException('filename is required for body uploads')
+        self.filename = filename
+        self.received_file = HashingFile(os.path.join(dest_path, filename), hash_alg)
+        for chunk in iter(lambda: self.body.read(2**20), ''):
+            self.received_file.write(chunk)
+        self.tags = None
+        self.metadata = None
+
+    def move_file(self, target_path):
+        target_filepath = target_path + '/' + self.filename
+        filepath = self.path + '/' + self.filename
+        if not os.path.exists(target_path):
+            os.makedirs(target_path)
+        shutil.move(filepath, target_filepath)
+        self.path = target_path
+
+    def identical(self, filepath, hash_):
+        filepath1 = os.path.join(self.path, self.filename)
         if zipfile.is_zipfile(filepath) and zipfile.is_zipfile(filepath1):
             with zipfile.ZipFile(filepath) as zf1, zipfile.ZipFile(filepath1) as zf2:
                 zf1_infolist = sorted(zf1.infolist(), key=lambda zi: zi.filename)
@@ -89,52 +114,4 @@ class FileRequest(object):
                 else:
                     return True
         else:
-            return sha384 == self.sha384
-
-    @classmethod
-    def from_handler(cls, handler, filename=None):
-        """
-        Convenient method to initialize an upload request from the FileListHandler receiving it.
-        """
-        tags = []
-        metadata = {}
-        if handler.request.content_type == 'multipart/form-data':
-            body = None
-            # use cgi lib to parse multipart data without loading all into memory; use tempfile instead
-            # FIXME avoid using tempfile; processs incoming stream on the fly
-            fs_environ = handler.request.environ.copy()
-            fs_environ.setdefault('CONTENT_LENGTH', '0')
-            fs_environ['QUERY_STRING'] = ''
-            form = cgi.FieldStorage(fp=handler.request.body_file, environ=fs_environ, keep_blank_values=True)
-            for fieldname in form:
-                field = form[fieldname]
-                if fieldname == 'file':
-                    body = field.file
-                    _, filename = os.path.split(field.filename)
-                elif fieldname == 'tags':
-                    try:
-                        tags = json.loads(field.value)
-                    except ValueError:
-                        handler.abort(400, 'non-JSON value in "tags" parameter')
-                elif fieldname == 'metadata':
-                    try:
-                        metadata = json.loads(field.value)
-                    except ValueError:
-                        handler.abort(400, 'non-JSON value in "metadata" parameter')
-            if body is None:
-                handler.abort(400, 'multipart/form-data must contain a "file" field')
-        elif filename is None:
-            handler.abort(400, 'Request must contain a filename parameter.')
-        else:
-            _, filename = os.path.split(filename)
-            try:
-                tags = json.loads(handler.get_param('tags', '[]'))
-            except ValueError:
-                handler.abort(400, 'invalid "tags" parameter')
-            try:
-                metadata = json.loads(handler.get_param('metadata', '{}'))
-            except ValueError:
-                handler.abort(400, 'invalid "metadata" parameter')
-            body = handler.request.body_file
-        md5 = handler.request.headers.get('Content-MD5')
-        return cls(handler.request.client_addr, filename, body, md5, metadata, tags)
+            return hash_ == self.hash

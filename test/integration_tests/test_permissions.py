@@ -30,14 +30,14 @@ def setup_db():
         'public': False
     }
     payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=admin@user.com', data=payload, verify=False)
+    r = requests.post(base_url + '/projects?user=admin@user.com&root=true', data=payload, verify=False)
     test_data.pid = json.loads(r.content)['_id']
     assert r.ok
     log.debug('pid = \'{}\''.format(test_data.pid))
     test_data.proj_url = base_url + '/projects/{}/permissions'.format(test_data.pid)
 
 def teardown_db():
-    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=admin@user.com', verify=False)
+    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=admin@user.com&root=true', verify=False)
     assert r.ok
 
 @with_setup(setup_db, teardown_db)

@@ -1,6 +1,5 @@
 import os
 import copy
-import json
 import logging
 import jsonschema
 

@@ -1,7 +1,6 @@
 import os
 import bson
 import copy
-import json
 import logging
 import datetime
 
@@ -10,7 +9,7 @@ from .. import util
 from .. import files
 from .. import validators
 from .. import tempdir as tempfile
-from ..auth import listauth
+from ..auth import listauth, always_ok
 from ..dao import liststorage
 from ..dao import APIStorageException
 
@@ -173,7 +172,7 @@ class ListHandler(base.RequestHandler):
         container = storage.get_container(_id, query_params)
         if container is not None:
             if self.superuser_request:
-                permchecker = listauth.always_ok
+                permchecker = always_ok
             elif self.public_request:
                 permchecker = listauth.public_request(self, container)
             else:
@@ -286,10 +285,11 @@ class FileListHandler(ListHandler):
         return ticket
 
     def get(self, cont_name, list_name, **kwargs):
+        log.error('{} {} {}'.format(cont_name, list_name, kwargs))
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         list_name = storage.list_name
-        filename = kwargs.get('filename')
+        filename = kwargs.get('name')
         ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
@@ -309,7 +309,7 @@ class FileListHandler(ListHandler):
             self.abort(409, 'file exists, hash mismatch')
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
         if self.get_param('ticket') == '':    # request for download ticket
-            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['filesize'])
+            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'])
             return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
         else:                                       # authenticated or ticketed (unauthenticated) download
             zip_member = self.get_param('member')
@@ -336,7 +336,7 @@ class FileListHandler(ListHandler):
                     self.abort(400, 'zip file contains no such member')
             else:
                 self.response.app_iter = open(filepath, 'rb')
-                self.response.headers['Content-Length'] = str(fileinfo['filesize']) # must be set after setting app_iter
+                self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
                 if self.is_true('view'):
                     self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
                 else:
@@ -344,7 +344,7 @@ class FileListHandler(ListHandler):
                     self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
     def delete(self, cont_name, list_name, **kwargs):
-        filename = kwargs.get('filename')
+        filename = kwargs.get('name')
         _id = kwargs.get('cid')
         result = super(FileListHandler, self).delete(cont_name, list_name, **kwargs)
         filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
@@ -362,50 +362,50 @@ class FileListHandler(ListHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
         payload = self.request.POST.mixed()
-        filename = payload.get('filename') or kwargs.get('filename')
-        file_request = files.FileRequest.from_handler(self, filename)
+        filename = payload.get('filename') or kwargs.get('name')
+
         result = None
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
-            success = file_request.save_temp_file(tempdir_path)
-            if not success:
-                self.abort(400, 'Content-MD5 mismatch.')
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
+            file_store = files.FileStore(self.request, tempdir_path, filename=filename)
             file_datetime = datetime.datetime.utcnow()
             file_properties = {
-                'name': file_request.filename,
-                'size': file_request.filesize,
-                'hash': file_request.sha384,
-                'type': file_request.mimetype,
-                'tags': file_request.tags,
-                'metadata': file_request.metadata,
+                'name': file_store.filename,
+                'size': file_store.size,
+                'hash': file_store.hash,
                 'created': file_datetime,
                 'modified': file_datetime,
                 'unprocessed': True
             }
-            file_properties['tags'] = file_properties.get('tags', [])
+            if file_store.metadata:
+                file_properties['metadata'] = file_store.metadata
+            if file_store.tags:
+                file_properties['tags'] = file_store.tags
             dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
+            query_params = None
             if not force:
                 method = 'POST'
             else:
-                filepath = os.path.join(file_request.tempdir_path, filename)
+                filepath = os.path.join(file_store.path, filename)
                 for f in container['files']:
                     if f['name'] == filename:
-                        if file_request.check_identical(os.path.join(data_path, filename), f['hash']):
+                        if file_store.identical(os.path.join(tempdir_path, filename), f['hash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
                             self.abort(409, 'identical file exists')
                         else:
                             log.debug('Replacing   %s' % filename)
                             method = 'PUT'
+                            query_params = {'name':filename}
                         break
                 else:
                     method = 'POST'
             payload_validator(payload, method)
             payload.update(file_properties)
-            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, payload=payload)
+            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
             try:
-                file_request.move_temp_file(dest_path)
+                file_store.move_file(dest_path)
 
             except IOError as e:
                 result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)

@@ -1,22 +1,23 @@
-import logging
 import os
 import re
 import cgi
 import bson
 import json
-import hashlib
+import logging
 import tarfile
 import zipfile
 import datetime
-import lockfile
 import markdown
 import cStringIO
-import jsonschema
 
 from . import base
+from . import files
 from . import util
+from . import config
 from .util import log
+from .dao import reaperutil
 from . import tempdir as tempfile
+
 
 # silence Markdown library logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
@@ -107,28 +108,34 @@ class Core(base.RequestHandler):
         """Receive a sortable reaper upload."""
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-        filename = cgi.parse_header(self.request.headers.get('Content-Disposition', ''))[1].get('filename')
-        if not filename:
-            self.abort(400, 'Request must contain a valid "Content-Disposition" header.')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['upload_path']) as tempdir_path:
-            filepath = os.path.join(tempdir_path, filename)
-            success, digest, filesize, duration = util.receive_stream_and_validate(self.request.body_file, filepath, self.request.headers['Content-MD5'])
-            if not success:
-                self.abort(400, 'Content-MD5 mismatch.')
-            if not zipfile.is_zipfile(filepath):
-                self.abort(415, 'Only ZIP files are accepted.')
-            log.info('Received    %s [%s] from %s' % (filename, util.hrsize(self.request.content_length), self.request.user_agent))
-            datainfo = util.parse_file(filepath, digest)
-            if datainfo is None:
-                util.quarantine_file(filepath, self.app.config['quarantine_path'])
-                self.abort(202, 'Quarantining %s (unparsable)' % filename)
-            log.info('Sorting     %s' % os.path.basename(filepath))
-            success = util.commit_file(self.app.db.acquisitions, None, datainfo, filepath, self.app.config['data_path'], True)
-            if not success:
-                self.abort(202, 'Identical file exists')
-            throughput = filesize / duration.total_seconds()
-            log.info('Received    %s [%s, %s/s] from %s' % (filename, util.hrsize(filesize), util.hrsize(throughput), self.request.client_addr))
-
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
+            try:
+                file_store = files.FileStore(self.request, tempdir_path)
+            except files.FileStoreException as e:
+                self.abort(400, str(e))
+            created = modified = datetime.datetime.now()
+            fileinfo = dict(
+                name=file_store.filename,
+                created=created,
+                modified=modified,
+                size=file_store.size,
+                hash=file_store.hash,
+                unprocessed=True,
+                tags=file_store.tags,
+                metadata=file_store.metadata
+            )
+            container = reaperutil.create_container_hierarchy(file_store.metadata)
+            f = container.find(file_store.filename)
+            created = modified = datetime.datetime.utcnow()
+            target_path = os.path.join(self.app.config['data_path'], container.path)
+            if not f:
+                file_store.move_file(target_path)
+                container.add_file(fileinfo)
+            elif not file_store.identical(os.path.join(target_path, file_store.filename), f['hash']):
+                file_store.move_file(target_path)
+                container.update_file(fileinfo)
+            throughput = file_store.size / file_store.duration.total_seconds()
+            log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']
@@ -225,11 +232,12 @@ class Core(base.RequestHandler):
             sites = list(self.app.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs
+            site_id = config.site_id()
             remotes = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
-            remote_ids = [r['_id'] for r in remotes] + [self.app.config['site_id']]
+            remote_ids = [r['_id'] for r in remotes] + [site_id]
             sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, projection))
         for s in sites:  # TODO: this for loop will eventually move to public case
-            if s['_id'] == self.app.config['site_id']:
+            if s['_id'] == site_id:
                 s['onload'] = True
                 break
         return sites
