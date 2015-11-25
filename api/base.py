@@ -34,6 +34,10 @@ class RequestHandler(webapp2.RequestHandler):
         access_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
 
+        site_id = config.site_id()
+        if site_id is None:
+            self.abort(503, 'Database not initialized')
+
         # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:
             cached_token = self.app.db.authtokens.find_one({'_id': access_token})
@@ -63,7 +67,7 @@ class RequestHandler(webapp2.RequestHandler):
                         u = u._replace(query=urllib.urlencode(query, True))
                         provider_avatar = urlparse.urlunparse(u)
                 else:
-                    headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % config.site_id()}
+                    headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % site_id}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
@@ -87,7 +91,7 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
                 self.abort(401, 'no valid SSL client certificate')
-        self.user_site = self.source_site or config.site_id()
+        self.user_site = self.source_site or site_id
 
         self.public_request = not drone_request and not self.uid
 
