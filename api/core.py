@@ -364,6 +364,8 @@ class Core(base.RequestHandler):
         targets = []
         # FIXME: check permissions of everything
         projects = []
+        if len(req_spec['nodes']) != 1:
+            self.abort(400, 'bids downloads are limited to single dataset downloads')
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
