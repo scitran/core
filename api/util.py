@@ -149,7 +149,7 @@ def _update_db(db, datainfo):
             project_name = datainfo['project_name'] or 'untitled'
         else:
             group_id = 'unknown'
-            project_name = datainfo['group_id'] + ('/' + datainfo['project_name'] if datainfo['project_name'] else '')
+            project_name = datainfo['group_id'] + ('_' + datainfo['project_name'] if datainfo['project_name'] else '')
         group = db.groups.find_one({'_id': group_id})
         project_spec = {'group': group['_id'], 'name': project_name}
         project = db.projects.find_one_and_update(

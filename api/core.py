@@ -419,6 +419,18 @@ class Core(base.RequestHandler):
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
+    def _symlinkarchivestream(self, ticket, data_path):
+        for filepath, arcpath, _ in ticket['target']:
+            t = tarfile.TarInfo(name=arcpath)
+            t.type = tarfile.SYMTYPE
+            t.linkname = os.path.relpath(filepath, data_path)
+            yield t.tobuf()
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as archive:
+            pass
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
     def download(self):
         ticket_id = self.request.GET.get('ticket')
         if ticket_id:
@@ -427,7 +439,11 @@ class Core(base.RequestHandler):
                 self.abort(404, 'no such ticket')
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
-            self.response.app_iter = self._archivestream(ticket)
+            log.error(self.request.GET.get('symlinks', '').lower())
+            if self.request.GET.get('symlinks', '').lower() in ('1', 'true'):
+                self.response.app_iter = self._symlinkarchivestream(ticket, self.app.config['data_path'])
+            else:
+                self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
             for project_id in ticket['projects']:
