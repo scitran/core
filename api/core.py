@@ -103,7 +103,7 @@ RESET_SCHEMA = {
 
 def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, attachments=True):
     for f in container['files']:
-        if (not attachments or (type(attachments) == list and f['filename'] not in attachments)) and 'attachment' in f['tags']:
+        if (not attachments or (type(attachments) == list and f['filename'] not in attachments)) and 'attachment' in f.get('tags', []):
             continue
         if optional or not f.get('optional', False):
             filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
@@ -358,7 +358,6 @@ class Core(base.RequestHandler):
 
     def _preflight_archivestream_bids(self, req_spec):
         data_path = self.app.config['data_path']
-        arc_prefix = 'bids'
 
         file_cnt = 0
         total_size = 0
@@ -370,14 +369,14 @@ class Core(base.RequestHandler):
             if item['level'] == 'project':
                 project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files', 'notes'])
                 projects.append(item_id)
-                prefix = arc_prefix + '/' + project['group'] + '/' + project['name']
+                prefix = project['name']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
-                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject_code'])
+                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code'])
                 subject_prefixes = {}
                 sessions = {}
                 for ses_or_subj in ses_or_subj_list:
-                    subj_code = ses_or_subj.get('subject_code')
+                    subj_code = ses_or_subj.get('subject', {}).get('code')
                     if subj_code == 'subject':
                         subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
@@ -385,10 +384,12 @@ class Core(base.RequestHandler):
                         subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
                     elif subj_code:
                         sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
+                    else:
+                        sessions['missing_subject'] = sessions.get(subj_code, []) + [ses_or_subj]
                 for subj_code, ses_list in sessions.items():
                     subject_prefix = subject_prefixes.get(subj_code)
                     if not subject_prefix:
-                        continue
+                        subject_prefix = 'missing_subject'
                     for session in ses_list:
                         session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
@@ -439,7 +440,6 @@ class Core(base.RequestHandler):
                 self.abort(404, 'no such ticket')
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
-            log.error(self.request.GET.get('symlinks', '').lower())
             if self.request.GET.get('symlinks', '').lower() in ('1', 'true'):
                 self.response.app_iter = self._symlinkarchivestream(ticket, self.app.config['data_path'])
             else:
