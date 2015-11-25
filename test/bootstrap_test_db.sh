@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -e
 
 if [ -z "$1" ]
   then
@@ -6,4 +7,10 @@ if [ -z "$1" ]
     exit 1
 fi
 
-../../../live.sh cmd PYTHONPATH=code/api:code/data code/api/bin/bootstrap.py users -f mongodb://localhost:9001/scitran code/api/test/test_bootstrap.json $1
+(
+	# Set cwd
+	unset CDPATH
+	cd "$( dirname "${BASH_SOURCE[0]}" )"
+
+	../../../live.sh cmd PYTHONPATH=code/api:code/data code/api/bin/bootstrap.py users -f mongodb://localhost:9001/scitran code/api/test/test_bootstrap.json $1
+)
