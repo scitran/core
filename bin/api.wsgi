@@ -1,6 +1,7 @@
 # vim: filetype=python
 
 import os
+import sys
 import toml
 import logging
 import argparse
@@ -19,6 +20,7 @@ ap.add_argument('--insecure', help='allow user info as urlencoded param', action
 ap.add_argument('--central_uri', help='scitran central api', default='https://sdmc.scitran.io/api')
 ap.add_argument('--log_level', help='log level [info]', default='info')
 ap.add_argument('--drone_secret', help='shared drone secret')
+ap.add_argument('--new_relic', help='path to New Relic .ini file')
 
 ap.add_argument('--config', help='path to config file')
 
@@ -73,15 +75,6 @@ from api import api
 from api import centralclient, jobs
 from api import jobs
 
-try:
-    import newrelic.agent
-    newrelic.agent.initialize('../../newrelic.ini')
-    log.info('New Relic detected and loaded. Monitoring enabled.')
-except ImportError:
-    log.info('New Relic not detected. Monitoring disabled.')
-except newrelic.api.exceptions.ConfigurationError:
-    log.warn('New Relic detected but configuration was not valid. Please ensure newrelic.ini is present. Monitoring disabled.')
-
 log.setLevel(getattr(logging, args.log_level.upper()))
 
 api.app.config = vars(args)
@@ -100,6 +93,20 @@ if not os.path.exists(api.app.config['data_path']):
 
 # FIXME All code shoud use the mongo module and this line should be deleted.
 api.app.db = mongo.db
+
+
+if args.new_relic is not None:
+    try:
+        import newrelic.agent, newrelic.api.exceptions
+        newrelic.agent.initialize(args.new_relic)
+        api.app = newrelic.agent.WSGIApplicationWrapper(api.app)
+        log.info('New Relic detected and loaded. Monitoring enabled.')
+    except ImportError:
+        log.critical('New Relic libraries not found.')
+        sys.exit(1)
+    except newrelic.api.exceptions.ConfigurationError:
+        log.critical('New Relic detected, but configuration invalid.')
+        sys.exit(1)
 
 
 if __name__ == '__main__':
