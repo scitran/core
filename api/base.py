@@ -1,7 +1,6 @@
 import copy
 import json
 import urllib
-import logging
 import webapp2
 import datetime
 import requests
@@ -9,10 +8,8 @@ import urlparse
 import jsonschema
 
 from . import config
-from .util import log
 
-# silence Requests library logging
-logging.getLogger('requests').setLevel(logging.WARNING)
+log = config.log
 
 
 class RequestHandler(webapp2.RequestHandler):

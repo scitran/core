@@ -2,12 +2,14 @@
 Purpose of this module is to define all the permissions checker decorators for the ListHandler classes.
 
 """
-import logging
+
 import sys
 
-log = logging.getLogger('scitran.api')
-
+from .. import config
 from . import _get_access, INTEGER_ROLES
+
+log = config.log
+
 
 def default_sublist(handler, container):
     """

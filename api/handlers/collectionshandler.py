@@ -1,13 +1,13 @@
-from containerhandler import ContainerHandler
-
-import logging
+import bson
 import datetime
 
-import bson
+from .. import config
 from ..auth import containerauth, always_ok
 from ..dao import containerstorage
 
-log = logging.getLogger('scitran.api')
+from containerhandler import ContainerHandler
+
+log = config.log
 
 
 class CollectionsHandler(ContainerHandler):

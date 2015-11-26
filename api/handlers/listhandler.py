@@ -1,19 +1,19 @@
 import os
 import bson
 import copy
-import logging
 import datetime
 
 from .. import base
 from .. import util
 from .. import files
+from .. import config
 from .. import validators
 from .. import tempdir as tempfile
 from ..auth import listauth, always_ok
 from ..dao import liststorage
 from ..dao import APIStorageException
 
-log = logging.getLogger('scitran.api')
+log = config.log
 
 def initialize_list_configurations():
     """

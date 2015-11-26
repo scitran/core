@@ -1,14 +1,15 @@
 import os
 import difflib
-import logging
 import pymongo
 import datetime
 import dateutil.parser
 
 from .. import mongo
+from .. import config
 from . import APIStorageException
 
-log = logging.getLogger('scitran.api')
+log = config.log
+
 
 class ReapedAcquisition(object):
 

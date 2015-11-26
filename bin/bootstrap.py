@@ -6,7 +6,6 @@ import os
 import json
 import shutil
 import hashlib
-import logging
 import pymongo
 import zipfile
 import argparse
@@ -15,9 +14,11 @@ import requests
 
 
 from api.dao import reaperutil
-from api import util  # from scitran.api import util
+from api import util
 from api import mongo
-log = logging.getLogger('scitran.api.bootstrap')
+from api import config
+
+log = config.log
 
 
 def clean(db, args):
@@ -205,5 +206,5 @@ data_parser.set_defaults(func=data)
 
 args = parser.parse_args()
 mongo.configure_db(args.db_uri)
-logging.getLogger().setLevel(getattr(logging, args.log_level.upper()))
+config.set_log_level(log, args.log_level)
 args.func(mongo.db, args)

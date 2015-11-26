@@ -1,13 +1,14 @@
-import logging
 import datetime
 
+from .. import base
+from .. import config
+from .. import debuginfo
 from .. import validators
 from ..auth import groupauth, always_ok
 from ..dao import containerstorage
-from .. import debuginfo
-from .. import base
 
-log = logging.getLogger('scitran.api')
+log = config.log
+
 
 class GroupHandler(base.RequestHandler):
 

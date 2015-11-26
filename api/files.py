@@ -3,13 +3,14 @@ import cgi
 import json
 import shutil
 import hashlib
-import logging
 import zipfile
 import datetime
 
 from . import util
+from . import config
 
-log = logging.getLogger('scitran.api')
+log = config.log
+
 
 class FileStoreException(Exception):
     pass
