@@ -74,7 +74,6 @@ def create_container_hierarchy(metadata):
     #      same for the session and acquisition
     #      queries might be more efficient that way
 
-
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
@@ -91,6 +90,9 @@ def create_container_hierarchy(metadata):
     except Exception as e:
         log.error(metadata)
         raise APIStorageException(str(e))
+
+    subject = metadata.get('subject')
+    file_ = metadata.get('file')
 
     now = datetime.datetime.utcnow()
 

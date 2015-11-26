@@ -9,7 +9,9 @@ import zipfile
 import datetime
 import markdown
 import cStringIO
+import validators
 
+from .dao import reaperutil
 from . import base
 from . import files
 from . import util
@@ -17,6 +19,7 @@ from . import config
 from .util import log
 from .dao import reaperutil
 from . import tempdir as tempfile
+from . import files
 
 
 # silence Markdown library logging
@@ -143,12 +146,12 @@ class Core(base.RequestHandler):
 
         def append_targets(targets, container, prefix, total_size, total_cnt):
             prefix = arc_prefix + '/' + prefix
-            for f in container['files']:
+            for f in container.get('files', []):
                 if req_spec['optional'] or not f.get('optional', False):
-                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
+                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['name'])
                     if os.path.exists(filepath): # silently skip missing files
-                        targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
-                        total_size += f['filesize']
+                        targets.append((filepath, prefix + '/' + f['name'], f['size']))
+                        total_size += f['size']
                         total_cnt += 1
             return total_size, total_cnt
 
@@ -159,21 +162,23 @@ class Core(base.RequestHandler):
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
-                project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files'])
-                prefix = project['group'] + '/' + project['name']
+                project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
+                prefix = project['group'] + '/' + project['label']
                 total_size, file_cnt = append_targets(targets, project, prefix, total_size, file_cnt)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
-                for session in sessions:
+                session_dict = {session['_id']:session for session in sessions}
+                acquisitions = self.app.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
+                for session in session_dict.itervalues():
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
                     total_size, file_cnt = append_targets(targets, session, session_prefix, total_size, file_cnt)
-                    acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
-                    for acq in acquisitions:
-                        acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
-                        total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
+                for acq in acquisitions:
+                    session = session_dict[acq['session']]
+                    acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                    total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
-                prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled')
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
+                prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, session, prefix, total_size, file_cnt)
                 acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
@@ -182,8 +187,8 @@ class Core(base.RequestHandler):
             elif item['level'] == 'acquisition':
                 acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
                 session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
-                prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
+                prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
@@ -206,6 +211,19 @@ class Core(base.RequestHandler):
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
+    def _symlinkarchivestream(self, ticket, data_path):
+        for filepath, arcpath, _ in ticket['target']:
+            t = tarfile.TarInfo(name=arcpath)
+            t.type = tarfile.SYMTYPE
+            t.linkname = os.path.relpath(filepath, data_path)
+            yield t.tobuf()
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as archive:
+            pass
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
+
     def download(self):
         ticket_id = self.get_param('ticket')
         if ticket_id:
@@ -214,7 +232,10 @@ class Core(base.RequestHandler):
                 self.abort(404, 'no such ticket')
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
-            self.response.app_iter = self._archivestream(ticket)
+            if self.get_param('symlinks'):
+                self.response.app_iter = self._symlinkarchivestream(ticket, self.app.config['data_path'])
+            else:
+                self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
         else:
