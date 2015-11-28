@@ -28,16 +28,17 @@ JOB_STATES_ALLOWED_MUTATE = [
 ]
 
 JOB_TRANSITIONS = [
-    "pending --> running",
-    "running --> failed",
-    "running --> complete",
+    'pending --> running',
+    'running --> failed',
+    'running --> complete',
 ]
 
 def valid_transition(from_state, to_state):
     return (from_state + " --> " + to_state) in JOB_TRANSITIONS or from_state == to_state
 
 ALGORITHMS = [
-    "dcm2nii"
+    'dcm2nii',
+    'qa'
 ]
 
 
@@ -62,7 +63,14 @@ def spawn_jobs(db, containers, file):
         File object that is used to spawn 0 or more jobs.
     """
 
-    if file['filetype'] != 'dicom':
+    alg = ''
+    filetype = file['filetype']
+
+    if filetype == 'dicom':
+        alg = 'dcm2nii'
+    elif filetype == 'nifti':
+        alg = 'qa'
+    else:
         return
 
     # File information
@@ -79,7 +87,7 @@ def spawn_jobs(db, containers, file):
     # Spawn rules currently do not look at container hierarchy, and only care about a single file.
     # Further, one algorithm is unconditionally triggered for each dirty file.
 
-    queue_job(db, 'dcm2nii', container_type, container_id, filename, filehash)
+    queue_job(db, alg, container_type, container_id, filename, filehash)
 
 
 def queue_job(db, algorithm_id, container_type, container_id, filename, filehash, attempt_n=1, previous_job_id=None):
@@ -163,15 +171,16 @@ def generate_formula(i):
         A job's intent that holds everything needed to generate a formula.
     """
 
-    if i['algorithm_id'] not in ALGORITHMS:
-        raise Exception('Usupported algorithm ' + algorithm_id)
+    alg_id = i['algorithm_id']
 
-    # Currently hard-coded for a single algorithm: dcm2nii
+    if alg_id not in ALGORITHMS:
+        raise Exception('Usupported algorithm ' + alg_id)
+
     f = {
         'inputs': [
             {
                 'type': 'file',
-                'uri': '/opt/flywheel-temp/dcm_convert-0.1.1.tar',
+                'uri': '/nope.txt',
                 'location': '/',
             },
             {
@@ -181,7 +190,7 @@ def generate_formula(i):
             }
         ],
         'transform': {
-            'command': ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0] ],
+            'command': [ 'echo', 'No command specified for ' + alg_id],
             'env': { },
             'dir': "/",
         },
@@ -194,6 +203,16 @@ def generate_formula(i):
             },
         ],
     }
+
+    if alg_id == 'dcm2nii':
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/dcm_convert-0.1.1.tar'
+        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
+
+    elif alg_id == 'qa':
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/qa_report_fmri.tar'
+        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run; exit 0']
+    else:
+        raise Exception('Command for algorithm ' + alg_id + ' not specified')
 
     return f
 
