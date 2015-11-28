@@ -176,7 +176,6 @@ def generate_formula(i):
     if alg_id not in ALGORITHMS:
         raise Exception('Usupported algorithm ' + alg_id)
 
-    # Currently hard-coded for a single algorithm: dcm2nii
     f = {
         'inputs': [
             {
