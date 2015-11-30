@@ -117,7 +117,7 @@ def data(_, args):
     file_cnt = len(files)
     log.info('found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt)
     for i, filepath in enumerate(files):
-        log.info('loading    %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
+        log.info('Loading     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
         hash_ = hashlib.sha384()
         size = os.path.getsize(filepath)
         try:
@@ -199,7 +199,6 @@ data_parser = subparsers.add_parser(
         description=data_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-data_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
 data_parser.add_argument('-c', '--copy', action='store_true', help='copy data instead of moving it')
 data_parser.add_argument('db_uri', help='database URI')
 data_parser.add_argument('path', help='filesystem path to data')

@@ -123,7 +123,7 @@ def create_container_hierarchy(metadata):
         upsert=True,
         return_document=pymongo.collection.ReturnDocument.AFTER,
     )
-    log.info('Storing as  %s -> %s -> %s' % (project_obj['group'], project_obj['label'], session_uid))
+    log.info('Storing     %s -> %s -> %s' % (project_obj['group'], project_obj['label'], session_uid))
     if acquisition.get('timestamp'):
         acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
     acquisition['modified'] = now
