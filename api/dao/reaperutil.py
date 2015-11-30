@@ -123,9 +123,14 @@ def create_container_hierarchy(metadata):
         upsert=True,
         return_document=pymongo.collection.ReturnDocument.AFTER,
     )
+
     log.info('Storing     %s -> %s -> %s' % (project_obj['group'], project_obj['label'], session_uid))
+
     if acquisition.get('timestamp'):
         acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
+        mongo.db.projects.update_one({'_id': project_obj['_id']}, {'$max': dict(timestamp=acquisition['timestamp']), '$set': dict(timezone=acquisition.get('timezone'))})
+        mongo.db.sessions.update_one({'_id': session_obj['_id']}, {'$min': dict(timestamp=acquisition['timestamp']), '$set': dict(timezone=acquisition.get('timezone'))})
+
     acquisition['modified'] = now
     acq_operations = {
         '$setOnInsert': dict(
