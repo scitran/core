@@ -364,6 +364,7 @@ class Core(base.RequestHandler):
         targets = []
         # FIXME: check permissions of everything
         projects = []
+        prefix = 'untitled'
         if len(req_spec['nodes']) != 1:
             self.abort(400, 'bids downloads are limited to single dataset downloads')
         for item in req_spec['nodes']:
@@ -374,11 +375,11 @@ class Core(base.RequestHandler):
                 prefix = project['name']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
-                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code'])
+                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
                 subject_prefixes = {}
                 sessions = {}
                 for ses_or_subj in ses_or_subj_list:
-                    subj_code = ses_or_subj.get('subject', {}).get('code')
+                    subj_code = ses_or_subj.get('subject', {}).get('code') or ses_or_subj.get('subject_code')
                     if subj_code == 'subject':
                         subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
@@ -387,7 +388,7 @@ class Core(base.RequestHandler):
                     elif subj_code:
                         sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
                     else:
-                        sessions['missing_subject'] = sessions.get(subj_code, []) + [ses_or_subj]
+                        sessions['missing_subject'] = sessions.get('missing_subject', []) + [ses_or_subj]
                 for subj_code, ses_list in sessions.items():
                     subject_prefix = subject_prefixes.get(subj_code)
                     if not subject_prefix:
@@ -402,7 +403,7 @@ class Core(base.RequestHandler):
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
                                                                    file_cnt, req_spec['optional'], data_path, False)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-        filename = 'bids`_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+        filename = prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
         self.app.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
