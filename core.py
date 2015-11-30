@@ -318,10 +318,9 @@ class Core(base.RequestHandler):
             for f in container['files']:
                 if req_spec['optional'] or not f.get('optional', False):
                     filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
-                    if os.path.exists(filepath): # silently skip missing files
-                        targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
-                        total_size += f['filesize']
-                        total_cnt += 1
+                    targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
+                    total_size += f['filesize']
+                    total_cnt += 1
             return total_size, total_cnt
 
         file_cnt = 0
@@ -344,13 +343,6 @@ class Core(base.RequestHandler):
                     session = session_dict[acq['session']]
                     acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                     total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
-                # for session in sessions:
-                #     session_prefix = prefix + '/' + session.get('label', 'untitled')
-                #     total_size, file_cnt = append_targets(targets, session, session_prefix, total_size, file_cnt)
-                #     acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
-                #     for acq in acquisitions:
-                #         acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
-                #         total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
@@ -378,7 +370,11 @@ class Core(base.RequestHandler):
         stream = cStringIO.StringIO()
         with tarfile.open(mode='w|', fileobj=stream) as archive:
             for filepath, arcpath, _ in ticket['target']:
-                yield archive.gettarinfo(filepath, arcpath).tobuf()
+                try:
+                    yield archive.gettarinfo(filepath, arcpath).tobuf()
+                except Exception as e:
+                    log.warning(str(e))
+                    continue
                 with open(filepath, 'rb') as fd:
                     for chunk in iter(lambda: fd.read(CHUNKSIZE), ''):
                         yield chunk
