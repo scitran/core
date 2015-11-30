@@ -1,10 +1,11 @@
 # vim: filetype=python
 
-import os
-import time
-import logging
 import argparse
 import datetime
+import logging
+import os
+import time
+import toml
 
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
@@ -21,6 +22,8 @@ ap.add_argument('--central_uri', help='scitran central api', default='https://sd
 ap.add_argument('--log_level', help='log level [info]', default='info')
 ap.add_argument('--drone_secret', help='shared drone secret')
 
+# REVIEW: remove most above flags?
+ap.add_argument('--config', help='path to config file')
 
 if __name__ == '__main__':
     import paste.httpserver
@@ -30,6 +33,33 @@ if __name__ == '__main__':
     ap.add_argument('--port', default='8080', help='TCP port to listen on [8080]')
 
 args = ap.parse_args()
+
+if args.config:
+    with open(args.config, 'r') as fid:
+        mapping = toml.loads(fid.read())
+
+        # Map config keys to custom app config keys
+        # REVIEW: this all goes away if we use the same config dot notation as other components.
+
+        mongo_uri = mapping.get('mongo', {}).get('uri', None)
+        if mongo_uri:
+            args.db_uri = 'mongodb://' + mongo_uri
+
+        central_url = mapping.get('central', {}).get('url', None)
+        if central_url:
+            args.central_uri = central_url
+
+        auth_id_endpoint = mapping.get('auth', {}).get('id_endpoint', None)
+        if auth_id_endpoint:
+            args.oauth2_id_endpoint = auth_id_endpoint
+
+        site_insecure = mapping.get('site', {}).get('insecure', None)
+        if site_insecure:
+            args.insecure = site_insecure
+
+        auth_shared_secret = mapping.get('auth', {}).get('shared_secret', None)
+        if auth_shared_secret:
+            args.drone_secret = auth_shared_secret
 
 args.ssl = args.ssl or args.ssl_cert != '*'
 
@@ -67,6 +97,8 @@ if not api.app.config['drone_secret']:
 if not os.path.exists(api.app.config['data_path']):
     os.makedirs(api.app.config['data_path'])
 
+# FIXME hard-coded off to fix crash at @gsfr's direction
+centralclient_enabled = False
 
 # FIXME All code shoud use the mongo module and this line should be deleted.
 api.app.db = mongo.db

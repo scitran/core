@@ -35,8 +35,9 @@ class RequestHandler(webapp2.RequestHandler):
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
 
         site_id = config.site_id()
-        if site_id is None:
-            self.abort(503, 'Database not initialized')
+        # FIXME: another crash on master
+        # if site_id is None:
+        #    self.abort(503, 'Database not initialized')
 
         # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:

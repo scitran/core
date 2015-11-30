@@ -10,6 +10,7 @@ import datetime
 import markdown
 import cStringIO
 import validators
+import json
 
 from . import base
 from . import files
@@ -23,6 +24,28 @@ from . import tempdir as tempfile
 # silence Markdown library logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
 
+
+# REVIEW: place in config.py?
+class Config(base.RequestHandler):
+    def _get_config_map(self):
+        """
+        Whitelist keys that are safe to give to clients.
+        """
+
+        return {
+            'site': {
+                'insecure': self.app.config['insecure'],
+            },
+            'auth': {
+                'provider':  "Google",
+            }
+        }
+
+    def get_config(self):
+        return self._get_config_map()
+
+    def get_config_js(self):
+        self.response.write("config = " + json.dumps(self._get_config_map()) + ";")
 
 class Core(base.RequestHandler):
 
