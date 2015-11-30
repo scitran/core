@@ -66,18 +66,20 @@ def users(db, args):
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
     log.info('bootstrapping users...')
-    for u in input_data.get('users', []):
-        log.info('    ' + u['_id'])
-        u['created'] = now
-        u['modified'] = now
-        u.setdefault('email', u['_id'])
-        u.setdefault('preferences', {})
-        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
-        if requests.head(gravatar, params={'d': '404'}):
-            u.setdefault('avatar', gravatar)
-        u.setdefault('avatars', {})
-        u['avatars'].setdefault('gravatar', gravatar)
-        db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
+    with requests.Session() as rs:
+        rs.params = {'d': '404'}
+        for u in input_data.get('users', []):
+            log.info('    ' + u['_id'])
+            u['created'] = now
+            u['modified'] = now
+            u.setdefault('email', u['_id'])
+            u.setdefault('preferences', {})
+            gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
+            if rs.head(gravatar):
+                u.setdefault('avatar', gravatar)
+            u.setdefault('avatars', {})
+            u['avatars'].setdefault('gravatar', gravatar)
+            db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
     log.info('bootstrapping groups...')
     config = db.config.find_one({'latest': True})
     site_id = config.get('site_id')

@@ -10,7 +10,7 @@ os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)
 
 ap = argparse.ArgumentParser()
-ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
+ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost:9001/scitran')
 ap.add_argument('--data_path', help='path to storage area', default=os.path.join(os.path.dirname(__file__), '../persistent/data'))
 ap.add_argument('--ssl', action='store_true', help='enable SSL')
 ap.add_argument('--ssl_cert', default='*', help='path to SSL key and cert file')
