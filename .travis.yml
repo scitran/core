@@ -3,7 +3,14 @@ python:
 - '2.7'
 - '3.3'
 - pypy
+addons:
+  apt:
+    sources:
+      - pypy
+    packages:
+      - pypy
 install:
+  - pip install coverage coveralls
   - pip install -r requirements.txt
 script:
-  - nosetests -vv -exe test/unit_tests
+  - nosetests --with-coverage -vv -exe test/unit_tests
