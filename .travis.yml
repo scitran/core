@@ -1,20 +1,9 @@
 language: python
+sudo: false
 python:
 - '2.7'
 - '3.3'
-- pypy
-addons:
-  apt:
-    sources:
-      - pypy
-    packages:
-      - pypy
 install:
-  - |
-    if [ "$TRAVIS_PYTHON_VERSION" = "pypy" ];
-      then virtualenv -p /usr/bin/pypy ~/.venv;
-      . ~/.venv/bin/activate;
-    fi
   - pip install coverage coveralls
   - pip install -r requirements.txt
 script:
