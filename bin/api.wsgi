@@ -3,7 +3,6 @@
 import os
 import sys
 import toml
-import logging
 import argparse
 import datetime
 
@@ -11,7 +10,7 @@ os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)
 
 ap = argparse.ArgumentParser()
-ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost/scitran')
+ap.add_argument('--db_uri', help='SciTran DB URI', default='mongodb://localhost:9001/scitran')
 ap.add_argument('--data_path', help='path to storage area', default=os.path.join(os.path.dirname(__file__), '../persistent/data'))
 ap.add_argument('--ssl', action='store_true', help='enable SSL')
 ap.add_argument('--ssl_cert', default='*', help='path to SSL key and cert file')
@@ -25,6 +24,7 @@ ap.add_argument('--new_relic', help='path to New Relic .ini file')
 ap.add_argument('--config', help='path to config file')
 
 if __name__ == '__main__':
+    import logging
     import paste.httpserver
     logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence paste logging
 
@@ -70,12 +70,13 @@ from api import mongo
 mongo.configure_db(args.db_uri)
 
 # imports delayed after mongo has been fully initialized
-from api.util import log
 from api import api
-from api import centralclient, jobs
 from api import jobs
+from api import config
+from api import centralclient
 
-log.setLevel(getattr(logging, args.log_level.upper()))
+log = config.log
+config.set_log_level(log, args.log_level)
 
 api.app.config = vars(args)
 

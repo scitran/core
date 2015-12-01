@@ -1,11 +1,12 @@
 """
 Purpose of this module is to define all the permissions checker decorators for the ContainerHandler classes.
 """
-import logging
-
-log = logging.getLogger('scitran.api')
 
 from . import _get_access, INTEGER_ROLES
+from .. import config
+
+log = config.log
+
 
 def default_container(handler, container=None, target_parent_container=None):
     """

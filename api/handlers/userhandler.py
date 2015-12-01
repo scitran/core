@@ -1,15 +1,14 @@
-import datetime
-import logging
 import hashlib
+import datetime
 import requests
 
+from .. import base
+from .. import config
 from .. import validators
 from ..auth import userauth, always_ok, ROLES
 from ..dao import containerstorage
-from .. import base
 
-
-log = logging.getLogger('scitran.api')
+log = config.log
 
 
 class UserHandler(base.RequestHandler):

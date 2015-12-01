@@ -6,7 +6,6 @@ import os
 import json
 import shutil
 import hashlib
-import logging
 import pymongo
 import zipfile
 import argparse
@@ -15,9 +14,11 @@ import requests
 
 
 from api.dao import reaperutil
-from api import util  # from scitran.api import util
+from api import util
 from api import mongo
-log = logging.getLogger('scitran.api.bootstrap')
+from api import config
+
+log = config.log
 
 
 def clean(db, args):
@@ -65,18 +66,20 @@ def users(db, args):
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
     log.info('bootstrapping users...')
-    for u in input_data.get('users', []):
-        log.info('    ' + u['_id'])
-        u['created'] = now
-        u['modified'] = now
-        u.setdefault('email', u['_id'])
-        u.setdefault('preferences', {})
-        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
-        if requests.head(gravatar, params={'d': '404'}):
-            u.setdefault('avatar', gravatar)
-        u.setdefault('avatars', {})
-        u['avatars'].setdefault('gravatar', gravatar)
-        db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
+    with requests.Session() as rs:
+        rs.params = {'d': '404'}
+        for u in input_data.get('users', []):
+            log.info('    ' + u['_id'])
+            u['created'] = now
+            u['modified'] = now
+            u.setdefault('email', u['_id'])
+            u.setdefault('preferences', {})
+            gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
+            if rs.head(gravatar):
+                u.setdefault('avatar', gravatar)
+            u.setdefault('avatars', {})
+            u['avatars'].setdefault('gravatar', gravatar)
+            db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
     log.info('bootstrapping groups...')
     config = db.config.find_one({'latest': True})
     site_id = config.get('site_id')
@@ -114,7 +117,7 @@ def data(_, args):
     file_cnt = len(files)
     log.info('found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt)
     for i, filepath in enumerate(files):
-        log.info('loading    %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
+        log.info('Loading     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
         hash_ = hashlib.sha384()
         size = os.path.getsize(filepath)
         try:
@@ -196,7 +199,6 @@ data_parser = subparsers.add_parser(
         description=data_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-data_parser.add_argument('-q', '--quick', action='store_true', help='omit computing of file checksums')
 data_parser.add_argument('-c', '--copy', action='store_true', help='copy data instead of moving it')
 data_parser.add_argument('db_uri', help='database URI')
 data_parser.add_argument('path', help='filesystem path to data')
@@ -205,5 +207,5 @@ data_parser.set_defaults(func=data)
 
 args = parser.parse_args()
 mongo.configure_db(args.db_uri)
-logging.getLogger().setLevel(getattr(logging, args.log_level.upper()))
+config.set_log_level(log, args.log_level)
 args.func(mongo.db, args)

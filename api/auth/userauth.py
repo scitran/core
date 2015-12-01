@@ -1,6 +1,7 @@
-import logging
+from .. import config
 
-log = logging.getLogger('scitran.api')
+log = config.log
+
 
 def default(handler, user=None):
     def g(exec_op):

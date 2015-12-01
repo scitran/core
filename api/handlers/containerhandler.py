@@ -1,5 +1,4 @@
 import bson
-import logging
 import datetime
 
 from .. import base
@@ -10,8 +9,7 @@ from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage
 
-
-log = logging.getLogger('scitran.api')
+log = config.log
 
 
 class ContainerHandler(base.RequestHandler):

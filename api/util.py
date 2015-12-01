@@ -5,19 +5,11 @@ import uuid
 import shutil
 import difflib
 import hashlib
-import logging
 import pymongo
 import zipfile
 import datetime
 import mimetypes
 import tempdir as tempfile
-
-logging.basicConfig(
-    format='%(asctime)s %(name)16.16s %(filename)24.24s %(lineno)5d:%(levelname)4.4s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    level=logging.DEBUG,
-)
-log = logging.getLogger('scitran.api')
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),

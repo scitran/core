@@ -1,12 +1,13 @@
-import logging
 import bson.errors
 import bson.objectid
 
 from .. import util
 from .. import mongo
+from .. import config
 from . import APIStorageException
 
-log = logging.getLogger('scitran.api')
+log = config.log
+
 
 class ContainerStorage(object):
     """

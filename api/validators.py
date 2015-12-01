@@ -1,9 +1,11 @@
 import os
 import copy
-import logging
 import jsonschema
 
-log = logging.getLogger('scitran.api')
+from . import config
+
+log = config.log
+
 # following https://github.com/Julian/jsonschema/issues/98
 # json schema files are expected to be in the schemas folder relative to this module
 schema_path = os.path.abspath(os.path.dirname(__file__))

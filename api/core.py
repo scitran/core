@@ -3,7 +3,6 @@ import re
 import cgi
 import bson
 import json
-import logging
 import tarfile
 import zipfile
 import datetime
@@ -15,13 +14,10 @@ from . import base
 from . import files
 from . import util
 from . import config
-from .util import log
 from .dao import reaperutil
 from . import tempdir as tempfile
 
-
-# silence Markdown library logging
-logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
+log = config.log
 
 
 class Config(base.RequestHandler):
