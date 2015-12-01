@@ -29,7 +29,7 @@ example:
 """
 
 
-def dbinit(db, args):
+def configure(db, args):
     # TODO jobs indexes
     # TODO review all indexes
     db.projects.create_index([('gid', 1), ('name', 1)])
@@ -49,13 +49,14 @@ def dbinit(db, args):
         'site_id': args.site_id,
         'site_name': args.site_name,
         'site_url': args.site_url,
+        'client_id': args.client_id,
         }}, upsert=True)
 
     db.sites.replace_one({'_id': args.site_id}, {'name': args.site_name, 'site_url': args.site_url}, upsert=True)
 
-dbinit_desc = """
+configure_desc = """
 example:
-./bin/bootstrap.py dbinit mongodb://localhost/scitran local Local https://localhost/api
+./bin/bootstrap.py configure mongodb://localhost/scitran local Local https://localhost/api
 """
 
 
@@ -166,17 +167,18 @@ clean_parser = subparsers.add_parser(
 clean_parser.add_argument('db_uri', help='DB URI')
 clean_parser.set_defaults(func=clean)
 
-dbinit_parser = subparsers.add_parser(
-        name='dbinit',
+configure_parser = subparsers.add_parser(
+        name='configure',
         help='initialize database and indexes',
-        description=dbinit_desc,
+        description=configure_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-dbinit_parser.add_argument('db_uri', help='DB URI')
-dbinit_parser.add_argument('site_id', help='Site ID')
-dbinit_parser.add_argument('site_name', help='Site Name')
-dbinit_parser.add_argument('site_url', help='Site URL')
-dbinit_parser.set_defaults(func=dbinit)
+configure_parser.add_argument('db_uri', help='DB URI')
+configure_parser.add_argument('site_id', help='Site ID')
+configure_parser.add_argument('site_name', help='Site Name')
+configure_parser.add_argument('site_url', help='Site URL')
+configure_parser.add_argument('client_id', help='OAuth client ID')
+configure_parser.set_defaults(func=configure)
 
 users_parser = subparsers.add_parser(
         name='users',
