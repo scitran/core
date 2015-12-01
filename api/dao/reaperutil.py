@@ -20,7 +20,6 @@ class ReapedAcquisition(object):
         self.fileinfo = fileinfo or {}
 
     def find(self, filename):
-
         for f in self.acquisition.get('files', []):
             if f['name'] == filename:
                 return f

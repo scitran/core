@@ -11,7 +11,6 @@ import markdown
 import cStringIO
 import validators
 
-from .dao import reaperutil
 from . import base
 from . import files
 from . import util
@@ -19,7 +18,6 @@ from . import config
 from .util import log
 from .dao import reaperutil
 from . import tempdir as tempfile
-from . import files
 
 
 # silence Markdown library logging
@@ -166,7 +164,7 @@ class Core(base.RequestHandler):
                 prefix = project['group'] + '/' + project['label']
                 total_size, file_cnt = append_targets(targets, project, prefix, total_size, file_cnt)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
-                session_dict = {session['_id']:session for session in sessions}
+                session_dict = {session['_id']: session for session in sessions}
                 acquisitions = self.app.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
                 for session in session_dict.itervalues():
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
