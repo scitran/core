@@ -80,6 +80,9 @@ DOWNLOAD_SCHEMA = {
                 'additionalProperties': False
             },
         },
+        'filter': {
+            'type': 'object'
+        }
     },
     'required': ['optional', 'nodes'],
     'additionalProperties': False
@@ -314,8 +317,20 @@ class Core(base.RequestHandler):
         arc_prefix = 'sdm'
 
         def append_targets(targets, container, prefix, total_size, total_cnt):
+            filter_ = req_spec.get('filter')
             prefix = arc_prefix + '/' + prefix
             for f in container['files']:
+                if filter_:
+                    if not filter_['attachments'] and f['flavor'] == 'attachment':
+                        continue
+                    if not filter_['dicom'] and f['filetype'] == 'dicom':
+                        continue
+                    if not filter_['nifti'] and f['filetype'] == 'nifti':
+                        continue
+                    if not filter_['montage'] and f['filetype'] == 'montage':
+                        continue
+                    if not filter_['other'] and f['flavor'] != 'attachment' and f['filetype'] not in ['montage', 'nifti', 'dicom']:
+                        continue
                 if req_spec['optional'] or not f.get('optional', False):
                     filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
                     targets.append((filepath, prefix + '/' + f['filename'], f['filesize']))
