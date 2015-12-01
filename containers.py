@@ -215,10 +215,10 @@ class Container(base.RequestHandler):
 
     def file(self, cid, filename):
         _id = bson.ObjectId(cid)
-        if self.request.method == 'GET':
+        if self.request.method in ['GET', 'POST']:
             container, _ = self._get(_id, 'ro', filename)
             return self._get_file(_id, container, filename)
-        elif self.request.method in ['POST', 'DELETE']:
+        elif self.request.method == 'DELETE':
             container, _ = self._get(_id, 'rw', filename)
             return self._get_file(_id, container, filename)
         elif self.request.method == 'PUT':
