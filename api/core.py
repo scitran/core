@@ -24,6 +24,15 @@ from . import tempdir as tempfile
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
 
 
+class Config(base.RequestHandler):
+
+    def get(self):
+        return config.get_config()
+
+    def get_js(self):
+        self.response.write('config = ' + json.dumps(self.get(), sort_keys=True, indent=4, separators=(',', ': ')) + ';')
+
+
 class Core(base.RequestHandler):
 
     """/api """
