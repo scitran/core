@@ -10,7 +10,6 @@ import datetime
 import markdown
 import cStringIO
 import validators
-import json
 
 from . import base
 from . import files
@@ -31,7 +30,7 @@ class Config(base.RequestHandler):
         return config.get_config()
 
     def get_js(self):
-        self.response.write('config =\n' + json.dumps(self.get(), sort_keys=True, indent=4, separators=(',', ': ')) + '\n;')
+        self.response.write('config = ' + json.dumps(self.get(), sort_keys=True, indent=4, separators=(',', ': ')) + ';')
 
 
 class Core(base.RequestHandler):

@@ -1,12 +1,10 @@
 # vim: filetype=python
 
+import os
+import toml
+import logging
 import argparse
 import datetime
-import logging
-import os
-import time
-import toml
-
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)

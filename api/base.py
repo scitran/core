@@ -36,7 +36,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         site_id = config.site_id()
         if site_id is None:
-           self.abort(503, 'Database not initialized')
+            self.abort(503, 'Database not initialized')
 
         # User (oAuth) authentication
         if access_token and self.app.config['oauth2_id_endpoint']:
