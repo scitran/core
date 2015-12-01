@@ -209,7 +209,7 @@ def generate_formula(i):
         f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
 
     elif alg_id == 'qa':
-        f['inputs'][0]['uri'] = '/opt/flywheel-temp/qa_report_fmri.tar'
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/qa-report-fmri-0.0.2.tar'
         f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run; exit 0']
     else:
         raise Exception('Command for algorithm ' + alg_id + ' not specified')
