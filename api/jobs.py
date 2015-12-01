@@ -263,7 +263,7 @@ class Jobs(base.RequestHandler):
                 'state': 'running',
                 'modified': datetime.datetime.utcnow()}
             },
-            sort=[('modified', -1)],
+            sort=[('modified', 1)],
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
