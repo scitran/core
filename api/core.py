@@ -25,27 +25,14 @@ from . import tempdir as tempfile
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)
 
 
-# REVIEW: place in config.py?
 class Config(base.RequestHandler):
-    def _get_config_map(self):
-        """
-        Whitelist keys that are safe to give to clients.
-        """
 
-        return {
-            'site': {
-                'insecure': self.app.config['insecure'],
-            },
-            'auth': {
-                'provider':  "Google",
-            }
-        }
+    def get(self):
+        return config.get_config()
 
-    def get_config(self):
-        return self._get_config_map()
+    def get_js(self):
+        self.response.write('config =\n' + json.dumps(self.get(), sort_keys=True, indent=4, separators=(',', ': ')) + '\n;')
 
-    def get_config_js(self):
-        self.response.write("config = " + json.dumps(self._get_config_map()) + ";")
 
 class Core(base.RequestHandler):
 

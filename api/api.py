@@ -7,6 +7,7 @@ import webapp2_extras.routes
 
 from . import core
 from . import jobs
+from . import config
 from handlers import listhandler
 from handlers import userhandler
 from handlers import grouphandler
@@ -54,8 +55,8 @@ routes = [
         webapp2.Route(r'/download',         core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
         webapp2.Route(r'/reaper',           core.Core, handler_method='reaper', methods=['POST']),
         webapp2.Route(r'/sites',            core.Core, handler_method='sites', methods=['GET']),
-        webapp2.Route(r'/config',           core.Config, handler_method='get_config', methods=['GET']),
-        webapp2.Route(r'/config.js',        core.Config, handler_method='get_config_js', methods=['GET'])
+        webapp2.Route(r'/config',           core.Config, methods=['GET']),
+        webapp2.Route(r'/config.js',        core.Config, handler_method='get_js', methods=['GET'])
     ]),
     webapp2.Route(r'/api/users',            userhandler.UserHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/users',            userhandler.UserHandler, methods=['POST']),

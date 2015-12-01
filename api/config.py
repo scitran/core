@@ -6,6 +6,9 @@ last_update = datetime.datetime.utcfromtimestamp(0)
 latest_config = None
 
 
+def get_config():
+    return mongo.db.config.find_one({'latest': True}, {'_id': 0, 'latest': 0}) or {}
+
 def _get_item(item):
     global last_update, latest_config
     now = datetime.datetime.utcnow()
