@@ -10,6 +10,11 @@ addons:
     packages:
       - pypy
 install:
+  - |
+    if [ "$TRAVIS_PYTHON_VERSION" = "pypy" ];
+      then virtualenv -p /usr/bin/pypy ~/.venv;
+      . ~/.venv/bin/activate;
+    fi
   - pip install coverage coveralls
   - pip install -r requirements.txt
 script:
