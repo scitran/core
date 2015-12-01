@@ -22,7 +22,6 @@ ap.add_argument('--central_uri', help='scitran central api', default='https://sd
 ap.add_argument('--log_level', help='log level [info]', default='info')
 ap.add_argument('--drone_secret', help='shared drone secret')
 
-# REVIEW: remove most above flags?
 ap.add_argument('--config', help='path to config file')
 
 if __name__ == '__main__':
@@ -45,9 +44,13 @@ if args.config:
         if mongo_uri:
             args.db_uri = 'mongodb://' + mongo_uri
 
-        central_url = mapping.get('central', {}).get('url', None)
-        if central_url:
-            args.central_uri = central_url
+        if mapping.get('central', {}).get('registered', False):
+            central_url = mapping.get('central', {}).get('url', None)
+            if central_url:
+                args.central_uri = central_url
+        else:
+            # Manually disable central if toml was provided and config did not explicitly enable
+            args.central_uri = None
 
         auth_id_endpoint = mapping.get('auth', {}).get('id_endpoint', None)
         if auth_id_endpoint:
@@ -96,9 +99,6 @@ if not api.app.config['drone_secret']:
     log.warning('drone_secret not configured -> Drone functionality disabled')
 if not os.path.exists(api.app.config['data_path']):
     os.makedirs(api.app.config['data_path'])
-
-# FIXME hard-coded off to fix crash at @gsfr's direction
-centralclient_enabled = False
 
 # FIXME All code shoud use the mongo module and this line should be deleted.
 api.app.db = mongo.db
