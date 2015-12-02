@@ -14,3 +14,7 @@ rfc3987
 nose
 toml
 PasteScript
+pytest
+pytest-cov
+coverage
+coveralls
