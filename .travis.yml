@@ -4,8 +4,8 @@ python:
 - '2.7'
 - '3.3'
 install:
-  - scripts/setup.sh
+  - scripts/setup.sh --ci
 script:
-  - scripts/runtests.sh
+  - scripts/runtests.sh unit --ci
 after_success:
   - coveralls

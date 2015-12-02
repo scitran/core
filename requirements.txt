@@ -16,5 +16,6 @@ toml
 PasteScript
 pytest
 pytest-cov
+pytest-watch
 coverage
 coveralls
