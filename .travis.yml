@@ -4,7 +4,9 @@ python:
 - '2.7'
 - '3.3'
 install:
-  - pip install coverage coveralls
+  - pip install pytest pytest-cov coverage coveralls
   - pip install -r requirements.txt
-script:
-  - nosetests --with-coverage -vv -exe test/unit_tests
+script:   # Add pytest-pep8 when ready, leaving out for the moment
+  - PYTHONPATH=. py.test --cov=api --cov-report=term-missing test/unit_tests/
+after_success:
+  - coveralls

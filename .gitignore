@@ -5,3 +5,6 @@
 /persistent
 /runtime
 bootstrap.json
+.cache
+.coverage
+coverage.xml
