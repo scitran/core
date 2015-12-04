@@ -252,11 +252,11 @@ class Core(base.RequestHandler):
         """Return local and remote sites."""
         projection = ['name', 'onload']
         # TODO onload for local is true
+        site_id = config.site_id()
         if self.public_request or self.is_true('all'):
             sites = list(self.app.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs
-            site_id = config.site_id()
             remotes = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
             remote_ids = [r['_id'] for r in remotes] + [site_id]
             sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, projection))

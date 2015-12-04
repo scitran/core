@@ -101,8 +101,7 @@ def create_container_hierarchy(metadata):
         project_obj = mongo.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
     else:
         project_obj = _find_or_create_destination_project(group_id, project_label, now, now)
-    if subject:
-        session['subject'] = subject
+    session['subject'] = subject or {}
     #FIXME session modified date should be updated on updates
     if session.get('timestamp'):
         session['timestamp'] = dateutil.parser.parse(session['timestamp'])

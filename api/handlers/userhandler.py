@@ -33,9 +33,11 @@ class UserHandler(base.RequestHandler):
     def self(self):
         """Return details for the current User."""
         self._init_storage()
+        if not self.uid:
+            self.abort(400, 'no user is logged in')
         user = self.storage.exec_op('GET', self.uid)
         if not user:
-            self.abort(400, 'no user is logged in')
+            self.abort(403, 'user does not exist')
         return user
 
     def get_all(self):

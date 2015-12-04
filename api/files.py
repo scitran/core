@@ -66,7 +66,10 @@ class FileStore(object):
         start_time = datetime.datetime.utcnow()
         if request.content_type == 'multipart/form-data':
             self._save_multipart_file(dest_path, hash_alg)
+            self.payload = request.POST.mixed()
         else:
+            self.payload = request.POST.mixed()
+            self.filename = filename or self.payload.get('filename')
             self._save_body_file(dest_path, filename, hash_alg)
         self.duration = datetime.datetime.utcnow() - start_time
         self.mimetype = util.guess_mimetype(self.filename)

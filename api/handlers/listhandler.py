@@ -361,12 +361,11 @@ class FileListHandler(ListHandler):
         force = self.is_true('force')
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
-        payload = self.request.POST.mixed()
-        filename = payload.get('filename') or kwargs.get('name')
 
         result = None
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
-            file_store = files.FileStore(self.request, tempdir_path, filename=filename)
+            file_store = files.FileStore(self.request, tempdir_path, filename=kwargs.get('name'))
+            payload = file_store.payload
             file_datetime = datetime.datetime.utcnow()
             file_properties = {
                 'name': file_store.filename,
