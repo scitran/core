@@ -12,3 +12,5 @@ webapp2
 webob
 rfc3987
 nose
+toml
+PasteScript

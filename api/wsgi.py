@@ -1,35 +1,38 @@
 # vim: filetype=python
 
 import os
-import logging
+import sys
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)
 
 def app_factory(global_config, **config):
-    from util import log
-    logging.getLogger('scitran.data').setLevel(logging.WARNING) # silence scitran.data logging
-    log_level = config['log_level'].upper() if 'log_level' in config else 'INFO'
-    log.setLevel(getattr(logging, log_level))
-
-    config = process_config(config, log)
-
+    args = config
     from . import mongo
-    mongo.configure_db(config['db_uri'], config['site_id'], config['site_name'], config['api_uri'])
+    mongo.configure_db(args['db_uri'])
 
     # imports delayed after mongo has been fully initialized
     from . import api
+    from . import config
 
-    api.app.config = config
+    log = config.log
+    args = process_config(args, log)
+    config.set_log_level(log, args['log_level'])
 
-    try:
-        import newrelic.agent
-        newrelic.agent.initialize('../../newrelic.ini')
-        log.info('New Relic detected and loaded. Monitoring enabled.')
-    except ImportError:
-        log.info('New Relic not detected. Monitoring disabled.')
-    except newrelic.api.exceptions.ConfigurationError:
-        log.warn('New Relic detected but configuration was not valid. Please ensure newrelic.ini is present. Monitoring disabled.')
+    api.app.config = args
+
+    if 'new_relic' in args and args['new_relic'] is not None:
+        try:
+            import newrelic.agent, newrelic.api.exceptions
+            newrelic.agent.initialize(args.new_relic)
+            api.app = newrelic.agent.WSGIApplicationWrapper(api.app)
+            log.info('New Relic detected and loaded. Monitoring enabled.')
+        except ImportError:
+            log.critical('New Relic libraries not found.')
+            sys.exit(1)
+        except newrelic.api.exceptions.ConfigurationError:
+            log.critical('New Relic detected, but configuration invalid.')
+            sys.exit(1)
 
     api.app.db = mongo.db
 
@@ -59,10 +62,13 @@ def process_config(config, log):
         log.warning('drone_secret not configured -> Drone functionality disabled')
     if 'data_path' not in config or not config['data_path']:
         raise Exception('data_path - path to storage area must be sepecified')
-    if 'ssl_cert' not in config or not config['ssl_cert']:
+    if 'ssl_cert' not in config or not config['ssl_cert'] or config['ssl_cert'] != '*':
     #     raise Exception('ssl_cert - path to SSL cert must be specified')
         config['ssl_cert'] = ''
+        config['ssl'] = False
         log.warning('ssl_cert not configured -> SciTran Central functionality disabled')
+    else:
+        config['ssl'] = True
     if 'api_uri' not in config or not config['api_uri']:
         raise Exception('api_uri - api uri, with https:// prefix')
     if 'central_uri' not in config or not config['central_uri']:
