@@ -16,6 +16,10 @@ if [ "$#" -gt 2 ]; then
     exit 1
 fi
 
+if ! [ -f "bootstrap.json" ]; then
+    echo "Please create bootstrap.json from bootstrap.json.sample"
+    exit 1
+fi
 
 if [ -f "`which brew`" ]; then
     echo "Homebrew is installed"
