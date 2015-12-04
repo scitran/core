@@ -88,11 +88,35 @@ pip install -U -r requirements.txt
 mongod --dbpath $PERSITENT_DIR/db --smallfiles &
 MONGO_PID=$!
 
-# Bootstrap and run API
+# Set python path so scripts can work
 export PYTHONPATH=.
+
+# Configure api
 bin/bootstrap.py configure mongodb://localhost/scitran local Local https://localhost:8080/api oauth_client_id
-#python bin/api.wsgi --data_path $PERSITENT_DIR/data --ssl --insecure --log_level debug --drone_secret scitran_drone --db_uri mongodb://localhost/scitran
+
+# Boostrap users
+bin/bootstrap.py users mongodb://localhost/scitran bootstrap.json
+
+if [ -d "$PERSITENT_DIR/data" ]; then
+    echo "The $PERSITENT_DIR/data directory is present, skipping data bootstrapping.  Remove to re-bootstrap."
+else
+    echo "Downloading testdata"
+    curl https://codeload.github.com/scitran/testdata/tar.gz/master | tar xz -C $PERSITENT_DIR
+    echo "Bootstrapping testdata"
+    bin/bootstrap.py data --copy mongodb://localhost/scitran $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
+    echo "Bootstrapped testdata"
+    rm -rf $PERSITENT_DIR/testdata-master
+    echo "Cleaned up downloaded data"
+fi
+
+# Serve API with paste
+# python bin/api.wsgi --data_path $PERSITENT_DIR/data --ssl --insecure --log_level debug --drone_secret scitran_drone --db_uri mongodb://localhost/scitran
+
+# Serve API with PasteScript
 paster serve dev.ini --reload
+
+# Exit out of the python virtualenv
+deactivate
 
 # Shutdown mongod on ctrl+C
 kill $MONGO_PID
