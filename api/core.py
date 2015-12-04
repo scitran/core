@@ -376,7 +376,9 @@ class Core(base.RequestHandler):
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
                 ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
-                subject_prefixes = {}
+                subject_prefixes = {
+                    'missing_subject': prefix + '/missing_subject'
+                }
                 sessions = {}
                 for ses_or_subj in ses_or_subj_list:
                     subj_code = ses_or_subj.get('subject', {}).get('code') or ses_or_subj.get('subject_code')
@@ -392,7 +394,7 @@ class Core(base.RequestHandler):
                 for subj_code, ses_list in sessions.items():
                     subject_prefix = subject_prefixes.get(subj_code)
                     if not subject_prefix:
-                        subject_prefix = 'missing_subject'
+                        continue
                     for session in ses_list:
                         session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
