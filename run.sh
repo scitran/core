@@ -1,78 +1,95 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e
+
+RUNTIME_DIR="./runtime"
+PERSITENT_DIR="./persistent"
+
+if [ "$#" -ge 1 ]; then
+    PERSITENT_DIR="$1"
+fi
+if [ "$#" -eq 2 ]; then
+    RUNTIME_DIR="$2"
+fi
+if [ "$#" -gt 2 ]; then
+    echo "Usage: $0 persistent runtime"
+    exit 1
+fi
+
 
 if [ -f "`which brew`" ]; then
-    echo "homebrew is installed"
+    echo "Homebrew is installed"
 else
-    echo "Installing homebrew"
+    echo "Installing Homebrew"
     ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-    echo "Installed homebrew"
+    echo "Installed Homebrew"
 fi
 
-if brew list | grep openssl > /dev/null; then
-    echo "openssl is installed"
+if brew list | grep -q openssl; then
+    echo "OpenSSL is installed"
 else
-    echo "Installing openssl"
+    echo "Installing OpenSSL"
     brew install openssl
-    echo "Installed openssl"
+    echo "Installed OpenSSL"
 fi
 
-if brew list | grep python > /dev/null; then
-    echo "python is installed"
+if brew list | grep -q python; then
+    echo "Python is installed"
 else
-    echo "Installing python"
+    echo "Installing Python"
     brew install python
-    echo "Installed python"
+    echo "Installed Python"
 fi
 
 if [ -f "`which virtualenv`" ]; then
-    echo "virtualenv is installed"
+    echo "Virtualenv is installed"
 else
-    echo "Installing virtualenv"
+    echo "Installing Virtualenv"
     pip install virtualenv
-    echo "Installed virtualenv"
+    echo "Installed Virtualenv"
 fi
 
-if [ -d "runtime" ]; then
-    echo "Virtualenv 'runtime' is present"
+if [ -d "$RUNTIME_DIR" ]; then
+    echo "Virtualenv exists present at $RUNTIME_DIR"
 else
-    echo "Creating python virtualenv"
-    virtualenv -p `brew --prefix`/bin/python runtime
-    echo "Created python virtualenv 'runtime'"
+    echo "Creating 'scitran' Virtualenv at $RUNTIME_DIR"
+    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran)" $RUNTIME_DIR
+    echo "Created 'scitran' Virtualenv at $RUNTIME_DIR"
 fi
 
-if [ -f "runtime/bin/mongo" ]; then
-    echo "Mongo is installed"
+if [ -f "$RUNTIME_DIR/bin/mongod" ]; then
+    echo "MongoDB is installed"
 else
-    echo "Downloading mongo"
-    curl https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.0.7.tgz | tar xz -C runtime --strip-components 1
-    echo "Mongo installed"
+    echo "Installing MongoDB"
+    curl https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.0.7.tgz | tar xz -C $RUNTIME_DIR --strip-components 1
+    echo "MongoDB installed"
 fi
 
-if [ -d "persistent/db" ]; then
-    echo "persistent/db exists"
+if [ -d "$PERSITENT_DIR/db" ]; then
+    echo "Persistence store exists at $PERSITENT_DIR/db"
 else
-    echo "Creating persistent/db"
-    mkdir -p persistent/db
-    echo "Created persistent/db"
+    echo "Creating persistence store exists at $PERSITENT_DIR/db"
+    mkdir -p $PERSITENT_DIR/db
 fi
 
 
-echo "Activating virtualenv"
-source runtime/bin/activate
+echo "Activating Virtualenv"
+source $RUNTIME_DIR/bin/activate
 
-echo "Installing requirements"
-pip install -r requirements.txt
+echo "Installing Python requirements"
+pip install -U -r requirements.txt
 
 
-# Startup mongo
-runtime/bin/mongod --dbpath persistent/db --smallfiles &
+# Launch mongod
+mongod --dbpath $PERSITENT_DIR/db --smallfiles &
 MONGO_PID=$!
 
 # Bootstrap and run API
-PYTHONPATH=. bin/bootstrap.py configure mongodb://localhost/scitran local Local https://localhost:8080/api oauth_client_id
-# PYTHONPATH=. python bin/api.wsgi --data_path persistent/data --ssl --insecure --log_level debug --drone_secret scitran_drone --db_uri mongodb://localhost/scitran
-PYTHONPATH=. runtime/bin/paster serve dev.ini --reload
+export PYTHONPATH=.
+bin/bootstrap.py configure mongodb://localhost/scitran local Local https://localhost:8080/api oauth_client_id
+#python bin/api.wsgi --data_path $PERSITENT_DIR/data --ssl --insecure --log_level debug --drone_secret scitran_drone --db_uri mongodb://localhost/scitran
+paster serve dev.ini --reload
 
-# Shutdown mongo on ctrl+C
+# Shutdown mongod on ctrl+C
 kill $MONGO_PID
 wait $MONGO_PID
