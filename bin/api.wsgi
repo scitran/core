@@ -133,10 +133,10 @@ else:
 
     def job_creation(signum):
         for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
-            for c in application.db[c_type].find({'files.dirty': True}, ['files']):
+            for c in application.db[c_type].find({'files.unprocessed': True}, ['files']):
                 containers = [(c_type, c)] # TODO: this should be the full container hierarchy
                 for f in c['files']:
-                    if f.get('dirty'):
+                    if f.get('unprocessed'):
                         jobs.spawn_jobs(application.db, containers, f)
                         r = application.db[c_type].update_one(
                                 {
@@ -150,7 +150,7 @@ else:
                                 },
                                 {
                                     '$set': {
-                                        'files.$.dirty': False,
+                                        'files.$.unprocessed': False,
                                     },
                                 },
                                 )

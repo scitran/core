@@ -27,14 +27,14 @@ class ReapedAcquisition(object):
         return None
 
     def update_file(self, fileinfo):
-        update_set = {'files.$.dirty': True, 'files.$.modified': datetime.datetime.utcnow()}
+        update_set = {'files.$.unprocessed': True, 'files.$.modified': datetime.datetime.utcnow()}
         # in this method, we are overriding an existing file.
         # update_set allows to update all the fileinfo like size, hash, etc.
         fileinfo.update(self.fileinfo)
         for k,v in fileinfo.iteritems():
             update_set['files.$.' + k] = v
         acquisition_obj = self.dbc.update_one(
-            {'_id': self.acquisition['_id'], 'files.filename': fileinfo['filename']},
+            {'_id': self.acquisition['_id'], 'files.name': fileinfo['filename']},
             {'$set': update_set}
         )
 

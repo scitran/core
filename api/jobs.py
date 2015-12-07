@@ -59,12 +59,12 @@ def spawn_jobs(db, containers, file):
         File object that is used to spawn 0 or more jobs.
     """
 
-    if file['filetype'] != 'dicom':
+    if file['type'] != 'dicom':
         return
 
     # File information
-    filename = file['filename']
-    filehash = file['filehash']
+    filename = file['name']
+    filehash = file['hash']
 
     # File container information
     last = len(containers) - 1
