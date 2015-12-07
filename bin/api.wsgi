@@ -133,29 +133,29 @@ else:
 
     def job_creation(signum):
         for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
-            for c in application.db[c_type].find({'files.dirty': True}, ['files']):
+            for c in application.db[c_type].find({'files.unprocessed': True}, ['files']):
                 containers = [(c_type, c)] # TODO: this should be the full container hierarchy
                 for f in c['files']:
-                    if f.get('dirty'):
+                    if f.get('unprocessed'):
                         jobs.spawn_jobs(application.db, containers, f)
                         r = application.db[c_type].update_one(
                                 {
                                     '_id': c['_id'],
                                     'files': {
                                         '$elemMatch': {
-                                            'filename': f['filename'],
-                                            'filehash': f['filehash'],
+                                            'name': f['name'],
+                                            'hash': f['hash'],
                                         },
                                     },
                                 },
                                 {
                                     '$set': {
-                                        'files.$.dirty': False,
+                                        'files.$.unprocessed': False,
                                     },
                                 },
                                 )
                         if not r.matched_count:
-                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['filename']))
+                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['name']))
         while True:
             j = application.db.jobs.find_one_and_update(
                 {
