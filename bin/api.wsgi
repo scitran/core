@@ -74,6 +74,7 @@ from api import api
 from api import jobs
 from api import config
 from api import centralclient
+from api import rules
 
 log = config.log
 config.set_log_level(log, args.log_level)
@@ -133,18 +134,21 @@ else:
 
     def job_creation(signum):
         for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
-            for c in application.db[c_type].find({'files.unprocessed': True}, ['files']):
-                containers = [(c_type, c)] # TODO: this should be the full container hierarchy
+
+           # This projection needs every field required to know what type of container it is & navigate to its project
+           containers = application.db[c_type].find({'files.unprocessed': True}, ['files', 'session', 'project'])
+
+           for c in containers:
                 for f in c['files']:
                     if f.get('unprocessed'):
-                        jobs.spawn_jobs(application.db, containers, f)
+                        rules.create_jobs(application.db, c, c_type, f)
                         r = application.db[c_type].update_one(
                                 {
                                     '_id': c['_id'],
                                     'files': {
                                         '$elemMatch': {
-                                            'name': f['name'],
-                                            'hash': f['hash'],
+                                            'filename': f['filename'],
+                                            'filehash': f['filehash'],
                                         },
                                     },
                                 },
@@ -155,7 +159,7 @@ else:
                                 },
                                 )
                         if not r.matched_count:
-                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['name']))
+                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['filename']))
         while True:
             j = application.db.jobs.find_one_and_update(
                 {

@@ -2,14 +2,20 @@
 API request handlers for process-job-handling.
 """
 
+# We shadow the standard library; this is a workaround.
+from __future__ import absolute_import
+
+import logging
+log = logging.getLogger('scitran.api.jobs')
+
 import bson
 import pymongo
 import datetime
+from collections import namedtuple
 
 from . import base
 from . import config
 
-log = config.log
 
 JOB_STATES = [
     'pending',  # Job is queued
@@ -37,38 +43,39 @@ ALGORITHMS = [
     "dcm2nii"
 ]
 
+# A FileInput tuple holds all the details of a scitran file that needed to use that as an input a formula.
+FileInput = namedtuple('input', ['container_type', 'container_id', 'filename', 'filehash'])
 
-# TODO: json schema
+# Convert a dictionary to a FileInput
+# REVIEW: less irritating conversion?
+def convert_to_fileinput(d):
+    return FileInput(
+        container_type= d['container_type'],
+        container_id  = d['container_id'],
+        filename      = d['filename'],
+        filehash      = d['filehash']
+    )
 
-
-def spawn_jobs(db, containers, file):
+def create_fileinput_from_reference(container, container_type, file_):
     """
-    Spawn some number of queued jobs to process a file.
+    Spawn a job to process a file.
 
     Parameters
     ----------
-    db: pymongo.database.Database
-        Reference to the database instance
-    containers: [ tuple(string, scitran.Container) ]
-        An array of tuples, each containing a container type name, and a container object.
-        Contract is:
-            1) The first container in the array will be the container which owns file passed in the file param.
-            2) Following array indexes, if any, will be higher in the ownership heirarchy than the first container.
-            3) Array is not guaranteed to be strictly hierarchically ordered.
+    container: scitran.Container
+        A container object that the file is held by
+    container_type: string
+        The type of container (eg, 'session')
     file: scitran.File
         File object that is used to spawn 0 or more jobs.
     """
 
     if file.get('type', '') != 'dicom':
         return
-
     # File information
     filename = file['name']
     filehash = file['hash']
-
     # File container information
-    last = len(containers) - 1
-    container_type, container = containers[last]
     container_id = str(container['_id'])
 
     log.info('File ' + filename + 'is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
@@ -76,10 +83,10 @@ def spawn_jobs(db, containers, file):
     # Spawn rules currently do not look at container hierarchy, and only care about a single file.
     # Further, one algorithm is unconditionally triggered for each dirty file.
 
-    queue_job(db, 'dcm2nii', container_type, container_id, filename, filehash)
+    return FileInput(container_type=container_type, container_id=container_id, filename=filename, filehash=filehash)
 
 
-def queue_job(db, algorithm_id, container_type, container_id, filename, filehash, attempt_n=1, previous_job_id=None):
+def queue_job(db, algorithm_id, input, attempt_n=1, previous_job_id=None):
     """
     Enqueues a job for execution.
 
@@ -89,14 +96,8 @@ def queue_job(db, algorithm_id, container_type, container_id, filename, filehash
         Reference to the database instance
     algorithm_id: string
         Human-friendly unique name of the algorithm
-    container_type: string
-        Type of container ('acquisitions', 'sessions', etc) that matches the URL route.
-    container_id: string
-        ID of the container ('2', etc)
-    filename: string
-        Name of the file to download
-    filehash: string
-        Hash of the file to download
+    input: FileInput
+        The input to be used by this job
     attempt_n: integer (optional)
         If an equivalent job has tried & failed before, pass which attempt number we're at. Defaults to 1 (no previous attempts).
     """
@@ -114,14 +115,8 @@ def queue_job(db, algorithm_id, container_type, container_id, filename, filehash
         'created':  now,
         'modified': now,
 
-         # Everything required to generate a job formula.
-        'intent': {
-            'algorithm_id': algorithm_id,
-            'container_type': container_type,
-            'container_id': container_id,
-            'filename': filename,
-            'filehash': filehash,
-        },
+        'algorithm_id': algorithm_id,
+        'input': input._asdict(),
 
         'attempt': attempt_n,
     }
@@ -132,19 +127,17 @@ def queue_job(db, algorithm_id, container_type, container_id, filename, filehash
     result = db.jobs.insert_one(job)
     _id = result.inserted_id
 
-    log.info('Running %s as job %s to process %s %s' % (algorithm_id, str(_id), container_type, container_id))
+    log.info('Running %s as job %s to process %s %s' % (algorithm_id, str(_id), input.container_type, input.container_id))
     return _id
 
-def retry_job(db, j):
+def retry_job(db, j, force=False):
     """
     Given a failed job, either retry the job or fail it permanently, based on the attempt number.
-    TODO: make max attempts configurable
+    Can override the attempt limit by passing force=True.
     """
 
-    i = j['intent']
-
-    if j['attempt'] < 3:
-        job_id = queue_job(db, i['algorithm_id'], i['container_type'], i['container_id'], i['filename'], i['filehash'], j['attempt']+1, j['_id'])
+    if j['attempt'] < 3 or Force:
+        job_id = queue_job(db, j['algorithm_id'], convert_to_fileinput(j['input']), j['attempt']+1, j['_id'])
         log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
     else:
         log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
@@ -215,13 +208,6 @@ class Jobs(base.RequestHandler):
             self.abort(401, 'Request requires superuser')
 
         return self.app.db.jobs.count()
-
-    def addTestJob(self):
-        """Adds a harmless job for testing purposes. Intentionally equivalent return to queue_job."""
-        if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
-
-        return queue_job(self.app.db, 'dcm2nii', 'acquisition', '55bf861e6941f040cf8d6939')
 
     def next(self):
         """
