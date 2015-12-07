@@ -59,7 +59,7 @@ def spawn_jobs(db, containers, file):
         File object that is used to spawn 0 or more jobs.
     """
 
-    if file['type'] != 'dicom':
+    if file.get('type', '') != 'dicom':
         return
 
     # File information
