@@ -34,7 +34,7 @@ def getHashingFieldStorage(upload_dir, hash_alg):
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
         def make_file(self, binary=None):
-            self.open_file = HashingFile(os.path.join(upload_dir, self.filename), hash_alg)
+            self.open_file = HashingFile(os.path.join(upload_dir, os.path.basename(self.filename)), hash_alg)
             return self.open_file
 
         def get_hash(self):
@@ -80,14 +80,14 @@ class FileStore(object):
     def _save_multipart_file(self, dest_path, hash_alg):
         form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
         self.received_file = form['file'].file
-        self.filename = form['file'].filename
+        self.filename = os.path.basename(form['file'].filename)
         self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
         self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
 
     def _save_body_file(self, dest_path, filename, hash_alg):
         if not filename:
             raise FileStoreException('filename is required for body uploads')
-        self.filename = filename
+        self.filename = os.path.basename(filename)
         self.received_file = HashingFile(os.path.join(dest_path, filename), hash_alg)
         for chunk in iter(lambda: self.body.read(2**20), ''):
             self.received_file.write(chunk)

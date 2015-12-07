@@ -384,6 +384,7 @@ class FileListHandler(ListHandler):
             if not force:
                 method = 'POST'
             else:
+                filename = file_store.filename
                 filepath = os.path.join(file_store.path, filename)
                 for f in container['files']:
                     if f['name'] == filename:
