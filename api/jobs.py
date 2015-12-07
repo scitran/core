@@ -43,7 +43,7 @@ ALGORITHMS = [
     "dcm2nii"
 ]
 
-# Holds all details of a scitran file needed to use that as an input a formula.
+# A FileInput tuple holds all the details of a scitran file that needed to use that as an input a formula.
 FileInput = namedtuple('input', ['container_type', 'container_id', 'filename', 'filehash'])
 
 # Convert a dictionary to a FileInput

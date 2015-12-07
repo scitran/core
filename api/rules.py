@@ -122,7 +122,7 @@ def create_jobs(db, container, container_type, file_):
 
     # Get configured rules for this project
     project = get_project_for_container(db, container)
-    rules = project. get('rules', [])
+    rules = project.get('rules', [])
 
     # Add hardcoded rules that cannot be removed or changed
     for hardcoded_rule in HARDCODED_RULES:
