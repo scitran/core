@@ -4,3 +4,4 @@
 *.egg-info
 /persistent
 /runtime
+bootstrap.json
