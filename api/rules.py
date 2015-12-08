@@ -42,14 +42,21 @@ MATCH_TYPES = [
 
 # TODO: replace with default rules, which get persisted, maintained, upgraded, and reasoned intelligently
 HARDCODED_RULES = [
-    # dcm2nii
     {
+        'alg': 'dcm2nii',
         'all': [
             ['file.type', 'dicom']
-        ],
-        'alg': 'dcm2nii'
+        ]
+    }, {
+        'alg': 'qa',
+        'all': [
+            ['file.name', '*.nii.gz']
+        ]
     }
 ]
+
+def _log_file_key_error(file_, container, error):
+    log.warning('file ' + file_['name'] + ' in container ' + str(container['_id']) + ' ' + error)
 
 def eval_match(match_type, match_param, file_, container):
     """
@@ -61,15 +68,23 @@ def eval_match(match_type, match_param, file_, container):
 
     # Match the file's type
     if match_type == 'file.type':
-        return file_['filetype'] == match_param
+        try:
+            return file_['type'] == match_param
+        except KeyError:
+            _log_file_key_error(file_, container, 'has no type key')
+            return False
 
     # Match a shell glob for the file name
     elif match_type == 'file.name':
-        return fnmatch.fnmatch(file_['filename'], match_param)
+        return fnmatch.fnmatch(file_['name'], match_param)
 
     # Match any of the file's measurements
     elif match_type == 'file.measurements':
-        return match_param in file_[measurements]
+        try:
+            return match_param in file_[measurements]
+        except KeyError:
+            _log_file_key_error(file_, container, 'has no measurements key')
+            return False
 
     # Match the container's primary measurment
     elif match_type == 'container.measurement':

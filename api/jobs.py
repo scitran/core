@@ -31,23 +31,23 @@ JOB_STATES_ALLOWED_MUTATE = [
 ]
 
 JOB_TRANSITIONS = [
-    "pending --> running",
-    "running --> failed",
-    "running --> complete",
+    'pending --> running',
+    'running --> failed',
+    'running --> complete',
 ]
 
 def valid_transition(from_state, to_state):
-    return (from_state + " --> " + to_state) in JOB_TRANSITIONS or from_state == to_state
+    return (from_state + ' --> ' + to_state) in JOB_TRANSITIONS or from_state == to_state
 
 ALGORITHMS = [
-    "dcm2nii"
+    'dcm2nii',
+    'qa'
 ]
 
 # A FileInput tuple holds all the details of a scitran file that needed to use that as an input a formula.
 FileInput = namedtuple('input', ['container_type', 'container_id', 'filename', 'filehash'])
 
 # Convert a dictionary to a FileInput
-# REVIEW: less irritating conversion?
 def convert_to_fileinput(d):
     return FileInput(
         container_type= d['container_type'],
@@ -70,11 +70,9 @@ def create_fileinput_from_reference(container, container_type, file_):
         File object that is used to spawn 0 or more jobs.
     """
 
-    if file.get('type', '') != 'dicom':
-        return
     # File information
-    filename = file['name']
-    filehash = file['hash']
+    filename = file_['name']
+    filehash = file_['hash']
     # File container information
     container_id = str(container['_id'])
 
@@ -143,25 +141,26 @@ def retry_job(db, j, force=False):
         log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
 
 
-def generate_formula(i):
+def generate_formula(algorithm_id, i):
     """
     Given an intent, generates a formula to execute a job.
 
     Parameters
     ----------
-    i: map
-        A job's intent that holds everything needed to generate a formula.
+    algorithm_id: string
+        Human-friendly unique name of the algorithm
+    i: FileInput
+        The input to be used by this job
     """
 
-    if i['algorithm_id'] not in ALGORITHMS:
+    if algorithm_id not in ALGORITHMS:
         raise Exception('Usupported algorithm ' + algorithm_id)
 
-    # Currently hard-coded for a single algorithm: dcm2nii
     f = {
         'inputs': [
             {
                 'type': 'file',
-                'uri': '/opt/flywheel-temp/dcm_convert-0.1.1.tar',
+                'uri': '/nope.txt',
                 'location': '/',
             },
             {
@@ -171,7 +170,7 @@ def generate_formula(i):
             }
         ],
         'transform': {
-            'command': ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0] ],
+            'command': [ 'echo', 'No command specified for ' + algorithm_id],
             'env': { },
             'dir': "/",
         },
@@ -185,6 +184,16 @@ def generate_formula(i):
         ],
     }
 
+    if algorithm_id == 'dcm2nii':
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/dcm_convert-0.1.1.tar'
+        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
+
+    elif algorithm_id == 'qa':
+        f['inputs'][0]['uri'] = '/opt/flywheel-temp/qa-report-fmri-0.0.2.tar'
+        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run; exit 0']
+    else:
+        raise Exception('Command for algorithm ' + algorithm_id + ' not specified')
+
     return f
 
 class Jobs(base.RequestHandler):
@@ -196,7 +205,7 @@ class Jobs(base.RequestHandler):
         List all jobs. Not used by engine.
         """
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         results = list(self.app.db.jobs.find())
 
@@ -205,7 +214,7 @@ class Jobs(base.RequestHandler):
     def count(self):
         """Return the total number of jobs. Not used by engine."""
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         return self.app.db.jobs.count()
 
@@ -216,7 +225,7 @@ class Jobs(base.RequestHandler):
         Engine will poll this endpoint whenever there are free processing slots.
         """
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         # First, atomically mark document as running.
         result = self.app.db.jobs.find_one_and_update(
@@ -240,7 +249,7 @@ class Jobs(base.RequestHandler):
                 '_id': result['_id']
             },
             { '$set': {
-                'request': generate_formula(result['intent'])}
+                'request': generate_formula(result['algorithm_id'], result['input'])}
             },
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
@@ -256,7 +265,7 @@ class Job(base.RequestHandler):
 
     def get(self, _id):
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         result = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
         return result
@@ -268,7 +277,7 @@ class Job(base.RequestHandler):
         Rejects any change to a job that is not currently in 'pending' or 'running' state.
         """
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         mutation = self.request.json
         job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
