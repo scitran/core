@@ -87,18 +87,18 @@ pip install -U -r requirements.txt
 
 
 # Launch mongod
-mongod --dbpath $PERSITENT_DIR/db --smallfiles &
+mongod --dbpath $PERSITENT_DIR/db --smallfiles --port 9001 &
 MONGO_PID=$!
 
 # Set python path so scripts can work
 export PYTHONPATH=.
 
 # Configure api
-bin/bootstrap.py configure mongodb://localhost/scitran local Local https://localhost:8080/api oauth_client_id
+bin/bootstrap.py configure mongodb://localhost:9001/scitran local Local https://localhost:8080/api oauth_client_id
 
 # Boostrap users
 if [ "$BOOTSTRAP_USERS" -eq "1" ]; then
-    bin/bootstrap.py users mongodb://localhost/scitran bootstrap.json
+    bin/bootstrap.py users mongodb://localhost:9001/scitran bootstrap.json
 fi
 
 if [ -d "$PERSITENT_DIR/data" ]; then
@@ -107,7 +107,7 @@ else
     echo "Downloading testdata"
     curl https://codeload.github.com/scitran/testdata/tar.gz/master | tar xz -C $PERSITENT_DIR
     echo "Bootstrapping testdata"
-    bin/bootstrap.py data --copy mongodb://localhost/scitran $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
+    bin/bootstrap.py data --copy mongodb://localhost:9001/scitran $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
     echo "Bootstrapped testdata"
     rm -rf $PERSITENT_DIR/testdata-master
     echo "Cleaned up downloaded data"
