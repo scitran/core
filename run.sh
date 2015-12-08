@@ -103,16 +103,17 @@ if [ $BOOTSTRAP_USERS -eq 1 ]; then
     bin/bootstrap.py users mongodb://localhost:9001/scitran bootstrap.json
 fi
 
+if [ ! -d "$PERSITENT_DIR/testdata-master" ]; then
+    echo "Downloading testdata"
+    curl https://codeload.github.com/scitran/testdata/tar.gz/master | tar xz -C $PERSITENT_DIR
+fi
+
 if [ -d "$PERSITENT_DIR/data" ]; then
     echo "Persistence store exists at $PERSITENT_DIR/data. Not bootstrapping data. Remove to re-bootstrap."
 else
-    echo "Downloading testdata"
-    curl https://codeload.github.com/scitran/testdata/tar.gz/master | tar xz -C $PERSITENT_DIR
     echo "Bootstrapping testdata"
     bin/bootstrap.py data --copy mongodb://localhost:9001/scitran $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
     echo "Bootstrapped testdata"
-    rm -rf $PERSITENT_DIR/testdata-master
-    echo "Cleaned up downloaded data"
 fi
 
 # Serve API with paste
