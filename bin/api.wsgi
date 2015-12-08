@@ -147,8 +147,8 @@ else:
                                     '_id': c['_id'],
                                     'files': {
                                         '$elemMatch': {
-                                            'filename': f['filename'],
-                                            'filehash': f['filehash'],
+                                            'name': f['name'],
+                                            'hash': f['hash'],
                                         },
                                     },
                                 },
@@ -159,7 +159,7 @@ else:
                                 },
                                 )
                         if not r.matched_count:
-                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['filename']))
+                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['name']))
         while True:
             j = application.db.jobs.find_one_and_update(
                 {

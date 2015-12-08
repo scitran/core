@@ -70,11 +70,9 @@ def create_fileinput_from_reference(container, container_type, file_):
         File object that is used to spawn 0 or more jobs.
     """
 
-    if file.get('type', '') != 'dicom':
-        return
     # File information
-    filename = file['name']
-    filehash = file['hash']
+    filename = file_['name']
+    filehash = file_['hash']
     # File container information
     container_id = str(container['_id'])
 

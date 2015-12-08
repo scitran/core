@@ -61,11 +61,11 @@ def eval_match(match_type, match_param, file_, container):
 
     # Match the file's type
     if match_type == 'file.type':
-        return file_['filetype'] == match_param
+        return file_['type'] == match_param
 
     # Match a shell glob for the file name
     elif match_type == 'file.name':
-        return fnmatch.fnmatch(file_['filename'], match_param)
+        return fnmatch.fnmatch(file_['name'], match_param)
 
     # Match any of the file's measurements
     elif match_type == 'file.measurements':
