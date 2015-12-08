@@ -307,7 +307,7 @@ class FileListHandler(ListHandler):
         hash_ = self.get_param('hash')
         if hash_ and hash_ != fileinfo['hash']:
             self.abort(409, 'file exists, hash mismatch')
-        filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
+        filepath = os.path.join(self.app.config['data_path'], util.path_from_hash(fileinfo['hash']))
         if self.get_param('ticket') == '':    # request for download ticket
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'])
             return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
@@ -347,14 +347,6 @@ class FileListHandler(ListHandler):
         filename = kwargs.get('name')
         _id = kwargs.get('cid')
         result = super(FileListHandler, self).delete(cont_name, list_name, **kwargs)
-        filepath = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id), filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            log.info('removed file ' + filepath)
-            result['removed'] = 1
-        else:
-            log.warning(filepath + ' does not exist')
-            result['removed'] = 0
         return result
 
     def post(self, cont_name, list_name, **kwargs):
@@ -379,16 +371,16 @@ class FileListHandler(ListHandler):
                 file_properties['metadata'] = file_store.metadata
             if file_store.tags:
                 file_properties['tags'] = file_store.tags
-            dest_path = os.path.join(self.app.config['data_path'], str(_id)[-3:] + '/' + str(_id))
+            dest_path = os.path.join(self.app.config['data_path'], util.path_from_hash(file_properties['hash']))
             query_params = None
             if not force:
                 method = 'POST'
             else:
                 filename = file_store.filename
-                filepath = os.path.join(file_store.path, filename)
+                filepath = file_store.path
                 for f in container['files']:
                     if f['name'] == filename:
-                        if file_store.identical(os.path.join(tempdir_path, filename), f['hash']):
+                        if file_store.identical(filepath, f['hash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
                             self.abort(409, 'identical file exists')

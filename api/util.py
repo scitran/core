@@ -86,3 +86,8 @@ def guess_filetype(filepath, mimetype):
         return 'text'
     else:
         return subtype
+
+def path_from_hash(hash_):
+    path = [hash_[i] for i in range(8)]
+    path.append(hash_)
+    return os.path.join(*path)

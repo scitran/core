@@ -129,12 +129,13 @@ def data(_, args):
         with open(filepath, 'rb') as fd:
             for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
-        destpath = os.path.join(args.storage_path, container.path)
+        computed_hash = hash_.hexdigest()
+        destpath = os.path.join(args.storage_path, util.path_from_hash(computed_hash))
+        dir_destpath = os.path.dirname(destpath)
         filename = os.path.basename(filepath)
-        if not os.path.exists(destpath):
-            os.makedirs(destpath)
+        if not os.path.exists(dir_destpath):
+            os.makedirs(dir_destpath)
         if args.copy:
-            destpath = os.path.join(destpath, filename)
             shutil.copyfile(filepath, destpath)
         else:
             shutil.move(filepath, destpath)
@@ -142,7 +143,7 @@ def data(_, args):
         fileinfo = {
             'name': filename,
             'size': size,
-            'hash': hash_.hexdigest(),
+            'hash': computed_hash,
             'unprocessed': True,
             'created': created,
             'modified': modified
