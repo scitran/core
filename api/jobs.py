@@ -205,7 +205,7 @@ class Jobs(base.RequestHandler):
         List all jobs. Not used by engine.
         """
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         results = list(self.app.db.jobs.find())
 
@@ -214,7 +214,7 @@ class Jobs(base.RequestHandler):
     def count(self):
         """Return the total number of jobs. Not used by engine."""
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         return self.app.db.jobs.count()
 
@@ -225,7 +225,7 @@ class Jobs(base.RequestHandler):
         Engine will poll this endpoint whenever there are free processing slots.
         """
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         # First, atomically mark document as running.
         result = self.app.db.jobs.find_one_and_update(
@@ -265,7 +265,7 @@ class Job(base.RequestHandler):
 
     def get(self, _id):
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         result = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
         return result
@@ -277,7 +277,7 @@ class Job(base.RequestHandler):
         Rejects any change to a job that is not currently in 'pending' or 'running' state.
         """
         if not self.superuser_request:
-            self.abort(401, 'Request requires superuser')
+            self.abort(403, 'Request requires superuser')
 
         mutation = self.request.json
         job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
