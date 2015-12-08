@@ -40,7 +40,8 @@ def valid_transition(from_state, to_state):
     return (from_state + ' --> ' + to_state) in JOB_TRANSITIONS or from_state == to_state
 
 ALGORITHMS = [
-    'dcm2nii'
+    'dcm2nii',
+    'qa'
 ]
 
 # A FileInput tuple holds all the details of a scitran file that needed to use that as an input a formula.

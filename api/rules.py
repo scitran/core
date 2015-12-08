@@ -42,12 +42,16 @@ MATCH_TYPES = [
 
 # TODO: replace with default rules, which get persisted, maintained, upgraded, and reasoned intelligently
 HARDCODED_RULES = [
-    # dcm2nii
     {
+        'alg': 'dcm2nii',
         'all': [
             ['file.type', 'dicom']
-        ],
-        'alg': 'dcm2nii'
+        ]
+    }, {
+        'alg': 'qa',
+        'all': [
+            ['file.name', '*.nii.gz']
+        ]
     }
 ]
 
