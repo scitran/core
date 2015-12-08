@@ -17,6 +17,20 @@ if [ "$#" -gt 2 ]; then
 fi
 
 
+if [ -f "$PERSITENT_DIR/db/mongod.lock" ]; then
+    echo "Database exists at $PERSITENT_DIR/db. Not bootstrapping users."
+    BOOTSTRAP_USERS=0
+else
+    echo "Creating database location at $PERSITENT_DIR/db"
+    mkdir -p $PERSITENT_DIR/db
+    if ! [ -f "bootstrap.json" ]; then
+        echo "Cannot bootstrap users. Please create bootstrap.json from bootstrap.json.sample."
+        exit 1
+    fi
+    BOOTSTRAP_USERS=1
+fi
+
+
 if [ -f "`which brew`" ]; then
     echo "Homebrew is installed"
 else
@@ -65,19 +79,6 @@ else
     echo "MongoDB installed"
 fi
 
-if [ -f "$PERSITENT_DIR/db/mongod.lock" ]; then
-    echo "Database exists at $PERSITENT_DIR/db. Not bootstrapping users."
-    BOOTSTRAP_USERS=0
-else
-    echo "Creating database location at $PERSITENT_DIR/db"
-    mkdir -p $PERSITENT_DIR/db
-    if ! [ -f "bootstrap.json" ]; then
-        echo "Cannot bootstrap users. Please create bootstrap.json from bootstrap.json.sample."
-        exit 1
-    fi
-    BOOTSTRAP_USERS=1
-fi
-
 
 echo "Activating Virtualenv"
 source $RUNTIME_DIR/bin/activate
@@ -97,7 +98,8 @@ export PYTHONPATH=.
 bin/bootstrap.py configure mongodb://localhost:9001/scitran local Local https://localhost:8080/api oauth_client_id
 
 # Boostrap users
-if [ "$BOOTSTRAP_USERS" -eq "1" ]; then
+if [ $BOOTSTRAP_USERS -eq 1 ]; then
+    echo "Bootstrapping users"
     bin/bootstrap.py users mongodb://localhost:9001/scitran bootstrap.json
 fi
 
