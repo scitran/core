@@ -16,10 +16,6 @@ if [ "$#" -gt 2 ]; then
     exit 1
 fi
 
-if ! [ -f "bootstrap.json" ]; then
-    echo "Please create bootstrap.json from bootstrap.json.sample"
-    exit 1
-fi
 
 if [ -f "`which brew`" ]; then
     echo "Homebrew is installed"
@@ -69,11 +65,17 @@ else
     echo "MongoDB installed"
 fi
 
-if [ -d "$PERSITENT_DIR/db" ]; then
-    echo "Persistence store exists at $PERSITENT_DIR/db"
+if [ -f "$PERSITENT_DIR/db/mongod.lock" ]; then
+    echo "Database exists at $PERSITENT_DIR/db. Not bootstrapping users."
+    BOOTSTRAP_USERS=0
 else
-    echo "Creating persistence store exists at $PERSITENT_DIR/db"
+    echo "Creating database location at $PERSITENT_DIR/db"
     mkdir -p $PERSITENT_DIR/db
+    if ! [ -f "bootstrap.json" ]; then
+        echo "Cannot bootstrap users. Please create bootstrap.json from bootstrap.json.sample."
+        exit 1
+    fi
+    BOOTSTRAP_USERS=1
 fi
 
 
@@ -95,10 +97,12 @@ export PYTHONPATH=.
 bin/bootstrap.py configure mongodb://localhost/scitran local Local https://localhost:8080/api oauth_client_id
 
 # Boostrap users
-bin/bootstrap.py users mongodb://localhost/scitran bootstrap.json
+if [ "$BOOTSTRAP_USERS" -eq "1" ]; then
+    bin/bootstrap.py users mongodb://localhost/scitran bootstrap.json
+fi
 
 if [ -d "$PERSITENT_DIR/data" ]; then
-    echo "The $PERSITENT_DIR/data directory is present, skipping data bootstrapping.  Remove to re-bootstrap."
+    echo "Persistence store exists at $PERSITENT_DIR/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Downloading testdata"
     curl https://codeload.github.com/scitran/testdata/tar.gz/master | tar xz -C $PERSITENT_DIR
