@@ -17,7 +17,6 @@ class ReapedAcquisition(object):
         self.acquisition = acquisition
         self.dbc = mongo.db.acquisitions
         self._id = acquisition['_id']
-        self.path = os.path.join(str(self._id)[-3:], str(self._id))
         self.fileinfo = fileinfo or {}
 
     def find(self, filename):

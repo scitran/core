@@ -94,7 +94,7 @@ class ContainerHandler(base.RequestHandler):
         # build and insert file paths if they are requested
         if self.is_true('paths'):
             for fileinfo in result['files']:
-                fileinfo['path'] = str(_id)[-3:] + '/' + str(_id) + '/' + fileinfo['filename']
+                fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, result)
         return result

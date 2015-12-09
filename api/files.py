@@ -74,7 +74,6 @@ class FileStore(object):
         self.environ.setdefault('CONTENT_LENGTH', '0')
         self.environ['QUERY_STRING'] = ''
         self.hash_alg = hash_alg
-        self.path = dest_path
         start_time = datetime.datetime.utcnow()
         if request.content_type == 'multipart/form-data':
             self._save_multipart_file(dest_path, hash_alg)
@@ -83,11 +82,12 @@ class FileStore(object):
             self.payload = request.POST.mixed()
             self.filename = filename or self.payload.get('filename')
             self._save_body_file(dest_path, filename, hash_alg)
+        self.path = os.path.join(dest_path, self.filename)
         self.duration = datetime.datetime.utcnow() - start_time
         self.mimetype = util.guess_mimetype(self.filename)
         self.filetype = util.guess_filetype(self.filename, self.mimetype)
         self.hash = self.received_file.get_hash()
-        self.size = os.path.getsize(os.path.join(self.path, self.filename))
+        self.size = os.path.getsize(self.path)
 
     def _save_multipart_file(self, dest_path, hash_alg):
         form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
@@ -107,17 +107,15 @@ class FileStore(object):
         self.metadata = None
 
     def move_file(self, target_path):
-        target_filepath = target_path + '/' + self.filename
-        filepath = self.path + '/' + self.filename
-        if not os.path.exists(target_path):
-            os.makedirs(target_path)
-        shutil.move(filepath, target_filepath)
+        target_dir = os.path.dirname(target_path)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+        shutil.move(self.path, target_path)
         self.path = target_path
 
     def identical(self, filepath, hash_):
-        filepath1 = os.path.join(self.path, self.filename)
-        if zipfile.is_zipfile(filepath) and zipfile.is_zipfile(filepath1):
-            with zipfile.ZipFile(filepath) as zf1, zipfile.ZipFile(filepath1) as zf2:
+        if zipfile.is_zipfile(filepath) and zipfile.is_zipfile(self.path):
+            with zipfile.ZipFile(filepath) as zf1, zipfile.ZipFile(self.path) as zf2:
                 zf1_infolist = sorted(zf1.infolist(), key=lambda zi: zi.filename)
                 zf2_infolist = sorted(zf2.infolist(), key=lambda zi: zi.filename)
                 if zf1.comment != zf2.comment:

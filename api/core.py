@@ -133,11 +133,11 @@ class Core(base.RequestHandler):
             container = reaperutil.create_container_hierarchy(file_store.metadata)
             f = container.find(file_store.filename)
             created = modified = datetime.datetime.utcnow()
-            target_path = os.path.join(self.app.config['data_path'], container.path)
+            target_path = os.path.join(self.app.config['data_path'], util.path_from_hash(fileinfo['hash']))
             if not f:
                 file_store.move_file(target_path)
                 container.add_file(fileinfo)
-            elif not file_store.identical(os.path.join(target_path, file_store.filename), f['hash']):
+            elif not file_store.identical(util.path_from_hash(fileinfo['hash']), f['hash']):
                 file_store.move_file(target_path)
                 container.update_file(fileinfo)
             throughput = file_store.size / file_store.duration.total_seconds()
@@ -151,7 +151,7 @@ class Core(base.RequestHandler):
             prefix = arc_prefix + '/' + prefix
             for f in container.get('files', []):
                 if req_spec['optional'] or not f.get('optional', False):
-                    filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['name'])
+                    filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
                     if os.path.exists(filepath): # silently skip missing files
                         targets.append((filepath, prefix + '/' + f['name'], f['size']))
                         total_size += f['size']
