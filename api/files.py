@@ -34,8 +34,6 @@ def getHashingFieldStorage(upload_dir, hash_alg):
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
         def make_file(self, binary=None):
-            if not self.filename:
-                return self.file
             self.open_file = HashingFile(os.path.join(upload_dir, os.path.basename(self.filename)), hash_alg)
             return self.open_file
 
@@ -43,8 +41,11 @@ def getHashingFieldStorage(upload_dir, hash_alg):
         # _FieldStorage__file is the private variable __file of the same class
         def _FieldStorage__write(self, line):
             if self._FieldStorage__file is not None:
-                self.file = self.make_file('')
-                self.file.write(self._FieldStorage__file.getvalue())
+                # use the make_file method only if the form includes a filename
+                # e.g. do not create a file and a hash for the form metadata.
+                if self.filename:
+                    self.file = self.make_file('')
+                    self.file.write(self._FieldStorage__file.getvalue())
                 self._FieldStorage__file = None
             self.file.write(line)
 
