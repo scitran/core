@@ -70,12 +70,12 @@ class FileStore(object):
             self.payload = request.POST.mixed()
             self.filename = filename or self.payload.get('filename')
             self._save_body_file(dest_path, filename, hash_alg)
-        self.path = dest_path + '/' + self.filename
+        self.path = os.path.join(dest_path, self.filename)
         self.duration = datetime.datetime.utcnow() - start_time
         self.mimetype = util.guess_mimetype(self.filename)
         self.filetype = util.guess_filetype(self.filename, self.mimetype)
         self.hash = self.received_file.get_hash()
-        self.size = os.path.getsize(os.path.join(self.path))
+        self.size = os.path.getsize(self.path)
 
     def _save_multipart_file(self, dest_path, hash_alg):
         form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)

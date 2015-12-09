@@ -88,6 +88,13 @@ def guess_filetype(filepath, mimetype):
         return subtype
 
 def path_from_hash(hash_):
-    path = [hash_[i] for i in range(8)]
+    """
+    create a filepath from a hash
+    e.g.
+    hash_ = 01b395a1cbc0f218
+    will return
+    0/1/b/3/9/5/a/1/01b395a1cbc0f218
+    """
+    path = [hash_[i] for i in xrange(8)]
     path.append(hash_)
     return os.path.join(*path)
