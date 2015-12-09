@@ -1,0 +1,10 @@
+language: python
+sudo: false
+python:
+- '2.7'
+install:
+  - bin/install.sh --ci
+script:
+  - bin/runtests.sh unit --ci
+after_success:
+  - coveralls
