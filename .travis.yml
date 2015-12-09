@@ -2,10 +2,9 @@ language: python
 sudo: false
 python:
 - '2.7'
-- '3.3'
 install:
-  - scripts/setup.sh --ci
+  - bin/install.sh --ci
 script:
-  - scripts/runtests.sh unit --ci
+  - bin/runtests.sh unit --ci
 after_success:
   - coveralls
