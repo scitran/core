@@ -24,7 +24,7 @@ DEFAULT_CONFIG = {
         'log_level': 'debug',
         'insecure': False,
         'persisted': False,
-        'new_relic': None,
+        'newrelic': None,
     },
     'site': {
         '_id': 'local',

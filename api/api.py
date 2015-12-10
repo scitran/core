@@ -15,6 +15,8 @@ from handlers import grouphandler
 from handlers import containerhandler
 from handlers import collectionshandler
 
+log = config.log
+
 #regexes used in routing table:
 routing_regexes = {
     # group id regex
@@ -131,10 +133,10 @@ def dispatcher(router, request, response):
 application = webapp2.WSGIApplication(routes)
 application.router.set_dispatcher(dispatcher)
 
-if config.get_item('system', 'new_relic'):
+if config.get_item('system', 'newrelic'):
     try:
         import newrelic.agent, newrelic.api.exceptions
-        newrelic.agent.initialize(args.new_relic)
+        newrelic.agent.initialize(config.get_item('system', 'newrelic'))
         application = newrelic.agent.WSGIApplicationWrapper(application)
         log.info('New Relic detected and loaded. Monitoring enabled.')
     except ImportError:
