@@ -1,13 +1,12 @@
 import sys
 import json
-import pytz
 import webapp2
 import datetime
-import bson.objectid
 import webapp2_extras.routes
 
 from . import core
 from . import jobs
+from . import util
 from . import config
 from handlers import listhandler
 from handlers import userhandler
@@ -115,18 +114,10 @@ routes = [
 ]
 
 
-def custom_json_serializer(obj):
-    if isinstance(obj, bson.objectid.ObjectId):
-        return str(obj)
-    elif isinstance(obj, datetime.datetime):
-        return pytz.timezone('UTC').localize(obj).isoformat()
-    raise TypeError(repr(obj) + " is not JSON serializable")
-
-
 def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
-        response.write(json.dumps(rv, default=custom_json_serializer))
+        response.write(json.dumps(rv, default=util.custom_json_serializer))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
 
 

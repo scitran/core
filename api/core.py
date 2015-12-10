@@ -26,7 +26,11 @@ class Config(base.RequestHandler):
         return config.get_public_config()
 
     def get_js(self):
-        self.response.write('config = ' + json.dumps(self.get(), sort_keys=True, indent=4, separators=(',', ': ')) + ';')
+        self.response.write(
+            'config = ' +
+            json.dumps( self.get(), sort_keys=True, indent=4, separators=(',', ': '), default=util.custom_json_serializer,) +
+            ';'
+        )
 
 
 class Core(base.RequestHandler):
