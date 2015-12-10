@@ -18,7 +18,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.debug = config.get_item('system', 'insecure')
+        self.debug = config.get_item('core', 'insecure')
         request_start = datetime.datetime.utcnow()
         provider_avatar = None
 

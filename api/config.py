@@ -20,8 +20,8 @@ logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence Paste 
 
 
 DEFAULT_CONFIG = {
-    'system': {
-        'log_level': 'debug',
+    'core': {
+        'log_level': 'info',
         'insecure': False,
         'persisted': False,
         'newrelic': None,
@@ -44,7 +44,6 @@ DEFAULT_CONFIG = {
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
-        'db_path': os.path.join(os.path.dirname(__file__), '../persistent/db'),
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
     },
 }
@@ -90,23 +89,23 @@ db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'mod
 db.sites.replace_one({'_id': __config['site']['_id']}, {'name': __config['site']['name'], 'site_url': __config['site']['url']}, upsert=True)
 
 
-def get_config(projection=None):
+def get_config():
     global __last_update, __config, environment_read
     now = datetime.datetime.utcnow()
-    if not __config['system']['persisted']:
+    if not __config['core']['persisted']:
         __config['modified'] = now
         flat_config= util.mongo_dict(__config)
         r = db.config.update_one({'latest': True}, {'$set': flat_config, '$setOnInsert': {'created': now}}, upsert=True)
-        __config['system']['persisted'] = bool(r.modified_count)
+        __config['core']['persisted'] = bool(r.modified_count)
     elif now - __last_update > datetime.timedelta(seconds=120):
-        __config = db.config.find_one({'latest': True}, projection)
+        __config = db.config.find_one({'latest': True})
         __last_update = now
-        log.setLevel(getattr(logging, __config['system']['log_level'].upper()))
+        log.setLevel(getattr(logging, __config['core']['log_level'].upper()))
     return __config
 
 def get_public_config():
-    projection = None # FIXME: define public config whitelist
-    return get_config(projection)
+    projection = ['created', 'modified', 'site', 'auth']
+    return db.config.find_one({'latest': True}, projection)
 
 def get_item(outer, inner):
     return get_config()[outer][inner]

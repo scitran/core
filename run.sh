@@ -2,27 +2,54 @@
 
 set -e
 
-RUNTIME_DIR="./runtime"
-PERSITENT_DIR="./persistent"
+unset CDPATH
+cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-if [ "$#" -ge 1 ]; then
-    PERSITENT_DIR="$1"
+
+if [ "$#" -eq 1 ]; then
+    TEMP_ENV_FILE=$(mktemp -t scitran_env)
+    env > $TEMP_ENV_FILE
+    set -o allexport
+    source "$1"
+    source $TEMP_ENV_FILE
+    rm -f $TEMP_ENV_FILE
+    set +o allexport
 fi
-if [ "$#" -eq 2 ]; then
-    RUNTIME_DIR="$2"
-fi
-if [ "$#" -gt 2 ]; then
-    echo "Usage: $0 persistent runtime"
+if [ "$#" -gt 1 ]; then
+    echo "Usage: $0 [config file]"
     exit 1
 fi
 
 
-if [ -f "$PERSITENT_DIR/db/mongod.lock" ]; then
-    echo "Database exists at $PERSITENT_DIR/db. Not bootstrapping users."
+# Default config values
+if [ -z "$SCITRAN_SYSTEM_HOST" ]; then
+    SCITRAN_SYSTEM_HOST="127.0.0.1"
+fi
+if [ -z "$SCITRAN_SYSTEM_PORT" ]; then
+    SCITRAN_SYSTEM_PORT="8080"
+fi
+if [ -z "$SCITRAN_SYSTEM_RUNTIME" ]; then
+    SCITRAN_SYSTEM_RUNTIME="./runtime"
+fi
+if [ -z "$SCITRAN_SYSTEM_SSL_PEM" ]; then
+    SCITRAN_SYSTEM_SSL_PEM=""
+fi
+if [ -z "$SCITRAN_PERSISTENT_PATH" ]; then
+    SCITRAN_PERSISTENT_PATH="./persistent"
+fi
+if [ -z "$SCITRAN_PERSISTENT_DB_PORT" ]; then
+    SCITRAN_PERSISTENT_DB_PORT="9001"
+fi
+if [ -z "$SCITRAN_PERSISTENT_DB_URI" ]; then
+    SCITRAN_PERSISTENT_DB_URI="mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"
+fi
+
+
+if [ -f "$SCITRAN_PERSISTENT_PATH/db/mongod.lock" ]; then
     BOOTSTRAP_USERS=0
 else
-    echo "Creating database location at $PERSITENT_DIR/db"
-    mkdir -p $PERSITENT_DIR/db
+    echo "Creating database location at $SCITRAN_PERSISTENT_PATH/db"
+    mkdir -p $SCITRAN_PERSISTENT_PATH/db
     if ! [ -f "bootstrap.json" ]; then
         echo "Cannot bootstrap users. Please create bootstrap.json from bootstrap.json.sample."
         exit 1
@@ -63,32 +90,32 @@ else
     echo "Installed Virtualenv"
 fi
 
-if [ -d "$RUNTIME_DIR" ]; then
-    echo "Virtualenv exists present at $RUNTIME_DIR"
+if [ -d "$SCITRAN_SYSTEM_RUNTIME" ]; then
+    echo "Virtualenv exists present at $SCITRAN_SYSTEM_RUNTIME"
 else
-    echo "Creating 'scitran' Virtualenv at $RUNTIME_DIR"
-    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran)" $RUNTIME_DIR
-    echo "Created 'scitran' Virtualenv at $RUNTIME_DIR"
+    echo "Creating 'scitran' Virtualenv at $SCITRAN_SYSTEM_RUNTIME"
+    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran)" $SCITRAN_SYSTEM_RUNTIME
+    echo "Created 'scitran' Virtualenv at $SCITRAN_SYSTEM_RUNTIME"
 fi
 
-if [ -f "$RUNTIME_DIR/bin/mongod" ]; then
+if [ -f "$SCITRAN_SYSTEM_RUNTIME/bin/mongod" ]; then
     echo "MongoDB is installed"
 else
     echo "Installing MongoDB"
-    curl https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.0.7.tgz | tar xz -C $RUNTIME_DIR --strip-components 1
+    curl https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.0.7.tgz | tar xz -C $SCITRAN_SYSTEM_RUNTIME --strip-components 1
     echo "MongoDB installed"
 fi
 
 
 echo "Activating Virtualenv"
-source $RUNTIME_DIR/bin/activate
+source $SCITRAN_SYSTEM_RUNTIME/bin/activate
 
 echo "Installing Python requirements"
 pip install -U -r requirements.txt
 
 
 # Launch mongod
-mongod --dbpath $PERSITENT_DIR/db --smallfiles --port 9001 &
+mongod --dbpath $SCITRAN_PERSISTENT_PATH/db --smallfiles --port $SCITRAN_PERSISTENT_DB_PORT &
 MONGO_PID=$!
 
 # Set python path so scripts can work
@@ -98,28 +125,51 @@ export PYTHONPATH=.
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
     bin/bootstrap.py users bootstrap.json
+else
+    echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
 fi
 
-if [ ! -d "$PERSITENT_DIR/testdata-master" ]; then
-    echo "Downloading testdata"
-    curl https://codeload.github.com/scitran/testdata/tar.gz/master | tar xz -C $PERSITENT_DIR
+TESTDATA_VERSION=$(curl -sLI https://github.com/scitran/testdata/archive/master.tar.gz | grep ETag | tail -n 1 | cut -f 2 -d '"')
+if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
+    echo "Downloading testdata to $SCITRAN_PERSISTENT_PATH/testdata"
+    mkdir "$SCITRAN_PERSISTENT_PATH/testdata"
+    curl -L https://github.com/scitran/testdata/archive/master.tar.gz | tar xz -C "$SCITRAN_PERSISTENT_PATH/testdata" --strip-components 1
+else
+    if [ "$TESTDATA_VERSION" != "$(cat $SCITRAN_PERSISTENT_PATH/.testdata_version)" ]; then
+        echo "Testdata out of data; downloading"
+        curl -L https://github.com/scitran/testdata/archive/master.tar.gz | tar xz -C "$SCITRAN_PERSISTENT_PATH/testdata" --strip-components 1
+    else
+        echo "Testdata up to date"
+    fi
 fi
+echo "$TESTDATA_VERSION" > "$SCITRAN_PERSISTENT_PATH/.testdata_version"
 
-if [ -d "$PERSITENT_DIR/data" ]; then
-    echo "Persistence store exists at $PERSITENT_DIR/data. Not bootstrapping data. Remove to re-bootstrap."
+if [ -d "$SCITRAN_PERSISTENT_PATH/data" ]; then
+    echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    bin/bootstrap.py data --copy $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
+    bin/bootstrap.py data --copy $SCITRAN_PERSISTENT_PATH/testdata $SCITRAN_PERSISTENT_PATH/data
     echo "Bootstrapped testdata"
 fi
 
-# Serve API with paste
-# python bin/api.wsgi --data_path $PERSITENT_DIR/data --ssl --insecure --log_level debug --drone_secret scitran_drone --db_uri mongodb://localhost/scitran
 
 # Serve API with PasteScript
-paster serve dev.ini --reload
+TEMP_INI_FILE=$(mktemp -t scitran_api)
+cat << EOF > $TEMP_INI_FILE
+[server:main]
+use = egg:Paste#http
+host = $SCITRAN_SYSTEM_HOST
+port = $SCITRAN_SYSTEM_PORT
+ssl_pem=$SCITRAN_SYSTEM_SSL_PEM
 
-# Exit out of the python virtualenv
+[app:main]
+paste.app_factory = api.api:app_factory
+EOF
+
+paster serve --reload $TEMP_INI_FILE
+
+# Clean up and exit out of the python virtualenv
+rm -f $TEMP_INI_FILE
 deactivate
 
 # Shutdown mongod on ctrl+C
