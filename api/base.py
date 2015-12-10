@@ -37,7 +37,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         # User (oAuth) authentication
         if access_token:
-            cached_token = self.app.db.authtokens.find_one({'_id': access_token})
+            cached_token = config.db.authtokens.find_one({'_id': access_token})
             if cached_token:
                 self.uid = cached_token['uid']
                 log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
@@ -48,9 +48,9 @@ class RequestHandler(webapp2.RequestHandler):
                     self.uid = identity.get('email')
                     if not self.uid:
                         self.abort(400, 'OAuth2 token resolution did not return email address')
-                    self.app.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': request_start}, upsert=True)
-                    self.app.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': request_start}})
-                    self.app.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': request_start}})
+                    config.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': request_start}, upsert=True)
+                    config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': request_start}})
+                    config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': request_start}})
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
 
                     # Set user's auth provider avatar
@@ -86,7 +86,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.uid = self.request.headers.get('X-User')
                 self.source_site = self.request.headers.get('X-Site')
                 remote_instance = user_agent.replace('SciTran Instance', '').strip()
-                if not self.app.db.sites.find_one({'_id': remote_instance}):
+                if not config.db.sites.find_one({'_id': remote_instance}):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
                 self.abort(401, 'no valid SSL client certificate')
@@ -99,12 +99,12 @@ class RequestHandler(webapp2.RequestHandler):
         elif drone_request:
             self.superuser_request = True
         else:
-            user = self.app.db.users.find_one({'_id': self.uid}, ['root'])
+            user = config.db.users.find_one({'_id': self.uid}, ['root'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
             if provider_avatar:
-                self.app.db.users.update_one({'_id': self.uid, 'avatar': None}, {'$set':{'avatar': provider_avatar, 'modified': request_start}})
-                self.app.db.users.update_one({'_id': self.uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': request_start}})
+                config.db.users.update_one({'_id': self.uid, 'avatar': None}, {'$set':{'avatar': provider_avatar, 'modified': request_start}})
+                config.db.users.update_one({'_id': self.uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': request_start}})
             if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
@@ -131,7 +131,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(500, 'api site._id is not configured')
             if not config.get_item('site', 'ssl_cert'):
                 self.abort(500, 'api ssl_cert is not configured')
-            target = self.app.db.sites.find_one({'_id': target_site}, ['api_uri'])
+            target = config.db.sites.find_one({'_id': target_site}, ['api_uri'])
             if not target:
                 self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers

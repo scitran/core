@@ -165,12 +165,12 @@ class Core(base.RequestHandler):
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
-                project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
+                project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
                 prefix = project['group'] + '/' + project['label']
                 total_size, file_cnt = append_targets(targets, project, prefix, total_size, file_cnt)
-                sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
+                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files'])
                 session_dict = {session['_id']: session for session in sessions}
-                acquisitions = self.app.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
                 for session in session_dict.itervalues():
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
                     total_size, file_cnt = append_targets(targets, session, session_prefix, total_size, file_cnt)
@@ -179,24 +179,24 @@ class Core(base.RequestHandler):
                     acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                     total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'session':
-                session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
+                session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
+                project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, session, prefix, total_size, file_cnt)
-                acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
+                acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + acq.get('label', 'untitled')
                     total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt)
             elif item['level'] == 'acquisition':
-                acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
-                session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
-                project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
+                acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
+                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
+                project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
                 total_size, file_cnt = append_targets(targets, acq, prefix, total_size, file_cnt)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
-        self.app.db.downloads.insert_one(ticket)
+        config.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
@@ -230,7 +230,7 @@ class Core(base.RequestHandler):
     def download(self):
         ticket_id = self.get_param('ticket')
         if ticket_id:
-            ticket = self.app.db.downloads.find_one({'_id': ticket_id})
+            ticket = config.db.downloads.find_one({'_id': ticket_id})
             if not ticket:
                 self.abort(404, 'no such ticket')
             if ticket['ip'] != self.request.client_addr:
@@ -254,12 +254,12 @@ class Core(base.RequestHandler):
         # TODO onload for local is true
         site_id = config.site_id()
         if self.public_request or self.is_true('all'):
-            sites = list(self.app.db.sites.find(None, projection))
+            sites = list(config.db.sites.find(None, projection))
         else:
             # TODO onload based on user prefs
-            remotes = (self.app.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
+            remotes = (config.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
             remote_ids = [r['_id'] for r in remotes] + [site_id]
-            sites = list(self.app.db.sites.find({'_id': {'$in': remote_ids}}, projection))
+            sites = list(config.db.sites.find({'_id': {'$in': remote_ids}}, projection))
         for s in sites:  # TODO: this for loop will eventually move to public case
             if s['_id'] == site_id:
                 s['onload'] = True
