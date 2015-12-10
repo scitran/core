@@ -18,7 +18,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def __init__(self, request=None, response=None):
         self.initialize(request, response)
-        self.debug = self.app.config['insecure']
+        self.debug = config.get_item('system', 'insecure')
         request_start = datetime.datetime.utcnow()
         provider_avatar = None
 
@@ -31,18 +31,18 @@ class RequestHandler(webapp2.RequestHandler):
         access_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
 
-        site_id = config.site_id()
+        site_id = config.get_item('site', '_id')
         if site_id is None:
             self.abort(503, 'Database not initialized')
 
         # User (oAuth) authentication
-        if access_token and self.app.config['oauth2_id_endpoint']:
+        if access_token:
             cached_token = self.app.db.authtokens.find_one({'_id': access_token})
             if cached_token:
                 self.uid = cached_token['uid']
                 log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
             else:
-                r = requests.get(self.app.config['oauth2_id_endpoint'], headers={'Authorization': 'Bearer ' + access_token})
+                r = requests.get(config('auth', 'id_endpoint'), headers={'Authorization': 'Bearer ' + access_token})
                 if r.ok:
                     identity = json.loads(r.content)
                     self.uid = identity.get('email')
@@ -55,7 +55,7 @@ class RequestHandler(webapp2.RequestHandler):
 
                     # Set user's auth provider avatar
                     # TODO: after api starts reading toml config, switch on auth.provider rather than manually comparing endpoint URL.
-                    if self.app.config['oauth2_id_endpoint'] == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
+                    if config('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
                         provider_avatar = identity.get('picture', '')
                         # Remove attached size param from URL.
                         u = urlparse.urlparse(provider_avatar)
@@ -73,7 +73,9 @@ class RequestHandler(webapp2.RequestHandler):
 
         # Drone shared secret authentication
         elif drone_secret is not None and user_agent.startswith('SciTran Drone '):
-            if drone_secret != self.app.config['drone_secret']:
+            if config.get_item('auth', 'drone_secret') is None:
+                self.abort(401, 'drone secret not configured')
+            if drone_secret != config.get_item('auth', 'drone_secret'):
                 self.abort(401, 'invalid drone secret')
             log.info('drone "' + user_agent.replace('SciTran Drone ', '') + '" request accepted')
             drone_request = True
@@ -119,23 +121,24 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        target_site = self.get_param('site', config.site_id())
-        if target_site == config.site_id():
+        site_id = config.get_item('site', '_id')
+        target_site = self.get_param('site', site_id)
+        if target_site == site_id:
             log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             return super(RequestHandler, self).dispatch()
         else:
-            if not config.site_id():
-                self.abort(500, 'api config.site_id() is not configured')
-            if not self.app.config['ssl_cert']:
+            if not site_id:
+                self.abort(500, 'api site._id is not configured')
+            if not config.get_item('site', 'ssl_cert'):
                 self.abort(500, 'api ssl_cert is not configured')
             target = self.app.db.sites.find_one({'_id': target_site}, ['api_uri'])
             if not target:
                 self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers
             self.headers = self.request.headers
-            self.headers['User-Agent'] = 'SciTran Instance ' + config.site_id()
+            self.headers['User-Agent'] = 'SciTran Instance ' + site_id
             self.headers['X-User'] = self.uid
-            self.headers['X-Site'] = config.site_id()
+            self.headers['X-Site'] = site_id
             self.headers['Content-Length'] = len(self.request.body)
             del self.headers['Host']
             if 'Authorization' in self.headers: del self.headers['Authorization']
@@ -152,7 +155,7 @@ class RequestHandler(webapp2.RequestHandler):
                     params=self.params,
                     data=self.request.body_file,
                     headers=self.headers,
-                    cert=self.app.config['ssl_cert'])
+                    cert=config.get_item('site', 'ssl_cert'))
             if r.status_code != 200:
                 self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
             self.response.app_iter = r.iter_content(2**20)

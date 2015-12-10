@@ -23,7 +23,7 @@ log = config.log
 class Config(base.RequestHandler):
 
     def get(self):
-        return config.get_config()
+        return config.get_public_config()
 
     def get_js(self):
         self.response.write('config = ' + json.dumps(self.get(), sort_keys=True, indent=4, separators=(',', ': ')) + ';')
@@ -114,7 +114,7 @@ class Core(base.RequestHandler):
         """Receive a sortable reaper upload."""
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
             try:
                 file_store = files.FileStore(self.request, tempdir_path)
             except files.FileStoreException as e:
@@ -133,7 +133,7 @@ class Core(base.RequestHandler):
             container = reaperutil.create_container_hierarchy(file_store.metadata)
             f = container.find(file_store.filename)
             created = modified = datetime.datetime.utcnow()
-            target_path = os.path.join(self.app.config['data_path'], util.path_from_hash(fileinfo['hash']))
+            target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
             if not f:
                 file_store.move_file(target_path)
                 container.add_file(fileinfo)
@@ -144,7 +144,7 @@ class Core(base.RequestHandler):
             log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
     def _preflight_archivestream(self, req_spec):
-        data_path = self.app.config['data_path']
+        data_path = config.get_item('persistent', 'data_path')
         arc_prefix = 'sdm'
 
         def append_targets(targets, container, prefix, total_size, total_cnt):
@@ -236,7 +236,7 @@ class Core(base.RequestHandler):
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
             if self.get_param('symlinks'):
-                self.response.app_iter = self._symlinkarchivestream(ticket, self.app.config['data_path'])
+                self.response.app_iter = self._symlinkarchivestream(ticket, config.get_item('persistent', 'data_path'))
             else:
                 self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'

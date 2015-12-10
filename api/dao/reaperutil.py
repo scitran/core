@@ -4,7 +4,6 @@ import pymongo
 import datetime
 import dateutil.parser
 
-from .. import mongo
 from .. import config
 from . import APIStorageException
 
@@ -15,7 +14,7 @@ class ReapedAcquisition(object):
 
     def __init__(self, acquisition, fileinfo):
         self.acquisition = acquisition
-        self.dbc = mongo.db.acquisitions
+        self.dbc = config.db.acquisitions
         self._id = acquisition['_id']
         self.fileinfo = fileinfo or {}
 
@@ -46,15 +45,15 @@ class ReapedAcquisition(object):
 PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
 
 def _find_or_create_destination_project(group_name, project_label, created, modified):
-    existing_group_ids = [g['_id'] for g in mongo.db.groups.find(None, ['_id'])]
+    existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]
     group_id_matches = difflib.get_close_matches(group_name, existing_group_ids, cutoff=0.8)
     if len(group_id_matches) == 1:
         group_name = group_id_matches[0]
     else:
         project_label = group_name + '_' + project_label
         group_name = 'unknown'
-    group = mongo.db.groups.find_one({'_id': group_name})
-    project = mongo.db.projects.find_one_and_update(
+    group = config.db.groups.find_one({'_id': group_name})
+    project = config.db.projects.find_one_and_update(
         {'group': group['_id'], 'label': project_label},
         {
             '$setOnInsert': {
@@ -95,9 +94,9 @@ def create_container_hierarchy(metadata):
 
     now = datetime.datetime.utcnow()
 
-    session_obj = mongo.db.sessions.find_one({'uid': session_uid}, ['project'])
+    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
-        project_obj = mongo.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
+        project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
     else:
         project_obj = _find_or_create_destination_project(group_id, project_label, now, now)
     session['subject'] = subject or {}
@@ -105,7 +104,7 @@ def create_container_hierarchy(metadata):
     if session.get('timestamp'):
         session['timestamp'] = dateutil.parser.parse(session['timestamp'])
     session['modified'] = now
-    session_obj = mongo.db.sessions.find_one_and_update(
+    session_obj = config.db.sessions.find_one_and_update(
         {'uid': session_uid},
         {
             '$setOnInsert': dict(
@@ -126,8 +125,8 @@ def create_container_hierarchy(metadata):
 
     if acquisition.get('timestamp'):
         acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
-        mongo.db.projects.update_one({'_id': project_obj['_id']}, {'$max': dict(timestamp=acquisition['timestamp']), '$set': dict(timezone=acquisition.get('timezone'))})
-        mongo.db.sessions.update_one({'_id': session_obj['_id']}, {'$min': dict(timestamp=acquisition['timestamp']), '$set': dict(timezone=acquisition.get('timezone'))})
+        config.db.projects.update_one({'_id': project_obj['_id']}, {'$max': dict(timestamp=acquisition['timestamp']), '$set': dict(timezone=acquisition.get('timezone'))})
+        config.db.sessions.update_one({'_id': session_obj['_id']}, {'$min': dict(timestamp=acquisition['timestamp']), '$set': dict(timezone=acquisition.get('timezone'))})
 
     acquisition['modified'] = now
     acq_operations = {
@@ -140,7 +139,7 @@ def create_container_hierarchy(metadata):
         '$set': acquisition
     }
     #FIXME acquisition modified date should be updated on updates
-    acquisition_obj = mongo.db.acquisitions.find_one_and_update(
+    acquisition_obj = config.db.acquisitions.find_one_and_update(
         {'uid': acquisition_uid},
         acq_operations,
         upsert=True,

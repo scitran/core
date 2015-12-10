@@ -1,3 +1,4 @@
+import sys
 import json
 import pytz
 import webapp2
@@ -130,5 +131,22 @@ def dispatcher(router, request, response):
 
 
 app = webapp2.WSGIApplication(routes)
-
 app.router.set_dispatcher(dispatcher)
+
+if config.get_item('system', 'new_relic'):
+    try:
+        import newrelic.agent, newrelic.api.exceptions
+        newrelic.agent.initialize(args.new_relic)
+        app = newrelic.agent.WSGIApplicationWrapper(app)
+        log.info('New Relic detected and loaded. Monitoring enabled.')
+    except ImportError:
+        log.critical('New Relic libraries not found.')
+        sys.exit(1)
+    except newrelic.api.exceptions.ConfigurationError:
+        log.critical('New Relic detected, but configuration invalid.')
+        sys.exit(1)
+
+
+def app_factory(_, **__):
+    app.db = config.db #FIXME this should not be needed
+    return app

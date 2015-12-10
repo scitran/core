@@ -94,13 +94,10 @@ MONGO_PID=$!
 # Set python path so scripts can work
 export PYTHONPATH=.
 
-# Configure api
-bin/bootstrap.py configure mongodb://localhost:9001/scitran local Local https://localhost:8080/api oauth_client_id
-
 # Boostrap users
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
-    bin/bootstrap.py users mongodb://localhost:9001/scitran bootstrap.json
+    bin/bootstrap.py users bootstrap.json
 fi
 
 if [ ! -d "$PERSITENT_DIR/testdata-master" ]; then
@@ -112,7 +109,7 @@ if [ -d "$PERSITENT_DIR/data" ]; then
     echo "Persistence store exists at $PERSITENT_DIR/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    bin/bootstrap.py data --copy mongodb://localhost:9001/scitran $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
+    bin/bootstrap.py data --copy $PERSITENT_DIR/testdata-master $PERSITENT_DIR/data
     echo "Bootstrapped testdata"
 fi
 

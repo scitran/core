@@ -2,7 +2,6 @@ import bson.errors
 import bson.objectid
 
 from .. import util
-from .. import mongo
 from .. import config
 from . import APIStorageException
 
@@ -19,7 +18,7 @@ class ContainerStorage(object):
     def __init__(self, cont_name, use_object_id = False):
         self.cont_name = cont_name
         self.use_object_id = use_object_id
-        self.dbc = mongo.db[cont_name]
+        self.dbc = config.db[cont_name]
 
     def get_container(self, _id):
         return self._get_el(_id)
