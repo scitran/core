@@ -5,6 +5,7 @@ set -e
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
+echo() { builtin echo "[SCITRAN] $@"; }
 
 if [ "$#" -eq 1 ]; then
     TEMP_ENV_FILE=$(mktemp -t scitran_env)
@@ -142,7 +143,7 @@ else
         echo "Testdata up to date"
     fi
 fi
-echo "$TESTDATA_VERSION" > "$SCITRAN_PERSISTENT_PATH/.testdata_version"
+builtin echo "$TESTDATA_VERSION" > "$SCITRAN_PERSISTENT_PATH/.testdata_version"
 
 if [ -d "$SCITRAN_PERSISTENT_PATH/data" ]; then
     echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
