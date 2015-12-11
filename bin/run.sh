@@ -35,6 +35,9 @@ fi
 if [ -z "$SCITRAN_SYSTEM_SSL_PEM" ]; then
     SCITRAN_SYSTEM_SSL_PEM=""
 fi
+if [ -z "$SCITRAN_SYSTEM_BOOTSTRAP" ]; then
+    SCITRAN_SYSTEM_BOOTSTRAP="bootstrap.json"
+fi
 if [ -z "$SCITRAN_PERSISTENT_PATH" ]; then
     SCITRAN_PERSISTENT_PATH="./persistent"
 fi
@@ -51,8 +54,8 @@ if [ -f "$SCITRAN_PERSISTENT_PATH/db/mongod.lock" ]; then
 else
     echo "Creating database location at $SCITRAN_PERSISTENT_PATH/db"
     mkdir -p $SCITRAN_PERSISTENT_PATH/db
-    if ! [ -f "bootstrap.json" ]; then
-        echo "Cannot bootstrap users. Please create bootstrap.json from bootstrap.json.sample."
+    if ! [ -f "$SCITRAN_SYSTEM_BOOTSTRAP" ]; then
+        echo "Aborting. Please create $SCITRAN_SYSTEM_BOOTSTRAP from bootstrap.json.sample."
         exit 1
     fi
     BOOTSTRAP_USERS=1
@@ -125,7 +128,7 @@ export PYTHONPATH=.
 # Boostrap users
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
-    bin/bootstrap.py users bootstrap.json
+    bin/bootstrap.py users "$SCITRAN_SYSTEM_BOOTSTRAP"
 else
     echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
 fi
