@@ -7,13 +7,12 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
 echo() { builtin echo "[SCITRAN] $@"; }
 
+
 if [ "$#" -eq 1 ]; then
-    TEMP_ENV_FILE=$(mktemp -t scitran_env)
-    env > $TEMP_ENV_FILE
+    EXISTING_ENV=$(env | grep "SCITRAN_" | cat)
     set -o allexport
     source "$1"
-    source $TEMP_ENV_FILE
-    rm -f $TEMP_ENV_FILE
+    eval "$EXISTING_ENV"
     set +o allexport
 fi
 if [ "$#" -gt 1 ]; then
