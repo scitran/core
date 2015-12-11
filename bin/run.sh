@@ -8,12 +8,12 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 echo() { builtin echo "[SCITRAN] $@"; }
 
 
+set -o allexport
+
 if [ "$#" -eq 1 ]; then
     EXISTING_ENV=$(env | grep "SCITRAN_" | cat)
-    set -o allexport
     source "$1"
     eval "$EXISTING_ENV"
-    set +o allexport
 fi
 if [ "$#" -gt 1 ]; then
     echo "Usage: $0 [config file]"
@@ -40,6 +40,12 @@ fi
 if [ -z "$SCITRAN_PERSISTENT_PATH" ]; then
     SCITRAN_PERSISTENT_PATH="./persistent"
 fi
+if [ -z "$SCITRAN_PERSISTENT_DATA_PATH" ]; then
+    SCITRAN_PERSISTENT_DATA_PATH="$SCITRAN_PERSISTENT_PATH/data"
+fi
+if [ -z "$SCITRAN_PERSISTENT_DB_PATH" ]; then
+    SCITRAN_PERSISTENT_DB_PATH="$SCITRAN_PERSISTENT_PATH/db"
+fi
 if [ -z "$SCITRAN_PERSISTENT_DB_PORT" ]; then
     SCITRAN_PERSISTENT_DB_PORT="9001"
 fi
@@ -47,12 +53,14 @@ if [ -z "$SCITRAN_PERSISTENT_DB_URI" ]; then
     SCITRAN_PERSISTENT_DB_URI="mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"
 fi
 
+set +o allexport
 
-if [ -f "$SCITRAN_PERSISTENT_PATH/db/mongod.lock" ]; then
+
+if [ -f "$SCITRAN_PERSISTENT_DB_PATH/mongod.lock" ]; then
     BOOTSTRAP_USERS=0
 else
-    echo "Creating database location at $SCITRAN_PERSISTENT_PATH/db"
-    mkdir -p $SCITRAN_PERSISTENT_PATH/db
+    echo "Creating database location at $SCITRAN_PERSISTENT_DB_PATH"
+    mkdir -p $SCITRAN_PERSISTENT_DB_PATH
     if ! [ -f "$SCITRAN_SYSTEM_BOOTSTRAP" ]; then
         echo "Aborting. Please create $SCITRAN_SYSTEM_BOOTSTRAP from bootstrap.json.sample."
         exit 1
@@ -118,7 +126,7 @@ pip install -U -r requirements.txt
 
 
 # Launch mongod
-mongod --dbpath $SCITRAN_PERSISTENT_PATH/db --smallfiles --port $SCITRAN_PERSISTENT_DB_PORT &
+mongod --dbpath $SCITRAN_PERSISTENT_DB_PATH --smallfiles --port $SCITRAN_PERSISTENT_DB_PORT &
 MONGO_PID=$!
 
 # Set python path so scripts can work
@@ -147,12 +155,13 @@ else
 fi
 builtin echo "$TESTDATA_VERSION" > "$SCITRAN_PERSISTENT_PATH/.testdata_version"
 
-if [ -d "$SCITRAN_PERSISTENT_PATH/data" ]; then
+if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
     echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    bin/bootstrap.py data --copy $SCITRAN_PERSISTENT_PATH/testdata $SCITRAN_PERSISTENT_PATH/data
+    bin/bootstrap.py data --copy $SCITRAN_PERSISTENT_PATH/testdata
     echo "Bootstrapped testdata"
+    touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
 fi
 
 

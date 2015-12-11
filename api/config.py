@@ -68,6 +68,8 @@ for outer_key, scoped_config in __config.iteritems():
                 value = None
             __config[outer_key][inner_key] = value
 
+if not os.path.exists(__config['persistent']['data_path']):
+    os.makedirs(__config['persistent']['data_path'])
 
 db = pymongo.MongoClient(__config['persistent']['db_uri'], j=True, connectTimeoutMS=2000, serverSelectionTimeoutMS=3000).get_default_database()
 

@@ -72,8 +72,6 @@ example:
 
 
 def data(args):
-    if not os.path.exists(args.storage_path):
-        os.makedirs(args.storage_path)
     log.info('inspecting %s' % args.path)
     files = []
     for dirpath, dirnames, filenames in os.walk(args.path):
@@ -97,7 +95,7 @@ def data(args):
             for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
         computed_hash = hash_.hexdigest()
-        destpath = os.path.join(args.storage_path, util.path_from_hash(computed_hash))
+        destpath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(computed_hash))
         dir_destpath = os.path.dirname(destpath)
         filename = os.path.basename(filepath)
         if not os.path.exists(dir_destpath):
@@ -152,7 +150,6 @@ data_parser = subparsers.add_parser(
         )
 data_parser.add_argument('-c', '--copy', action='store_true', help='copy data instead of moving it')
 data_parser.add_argument('path', help='filesystem path to data')
-data_parser.add_argument('storage_path', help='filesystem path to sorted data')
 data_parser.set_defaults(func=data)
 
 args = parser.parse_args()
