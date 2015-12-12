@@ -23,7 +23,6 @@ DEFAULT_CONFIG = {
     'core': {
         'log_level': 'info',
         'insecure': False,
-        'persisted': False,
         'newrelic': None,
     },
     'site': {
@@ -49,6 +48,7 @@ DEFAULT_CONFIG = {
 }
 
 __config = copy.deepcopy(DEFAULT_CONFIG)
+__config_persisted = False
 __last_update = datetime.datetime.utcfromtimestamp(0)
 
 #FIXME What is this?
@@ -73,33 +73,41 @@ if not os.path.exists(__config['persistent']['data_path']):
 
 db = pymongo.MongoClient(__config['persistent']['db_uri'], j=True, connectTimeoutMS=2000, serverSelectionTimeoutMS=3000).get_default_database()
 
-if not db.system.indexes.find_one():
-    # TODO jobs indexes
-    # TODO review all indexes
-    db.projects.create_index([('gid', 1), ('name', 1)])
-    db.sessions.create_index('project')
-    db.sessions.create_index('uid')
-    db.acquisitions.create_index('session')
-    db.acquisitions.create_index('uid')
-    db.acquisitions.create_index('collections')
-    db.authtokens.create_index('timestamp', expireAfterSeconds=600)
-    db.uploads.create_index('timestamp', expireAfterSeconds=60)
-    db.downloads.create_index('timestamp', expireAfterSeconds=60)
 
-now = datetime.datetime.utcnow()
-db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
-db.sites.replace_one({'_id': __config['site']['_id']}, {'name': __config['site']['name'], 'site_url': __config['site']['url']}, upsert=True)
+def initialize_db():
+    log.info('Initializing database')
+    if not db.system.indexes.find_one():
+        log.info('Creating database indexes')
+        # TODO jobs indexes
+        # TODO review all indexes
+        db.projects.create_index([('gid', 1), ('name', 1)])
+        db.sessions.create_index('project')
+        db.sessions.create_index('uid')
+        db.acquisitions.create_index('session')
+        db.acquisitions.create_index('uid')
+        db.acquisitions.create_index('collections')
+        db.authtokens.create_index('timestamp', expireAfterSeconds=600)
+        db.uploads.create_index('timestamp', expireAfterSeconds=60)
+        db.downloads.create_index('timestamp', expireAfterSeconds=60)
+
+    now = datetime.datetime.utcnow()
+    db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
+    db.sites.replace_one({'_id': __config['site']['_id']}, {'name': __config['site']['name'], 'site_url': __config['site']['url']}, upsert=True)
 
 
 def get_config():
-    global __last_update, __config, environment_read
+    global __last_update, __config, __config_persisted
     now = datetime.datetime.utcnow()
-    if not __config['core']['persisted']:
+    if not __config_persisted:
+        initialize_db()
+        log.info('Persisting configuration')
         __config['modified'] = now
         flat_config= util.mongo_dict(__config)
         r = db.config.update_one({'latest': True}, {'$set': flat_config, '$setOnInsert': {'created': now}}, upsert=True)
-        __config['core']['persisted'] = bool(r.modified_count)
+        __config_persisted = bool(r.modified_count)
+        __last_update = now
     elif now - __last_update > datetime.timedelta(seconds=120):
+        log.debug('Refreshing configuration from database')
         __config = db.config.find_one({'latest': True})
         __last_update = now
         log.setLevel(getattr(logging, __config['core']['log_level'].upper()))

@@ -124,10 +124,12 @@ def dispatcher(router, request, response):
 application = webapp2.WSGIApplication(routes)
 application.router.set_dispatcher(dispatcher)
 
-if config.get_item('core', 'newrelic'):
+# configure new relic
+# don't use config.get_item() as we don't want to require the database at startup
+if config.__config['core']['newrelic']:
     try:
         import newrelic.agent, newrelic.api.exceptions
-        newrelic.agent.initialize(config.get_item('core', 'newrelic'))
+        newrelic.agent.initialize(config.__config['core']['newrelic'])
         application = newrelic.agent.WSGIApplicationWrapper(application)
         log.info('New Relic detected and loaded. Monitoring enabled.')
     except ImportError:

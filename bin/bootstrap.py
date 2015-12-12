@@ -19,6 +19,8 @@ from api import config
 
 log = config.log
 
+#config.initialize_db()
+
 
 def clean(args):
     config.db.client.drop_database(config.db)
