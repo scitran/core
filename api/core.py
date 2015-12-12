@@ -103,7 +103,7 @@ RESET_SCHEMA = {
 
 def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, attachments=True):
     for f in container['files']:
-        if (not attachments or (type(attachments) == list and f['filename'] not in attachments)) and 'attachment' in f['tags']:
+        if (not attachments or (type(attachments) == list and f['filename'] not in attachments)) and 'attachment' in f.get('tags', []):
             continue
         if optional or not f.get('optional', False):
             filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
@@ -358,26 +358,30 @@ class Core(base.RequestHandler):
 
     def _preflight_archivestream_bids(self, req_spec):
         data_path = self.app.config['data_path']
-        arc_prefix = 'bids'
 
         file_cnt = 0
         total_size = 0
         targets = []
         # FIXME: check permissions of everything
         projects = []
+        prefix = 'untitled'
+        if len(req_spec['nodes']) != 1:
+            self.abort(400, 'bids downloads are limited to single dataset downloads')
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
                 project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files', 'notes'])
                 projects.append(item_id)
-                prefix = arc_prefix + '/' + project['group'] + '/' + project['name']
+                prefix = project['name']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
-                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject_code'])
-                subject_prefixes = {}
+                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
+                subject_prefixes = {
+                    'missing_subject': prefix + '/missing_subject'
+                }
                 sessions = {}
                 for ses_or_subj in ses_or_subj_list:
-                    subj_code = ses_or_subj.get('subject_code')
+                    subj_code = ses_or_subj.get('subject', {}).get('code') or ses_or_subj.get('subject_code')
                     if subj_code == 'subject':
                         subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
@@ -385,6 +389,8 @@ class Core(base.RequestHandler):
                         subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
                     elif subj_code:
                         sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
+                    else:
+                        sessions['missing_subject'] = sessions.get('missing_subject', []) + [ses_or_subj]
                 for subj_code, ses_list in sessions.items():
                     subject_prefix = subject_prefixes.get(subj_code)
                     if not subject_prefix:
@@ -399,7 +405,7 @@ class Core(base.RequestHandler):
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
                                                                    file_cnt, req_spec['optional'], data_path, False)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-        filename = 'bids`_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+        filename = prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
         self.app.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
@@ -419,6 +425,18 @@ class Core(base.RequestHandler):
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
+    def _symlinkarchivestream(self, ticket, data_path):
+        for filepath, arcpath, _ in ticket['target']:
+            t = tarfile.TarInfo(name=arcpath)
+            t.type = tarfile.SYMTYPE
+            t.linkname = os.path.relpath(filepath, data_path)
+            yield t.tobuf()
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as archive:
+            pass
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
     def download(self):
         ticket_id = self.request.GET.get('ticket')
         if ticket_id:
@@ -427,7 +445,10 @@ class Core(base.RequestHandler):
                 self.abort(404, 'no such ticket')
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
-            self.response.app_iter = self._archivestream(ticket)
+            if self.request.GET.get('symlinks', '').lower() in ('1', 'true'):
+                self.response.app_iter = self._symlinkarchivestream(ticket, self.app.config['data_path'])
+            else:
+                self.response.app_iter = self._archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
             for project_id in ticket['projects']:
