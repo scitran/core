@@ -2,7 +2,7 @@
 
 from api import api
 
-application = api.application
+application = api.app_factory()
 
 
 # FIXME: all code below should removed and ported into an app server independent framework

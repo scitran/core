@@ -22,6 +22,7 @@ logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence Paste 
 DEFAULT_CONFIG = {
     'core': {
         'log_level': 'info',
+        'debug': False,
         'insecure': False,
         'newrelic': None,
     },
