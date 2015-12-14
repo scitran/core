@@ -191,7 +191,7 @@ class ContainerHandler(base.RequestHandler):
         query = {}
         user = {
             '_id': uid,
-            'site': config.site_id()
+            'site': config.get_item('site', 'id')
         }
         try:
             results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)

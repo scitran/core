@@ -28,7 +28,7 @@ DEFAULT_CONFIG = {
         'drone_secret': None,
     },
     'site': {
-        '_id': 'local',
+        'id': 'local',
         'name': 'Local',
         'url': 'https://localhost/api',
         'central_url': 'https://sdmc.scitran.io/api',
@@ -93,7 +93,7 @@ def initialize_db():
 
     now = datetime.datetime.utcnow()
     db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
-    db.sites.replace_one({'_id': __config['site']['_id']}, {'name': __config['site']['name'], 'site_url': __config['site']['url']}, upsert=True)
+    db.sites.replace_one({'_id': __config['site']['id']}, {'name': __config['site']['name'], 'site_url': __config['site']['url']}, upsert=True)
 
 
 def get_config():

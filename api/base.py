@@ -31,7 +31,7 @@ class RequestHandler(webapp2.RequestHandler):
         access_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
 
-        site_id = config.get_item('site', '_id')
+        site_id = config.get_item('site', 'id')
         if site_id is None:
             self.abort(503, 'Database not initialized')
 
@@ -121,14 +121,14 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
-        site_id = config.get_item('site', '_id')
+        site_id = config.get_item('site', 'id')
         target_site = self.get_param('site', site_id)
         if target_site == site_id:
             log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             return super(RequestHandler, self).dispatch()
         else:
             if not site_id:
-                self.abort(500, 'api site._id is not configured')
+                self.abort(500, 'api site.id is not configured')
             if not config.get_item('site', 'ssl_cert'):
                 self.abort(500, 'api ssl_cert is not configured')
             target = config.db.sites.find_one({'_id': target_site}, ['api_uri'])

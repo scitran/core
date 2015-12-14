@@ -256,7 +256,7 @@ class Core(base.RequestHandler):
         """Return local and remote sites."""
         projection = ['name', 'onload']
         # TODO onload for local is true
-        site_id = config.site_id()
+        site_id = config.get_item('site', 'id')
         if self.public_request or self.is_true('all'):
             sites = list(config.db.sites.find(None, projection))
         else:

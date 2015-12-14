@@ -51,7 +51,7 @@ def users(args):
             u['avatars'].setdefault('gravatar', gravatar)
             config.db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
     log.info('bootstrapping groups...')
-    site_id = config.get_item('site', '_id')
+    site_id = config.get_item('site', 'id')
     for g in input_data.get('groups', []):
         log.info('    ' + g['_id'])
         g['created'] = now
