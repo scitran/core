@@ -42,7 +42,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.uid = cached_token['uid']
                 log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
             else:
-                r = requests.get(config('auth', 'id_endpoint'), headers={'Authorization': 'Bearer ' + access_token})
+                r = requests.get(config.get_item('auth', 'id_endpoint'), headers={'Authorization': 'Bearer ' + access_token})
                 if r.ok:
                     identity = json.loads(r.content)
                     self.uid = identity.get('email')
@@ -55,7 +55,7 @@ class RequestHandler(webapp2.RequestHandler):
 
                     # Set user's auth provider avatar
                     # TODO: after api starts reading toml config, switch on auth.provider rather than manually comparing endpoint URL.
-                    if config('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
+                    if config.get_item('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
                         provider_avatar = identity.get('picture', '')
                         # Remove attached size param from URL.
                         u = urlparse.urlparse(provider_avatar)
