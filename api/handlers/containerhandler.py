@@ -158,7 +158,7 @@ class ContainerHandler(base.RequestHandler):
     def _add_results_counts(self, results):
         dbc_name = self.config.get('children_cont')
         el_cont_name = cont_name[:-1]
-        dbc = self.app.db.get(dbc_name)
+        dbc = config.db.get(dbc_name)
         counts =  dbc.aggregate([
             {'$match': {el_cont_name: {'$in': [res['_id'] for result in results]}}},
             {'$group': {'_id': '$' + el_cont_name, 'count': {"$sum": 1}}}
@@ -169,7 +169,7 @@ class ContainerHandler(base.RequestHandler):
 
     def _add_session_measurements(self, results):
         session_measurements = {}
-        session_measurements = self.app.db.acquisitions.aggregate([
+        session_measurements = config.db.acquisitions.aggregate([
             {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
             {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
             ])
@@ -191,7 +191,7 @@ class ContainerHandler(base.RequestHandler):
         query = {}
         user = {
             '_id': uid,
-            'site': config.site_id()
+            'site': config.get_item('site', 'id')
         }
         try:
             results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
@@ -302,7 +302,7 @@ class ContainerHandler(base.RequestHandler):
         method to return the list of groups for which there are projects accessible to the user
         """
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
-        return list(self.app.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
+        return list(config.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
 
 
     def _get_validators(self):
@@ -320,7 +320,7 @@ class ContainerHandler(base.RequestHandler):
         parent_id = payload.get(parent_id_property)
         log.debug(parent_id)
         if parent_id:
-            parent_storage.dbc = self.app.db[parent_storage.cont_name]
+            parent_storage.dbc = config.db[parent_storage.cont_name]
             parent_container = parent_storage.get_container(parent_id)
             if parent_container is None:
                 self.abort(404, 'Element {} not found in container {}'.format(parent_id, parent_storage.cont_name))

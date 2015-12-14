@@ -207,7 +207,7 @@ class Jobs(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        results = list(self.app.db.jobs.find())
+        results = list(config.db.jobs.find())
 
         return results
 
@@ -216,7 +216,7 @@ class Jobs(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        return self.app.db.jobs.count()
+        return config.db.jobs.count()
 
     def next(self):
         """
@@ -228,7 +228,7 @@ class Jobs(base.RequestHandler):
             self.abort(403, 'Request requires superuser')
 
         # First, atomically mark document as running.
-        result = self.app.db.jobs.find_one_and_update(
+        result = config.db.jobs.find_one_and_update(
             {
                 'state': 'pending'
             },
@@ -244,7 +244,7 @@ class Jobs(base.RequestHandler):
             self.abort(400, 'No jobs to process')
 
         # Second, update document to store formula request.
-        result = self.app.db.jobs.find_one_and_update(
+        result = config.db.jobs.find_one_and_update(
             {
                 '_id': result['_id']
             },
@@ -267,7 +267,7 @@ class Job(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        result = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
+        result = config.db.jobs.find_one({'_id': bson.ObjectId(_id)})
         return result
 
     def put(self, _id):
@@ -280,7 +280,7 @@ class Job(base.RequestHandler):
             self.abort(403, 'Request requires superuser')
 
         mutation = self.request.json
-        job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
+        job = config.db.jobs.find_one({'_id': bson.ObjectId(_id)})
 
         if job is None:
             self.abort(404, 'Job not found')
@@ -300,11 +300,11 @@ class Job(base.RequestHandler):
             'state': job['state'],
         }
 
-        result = self.app.db.jobs.update_one(job_query, {'$set': mutation})
+        result = config.db.jobs.update_one(job_query, {'$set': mutation})
         if result.modified_count != 1:
             self.abort(500, 'Job modification not saved')
 
         # If the job did not succeed, check to see if job should be retried.
         if 'state' in mutation and mutation['state'] == 'failed':
-            job = self.app.db.jobs.find_one({'_id': bson.ObjectId(_id)})
-            retry_job(self.app.db, job)
+            job = config.db.jobs.find_one({'_id': bson.ObjectId(_id)})
+            retry_job(config.db, job)

@@ -9,6 +9,7 @@ import pymongo
 import zipfile
 import datetime
 import mimetypes
+import bson.objectid
 import tempdir as tempfile
 
 MIMETYPES = [
@@ -87,6 +88,7 @@ def guess_filetype(filepath, mimetype):
     else:
         return subtype
 
+
 def path_from_hash(hash_):
     """
     create a filepath from a hash
@@ -98,3 +100,11 @@ def path_from_hash(hash_):
     path = [hash_[i] for i in xrange(8)]
     path.append(hash_)
     return os.path.join(*path)
+
+
+def custom_json_serializer(obj):
+    if isinstance(obj, bson.objectid.ObjectId):
+        return str(obj)
+    elif isinstance(obj, datetime.datetime):
+        return pytz.timezone('UTC').localize(obj).isoformat()
+    raise TypeError(repr(obj) + " is not JSON serializable")

@@ -1,7 +1,6 @@
 import bson.errors
 import bson.objectid
 
-from .. import mongo
 from .. import config
 from . import APIStorageException
 
@@ -19,7 +18,7 @@ class ListStorage(object):
         self.cont_name = cont_name
         self.list_name = list_name
         self.use_object_id = use_object_id
-        self.dbc = mongo.db[cont_name]
+        self.dbc = config.db[cont_name]
 
     def get_container(self, _id, query_params=None):
         """

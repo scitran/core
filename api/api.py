@@ -1,18 +1,20 @@
+import sys
 import json
-import pytz
 import webapp2
 import datetime
-import bson.objectid
 import webapp2_extras.routes
 
 from . import core
 from . import jobs
+from . import util
 from . import config
 from handlers import listhandler
 from handlers import userhandler
 from handlers import grouphandler
 from handlers import containerhandler
 from handlers import collectionshandler
+
+log = config.log
 
 #regexes used in routing table:
 routing_regexes = {
@@ -109,26 +111,33 @@ routes = [
 
     webapp2.Route(_format(r'/api/<par_cont_name:groups>/<par_id:{group_id_re}>/<cont_name:projects>'),          containerhandler.ContainerHandler, name='cont_sublist_groups', handler_method='get_all', methods=['GET']),
     webapp2.Route(_format(r'/api/<par_cont_name:{cont_name_re}>/<par_id:{cid_re}>/<cont_name:{cont_name_re}>'), containerhandler.ContainerHandler, name='cont_sublist', handler_method='get_all', methods=['GET']),
-
-
 ]
-
-
-def custom_json_serializer(obj):
-    if isinstance(obj, bson.objectid.ObjectId):
-        return str(obj)
-    elif isinstance(obj, datetime.datetime):
-        return pytz.timezone('UTC').localize(obj).isoformat()
-    raise TypeError(repr(obj) + " is not JSON serializable")
 
 
 def dispatcher(router, request, response):
     rv = router.default_dispatcher(request, response)
     if rv is not None:
-        response.write(json.dumps(rv, default=custom_json_serializer))
+        response.write(json.dumps(rv, default=util.custom_json_serializer))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
 
 
-app = webapp2.WSGIApplication(routes)
+def app_factory(*_, **__):
+    # don't use config.get_item() as we don't want to require the database at startup
+    application = webapp2.WSGIApplication(routes, debug=config.__config['core']['debug'])
+    application.router.set_dispatcher(dispatcher)
 
-app.router.set_dispatcher(dispatcher)
+    # configure new relic
+    if config.__config['core']['newrelic']:
+        try:
+            import newrelic.agent, newrelic.api.exceptions
+            newrelic.agent.initialize(config.__config['core']['newrelic'])
+            application = newrelic.agent.WSGIApplicationWrapper(application)
+            log.info('New Relic detected and loaded. Monitoring enabled.')
+        except ImportError:
+            log.critical('New Relic libraries not found.')
+            sys.exit(1)
+        except newrelic.api.exceptions.ConfigurationError:
+            log.critical('New Relic detected, but configuration invalid.')
+            sys.exit(1)
+
+    return application

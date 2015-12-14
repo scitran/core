@@ -218,11 +218,11 @@ class PermissionsListHandler(ListHandler):
             log.debug(_id)
             oid = bson.ObjectId(_id)
             update = {
-                'permissions': self.app.db.projects.find_one(oid)['permissions']
+                'permissions': config.db.projects.find_one(oid)['permissions']
             }
-            session_ids = [s['_id'] for s in self.app.db.sessions.find({'project': oid}, [])]
-            self.app.db.sessions.update_many({'project': oid}, {'$set': update})
-            self.app.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': update})
+            session_ids = [s['_id'] for s in config.db.sessions.find({'project': oid}, [])]
+            config.db.sessions.update_many({'project': oid}, {'$set': update})
+            config.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': update})
         except:
             self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
@@ -277,7 +277,7 @@ class FileListHandler(ListHandler):
         super(FileListHandler, self).__init__(request, response)
 
     def _check_ticket(self, ticket_id, _id, filename):
-        ticket = self.app.db.downloads.find_one({'_id': ticket_id})
+        ticket = config.db.downloads.find_one({'_id': ticket_id})
         if not ticket:
             self.abort(404, 'no such ticket')
         if ticket['target'] != _id or ticket['filename'] != filename or ticket['ip'] != self.request.client_addr:
@@ -307,10 +307,10 @@ class FileListHandler(ListHandler):
         hash_ = self.get_param('hash')
         if hash_ and hash_ != fileinfo['hash']:
             self.abort(409, 'file exists, hash mismatch')
-        filepath = os.path.join(self.app.config['data_path'], util.path_from_hash(fileinfo['hash']))
+        filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
         if self.get_param('ticket') == '':    # request for download ticket
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'])
-            return {'ticket': self.app.db.downloads.insert_one(ticket).inserted_id}
+            return {'ticket': config.db.downloads.insert_one(ticket).inserted_id}
         else:                                       # authenticated or ticketed (unauthenticated) download
             zip_member = self.get_param('member')
             if self.is_true('info'):
@@ -355,7 +355,7 @@ class FileListHandler(ListHandler):
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         result = None
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=self.app.config['data_path']) as tempdir_path:
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
             file_store = files.FileStore(self.request, tempdir_path, filename=kwargs.get('name'))
             payload = file_store.payload
             file_datetime = datetime.datetime.utcnow()
@@ -371,7 +371,7 @@ class FileListHandler(ListHandler):
                 file_properties['metadata'] = file_store.metadata
             if file_store.tags:
                 file_properties['tags'] = file_store.tags
-            dest_path = os.path.join(self.app.config['data_path'], util.path_from_hash(file_properties['hash']))
+            dest_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(file_properties['hash']))
             query_params = None
             if not force:
                 method = 'POST'
