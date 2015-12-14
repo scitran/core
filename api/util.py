@@ -52,7 +52,7 @@ def container_fileinfo(container, filename):
         return None
 
 
-def download_ticket(ip, type_, target, filename, size):
+def download_ticket(ip, type_, target, filename, size, projects = None):
     return {
         '_id': str(uuid.uuid4()),
         'timestamp': datetime.datetime.utcnow(),
@@ -61,6 +61,7 @@ def download_ticket(ip, type_, target, filename, size):
         'target': target,
         'filename': filename,
         'size': size,
+        'projects': projects or []
     }
 
 
