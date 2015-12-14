@@ -1,6 +1,6 @@
 #!/bin/bash
 
 (
-cd `git rev-parse --show-toplevel`
+cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 pip install -r requirements.txt
 )
