@@ -1,0 +1,7 @@
+#Development packages
+pylint==1.5.1
+pytest==2.8.5
+pytest-cov==2.2.0
+pytest-watch==3.8.0
+coverage==4.0.3
+coveralls==1.1
