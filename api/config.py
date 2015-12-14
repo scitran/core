@@ -102,9 +102,9 @@ def get_config():
     if not __config_persisted:
         initialize_db()
         log.info('Persisting configuration')
-        __config['modified'] = now
-        flat_config= util.mongo_dict(__config)
-        r = db.config.update_one({'latest': True}, {'$set': flat_config, '$setOnInsert': {'created': now}}, upsert=True)
+        __config['created'] = __config['modified'] = now
+        __config['latest'] = True
+        r = db.config.replace_one({'latest': True}, __config, upsert=True)
         __config_persisted = bool(r.modified_count)
         __last_update = now
     elif now - __last_update > datetime.timedelta(seconds=120):
@@ -115,8 +115,12 @@ def get_config():
     return __config
 
 def get_public_config():
-    projection = ['created', 'modified', 'site', 'auth']
-    return db.config.find_one({'latest': True}, projection)
+    return {
+        'created': __config.get('created'),
+        'modified': __config.get('modified'),
+        'site': __config.get('site'),
+        'auth': __config.get('auth'),
+    }
 
 def get_item(outer, inner):
     return get_config()[outer][inner]
