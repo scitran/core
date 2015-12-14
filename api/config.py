@@ -25,6 +25,7 @@ DEFAULT_CONFIG = {
         'debug': False,
         'insecure': False,
         'newrelic': None,
+        'drone_secret': None,
     },
     'site': {
         '_id': 'local',
@@ -35,7 +36,6 @@ DEFAULT_CONFIG = {
         'ssl_cert': None,
     },
     'auth': {
-        'drone_secret': None,
         'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
         'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
         'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
