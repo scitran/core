@@ -44,6 +44,8 @@ DEFAULT_CONFIG = {
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
+        'db_connect_timeout': 2000,
+        'db_server_selection_timeout': 3000,
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
     },
 }
@@ -72,7 +74,12 @@ for outer_key, scoped_config in __config.iteritems():
 if not os.path.exists(__config['persistent']['data_path']):
     os.makedirs(__config['persistent']['data_path'])
 
-db = pymongo.MongoClient(__config['persistent']['db_uri'], j=True, connectTimeoutMS=2000, serverSelectionTimeoutMS=3000).get_default_database()
+db = pymongo.MongoClient(
+    __config['persistent']['db_uri'],
+    j=True,
+    connectTimeoutMS=__config['persistent']['db_connect_timeout'],
+    serverSelectionTimeoutMS=__config['persistent']['db_server_selection_timeout']
+).get_default_database()
 
 
 def initialize_db():
