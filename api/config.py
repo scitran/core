@@ -19,6 +19,7 @@ logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests libra
 logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence Paste library
 
 
+# NOTE: Keep in sync with environment variables in sample.config file.
 DEFAULT_CONFIG = {
     'core': {
         'log_level': 'info',
@@ -44,8 +45,8 @@ DEFAULT_CONFIG = {
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
-        'db_connect_timeout': 5000,
-        'db_server_selection_timeout': 10000,
+        'db_connect_timeout': '2000',
+        'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
     },
 }
@@ -80,6 +81,7 @@ db = pymongo.MongoClient(
     connectTimeoutMS=__config['persistent']['db_connect_timeout'],
     serverSelectionTimeoutMS=__config['persistent']['db_server_selection_timeout']
 ).get_default_database()
+log.debug(str(db))
 
 
 def initialize_db():
