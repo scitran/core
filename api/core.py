@@ -19,11 +19,56 @@ from . import tempdir as tempfile
 
 log = config.log
 
+def _filter_check(property_filter, property_values):
+    minus = set(property_filter.get('-', []))
+    plus = set(property_filter.get('+', []))
+    if not minus.isdisjoint(property_values):
+        return False
+    if plus and plus.isdisjoint(property_values):
+        return False
+    return True
 
-def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, attachments=True):
+
+def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, filters):
     for f in container.get('files', []):
-        if (not attachments or (type(attachments) == list and f['name'] not in attachments)) and 'attachment' in f.get('tags', []):
-            continue
+        if filters:
+            # Here we use filters in the payload to exclude/include files.
+            # To pass a single filter, each of its conditions should be satisfied.
+            # If a file pass at least one filter, it is included in the targets.
+            # For example:
+            #
+            # download_payload = {
+            #     'optional': True,
+            #     'nodes': [{'level':'project', '_id':project_id}],
+            #     'filters':[{
+            #         'tags':{'+':['incomplete']}
+            #     },
+            #     {
+            #         'types':{'-':['dicom']}
+            #     }]
+            # }
+            # will download files with tag 'incomplete' OR type different from 'dicom'
+            #
+            # download_payload = {
+            #     'optional': True,
+            #     'nodes': [{'level':'project', '_id':project_id}],
+            #     'filters':[{
+            #         'tags':{'+':['incomplete']},
+            #         'types':{'+':['dicom']}
+            #     }]
+            # }
+            # will download only files with tag 'incomplete' AND type different from 'dicom'
+            filtered = True
+            for filter_ in filters:
+                type_as_list = [f['type']] if f.get('type') else []
+                if (
+                    _filter_check(filter_.get('tags', {}), f.get('tags', [])) and
+                    _filter_check(filter_.get('types', {}), type_as_list)
+                    ):
+                    filtered = False
+                    break
+            if filtered:
+                continue
         if optional or not f.get('optional', False):
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
@@ -173,32 +218,32 @@ class Core(base.RequestHandler):
             if item['level'] == 'project':
                 project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
-                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 sessions = config.db.sessions.find({'project': item_id}, ['label', 'files'])
                 session_dict = {session['_id']: session for session in sessions}
                 acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
                 for session in session_dict.itervalues():
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
-                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
                     acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
             elif item['level'] == 'session':
                 session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled')
-                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + acq.get('label', 'untitled')
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
             elif item['level'] == 'acquisition':
                 acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
                 session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
-                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
@@ -222,7 +267,7 @@ class Core(base.RequestHandler):
                 projects.append(item_id)
                 prefix = project['name']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
-                                                       file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
+                                                       file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
                 subject_prefixes = {
                     'missing_subject': prefix + '/missing_subject'
@@ -233,7 +278,7 @@ class Core(base.RequestHandler):
                     if subj_code == 'subject':
                         subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
-                                                               file_cnt, req_spec['optional'], data_path, False)
+                                                               file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                         subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
                     elif subj_code:
                         sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
@@ -246,12 +291,12 @@ class Core(base.RequestHandler):
                     for session in ses_list:
                         session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
-                                                               file_cnt, req_spec['optional'], data_path, False)
+                                                               file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                         acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
                         for acq in acquisitions:
                             acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
-                                                                   file_cnt, req_spec['optional'], data_path, False)
+                                                                   file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
@@ -307,7 +352,7 @@ class Core(base.RequestHandler):
             validator = validators.payload_from_schema_file(self, 'input/download.json')
             validator(req_spec, 'POST')
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
-            if self.request.GET.get('format') == 'bids':
+            if self.get_param('format') == 'bids':
                 return self._preflight_archivestream_bids(req_spec)
             else:
                 return self._preflight_archivestream(req_spec)
