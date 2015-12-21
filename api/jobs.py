@@ -22,7 +22,6 @@ JOB_STATES = [
     'running',  # Job has been handed to an engine and is being processed
     'failed',   # Job has an expired heartbeat (orphaned) or has suffered an error
     'complete', # Job has successfully completed
-
 ]
 
 JOB_STATES_ALLOWED_MUTATE = [
@@ -169,7 +168,7 @@ def generate_formula(algorithm_id, i):
                 'location': '/input/' + i['filename'],
             }
         ],
-        'transform': {
+        'target': {
             'command': [ 'echo', 'No command specified for ' + algorithm_id],
             'env': { },
             'dir': "/",
@@ -186,11 +185,11 @@ def generate_formula(algorithm_id, i):
 
     if algorithm_id == 'dcm2nii':
         f['inputs'][0]['uri'] = '/opt/flywheel-temp/dcm_convert-0.1.1.tar'
-        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
+        f['target']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run /input/' + i['filename'] + ' /output/' + i['filename'].split('_')[0]]
 
     elif algorithm_id == 'qa':
         f['inputs'][0]['uri'] = '/opt/flywheel-temp/qa-report-fmri-0.0.2.tar'
-        f['transform']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run; exit 0']
+        f['target']['command'] = ['bash', '-c', 'mkdir /output; /scripts/run; exit 0']
     else:
         raise Exception('Command for algorithm ' + algorithm_id + ' not specified')
 
