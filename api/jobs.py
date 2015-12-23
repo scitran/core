@@ -165,7 +165,7 @@ def generate_formula(algorithm_id, i):
             {
                 'type': 'scitran',
                 'uri': '/' + i['container_type'] + '/' + i['container_id'] + '/files/' + i['filename'],
-                'location': '/input/' + i['filename'],
+                'location': '/input',
             }
         ],
         'target': {
