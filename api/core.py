@@ -340,13 +340,15 @@ class Core(base.RequestHandler):
                 prefix = '/'.join([arc_prefix, project['group'], project['name']])
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
-                for session in sessions:
+                session_dict = {session['_id']: session for session in sessions}
+                acquisitions = self.app.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
+                for session in session_dict.itervalues():
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
                     total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
-                    acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
-                    for acq in acquisitions:
-                        acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
-                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
+                for acq in acquisitions:
+                    session = session_dict[acq['session']]
+                    acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                    total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt, filter_)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
@@ -428,7 +430,11 @@ class Core(base.RequestHandler):
         stream = cStringIO.StringIO()
         with tarfile.open(mode='w|', fileobj=stream) as archive:
             for filepath, arcpath, _ in ticket['target']:
-                yield archive.gettarinfo(filepath, arcpath).tobuf()
+                try:
+                    yield archive.gettarinfo(filepath, arcpath).tobuf()
+                except Exception as e:
+                    log.warning(str(e))
+                    continue
                 with open(filepath, 'rb') as fd:
                     for chunk in iter(lambda: fd.read(CHUNKSIZE), ''):
                         yield chunk
