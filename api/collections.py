@@ -328,6 +328,7 @@ class CollectionSessions(sessions.Sessions):
         for sess in sessions:
             sess['measurements'] = session_measurements.get(sess['_id'], None)
             sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+            sess['attachment_count'] = len([f for f in sess.get('files', []) if f.get('flavor') == 'attachment'])
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -364,6 +365,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
             acq.setdefault('timestamp', datetime.datetime.utcnow())
+            acq['attachment_count'] = len([f for f in acq.get('files', []) if f.get('flavor') == 'attachment'])
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
