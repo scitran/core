@@ -115,7 +115,7 @@ class Sessions(containers.ContainerList):
             query = {'group': gid}
         else:
             query = {}
-        projection = ['label', 'subject_code', 'subject.code', 'project', 'group', 'subject.age', 'subject.sex']
+        projection = ['label', 'subject_code', 'subject.code', 'project', 'group', 'subject.age', 'subject.sex', 'files']
         sessions = self._get(query, projection, self.request.GET.get('admin', '').lower() in ('1', 'true'))
         session_measurements = {}
         if self.request.GET.get('measurements', '').lower() in ('1', 'true'):
