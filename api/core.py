@@ -83,6 +83,9 @@ DOWNLOAD_SCHEMA = {
                 'additionalProperties': False
             },
         },
+        'filter': {
+            'type': 'object'
+        },
     },
     'required': ['optional', 'nodes'],
     'additionalProperties': False
@@ -101,10 +104,19 @@ RESET_SCHEMA = {
     'additionalProperties': False
 }
 
-def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, attachments=True):
+def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, filter_=None):
     for f in container['files']:
-        if (not attachments or (type(attachments) == list and f['filename'] not in attachments)) and 'attachment' in f.get('tags', []):
-            continue
+        if filter_:
+            if not filter_['attachments'] and f['flavor'] == 'attachment':
+                continue
+            if not filter_['dicom'] and f['filetype'] == 'dicom':
+                continue
+            if not filter_['nifti'] and f['filetype'] == 'nifti':
+                continue
+            if not filter_['montage'] and f['filetype'] == 'montage':
+                continue
+            if not filter_['other'] and f['flavor'] != 'attachment' and f['filetype'] not in ['montage', 'nifti', 'dicom']:
+                continue
         if optional or not f.get('optional', False):
             filepath = os.path.join(data_path, str(container['_id'])[-3:] + '/' + str(container['_id']), f['filename'])
             if os.path.exists(filepath): # silently skip missing files
@@ -316,7 +328,7 @@ class Core(base.RequestHandler):
     def _preflight_archivestream(self, req_spec):
         data_path = self.app.config['data_path']
         arc_prefix = 'sdm'
-
+        filter_ = req_spec.get('filter')
         file_cnt = 0
         total_size = 0
         targets = []
@@ -326,30 +338,30 @@ class Core(base.RequestHandler):
             if item['level'] == 'project':
                 project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'name', 'files'])
                 prefix = '/'.join([arc_prefix, project['group'], project['name']])
-                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
                 sessions = self.app.db.sessions.find({'project': item_id}, ['label', 'files'])
                 for session in sessions:
                     session_prefix = prefix + '/' + session.get('label', 'untitled')
-                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
                     acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
                     for acq in acquisitions:
                         acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
-                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
                 prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled')
-                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
                 acquisitions = self.app.db.acquisitions.find({'session': item_id}, ['label', 'files'])
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + acq.get('label', 'untitled')
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
             elif item['level'] == 'acquisition':
                 acq = self.app.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
                 session = self.app.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
                 prefix = project['group'] + '/' + project['name'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
-                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path)
+                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
@@ -358,7 +370,7 @@ class Core(base.RequestHandler):
 
     def _preflight_archivestream_bids(self, req_spec):
         data_path = self.app.config['data_path']
-
+        filter_ = req_spec.get('filter')
         file_cnt = 0
         total_size = 0
         targets = []
@@ -374,7 +386,7 @@ class Core(base.RequestHandler):
                 projects.append(item_id)
                 prefix = project['name']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
-                                                       file_cnt, req_spec['optional'], data_path, ['README', 'dataset_description.json'])
+                                                       file_cnt, req_spec['optional'], data_path, filter_)
                 ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
                 subject_prefixes = {
                     'missing_subject': prefix + '/missing_subject'
@@ -385,7 +397,7 @@ class Core(base.RequestHandler):
                     if subj_code == 'subject':
                         subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
-                                                               file_cnt, req_spec['optional'], data_path, False)
+                                                               file_cnt, req_spec['optional'], data_path, filter_)
                         subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
                     elif subj_code:
                         sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
@@ -398,12 +410,12 @@ class Core(base.RequestHandler):
                     for session in ses_list:
                         session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
-                                                               file_cnt, req_spec['optional'], data_path, False)
+                                                               file_cnt, req_spec['optional'], data_path, filter_)
                         acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
                         for acq in acquisitions:
                             acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
-                                                                   file_cnt, req_spec['optional'], data_path, False)
+                                                                   file_cnt, req_spec['optional'], data_path, filter_)
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
