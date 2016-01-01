@@ -348,7 +348,7 @@ class Core(base.RequestHandler):
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
                     acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
-                    total_size, file_cnt = append_targets(targets, acq, acq_prefix, total_size, file_cnt, filter_)
+                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, filter_)
             elif item['level'] == 'session':
                 session = self.app.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
                 project = self.app.db.projects.find_one({'_id': session['project']}, ['group', 'name'])
