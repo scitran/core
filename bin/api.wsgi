@@ -12,6 +12,7 @@ import uwsgidecorators
 
 from api import rules
 from api import config
+from api import jobs
 
 log = config.log
 
