@@ -14,8 +14,6 @@ from . import base
 from . import files
 from . import util
 from . import config
-from . import jobs
-from . import rules
 from .dao import reaperutil
 from . import tempdir as tempfile
 
@@ -42,52 +40,6 @@ class Core(base.RequestHandler):
     def head(self):
         """Return 200 OK."""
         pass
-
-    def hack(self):
-        for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
-
-           # This projection needs every field required to know what type of container it is & navigate to its project
-           containers = config.db[c_type].find({'files.unprocessed': True}, ['files', 'session', 'project'])
-
-           for c in containers:
-                for f in c['files']:
-                    if f.get('unprocessed'):
-                        rules.create_jobs(config.db, c, c_type, f)
-                        r = config.db[c_type].update_one(
-                                {
-                                    '_id': c['_id'],
-                                    'files': {
-                                        '$elemMatch': {
-                                            'name': f['name'],
-                                            'hash': f['hash'],
-                                        },
-                                    },
-                                },
-                                {
-                                    '$set': {
-                                        'files.$.unprocessed': False,
-                                    },
-                                },
-                                )
-                        if not r.matched_count:
-                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['name']))
-        while True:
-            j = config.db.jobs.find_one_and_update(
-                {
-                    'state': 'running',
-                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
-                },
-                {
-                    '$set': {
-                        'state': 'failed',
-                    },
-                },
-                )
-            if j is None:
-                break
-            else:
-                jobs.retry_job(config.db, j)
-
 
     def get(self):
         """Return API documentation"""
