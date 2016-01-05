@@ -14,6 +14,7 @@ from . import base
 from . import files
 from . import util
 from . import config
+from . import centralclient
 from .dao import reaperutil
 from . import tempdir as tempfile
 
@@ -270,3 +271,18 @@ class Core(base.RequestHandler):
                 s['onload'] = True
                 break
         return sites
+
+    def register(self):
+        if not config.get_item('site', 'registered'):
+            self.abort(400, 'Site not registered with central')
+        if not config.get_item('site', 'ssl_cert'):
+            self.abort(400, 'SSL cert not configured')
+        if not config.get_item('site', 'central_url'):
+            self.abort(400, 'Central URL not configured')
+        if not centralclient.update(config.db, config.get_item('site', 'ssl_cert'), config.get_item('site', 'central_url')):
+            centralclient.fail_count += 1
+        else:
+            centralclient.fail_count = 0
+        if centralclient.fail_count == 3:
+            log.warning('scitran central unreachable, purging all remotes info')
+            centralclient.clean_remotes(mongo.db)

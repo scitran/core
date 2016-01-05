@@ -57,6 +57,7 @@ routes = [
         webapp2.Route(r'/download',         core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
         webapp2.Route(r'/reaper',           core.Core, handler_method='reaper', methods=['POST']),
         webapp2.Route(r'/sites',            core.Core, handler_method='sites', methods=['GET']),
+        webapp2.Route(r'/register',         core.Core, handler_method='register', methods=['POST']),
         webapp2.Route(r'/config',           core.Config, methods=['GET']),
         webapp2.Route(r'/config.js',        core.Config, handler_method='get_js', methods=['GET'])
     ]),
@@ -72,6 +73,7 @@ routes = [
         webapp2.Route(r'/next',             jobs.Jobs, handler_method='next', methods=['GET']),
         webapp2.Route(r'/count',            jobs.Jobs, handler_method='count', methods=['GET']),
         webapp2.Route(r'/addTestJob',       jobs.Jobs, handler_method='addTestJob', methods=['GET']),
+        webapp2.Route(r'/create',           jobs.Jobs, handler_method='create', methods=['POST']),
         webapp2.Route(r'/<:[^/]+>',         jobs.Job,  name='job'),
     ]),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),

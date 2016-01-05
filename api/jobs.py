@@ -195,6 +195,7 @@ def generate_formula(algorithm_id, i):
 
     return f
 
+
 class Jobs(base.RequestHandler):
 
     """Provide /jobs API routes."""
@@ -257,6 +258,53 @@ class Jobs(base.RequestHandler):
             self.abort(500, 'Marked job as running but could not generate and save formula')
 
         return result
+
+    def create(self):
+        from . import rules # FIXME circular dependency hack
+        for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
+
+           # This projection needs every field required to know what type of container it is & navigate to its project
+           containers = config.db[c_type].find({'files.unprocessed': True}, ['files', 'session', 'project'])
+
+           for c in containers:
+                for f in c['files']:
+                    if f.get('unprocessed'):
+                        rules.create_jobs(config.db, c, c_type, f)
+                        r = config.db[c_type].update_one(
+                                {
+                                    '_id': c['_id'],
+                                    'files': {
+                                        '$elemMatch': {
+                                            'name': f['name'],
+                                            'hash': f['hash'],
+                                        },
+                                    },
+                                },
+                                {
+                                    '$set': {
+                                        'files.$.unprocessed': False,
+                                    },
+                                },
+                                )
+                        if not r.matched_count:
+                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['name']))
+        while True:
+            j = config.db.jobs.find_one_and_update(
+                {
+                    'state': 'running',
+                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
+                },
+                {
+                    '$set': {
+                        'state': 'failed',
+                    },
+                },
+                )
+            if j is None:
+                break
+            else:
+                retry_job(config.db, j)
+
 
 class Job(base.RequestHandler):
 
