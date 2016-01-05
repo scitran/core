@@ -6,7 +6,6 @@ import os
 import json
 import shutil
 import hashlib
-import pymongo
 import zipfile
 import argparse
 import datetime
@@ -15,6 +14,7 @@ import requests
 
 from api.dao import reaperutil
 from api import util
+from api import rules
 from api import config
 
 log = config.log
@@ -111,11 +111,11 @@ def data(args):
             'name': filename,
             'size': size,
             'hash': computed_hash,
-            'unprocessed': True,
             'created': created,
             'modified': modified
         }
         container.add_file(fileinfo)
+        rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)
 
 
 data_desc = """

@@ -259,35 +259,7 @@ class Jobs(base.RequestHandler):
 
         return result
 
-    def create(self):
-        from . import rules # FIXME circular dependency hack
-        for c_type in ['projects', 'collections', 'sessions', 'acquisitions']:
-
-           # This projection needs every field required to know what type of container it is & navigate to its project
-           containers = config.db[c_type].find({'files.unprocessed': True}, ['files', 'session', 'project'])
-
-           for c in containers:
-                for f in c['files']:
-                    if f.get('unprocessed'):
-                        rules.create_jobs(config.db, c, c_type, f)
-                        r = config.db[c_type].update_one(
-                                {
-                                    '_id': c['_id'],
-                                    'files': {
-                                        '$elemMatch': {
-                                            'name': f['name'],
-                                            'hash': f['hash'],
-                                        },
-                                    },
-                                },
-                                {
-                                    '$set': {
-                                        'files.$.unprocessed': False,
-                                    },
-                                },
-                                )
-                        if not r.matched_count:
-                            log.info('file modified or removed, not marked as clean: %s %s, %s' % (c_type, c, f['name']))
+    def reap_stale(self):
         while True:
             j = config.db.jobs.find_one_and_update(
                 {

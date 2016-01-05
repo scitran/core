@@ -73,7 +73,7 @@ routes = [
         webapp2.Route(r'/next',             jobs.Jobs, handler_method='next', methods=['GET']),
         webapp2.Route(r'/count',            jobs.Jobs, handler_method='count', methods=['GET']),
         webapp2.Route(r'/addTestJob',       jobs.Jobs, handler_method='addTestJob', methods=['GET']),
-        webapp2.Route(r'/create',           jobs.Jobs, handler_method='create', methods=['POST']),
+        webapp2.Route(r'/reap',             jobs.Jobs, handler_method='reap_stale', methods=['POST']),
         webapp2.Route(r'/<:[^/]+>',         jobs.Job,  name='job'),
     ]),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),

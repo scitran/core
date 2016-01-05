@@ -25,7 +25,7 @@ class ReapedAcquisition(object):
         return None
 
     def update_file(self, fileinfo):
-        update_set = {'files.$.unprocessed': True, 'files.$.modified': datetime.datetime.utcnow()}
+        update_set = {'files.$.modified': datetime.datetime.utcnow()}
         # in this method, we are overriding an existing file.
         # update_set allows to update all the fileinfo like size, hash, etc.
         fileinfo.update(self.fileinfo)
