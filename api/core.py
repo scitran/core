@@ -83,6 +83,9 @@ DOWNLOAD_SCHEMA = {
                 'additionalProperties': False
             },
         },
+        # filter is expected (if not null) to be a json object with some boolean properties:
+        # 'attachments', 'dicom', 'nifti', 'montage', 'other'
+        # Downloads will contain only files of the selected types plus attachments if 'attachments' is true.
         'filter': {
             'type': 'object'
         },
