@@ -391,15 +391,10 @@ class FileListHandler(ListHandler):
                         break
                 else:
                     method = 'POST'
+            file_store.move_file(dest_path)
             payload_validator(payload, method)
             payload.update(file_properties)
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-            try:
-                file_store.move_file(dest_path)
-
-            except IOError as e:
-                result = keycheck(storage.exec_op)('DELETE', _id, payload=payload)
-                raise e
         return {'modified': result.modified_count}
