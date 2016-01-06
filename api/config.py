@@ -4,8 +4,6 @@ import logging
 import pymongo
 import datetime
 
-from . import util
-
 
 logging.basicConfig(
     format='%(asctime)s %(name)16.16s %(filename)24.24s %(lineno)5d:%(levelname)4.4s %(message)s',

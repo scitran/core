@@ -1,7 +1,6 @@
 import sys
 import json
 import webapp2
-import datetime
 import webapp2_extras.routes
 
 from . import core

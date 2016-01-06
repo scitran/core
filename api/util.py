@@ -1,12 +1,6 @@
 import os
-import copy
 import pytz
 import uuid
-import shutil
-import difflib
-import hashlib
-import pymongo
-import zipfile
 import datetime
 import mimetypes
 import bson.objectid

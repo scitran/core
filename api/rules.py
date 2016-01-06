@@ -1,15 +1,9 @@
-
-import logging
-log = logging.getLogger('scitran.api.jobs')
-
-import bson
-import pymongo
-import datetime
 import fnmatch
 
-from . import base
-from . import util
 from . import jobs
+from . import config
+
+log = config.log
 
 
 #

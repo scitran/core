@@ -5,9 +5,6 @@ API request handlers for process-job-handling.
 # We shadow the standard library; this is a workaround.
 from __future__ import absolute_import
 
-import logging
-log = logging.getLogger('scitran.api.jobs')
-
 import bson
 import pymongo
 import datetime
@@ -15,6 +12,8 @@ from collections import namedtuple
 
 from . import base
 from . import config
+
+log = config.log
 
 
 JOB_STATES = [

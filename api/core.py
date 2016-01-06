@@ -1,10 +1,8 @@
 import os
 import re
-import cgi
 import bson
 import json
 import tarfile
-import zipfile
 import datetime
 import markdown
 import cStringIO
