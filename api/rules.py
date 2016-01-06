@@ -136,8 +136,7 @@ def create_jobs(db, container, container_type, file_):
     job_list = []
 
     # Get configured rules for this project
-    project = get_project_for_container(db, container)
-    rules = project.get('rules', [])
+    rules = get_rules_for_container(db, container)
 
     # Add hardcoded rules that cannot be removed or changed
     for hardcoded_rule in HARDCODED_RULES:
@@ -153,14 +152,16 @@ def create_jobs(db, container, container_type, file_):
     return job_list
 
 # TODO: consider moving to a module that has a variety of hierarchy-management helper functions
-def get_project_for_container(db, container):
+def get_rules_for_container(db, container):
     """
     Recursively walk the hierarchy until the project object is found.
     """
     if 'session' in container:
         session = db.sessions.find_one({'_id': container['session']})
-        return get_project_for_container(db, session)
+        return get_rules_for_container(db, session)
     elif 'project' in container:
         project = db.projects.find_one({'_id': container['project']})
-        return project
-    raise Exception('Hierarchy walking not implemented for container ' + str(container['_id']))
+        return get_rules_for_container(db, project)
+    else:
+        # Assume container is a project, or a collection (which currently cannot have a rules property)
+        return container.get('rules', [])
