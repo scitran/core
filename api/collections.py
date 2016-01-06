@@ -315,7 +315,7 @@ class CollectionSessions(sessions.Sessions):
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
-        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1, 'subject.age': 1, 'subject.sex': 1}
+        projection = {'label': 1, 'subject.code': 1, 'notes': 1, 'timestamp': 1, 'timezone': 1, 'subject.age': 1, 'subject.sex': 1, 'files': 1}
         projection['permissions'] = {'$elemMatch': {'_id': self.uid, 'site': self.source_site}}
         sessions = list(self.dbc.find(query, projection)) # avoid permissions checking by not using ContainerList._get()
         session_measurements = {}
@@ -328,6 +328,7 @@ class CollectionSessions(sessions.Sessions):
         for sess in sessions:
             sess['measurements'] = session_measurements.get(sess['_id'], None)
             sess['subject_code'] = sess.get('subject', {}).get('code', '') # FIXME when subject is pulled out of session
+            sess['attachment_count'] = len([f for f in sess.get('files', []) if f.get('flavor') == 'attachment'])
         if self.debug:
             for sess in sessions:
                 sid = str(sess['_id'])
@@ -364,6 +365,7 @@ class CollectionAcquisitions(acquisitions.Acquisitions):
         acquisitions = list(self.dbc.find(query, projection))
         for acq in acquisitions:
             acq.setdefault('timestamp', datetime.datetime.utcnow())
+            acq['attachment_count'] = len([f for f in acq.get('files', []) if f.get('flavor') == 'attachment'])
         if self.debug:
             for acq in acquisitions:
                 aid = str(acq['_id'])
