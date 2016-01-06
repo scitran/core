@@ -363,6 +363,7 @@ class FileListHandler(ListHandler):
                 'name': file_store.filename,
                 'size': file_store.size,
                 'hash': file_store.hash,
+                'type': file_store.filetype,
                 'created': file_datetime,
                 'modified': file_datetime,
                 'unprocessed': True

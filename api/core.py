@@ -130,6 +130,7 @@ class Core(base.RequestHandler):
                 modified=modified,
                 size=file_store.size,
                 hash=file_store.hash,
+                type=file_store.filetype,
                 unprocessed=True,
                 tags=file_store.tags,
                 metadata=file_store.metadata
