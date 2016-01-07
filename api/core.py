@@ -11,8 +11,9 @@ import cStringIO
 import validators
 
 from . import base
-from . import files
 from . import util
+from . import files
+from . import rules
 from . import config
 from . import centralclient
 from .dao import reaperutil
