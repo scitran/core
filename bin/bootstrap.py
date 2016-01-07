@@ -19,15 +19,13 @@ from api import config
 
 log = config.log
 
-#config.initialize_db()
-
 
 def clean(args):
     config.db.client.drop_database(config.db)
 
 clean_desc = """
 example:
-./bin/bootstrap.py clean mongodb://localhost/scitran
+./bin/bootstrap.py clean
 """
 
 
@@ -69,7 +67,7 @@ def users(args):
 
 users_desc = """
 example:
-./bin/bootstrap.py users mongodb://localhost/scitran users_and_groups.json
+./bin/bootstrap.py users users_and_groups.json
 """
 
 
@@ -120,7 +118,7 @@ def data(args):
 
 data_desc = """
 example:
-./bin/bootstrap.py data mongodb://localhost/scitran /tmp/data /tmp/sorted
+./bin/bootstrap.py data /tmp/data
 """
 
 
