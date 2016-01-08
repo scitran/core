@@ -164,7 +164,7 @@ def generate_formula(algorithm_id, i):
             },
             {
                 'type': 'scitran',
-                'uri': '/' + i['container_type'] + '/' + i['container_id'] + '/files/' + i['filename'],
+                'uri': '/' + i['container_type'] + 's/' + i['container_id'] + '/files/' + i['filename'],
                 'location': '/input',
             }
         ],
@@ -177,7 +177,7 @@ def generate_formula(algorithm_id, i):
         'outputs': [
             {
                 'type': 'scitran',
-                'uri': '/' + i['container_type'] + '/' + i['container_id'] + '/files/',
+                'uri': '/' + i['container_type'] + 's/' + i['container_id'] + '/files/',
                 'location': '/output',
             },
         ],
