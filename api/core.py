@@ -11,9 +11,11 @@ import cStringIO
 import validators
 
 from . import base
-from . import files
 from . import util
+from . import files
+from . import rules
 from . import config
+from . import centralclient
 from .dao import reaperutil
 from . import tempdir as tempfile
 
@@ -123,28 +125,28 @@ class Core(base.RequestHandler):
                 file_store = files.FileStore(self.request, tempdir_path)
             except files.FileStoreException as e:
                 self.abort(400, str(e))
-            created = modified = datetime.datetime.now()
+            now = datetime.datetime.now()
             fileinfo = dict(
                 name=file_store.filename,
-                created=created,
-                modified=modified,
+                created=now,
+                modified=now,
                 size=file_store.size,
                 hash=file_store.hash,
                 type=file_store.filetype,
-                unprocessed=True,
                 tags=file_store.tags,
                 metadata=file_store.metadata
             )
             container = reaperutil.create_container_hierarchy(file_store.metadata)
             f = container.find(file_store.filename)
-            created = modified = datetime.datetime.utcnow()
             target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
             if not f:
                 file_store.move_file(target_path)
                 container.add_file(fileinfo)
+                rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)
             elif not file_store.identical(util.path_from_hash(fileinfo['hash']), f['hash']):
                 file_store.move_file(target_path)
                 container.update_file(fileinfo)
+                rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)
             throughput = file_store.size / file_store.duration.total_seconds()
             log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
@@ -270,3 +272,18 @@ class Core(base.RequestHandler):
                 s['onload'] = True
                 break
         return sites
+
+    def register(self):
+        if not config.get_item('site', 'registered'):
+            self.abort(400, 'Site not registered with central')
+        if not config.get_item('site', 'ssl_cert'):
+            self.abort(400, 'SSL cert not configured')
+        if not config.get_item('site', 'central_url'):
+            self.abort(400, 'Central URL not configured')
+        if not centralclient.update(config.db, config.get_item('site', 'ssl_cert'), config.get_item('site', 'central_url')):
+            centralclient.fail_count += 1
+        else:
+            centralclient.fail_count = 0
+        if centralclient.fail_count == 3:
+            log.warning('scitran central unreachable, purging all remotes info')
+            centralclient.clean_remotes(mongo.db)

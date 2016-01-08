@@ -9,7 +9,6 @@
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },
     "instrument":     { "type": "string" },
-    "unprocessed":    { "type": "boolean"},
     "measurements": {
       "items": { "type": "string"},
       "type": "array",

@@ -6,6 +6,7 @@ import datetime
 from .. import base
 from .. import util
 from .. import files
+from .. import rules
 from .. import config
 from .. import validators
 from .. import tempdir as tempfile
@@ -366,7 +367,6 @@ class FileListHandler(ListHandler):
                 'type': file_store.filetype,
                 'created': file_datetime,
                 'modified': file_datetime,
-                'unprocessed': True
             }
             if file_store.metadata:
                 file_properties['metadata'] = file_store.metadata
@@ -398,4 +398,5 @@ class FileListHandler(ListHandler):
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+            rules.create_jobs(config.db, container, cont_name, file_properties)
         return {'modified': result.modified_count}

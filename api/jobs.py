@@ -195,6 +195,7 @@ def generate_formula(algorithm_id, i):
 
     return f
 
+
 class Jobs(base.RequestHandler):
 
     """Provide /jobs API routes."""
@@ -257,6 +258,25 @@ class Jobs(base.RequestHandler):
             self.abort(500, 'Marked job as running but could not generate and save formula')
 
         return result
+
+    def reap_stale(self):
+        while True:
+            j = config.db.jobs.find_one_and_update(
+                {
+                    'state': 'running',
+                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
+                },
+                {
+                    '$set': {
+                        'state': 'failed',
+                    },
+                },
+                )
+            if j is None:
+                break
+            else:
+                retry_job(config.db, j)
+
 
 class Job(base.RequestHandler):
 

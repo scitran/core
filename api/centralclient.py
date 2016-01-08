@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Client registers this instance with a central instance registery.
 
@@ -17,6 +16,8 @@ import logging.config
 logging.basicConfig()
 log = logging.getLogger('scitran.api.centralclient')
 logging.getLogger('urllib3').setLevel(logging.WARNING)  # silence Requests library logging
+
+fail_count = 0
 
 
 def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
