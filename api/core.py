@@ -32,32 +32,6 @@ def _filter_check(property_filter, property_values):
 def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, filters):
     for f in container.get('files', []):
         if filters:
-            # Here we use filters in the payload to exclude/include files.
-            # To pass a single filter, each of its conditions should be satisfied.
-            # If a file pass at least one filter, it is included in the targets.
-            # For example:
-            #
-            # download_payload = {
-            #     'optional': True,
-            #     'nodes': [{'level':'project', '_id':project_id}],
-            #     'filters':[{
-            #         'tags':{'+':['incomplete']}
-            #     },
-            #     {
-            #         'types':{'-':['dicom']}
-            #     }]
-            # }
-            # will download files with tag 'incomplete' OR type different from 'dicom'
-            #
-            # download_payload = {
-            #     'optional': True,
-            #     'nodes': [{'level':'project', '_id':project_id}],
-            #     'filters':[{
-            #         'tags':{'+':['incomplete']},
-            #         'types':{'+':['dicom']}
-            #     }]
-            # }
-            # will download only files with tag 'incomplete' AND type different from 'dicom'
             filtered = True
             for filter_ in filters:
                 type_as_list = [f['type']] if f.get('type') else []
@@ -332,6 +306,34 @@ class Core(base.RequestHandler):
 
 
     def download(self):
+        """
+        In downloads we use filters in the payload to exclude/include files.
+        To pass a single filter, each of its conditions should be satisfied.
+        If a file pass at least one filter, it is included in the targets.
+        For example:
+
+        download_payload = {
+            'optional': True,
+            'nodes': [{'level':'project', '_id':project_id}],
+            'filters':[{
+                'tags':{'+':['incomplete']}
+            },
+            {
+                'types':{'-':['dicom']}
+            }]
+        }
+        will download files with tag 'incomplete' OR type different from 'dicom'
+
+        download_payload = {
+            'optional': True,
+            'nodes': [{'level':'project', '_id':project_id}],
+            'filters':[{
+                'tags':{'+':['incomplete']},
+                'types':{'+':['dicom']}
+            }]
+        }
+        will download only files with tag 'incomplete' AND type different from 'dicom'
+        """
         ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = config.db.downloads.find_one({'_id': ticket_id})
