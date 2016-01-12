@@ -50,15 +50,12 @@ HARDCODED_RULES = [
 ]
 
 def _log_file_key_error(file_, container, error):
-    log.warning('file ' + file_['name'] + ' in container ' + str(container['_id']) + ' ' + error)
+    log.warning('file ' + file_.get('name', '?') + ' in container ' + str(container.get('_id', '?')) + ' ' + error)
 
 def eval_match(match_type, match_param, file_, container):
     """
     Given a match entry, return if the match succeeded.
     """
-
-    if not match_type in MATCH_TYPES:
-        raise Exception('Unsupported match type ' + match_type)
 
     # Match the file's type
     if match_type == 'file.type':
@@ -75,7 +72,7 @@ def eval_match(match_type, match_param, file_, container):
     # Match any of the file's measurements
     elif match_type == 'file.measurements':
         try:
-            return match_param in file_[measurements]
+            return match_param in file_['measurements']
         except KeyError:
             _log_file_key_error(file_, container, 'has no measurements key')
             return False
