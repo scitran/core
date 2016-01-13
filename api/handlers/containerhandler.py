@@ -199,7 +199,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
-        self._filter_all_permissions(results, self.uid, self.user_site)
+        self._filter_all_permissions(results, uid, user['site'])
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, results)
         return results
