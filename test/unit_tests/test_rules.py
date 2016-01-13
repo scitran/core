@@ -169,3 +169,33 @@ def test_eval_rule_all():
 	result = rules.eval_rule(rule, file_, container)
 	assert result == False
 
+def test_eval_rule_any_all():
+	container = {'a': 'b'}
+
+	rule = {
+		"any": [
+			["file.type",             "dicom"     ],
+			["file.name",             "*.dcm"     ],
+		],
+		"all": [
+			["file.type",             "dicom"     ],
+			["file.name",             "*.dcm"     ],
+		],
+		"alg": "dcm2nii",
+	}
+
+	file_ = {'name': 'hello.dcm', 'type': 'a'}
+	result = rules.eval_rule(rule, file_, container)
+	assert result == False
+
+	file_ = {'name': 'hello.txt', 'type': 'dicom'}
+	result = rules.eval_rule(rule, file_, container)
+	assert result == False
+
+	file_ = {'name': 'hello.dcm', 'type': 'dicom'}
+	result = rules.eval_rule(rule, file_, container)
+	assert result == True
+
+	file_ = {'name': 'hello.txt', 'type': 'a'}
+	result = rules.eval_rule(rule, file_, container)
+	assert result == False
