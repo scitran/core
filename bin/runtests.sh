@@ -7,7 +7,10 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
 (
 case "$1-$2" in
-  unit-|unit---ci)
+  unit-)
+    PYTHONPATH=. py.test $unit_test_path
+    ;;
+  unit---ci)
     PYTHONPATH=. py.test --cov=api --cov-report=term-missing $unit_test_path
     ;;
   unit---watch)
