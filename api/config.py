@@ -75,9 +75,10 @@ if not os.path.exists(__config['persistent']['data_path']):
 
 db = pymongo.MongoClient(
     __config['persistent']['db_uri'],
-    j=True,
+    j=True, # Requests only return once write has hit the DB journal
     connectTimeoutMS=__config['persistent']['db_connect_timeout'],
-    serverSelectionTimeoutMS=__config['persistent']['db_server_selection_timeout']
+    serverSelectionTimeoutMS=__config['persistent']['db_server_selection_timeout'],
+    connect=False, # Connect on first operation to avoid multi-threading related errors
 ).get_default_database()
 log.debug(str(db))
 
