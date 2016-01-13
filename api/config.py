@@ -78,7 +78,7 @@ db = pymongo.MongoClient(
     j=True,
     connectTimeoutMS=__config['persistent']['db_connect_timeout'],
     serverSelectionTimeoutMS=__config['persistent']['db_server_selection_timeout'],
-    connect=False
+    connect=False,
 ).get_default_database()
 log.debug(str(db))
 
