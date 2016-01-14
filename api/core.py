@@ -237,12 +237,12 @@ class Core(base.RequestHandler):
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
-                project = self.app.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files', 'notes'])
+                project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files', 'notes'])
                 projects.append(item_id)
                 prefix = project['name']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                ses_or_subj_list = self.app.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
+                ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
                 subject_prefixes = {
                     'missing_subject': prefix + '/missing_subject'
                 }
@@ -266,7 +266,7 @@ class Core(base.RequestHandler):
                         session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
                                                                file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                        acquisitions = self.app.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
+                        acquisitions = config.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
                         for acq in acquisitions:
                             acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
@@ -274,7 +274,7 @@ class Core(base.RequestHandler):
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
-        self.app.db.downloads.insert_one(ticket)
+        config.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
     def _archivestream(self, ticket):
@@ -348,7 +348,7 @@ class Core(base.RequestHandler):
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
             for project_id in ticket['projects']:
-                self.app.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
+                config.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
             req_spec = self.request.json_body
             validator = validators.payload_from_schema_file(self, 'input/download.json')
