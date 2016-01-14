@@ -73,6 +73,8 @@ for outer_key, scoped_config in __config.iteritems():
 if not os.path.exists(__config['persistent']['data_path']):
     os.makedirs(__config['persistent']['data_path'])
 
+log.setLevel(getattr(logging, __config['core']['log_level'].upper()))
+
 db = pymongo.MongoClient(
     __config['persistent']['db_uri'],
     j=True, # Requests only return once write has hit the DB journal
