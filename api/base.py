@@ -54,7 +54,7 @@ class RequestHandler(webapp2.RequestHandler):
                     log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
 
                     # Set user's auth provider avatar
-                    # TODO: after api starts reading toml config, switch on auth.provider rather than manually comparing endpoint URL.
+                    # TODO: switch on auth.provider rather than manually comparing endpoint URL.
                     if config.get_item('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
                         provider_avatar = identity.get('picture', '')
                         # Remove attached size param from URL.
