@@ -224,6 +224,11 @@ class Jobs(base.RequestHandler):
 
         # Map mongo result to a useful object
         states = {}
+
+        # Don't randomly omit keys that are zero
+        for s in JOB_STATES:
+            states[s] = 0
+
         for r in result:
             key = r['_id']
             val = r['count']
