@@ -239,7 +239,7 @@ class Core(base.RequestHandler):
             if item['level'] == 'project':
                 project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files', 'notes'])
                 projects.append(item_id)
-                prefix = project['name']
+                prefix = project['label']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
