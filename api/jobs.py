@@ -259,6 +259,9 @@ class Jobs(base.RequestHandler):
         return result
 
     def reap_stale(self):
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
         while True:
             j = config.db.jobs.find_one_and_update(
                 {
