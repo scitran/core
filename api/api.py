@@ -71,6 +71,7 @@ routes = [
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
         webapp2.Route(r'/next',             jobs.Jobs, handler_method='next', methods=['GET']),
         webapp2.Route(r'/count',            jobs.Jobs, handler_method='count', methods=['GET']),
+        webapp2.Route(r'/stats',            jobs.Jobs, handler_method='stats', methods=['GET']),
         webapp2.Route(r'/addTestJob',       jobs.Jobs, handler_method='addTestJob', methods=['GET']),
         webapp2.Route(r'/reap',             jobs.Jobs, handler_method='reap_stale', methods=['POST']),
         webapp2.Route(r'/<:[^/]+>',         jobs.Job,  name='job'),

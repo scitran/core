@@ -217,6 +217,20 @@ class Jobs(base.RequestHandler):
 
         return config.db.jobs.count()
 
+    def stats(self):
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+        result = config.db.jobs.aggregate([{"$group": {"_id": "$state", "count": {"$sum": 1}}}])
+
+        # Map mongo result to a useful object
+        states = {}
+        for r in result:
+            key = r['_id']
+            val = r['count']
+            states[key] = val
+
+        return states
+
     def next(self):
         """
         Atomically change a 'pending' job to 'running' and returns it. Updates timestamp.
