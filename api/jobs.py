@@ -220,21 +220,15 @@ class Jobs(base.RequestHandler):
     def stats(self):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
+
+        # A simple count of jobs by state
         result = config.db.jobs.aggregate([{"$group": {"_id": "$state", "count": {"$sum": 1}}}])
 
         # Map mongo result to a useful object
-        states = {}
+        stats = {s: 0 for s in JOB_STATES}
+        stats.update({r['_id']: r['count'] for r in result})
 
-        # Don't randomly omit keys that are zero
-        for s in JOB_STATES:
-            states[s] = 0
-
-        for r in result:
-            key = r['_id']
-            val = r['count']
-            states[key] = val
-
-        return states
+        return stats
 
     def next(self):
         """
