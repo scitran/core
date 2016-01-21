@@ -47,6 +47,9 @@ FileInput = namedtuple('input', ['container_type', 'container_id', 'filename', '
 
 # Convert a dictionary to a FileInput
 def convert_to_fileinput(d):
+    if d['container_type'].endswith('s'):
+        raise Exception('Container type cannot be plural :|')
+
     return FileInput(
         container_type= d['container_type'],
         container_id  = d['container_id'],
@@ -100,6 +103,9 @@ def queue_job(db, algorithm_id, input, attempt_n=1, previous_job_id=None):
 
     if algorithm_id not in ALGORITHMS:
         raise Exception('Usupported algorithm ' + algorithm_id)
+
+    if input.container_type.endswith('s'):
+        raise Exception('Container type cannot be plural :|')
 
     # TODO validate container exists
 
