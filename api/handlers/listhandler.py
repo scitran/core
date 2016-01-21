@@ -398,5 +398,5 @@ class FileListHandler(ListHandler):
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-            rules.create_jobs(config.db, container, cont_name, file_properties)
+            rules.create_jobs(config.db, container, cont_name[:-1], file_properties)
         return {'modified': result.modified_count}
