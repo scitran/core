@@ -102,7 +102,7 @@ echo "Activating Virtualenv"
 source $SCITRAN_RUNTIME_PATH/bin/activate
 
 echo "Installing Python requirements"
-pip install -U -r requirements.txt
+bin/install.sh
 
 
 # Launch mongod
