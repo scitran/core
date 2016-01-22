@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "EngineMetadata",
+    "type": "object",
+    "properties": {
+        "group":        {"$ref": "group.json"},
+        "project":      {"$ref": "project.json"},
+        "session":      {"$ref": "session.json"},
+        "acquisition":  {"$ref": "acquisition.json"},
+        "files":        {
+            "type": "array",
+            "items": {"$ref": "file.json"}
+        }
+    },
+    "required": ["acquisition"],
+    "additionalProperties": false
+}

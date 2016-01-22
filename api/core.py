@@ -180,6 +180,21 @@ class Core(base.RequestHandler):
             throughput = file_store.size / file_store.duration.total_seconds()
             log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
+    def engine(self):
+        """Receive a sortable reaper upload."""
+        if not self.superuser_request:
+            self.abort(402, 'uploads must be from an authorized drone')
+        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
+            try:
+                file_store = files.MultiFileStore(self.request, tempdir_path)
+            except files.FileStoreException as e:
+                self.abort(400, str(e))
+            if not file_store.metadata:
+                self.abort(400, 'metadata is missing')
+            metadata_validator = validators.payload_from_schema_file(self, 'input/enginemetadata.json')
+            metadata_validator(file_store.metadata, 'POST')
+            return [{'filename': k, 'hash': v['hash'], 'size': v['size']} for k, v in file_store.files.items()]
+
     def _preflight_archivestream(self, req_spec):
         data_path = config.get_item('persistent', 'data_path')
         arc_prefix = 'sdm'

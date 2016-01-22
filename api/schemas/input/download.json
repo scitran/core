@@ -48,8 +48,8 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "tags": {"$ref": "input/download.json#/definitions/filterDefinition"},
-                    "types": {"$ref": "input/download.json#/definitions/filterDefinition"}
+                    "tags": {"$ref": "download.json#/definitions/filterDefinition"},
+                    "types": {"$ref": "download.json#/definitions/filterDefinition"}
                 }
             }
         }

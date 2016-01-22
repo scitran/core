@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Session",
     "type": "object",
-    "allOf": [{"$ref": "input/container.json"}],
+    "allOf": [{"$ref": "container.json"}],
     "properties": {
         "public": {},
         "label": {},
@@ -12,7 +12,7 @@
         "uid":          {"type": "string"},
         "timestamp":    {"type": "string"},
         "timezone":     {"type": "string"},
-        "subject":      {"$ref": "input/subject.json"}
+        "subject":      {"$ref": "subject.json"}
     },
     "additionalProperties": false
 }

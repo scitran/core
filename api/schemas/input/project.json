@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Project",
     "type": "object",
-    "allOf": [{"$ref": "input/container.json"}],
+    "allOf": [{"$ref": "container.json"}],
     "properties": {
         "_id": {},
         "public": {},

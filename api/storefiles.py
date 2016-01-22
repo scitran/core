@@ -28,6 +28,8 @@ class HashingFile(file):
         return self.hash_alg.hexdigest()
 
 
+
+
 def getHashingFieldStorage(upload_dir, hash_alg):
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
@@ -53,6 +55,20 @@ def getHashingFieldStorage(upload_dir, hash_alg):
     return HashingFieldStorage
 
 
+def prepare_multipart_upload(payload, body, dest_path, environ, hash_alg='sha384'):
+    environ.setdefault('CONTENT_LENGTH', '0')
+    environ['QUERY_STRING'] = ''
+    form = getHashingFieldStorage(dest_path, hash_alg)(fp=body, environ=environ, keep_blank_values=True)
+    self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
+    self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
+    for field in form:
+        self.received_file = form[field].file
+        self.filename = os.path.basename(form[field].filename)
+
+
+def prepare_body_upload(payload, body, dest_path, hash_alg='sha384'):
+
+
 class FileStore(object):
     """This class provides and interface for file uploads.
     To perform an upload the client of the class should follow these steps:
@@ -73,7 +89,7 @@ class FileStore(object):
         self.hash_alg = hash_alg
         start_time = datetime.datetime.utcnow()
         if request.content_type == 'multipart/form-data':
-            self._save_multipart_files(dest_path, hash_alg)
+            self._save_multipart_file(dest_path, hash_alg)
             self.payload = request.POST.mixed()
         else:
             self.payload = request.POST.mixed()
@@ -127,31 +143,3 @@ class FileStore(object):
                     return True
         else:
             return hash_ == self.hash
-
-class MultiFileStore(object):
-    """This class provides and interface for file uploads.
-    """
-
-    def __init__(self, request, dest_path, filename=None, hash_alg='sha384'):
-        self.body = request.body_file
-        self.environ = request.environ.copy()
-        self.environ.setdefault('CONTENT_LENGTH', '0')
-        self.environ['QUERY_STRING'] = ''
-        self.hash_alg = hash_alg
-        self.files = {}
-        self._save_multipart_files(dest_path, hash_alg)
-        self.payload = request.POST.mixed()
-
-    def _save_multipart_files(self, dest_path, hash_alg):
-        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
-        self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
-        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
-        for field in form:
-            if form[field].filename:
-                filename = os.path.basename(form[field].filename)
-                self.files[filename] = {
-                    'file': form[field].file,
-                    'hash': form[field].file.get_hash(),
-                    'size': os.path.getsize(os.path.join(dest_path, filename))
-                }
-

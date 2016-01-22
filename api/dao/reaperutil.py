@@ -3,13 +3,14 @@ import pymongo
 import datetime
 import dateutil.parser
 
+from .. import util
 from .. import config
 from . import APIStorageException
 
 log = config.log
 
 
-class ReapedAcquisition(object):
+class TargetAcquisition(object):
 
     def __init__(self, acquisition, fileinfo):
         self.acquisition = acquisition
@@ -144,4 +145,95 @@ def create_container_hierarchy(metadata):
         upsert=True,
         return_document=pymongo.collection.ReturnDocument.AFTER,
     )
-    return ReapedAcquisition(acquisition_obj, file_)
+    return TargetAcquisition(acquisition_obj, file_)
+
+def update_container_hierarchy(metadata):
+    group = metadata.get('group')
+    project = metadata.get('project')
+    session = metadata.get('session')
+    acquisition = metadata.get('acquisition')
+    files_ = metadata.get('files')
+    _check_hierarchy_consistency(group, project, session, acquisition)
+    return
+    # now = datetime.datetime.utcnow()
+    # if acquisition.get('timestamp'):
+    #     acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
+    # acquisition['modified'] = now
+    # acquisition_obj = _update_container({'uid': acquisition_uid}, acquisition, 'acquisitions')
+    # if acquisition.get('timestamp'):
+    #     session_obj = config.db.session.find_one_and_update(
+    #         {'_id': acquisition_obj['session']},
+    #         {
+    #             '$min': dict(timestamp=acquisition['timestamp']),
+    #             '$set': dict(timezone=acquisition.get('timezone'))
+    #         },
+    #         return_document=pymongo.collection.ReturnDocument.AFTER
+    #     )
+    #     config.db.project.find_one_and_update(
+    #         {'_id': session_obj['project']},
+    #         {
+    #             '$max': dict(timestamp=acquisition['timestamp']),
+    #             '$set': dict(timezone=acquisition.get('timezone'))
+    #         }
+    #     )
+    # if session:
+    #     session['modified'] = now
+    #     _update_container({'uid': session['uid']}, session, 'sessions')
+    # if project:
+    #     project['modified'] = now
+    #     _update_container({'label': project['label']}, project, 'projects')
+    # if group:
+    #     group['modified'] = now
+    #     _update_container({'_id': group['_id']}, group, 'groups')
+    # return TargetAcquisition(acquisition_obj, files_)
+
+def _update_container(query, update, cont_name):
+    return config.db[cont_name].find_one_and_update(
+        query,
+        {
+            '$set': util.mongo_dict(update)
+        },
+        return_document=pymongo.collection.ReturnDocument.AFTER
+    )
+
+def _check_hierarchy_consistency(group, project, session, acquisition):
+    """this method check the consistency of the container hierarchy provided.
+    It is checking:
+    1) that each non null container has the required id field (FIXME should be removed when we enforce the metadata schema)
+    2) that each non null container exists
+    3) that the acquisition is not null
+    4) that each container provided (other than the acquisition) contains the acquisition
+    """
+    if not acquisition:
+        raise APIStorageException('acquisition is missing')
+    if acquisition.get('uid') is None:
+        raise APIStorageException('acquisition uid is missing')
+    acquisition_obj = config.db.acquisitions.find_one({'uid': acquisition['uid']})
+    if acquisition_obj is None:
+        raise APIStorageException('acquisition doesn''t exist')
+    if session and session.get('uid') is None:
+        raise APIStorageException('session uid is missing')
+    if session:
+        session_obj = config.db.sessions.find_one({'uid': session['uid']})
+        if session_obj is None:
+            raise APIStorageException('session doesn''t exist')
+        if session_obj['_id'] != acquisition_obj['session']:
+            raise APIStorageException('session doesn''t contain the acquisition')
+    else:
+        session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
+    if project and project.get('label') is None:
+        raise APIStorageException('project label is missing')
+    if project:
+        project_obj = config.db.projects.find_one({'label': project['label']})
+        if project_obj is None:
+            raise APIStorageException('project doesn''t exist')
+        if project_obj['_id'] != session_obj['project']:
+            raise APIStorageException('project doesn''t contain the acquisition')
+    if group and group.get('_id') is None:
+        raise APIStorageException('group _id is missing')
+    if group:
+        if group['_id'] != session_obj['group']:
+            raise APIStorageException('group doesn''t contain the acquisition')
+        group_obj = config.db.groups.find_one({'_id': group['_id']})
+        if group_obj is None:
+            raise APIStorageException('group doesn''t exist')
