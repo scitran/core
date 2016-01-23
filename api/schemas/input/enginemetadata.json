@@ -3,13 +3,78 @@
     "title": "EngineMetadata",
     "type": "object",
     "properties": {
-        "group":        {"$ref": "group.json"},
-        "project":      {"$ref": "project.json"},
-        "session":      {"$ref": "session.json"},
-        "acquisition":  {"$ref": "acquisition.json"},
-        "files":        {
-            "type": "array",
-            "items": {"$ref": "file.json"}
+        "group":        {
+            "type": "object",
+            "properties": {
+              "_id":              {
+                                    "maxLength": 32,
+                                    "minLength": 2,
+                                    "pattern": "^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$",
+                                    "title": "ID",
+                                    "type": "string"
+                                  },
+              "name":             {
+                                    "maxLength": 32,
+                                    "minLength": 2,
+                                    "pattern": "^[0-9A-Za-z][0-9A-Za-z .@_-]{0,30}[0-9A-Za-z]$",
+                                    "title": "Name",
+                                    "type": "string"
+                                  }
+            },
+            "additionalProperties": false
+        },
+        "project":      {
+            "type": "object",
+            "allOf": [{"$ref": "container.json"}],
+            "properties": {
+                "_id":    {},
+                "public": {},
+                "label": {},
+                "metadata": {},
+
+                "group": {"type": "string"}
+            },
+            "additionalProperties": false
+        },
+        "session":      {
+            "type": "object",
+            "allOf": [{"$ref": "container.json"}],
+            "properties": {
+                "_id":    {},
+                "public": {},
+                "label": {},
+                "metadata": {},
+
+                "project":      {"type": "string"},
+                "uid":          {"type": "string"},
+                "timestamp":    {"type": "string"},
+                "timezone":     {"type": "string"},
+                "subject":      {"$ref": "subject.json"}
+            },
+            "additionalProperties": false
+        },
+        "acquisition":  {
+            "type": "object",
+            "allOf": [{"$ref": "container.json"}],
+            "properties": {
+                "_id":      {},
+                "public":   {},
+                "label":    {},
+                "metadata": {},
+
+                "session":      {"type": "string"},
+                "uid":          {"type": "string"},
+                "instrument":   {"type": "string"},
+                "measurement":  {"type": "string"},
+                "timestamp":    {"type": "string"},
+                "timezone":     {"type": "string"},
+                "files":        {
+                    "type": "array",
+                    "items": {"$ref": "file.json"}
+                }
+            },
+            "required": ["_id"],
+            "additionalProperties": false
         }
     },
     "required": ["acquisition"],

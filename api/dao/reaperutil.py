@@ -1,3 +1,4 @@
+import bson
 import difflib
 import pymongo
 import datetime
@@ -9,6 +10,7 @@ from . import APIStorageException
 
 log = config.log
 
+PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
 
 class TargetAcquisition(object):
 
@@ -32,7 +34,7 @@ class TargetAcquisition(object):
         for k,v in fileinfo.iteritems():
             update_set['files.$.' + k] = v
         acquisition_obj = self.dbc.update_one(
-            {'_id': self.acquisition['_id'], 'files.name': fileinfo['filename']},
+            {'_id': self.acquisition['_id'], 'files.name': fileinfo['name']},
             {'$set': update_set}
         )
 
@@ -40,9 +42,19 @@ class TargetAcquisition(object):
         fileinfo.update(self.fileinfo)
         self.dbc.update_one({'_id': self.acquisition['_id']}, {'$push': {'files': fileinfo}})
 
+def update_fileinfo(cont_name, _id, fileinfo):
+    update_set = {'files.$.modified': datetime.datetime.utcnow()}
+    # in this method, we are overriding an existing file.
+    # update_set allows to update all the fileinfo like size, hash, etc.
+    for k,v in fileinfo.iteritems():
+        update_set['files.$.' + k] = v
+    config.db[cont_name].update_one(
+        {'_id': _id, 'files.name': fileinfo['name']},
+        {'$set': update_set}
+    )
 
-
-PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
+def add_fileinfo(cont_name, _id, fileinfo):
+    config.db[cont_name].update_one({'_id': _id}, {'$push': {'files': fileinfo}})
 
 def _find_or_create_destination_project(group_name, project_label, created, modified):
     existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]
@@ -152,40 +164,38 @@ def update_container_hierarchy(metadata):
     project = metadata.get('project')
     session = metadata.get('session')
     acquisition = metadata.get('acquisition')
-    files_ = metadata.get('files')
-    _check_hierarchy_consistency(group, project, session, acquisition)
-    return
-    # now = datetime.datetime.utcnow()
-    # if acquisition.get('timestamp'):
-    #     acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
-    # acquisition['modified'] = now
-    # acquisition_obj = _update_container({'uid': acquisition_uid}, acquisition, 'acquisitions')
-    # if acquisition.get('timestamp'):
-    #     session_obj = config.db.session.find_one_and_update(
-    #         {'_id': acquisition_obj['session']},
-    #         {
-    #             '$min': dict(timestamp=acquisition['timestamp']),
-    #             '$set': dict(timezone=acquisition.get('timezone'))
-    #         },
-    #         return_document=pymongo.collection.ReturnDocument.AFTER
-    #     )
-    #     config.db.project.find_one_and_update(
-    #         {'_id': session_obj['project']},
-    #         {
-    #             '$max': dict(timestamp=acquisition['timestamp']),
-    #             '$set': dict(timezone=acquisition.get('timezone'))
-    #         }
-    #     )
-    # if session:
-    #     session['modified'] = now
-    #     _update_container({'uid': session['uid']}, session, 'sessions')
-    # if project:
-    #     project['modified'] = now
-    #     _update_container({'label': project['label']}, project, 'projects')
-    # if group:
-    #     group['modified'] = now
-    #     _update_container({'_id': group['_id']}, group, 'groups')
-    # return TargetAcquisition(acquisition_obj, files_)
+    _set_hierarchy_ids(group, project, session, acquisition)
+    now = datetime.datetime.utcnow()
+    if acquisition.get('timestamp'):
+        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
+    acquisition['modified'] = now
+    acquisition_obj = _update_container({'_id': acquisition['_id']}, acquisition, 'acquisitions')
+    if acquisition.get('timestamp'):
+        session_obj = config.db.session.find_one_and_update(
+            {'_id': acquisition_obj['session']},
+            {
+                '$min': dict(timestamp=acquisition['timestamp']),
+                '$set': dict(timezone=acquisition.get('timezone'))
+            },
+            return_document=pymongo.collection.ReturnDocument.AFTER
+        )
+        config.db.project.find_one_and_update(
+            {'_id': session_obj['project']},
+            {
+                '$max': dict(timestamp=acquisition['timestamp']),
+                '$set': dict(timezone=acquisition.get('timezone'))
+            }
+        )
+    if session:
+        session['modified'] = now
+        _update_container({'_id': session['_id']}, session, 'sessions')
+    if project:
+        project['modified'] = now
+        _update_container({'_id': project['_id']}, project, 'projects')
+    if group:
+        group['modified'] = now
+        _update_container({'_id': group['_id']}, group, 'groups')
+    return acquisition_obj
 
 def _update_container(query, update, cont_name):
     return config.db[cont_name].find_one_and_update(
@@ -196,44 +206,21 @@ def _update_container(query, update, cont_name):
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
 
-def _check_hierarchy_consistency(group, project, session, acquisition):
-    """this method check the consistency of the container hierarchy provided.
-    It is checking:
-    1) that each non null container has the required id field (FIXME should be removed when we enforce the metadata schema)
-    2) that each non null container exists
-    3) that the acquisition is not null
-    4) that each container provided (other than the acquisition) contains the acquisition
+def _set_hierarchy_ids(group, project, session, acquisition):
+    """this method sets the correct id on the hierarchy.
+    If the acquisition can't be found it raises an error.
+
     """
-    if not acquisition:
-        raise APIStorageException('acquisition is missing')
-    if acquisition.get('uid') is None:
-        raise APIStorageException('acquisition uid is missing')
-    acquisition_obj = config.db.acquisitions.find_one({'uid': acquisition['uid']})
+    acquisition['_id'] = bson.ObjectId(acquisition['_id'])
+    acquisition_obj = config.db.acquisitions.find_one({'_id': acquisition['_id']})
     if acquisition_obj is None:
         raise APIStorageException('acquisition doesn''t exist')
-    if session and session.get('uid') is None:
-        raise APIStorageException('session uid is missing')
+    session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
     if session:
-        session_obj = config.db.sessions.find_one({'uid': session['uid']})
-        if session_obj is None:
-            raise APIStorageException('session doesn''t exist')
-        if session_obj['_id'] != acquisition_obj['session']:
-            raise APIStorageException('session doesn''t contain the acquisition')
-    else:
-        session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
-    if project and project.get('label') is None:
-        raise APIStorageException('project label is missing')
+        session['_id'] = session_obj['_id']
+    project_obj = config.db.projects.find_one({'_id': session_obj['project']})
     if project:
-        project_obj = config.db.projects.find_one({'label': project['label']})
-        if project_obj is None:
-            raise APIStorageException('project doesn''t exist')
-        if project_obj['_id'] != session_obj['project']:
-            raise APIStorageException('project doesn''t contain the acquisition')
-    if group and group.get('_id') is None:
-        raise APIStorageException('group _id is missing')
+        project['_id'] = project_obj['_id']
+    group_obj = config.db.groups.find_one({'_id': project_obj['group']})
     if group:
-        if group['_id'] != session_obj['group']:
-            raise APIStorageException('group doesn''t contain the acquisition')
-        group_obj = config.db.groups.find_one({'_id': group['_id']})
-        if group_obj is None:
-            raise APIStorageException('group doesn''t exist')
+        group['_id'] = group_obj['_id']

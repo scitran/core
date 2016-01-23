@@ -12,6 +12,12 @@ from . import config
 log = config.log
 
 
+def move_file(path, target_path):
+    target_dir = os.path.dirname(target_path)
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+    shutil.move(path, target_path)
+
 class FileStoreException(Exception):
     pass
 
@@ -73,7 +79,7 @@ class FileStore(object):
         self.hash_alg = hash_alg
         start_time = datetime.datetime.utcnow()
         if request.content_type == 'multipart/form-data':
-            self._save_multipart_files(dest_path, hash_alg)
+            self._save_multipart_file(dest_path, hash_alg)
             self.payload = request.POST.mixed()
         else:
             self.payload = request.POST.mixed()
@@ -105,10 +111,7 @@ class FileStore(object):
         self.metadata = None
 
     def move_file(self, target_path):
-        target_dir = os.path.dirname(target_path)
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir)
-        shutil.move(self.path, target_path)
+        move_file(self.path, target_path)
         self.path = target_path
 
     def identical(self, filepath, hash_):
@@ -149,9 +152,11 @@ class MultiFileStore(object):
         for field in form:
             if form[field].filename:
                 filename = os.path.basename(form[field].filename)
+                mimetype = util.guess_mimetype(filename)
                 self.files[filename] = {
-                    'file': form[field].file,
                     'hash': form[field].file.get_hash(),
-                    'size': os.path.getsize(os.path.join(dest_path, filename))
+                    'size': os.path.getsize(os.path.join(dest_path, filename)),
+                    'mimetype': mimetype,
+                    'filetype': util.guess_filetype(filename, mimetype),
+                    'path': os.path.join(dest_path, filename)
                 }
-
