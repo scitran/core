@@ -193,36 +193,39 @@ class Core(base.RequestHandler):
                 project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files'])
+                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid'])
                 session_dict = {session['_id']: session for session in sessions}
-                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session'])
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid'])
                 for session in session_dict.itervalues():
-                    session_prefix = prefix + '/' + session.get('label', 'untitled')
+                    session_prefix = prefix + '/' + self._path_from_container(session)
                     total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
-                    acq_prefix = prefix + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                    acq_prefix = prefix + '/' + self._path_from_container(session) + '/' + self._path_from_container(acq)
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
             elif item['level'] == 'session':
-                session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files'])
+                session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files', 'uid'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled')
+                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session)
                 total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files'])
+                acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files', 'uid'])
                 for acq in acquisitions:
-                    acq_prefix = prefix + '/' + acq.get('label', 'untitled')
+                    acq_prefix = prefix + '/' + self._path_from_container(acq)
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
             elif item['level'] == 'acquisition':
-                acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files'])
-                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label'])
+                acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files', 'uid'])
+                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + session.get('label', 'untitled') + '/' + acq.get('label', 'untitled')
+                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session) + '/' + self._path_from_container(acq)
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
         config.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+
+    def _path_from_container(self, container):
+        return container.get('label') or container.get('uid', 'untitled')
 
     def _preflight_archivestream_bids(self, req_spec):
         data_path = config.get_item('persistent', 'data_path')
@@ -242,7 +245,7 @@ class Core(base.RequestHandler):
                 prefix = project['label']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code'])
+                ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code', 'uid'])
                 subject_prefixes = {
                     'missing_subject': prefix + '/missing_subject'
                 }
@@ -250,7 +253,7 @@ class Core(base.RequestHandler):
                 for ses_or_subj in ses_or_subj_list:
                     subj_code = ses_or_subj.get('subject', {}).get('code') or ses_or_subj.get('subject_code')
                     if subj_code == 'subject':
-                        subject_prefix = prefix + '/' + ses_or_subj.get('label', 'untitled')
+                        subject_prefix = prefix + '/' + self._path_from_container(ses_or_subj)
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
                                                                file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                         subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
@@ -263,12 +266,12 @@ class Core(base.RequestHandler):
                     if not subject_prefix:
                         continue
                     for session in ses_list:
-                        session_prefix = subject_prefix + '/' + session.get('label', 'untitled')
+                        session_prefix = subject_prefix + '/' + self._path_from_container(session)
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
                                                                file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                        acquisitions = config.db.acquisitions.find({'session': session['_id']}, ['label', 'files'])
+                        acquisitions = config.db.acquisitions.find({'session': session['_id']}, ['label', 'files', 'uid'])
                         for acq in acquisitions:
-                            acq_prefix = session_prefix + '/' + acq.get('label', 'untitled')
+                            acq_prefix = session_prefix + '/' + self._path_from_container(acq)
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
                                                                    file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
