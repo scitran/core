@@ -86,7 +86,10 @@ class FileStore(object):
         self.duration = datetime.datetime.utcnow() - start_time
         self.mimetype = util.guess_mimetype(self.filename)
         self.filetype = util.guess_filetype(self.filename, self.mimetype)
-        self.hash = self.received_file.get_hash()
+        # the hash format is:
+        # <version>-<hashing algorithm>-<actual hash>
+        # version will track changes on hash related methods like for example how we check for identical files.
+        self.hash = '-'.join('v0', hash_alg, self.received_file.get_hash())
         self.size = os.path.getsize(self.path)
 
     def _save_multipart_file(self, dest_path, hash_alg):

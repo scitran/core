@@ -88,11 +88,12 @@ def path_from_hash(hash_):
     """
     create a filepath from a hash
     e.g.
-    hash_ = 01b395a1cbc0f218
+    hash_ = v0-sha384-01b395a1cbc0f218
     will return
-    0/1/b/3/9/5/a/1/01b395a1cbc0f218
+    0/1/b/3/9/5/a/1/v0-sha384-01b395a1cbc0f218
     """
-    path = [hash_[i] for i in xrange(8)]
+    hash_version, hash_alg, actual_hash = hash_.split('-')
+    path = [actual_hash[i] for i in xrange(8)]
     path.append(hash_)
     return os.path.join(*path)
 

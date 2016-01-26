@@ -94,7 +94,7 @@ def data(args):
         with open(filepath, 'rb') as fd:
             for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
-        computed_hash = hash_.hexdigest()
+        computed_hash = 'v0-sha384-' + hash_.hexdigest()
         destpath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(computed_hash))
         dir_destpath = os.path.dirname(destpath)
         filename = os.path.basename(filepath)
