@@ -379,12 +379,12 @@ class FileListHandler(ListHandler):
             else:
                 filename = file_store.filename
                 filepath = file_store.path
-                for f in container['files']:
+                for f in container.get('files', []):
                     if f['name'] == filename:
                         if file_store.identical(filepath, f['hash']):
                             log.debug('Dropping    %s (identical)' % filename)
                             os.remove(filepath)
-                            self.abort(409, 'identical file exists')
+                            return {'modified': 0}
                         else:
                             log.debug('Replacing   %s' % filename)
                             method = 'PUT'
