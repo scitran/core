@@ -3,26 +3,6 @@
     "title": "EngineMetadata",
     "type": "object",
     "properties": {
-        "group":        {
-            "type": "object",
-            "properties": {
-              "_id":              {
-                                    "maxLength": 32,
-                                    "minLength": 2,
-                                    "pattern": "^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$",
-                                    "title": "ID",
-                                    "type": "string"
-                                  },
-              "name":             {
-                                    "maxLength": 32,
-                                    "minLength": 2,
-                                    "pattern": "^[0-9A-Za-z][0-9A-Za-z .@_-]{0,30}[0-9A-Za-z]$",
-                                    "title": "Name",
-                                    "type": "string"
-                                  }
-            },
-            "additionalProperties": false
-        },
         "project":      {
             "type": "object",
             "allOf": [{"$ref": "container.json"}],

@@ -160,7 +160,6 @@ def create_container_hierarchy(metadata):
     return TargetAcquisition(acquisition_obj, file_)
 
 def update_container_hierarchy(metadata):
-    group = metadata.get('group')
     project = metadata.get('project')
     session = metadata.get('session')
     acquisition = metadata.get('acquisition')
@@ -192,9 +191,6 @@ def update_container_hierarchy(metadata):
     if project:
         project['modified'] = now
         _update_container({'_id': project['_id']}, project, 'projects')
-    if group:
-        group['modified'] = now
-        _update_container({'_id': group['_id']}, group, 'groups')
     return acquisition_obj
 
 def _update_container(query, update, cont_name):
