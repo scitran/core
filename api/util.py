@@ -93,7 +93,7 @@ def path_from_hash(hash_):
     0/1/b/3/9/5/a/1/v0-sha384-01b395a1cbc0f218
     """
     hash_version, hash_alg, actual_hash = hash_.split('-')
-    path = [actual_hash[i] for i in xrange(8)]
+    path = [hash_version, hash_alg] + [actual_hash[2 * i : 2 * i + 2] for i in range(3)]
     path.append(hash_)
     return os.path.join(*path)
 
