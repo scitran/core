@@ -171,7 +171,7 @@ def update_container_hierarchy(metadata, acquisition_id, level):
     if acquisition_obj is None:
         raise APIStorageException('acquisition doesn''t exist')
     if acquisition.get('timestamp'):
-        session_obj = config.db.session.find_one_and_update(
+        session_obj = config.db.sessions.find_one_and_update(
             {'_id': acquisition_obj['session']},
             {
                 '$min': dict(timestamp=acquisition['timestamp']),
@@ -179,19 +179,22 @@ def update_container_hierarchy(metadata, acquisition_id, level):
             },
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
-        config.db.project.find_one_and_update(
+        config.db.projects.find_one_and_update(
             {'_id': session_obj['project']},
             {
                 '$max': dict(timestamp=acquisition['timestamp']),
                 '$set': dict(timezone=acquisition.get('timezone'))
             }
         )
+    session_obj = None
     if session:
         session['modified'] = now
-        _update_container({'_id': session['_id']}, session, 'sessions')
+        session_obj = _update_container({'_id': acquisition_obj['session']}, session, 'sessions')
     if project:
         project['modified'] = now
-        _update_container({'_id': project['_id']}, project, 'projects')
+        if not session_obj:
+            session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
+        _update_container({'_id': session_obj['project']}, project, 'projects')
     return acquisition_obj
 
 def _update_container(query, update, cont_name):
