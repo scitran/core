@@ -2,6 +2,7 @@ import os
 import re
 import bson
 import json
+import pytz
 import tarfile
 import datetime
 import markdown
@@ -187,36 +188,39 @@ class Core(base.RequestHandler):
         total_size = 0
         targets = []
         # FIXME: check permissions of everything
+        used_subpaths = {}
         for item in req_spec['nodes']:
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
                 project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid'])
+                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
                 session_dict = {session['_id']: session for session in sessions}
-                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid'])
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid', 'timestamp', 'timezone'])
+                session_prefixes = {}
                 for session in session_dict.itervalues():
-                    session_prefix = prefix + '/' + self._path_from_container(session)
+                    session_prefix = prefix + '/' + self._path_from_container(session, used_subpaths, project['_id'])
+                    session_prefixes[session['_id']] = session_prefix
                     total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
-                    acq_prefix = prefix + '/' + self._path_from_container(session) + '/' + self._path_from_container(acq)
+                    acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
             elif item['level'] == 'session':
-                session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files', 'uid'])
+                session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session)
+                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id'])
                 total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files', 'uid'])
+                acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
                 for acq in acquisitions:
-                    acq_prefix = prefix + '/' + self._path_from_container(acq)
+                    acq_prefix = prefix + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
             elif item['level'] == 'acquisition':
-                acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files', 'uid'])
-                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid'])
+                acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
+                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session) + '/' + self._path_from_container(acq)
+                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
@@ -224,8 +228,32 @@ class Core(base.RequestHandler):
         config.db.downloads.insert_one(ticket)
         return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
 
-    def _path_from_container(self, container):
-        return container.get('label') or container.get('uid', 'untitled')
+    def _path_from_container(self, container, used_subpaths, parent_id):
+        def _find_new_path(path, list_used_subpaths):
+            """from the input path finds a path that hasn't been used"""
+            if path not in list_used_subpaths:
+                return path
+            i = 0
+            while True:
+                modified_path = path + '_' + str(i)
+                if modified_path not in list_used_subpaths:
+                    return modified_path
+        path = None
+        if not path and container.get('label'):
+            path = container['label']
+        if not path and container.get('timestamp'):
+            timezone = container.get('timezone')
+            if timezone:
+                path = pytz.timezone('UTC').localize(container['timestamp']).astimezone(pytz.timezone(timezone)).strftime('%Y%m%d_%H%M')
+            else:
+                path = container['timestamp'].strftime('%Y%m%d_%H%M')
+        if not path and container.get('uid'):
+            path = container['uid']
+        if not path:
+            path = 'untitled'
+        path = _find_new_path(path, used_subpaths.get(parent_id, []))
+        used_subpaths[parent_id] = used_subpaths.get(parent_id, []) + [path]
+        return path
 
     def _preflight_archivestream_bids(self, req_spec):
         data_path = config.get_item('persistent', 'data_path')
@@ -235,6 +263,7 @@ class Core(base.RequestHandler):
         # FIXME: check permissions of everything
         projects = []
         prefix = 'untitled'
+        used_subpaths = {}
         if len(req_spec['nodes']) != 1:
             self.abort(400, 'bids downloads are limited to single dataset downloads')
         for item in req_spec['nodes']:
@@ -245,7 +274,7 @@ class Core(base.RequestHandler):
                 prefix = project['label']
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
                                                        file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code', 'uid'])
+                ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code', 'uid', 'timestamp', 'timezone'])
                 subject_prefixes = {
                     'missing_subject': prefix + '/missing_subject'
                 }
@@ -253,7 +282,7 @@ class Core(base.RequestHandler):
                 for ses_or_subj in ses_or_subj_list:
                     subj_code = ses_or_subj.get('subject', {}).get('code') or ses_or_subj.get('subject_code')
                     if subj_code == 'subject':
-                        subject_prefix = prefix + '/' + self._path_from_container(ses_or_subj)
+                        subject_prefix = prefix + '/' + self._path_from_container(ses_or_subj, used_subpaths, project['_id'])
                         total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
                                                                file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
                         subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
@@ -266,12 +295,12 @@ class Core(base.RequestHandler):
                     if not subject_prefix:
                         continue
                     for session in ses_list:
-                        session_prefix = subject_prefix + '/' + self._path_from_container(session)
+                        session_prefix = subject_prefix + '/' + self._path_from_container(session, used_subpaths, subj_code)
                         total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
                                                                file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                        acquisitions = config.db.acquisitions.find({'session': session['_id']}, ['label', 'files', 'uid'])
+                        acquisitions = config.db.acquisitions.find({'session': session['_id']}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
                         for acq in acquisitions:
-                            acq_prefix = session_prefix + '/' + self._path_from_container(acq)
+                            acq_prefix = session_prefix + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                             total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
                                                                    file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
