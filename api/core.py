@@ -182,6 +182,14 @@ class Core(base.RequestHandler):
 
     def engine(self):
         """Receive a sortable reaper upload."""
+        level = self.get_param('level')
+        if level != 'acquisition':
+            self.abort(404, 'engine uploads are supported only at the acquisition level')
+        acquisition_id = self.get_param('id')
+        if not acquisition_id:
+            self.abort(404, 'container id is required')
+        else:
+            acquisition_id = bson.ObjectId(acquisition_id)
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
@@ -195,7 +203,7 @@ class Core(base.RequestHandler):
             metadata_validator(file_store.metadata, 'POST')
             file_infos = file_store.metadata['acquisition'].pop('files', [])
             try:
-                acquisition_obj = reaperutil.update_container_hierarchy(file_store.metadata)
+                acquisition_obj = reaperutil.update_container_hierarchy(file_store.metadata, acquisition_id, level)
             except APIStorageException as e:
                 self.abort(400, e.message)
             # move the files before updating the database

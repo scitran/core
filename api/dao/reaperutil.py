@@ -159,16 +159,17 @@ def create_container_hierarchy(metadata):
     )
     return TargetAcquisition(acquisition_obj, file_)
 
-def update_container_hierarchy(metadata):
+def update_container_hierarchy(metadata, acquisition_id, level):
     project = metadata.get('project')
     session = metadata.get('session')
     acquisition = metadata.get('acquisition')
-    _set_hierarchy_ids(group, project, session, acquisition)
     now = datetime.datetime.utcnow()
     if acquisition.get('timestamp'):
         acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
     acquisition['modified'] = now
-    acquisition_obj = _update_container({'_id': acquisition['_id']}, acquisition, 'acquisitions')
+    acquisition_obj = _update_container({'_id': acquisition_id}, acquisition, 'acquisitions')
+    if acquisition_obj is None:
+        raise APIStorageException('acquisition doesn''t exist')
     if acquisition.get('timestamp'):
         session_obj = config.db.session.find_one_and_update(
             {'_id': acquisition_obj['session']},
@@ -201,22 +202,3 @@ def _update_container(query, update, cont_name):
         },
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
-
-def _set_hierarchy_ids(group, project, session, acquisition):
-    """this method sets the correct id on the hierarchy.
-    If the acquisition can't be found it raises an error.
-
-    """
-    acquisition['_id'] = bson.ObjectId(acquisition['_id'])
-    acquisition_obj = config.db.acquisitions.find_one({'_id': acquisition['_id']})
-    if acquisition_obj is None:
-        raise APIStorageException('acquisition doesn''t exist')
-    session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
-    if session:
-        session['_id'] = session_obj['_id']
-    project_obj = config.db.projects.find_one({'_id': session_obj['project']})
-    if project:
-        project['_id'] = project_obj['_id']
-    group_obj = config.db.groups.find_one({'_id': project_obj['group']})
-    if group:
-        group['_id'] = group_obj['_id']
