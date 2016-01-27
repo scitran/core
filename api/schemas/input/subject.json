@@ -9,7 +9,8 @@
     "sex":              { "enum": ["male", "female"] },
     "code":             { "type": "string" },
     "tags":             { "type": "array", "items": {"type": "string"} },
-    "metadata":         { "type": "object" }
+    "metadata":         { "type": "object" },
+    "age":              { "type": "number" }
   },
   "additionalProperties": false
 }

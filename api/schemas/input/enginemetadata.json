@@ -24,6 +24,7 @@
                 "public": {},
                 "label": {},
                 "metadata": {},
+                "operator": {"type": "string"},
 
                 "project":      {"type": "string"},
                 "uid":          {"type": "string"},
