@@ -147,7 +147,6 @@ class MultiFileStore(object):
 
     def _save_multipart_files(self, dest_path, hash_alg):
         form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
-        self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
         self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
         for field in form:
             if form[field].filename:

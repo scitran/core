@@ -181,7 +181,12 @@ class Core(base.RequestHandler):
             log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
     def engine(self):
-        """Receive a sortable reaper upload."""
+        """
+        URL format: api/engine?level=<container_type>&id=<container_id>
+
+        It expects a multipart/form-data request with a "metadata" field (json valid against api/schemas/input/enginemetadata)
+        and 0 or more file fields with a non null filename property (filename is null for the "metadata").
+        """
         level = self.get_param('level')
         if level != 'acquisition':
             self.abort(404, 'engine uploads are supported only at the acquisition level')
