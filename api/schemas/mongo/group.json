@@ -21,7 +21,7 @@
                         },
     "roles":            {
                           "type": "array",
-                          "items": {"$ref": "mongo/permission.json"},
+                          "items": {"$ref": "permission.json"},
                           "title": "Roles",
                           "default": [],
                           "uniqueItems": true

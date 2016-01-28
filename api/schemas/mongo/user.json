@@ -29,7 +29,7 @@
                           "title": "Email",
                           "type": "string"
                         },
-    "avatars":          { "$ref": "mongo/avatars.json"},
+    "avatars":          { "$ref": "avatars.json"},
     "avatar":           {
                           "format": "uri",
                           "title": "Avatar",

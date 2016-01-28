@@ -1,15 +1,18 @@
+import bson
 import difflib
 import pymongo
 import datetime
 import dateutil.parser
 
+from .. import util
 from .. import config
 from . import APIStorageException
 
 log = config.log
 
+PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
 
-class ReapedAcquisition(object):
+class TargetAcquisition(object):
 
     def __init__(self, acquisition, fileinfo):
         self.acquisition = acquisition
@@ -31,7 +34,7 @@ class ReapedAcquisition(object):
         for k,v in fileinfo.iteritems():
             update_set['files.$.' + k] = v
         acquisition_obj = self.dbc.update_one(
-            {'_id': self.acquisition['_id'], 'files.name': fileinfo['filename']},
+            {'_id': self.acquisition['_id'], 'files.name': fileinfo['name']},
             {'$set': update_set}
         )
 
@@ -39,9 +42,19 @@ class ReapedAcquisition(object):
         fileinfo.update(self.fileinfo)
         self.dbc.update_one({'_id': self.acquisition['_id']}, {'$push': {'files': fileinfo}})
 
+def update_fileinfo(cont_name, _id, fileinfo):
+    update_set = {'files.$.modified': datetime.datetime.utcnow()}
+    # in this method, we are overriding an existing file.
+    # update_set allows to update all the fileinfo like size, hash, etc.
+    for k,v in fileinfo.iteritems():
+        update_set['files.$.' + k] = v
+    config.db[cont_name].update_one(
+        {'_id': _id, 'files.name': fileinfo['name']},
+        {'$set': update_set}
+    )
 
-
-PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
+def add_fileinfo(cont_name, _id, fileinfo):
+    config.db[cont_name].update_one({'_id': _id}, {'$push': {'files': fileinfo}})
 
 def _find_or_create_destination_project(group_name, project_label, created, modified):
     existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]
@@ -144,4 +157,51 @@ def create_container_hierarchy(metadata):
         upsert=True,
         return_document=pymongo.collection.ReturnDocument.AFTER,
     )
-    return ReapedAcquisition(acquisition_obj, file_)
+    return TargetAcquisition(acquisition_obj, file_)
+
+def update_container_hierarchy(metadata, acquisition_id, level):
+    project = metadata.get('project')
+    session = metadata.get('session')
+    acquisition = metadata.get('acquisition')
+    now = datetime.datetime.utcnow()
+    if acquisition.get('timestamp'):
+        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
+    acquisition['modified'] = now
+    acquisition_obj = _update_container({'_id': acquisition_id}, acquisition, 'acquisitions')
+    if acquisition_obj is None:
+        raise APIStorageException('acquisition doesn''t exist')
+    if acquisition.get('timestamp'):
+        session_obj = config.db.sessions.find_one_and_update(
+            {'_id': acquisition_obj['session']},
+            {
+                '$min': dict(timestamp=acquisition['timestamp']),
+                '$set': dict(timezone=acquisition.get('timezone'))
+            },
+            return_document=pymongo.collection.ReturnDocument.AFTER
+        )
+        config.db.projects.find_one_and_update(
+            {'_id': session_obj['project']},
+            {
+                '$max': dict(timestamp=acquisition['timestamp']),
+                '$set': dict(timezone=acquisition.get('timezone'))
+            }
+        )
+    session_obj = None
+    if session:
+        session['modified'] = now
+        session_obj = _update_container({'_id': acquisition_obj['session']}, session, 'sessions')
+    if project:
+        project['modified'] = now
+        if not session_obj:
+            session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
+        _update_container({'_id': session_obj['project']}, project, 'projects')
+    return acquisition_obj
+
+def _update_container(query, update, cont_name):
+    return config.db[cont_name].find_one_and_update(
+        query,
+        {
+            '$set': util.mongo_dict(update)
+        },
+        return_document=pymongo.collection.ReturnDocument.AFTER
+    )

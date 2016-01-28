@@ -29,30 +29,30 @@ def initialize_list_configurations():
             'storage': liststorage.StringListStorage,
             'permchecker': listauth.default_sublist,
             'use_object_id': True,
-            'storage_schema_file': 'mongo/tag.json',
-            'input_schema_file': 'input/tag.json'
+            'storage_schema_file': 'tag.json',
+            'input_schema_file': 'tag.json'
         },
         'files': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.default_sublist,
             'use_object_id': True,
-            'storage_schema_file': 'mongo/file.json',
-            'input_schema_file': 'input/file.json'
+            'storage_schema_file': 'file.json',
+            'input_schema_file': 'file.json'
         },
         'permissions': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.permissions_sublist,
             'use_object_id': True,
             'get_full_container': True,
-            'storage_schema_file': 'mongo/permission.json',
-            'input_schema_file': 'input/permission.json'
+            'storage_schema_file': 'permission.json',
+            'input_schema_file': 'permission.json'
         },
         'notes': {
             'storage': liststorage.ListStorage,
             'permchecker': listauth.notes_sublist,
             'use_object_id': True,
-            'storage_schema_file': 'mongo/note.json',
-            'input_schema_file': 'input/note.json'
+            'storage_schema_file': 'note.json',
+            'input_schema_file': 'note.json'
         },
     }
     list_handler_configurations = {
@@ -62,8 +62,8 @@ def initialize_list_configurations():
                 'permchecker': listauth.group_roles_sublist,
                 'use_object_id': False,
                 'get_full_container': True,
-                'storage_schema_file': 'mongo/permission.json',
-                'input_schema_file': 'input/permission.json'
+                'storage_schema_file': 'permission.json',
+                'input_schema_file': 'permission.json'
             }
         },
         'projects': copy.deepcopy(container_default_configurations),

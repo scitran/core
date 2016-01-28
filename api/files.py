@@ -12,6 +12,12 @@ from . import config
 log = config.log
 
 
+def move_file(path, target_path):
+    target_dir = os.path.dirname(target_path)
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+    shutil.move(path, target_path)
+
 class FileStoreException(Exception):
     pass
 
@@ -26,8 +32,6 @@ class HashingFile(file):
 
     def get_hash(self):
         return self.hash_alg.hexdigest()
-
-
 
 
 def getHashingFieldStorage(upload_dir, hash_alg):
@@ -68,7 +72,6 @@ class FileStore(object):
     """
 
     def __init__(self, request, dest_path, filename=None, hash_alg='sha384'):
-        self.client_addr = request.client_addr
         self.body = request.body_file
         self.environ = request.environ.copy()
         self.environ.setdefault('CONTENT_LENGTH', '0')
@@ -108,10 +111,7 @@ class FileStore(object):
         self.metadata = None
 
     def move_file(self, target_path):
-        target_dir = os.path.dirname(target_path)
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir)
-        shutil.move(self.path, target_path)
+        move_file(self.path, target_path)
         self.path = target_path
 
     def identical(self, filepath, hash_):
@@ -130,3 +130,32 @@ class FileStore(object):
                     return True
         else:
             return hash_ == self.hash
+
+class MultiFileStore(object):
+    """This class provides and interface for file uploads.
+    """
+
+    def __init__(self, request, dest_path, filename=None, hash_alg='sha384'):
+        self.body = request.body_file
+        self.environ = request.environ.copy()
+        self.environ.setdefault('CONTENT_LENGTH', '0')
+        self.environ['QUERY_STRING'] = ''
+        self.hash_alg = hash_alg
+        self.files = {}
+        self._save_multipart_files(dest_path, hash_alg)
+        self.payload = request.POST.mixed()
+
+    def _save_multipart_files(self, dest_path, hash_alg):
+        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
+        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
+        for field in form:
+            if form[field].filename:
+                filename = os.path.basename(form[field].filename)
+                mimetype = util.guess_mimetype(filename)
+                self.files[filename] = {
+                    'hash': form[field].file.get_hash(),
+                    'size': os.path.getsize(os.path.join(dest_path, filename)),
+                    'mimetype': mimetype,
+                    'filetype': util.guess_filetype(filename, mimetype),
+                    'path': os.path.join(dest_path, filename)
+                }

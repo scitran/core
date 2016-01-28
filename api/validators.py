@@ -10,7 +10,8 @@ log = config.log
 # json schema files are expected to be in the schemas folder relative to this module
 schema_path = os.path.abspath(os.path.dirname(__file__))
 
-resolver = jsonschema.RefResolver('file://' + schema_path + '/schemas/', None)
+resolver_input = jsonschema.RefResolver('file://' + schema_path + '/schemas/input/', None)
+resolver_mongo = jsonschema.RefResolver('file://' + schema_path + '/schemas/mongo/', None)
 
 expected_mongo_schemas = set([
     'acquisition.json',
@@ -41,24 +42,25 @@ expected_input_schemas = set([
     'user.json',
     'avatars.json',
     'download.json',
-    'tag.json'
+    'tag.json',
+    'enginemetadata.json'
 ])
 mongo_schemas = set()
 input_schemas = set()
 # validate and cache schemas at start time
 for schema_file in os.listdir(schema_path + '/schemas/mongo/'):
     mongo_schemas.add(schema_file)
-    resolver.resolve('mongo/' + schema_file)
+    resolver_mongo.resolve(schema_file)
 
-assert mongo_schemas == expected_mongo_schemas, '{} is different from {}'.format(mongo_schemas, expected_schemas)
+assert mongo_schemas == expected_mongo_schemas, '{} is different from {}'.format(mongo_schemas, expected_mongo_schemas)
 
 for schema_file in os.listdir(schema_path + '/schemas/input/'):
     input_schemas.add(schema_file)
-    resolver.resolve('input/' + schema_file)
+    resolver_input.resolve(schema_file)
 
-assert input_schemas == expected_input_schemas, '{} is different from {}'.format(input_schemas, expected_schemas)
+assert input_schemas == expected_input_schemas, '{} is different from {}'.format(input_schemas, expected_input_schemas)
 
-def _validate_json(json_data, schema):
+def _validate_json(json_data, schema, resolver):
     jsonschema.validate(json_data, schema, resolver=resolver)
     #jsonschema.Draft4Validator(schema, resolver=resolver).validate(json_data)
 
@@ -68,7 +70,7 @@ def no_op(g, *args):
 def mongo_from_schema_file(handler, schema_file):
     if schema_file is None:
         return no_op
-    schema = resolver.resolve(schema_file)[1]
+    schema = resolver_mongo.resolve(schema_file)[1]
     def g(exec_op):
         def mongo_val(method, **kwargs):
             payload = kwargs['payload']
@@ -80,7 +82,7 @@ def mongo_from_schema_file(handler, schema_file):
                 _schema = schema
             if method in ['POST', 'PUT']:
                 try:
-                    _validate_json(payload, _schema)
+                    _validate_json(payload, _schema, resolver_mongo)
                 except jsonschema.ValidationError as e:
                     handler.abort(500, str(e))
             return exec_op(method, **kwargs)
@@ -90,7 +92,7 @@ def mongo_from_schema_file(handler, schema_file):
 def payload_from_schema_file(handler, schema_file):
     if schema_file is None:
         return no_op
-    schema = resolver.resolve(schema_file)[1]
+    schema = resolver_input.resolve(schema_file)[1]
     def g(payload, method):
         if method == 'PUT' and schema.get('required'):
             _schema = copy.copy(schema)
@@ -99,7 +101,7 @@ def payload_from_schema_file(handler, schema_file):
             _schema = schema
         if method in ['POST', 'PUT']:
             try:
-                _validate_json(payload, _schema)
+                _validate_json(payload, _schema, resolver_input)
             except jsonschema.ValidationError as e:
                 handler.abort(400, str(e))
     return g
@@ -121,7 +123,7 @@ def key_check(handler, schema_file):
     """
     if schema_file is None:
         return no_op
-    schema = resolver.resolve(schema_file)[1]
+    schema = resolver_mongo.resolve(schema_file)[1]
     log.debug(schema)
     if schema.get('key_fields') is None:
         return no_op

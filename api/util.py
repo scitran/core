@@ -28,11 +28,18 @@ def hrsize(size):
             return '%.0f%sB' % (size, suffix)
     return '%.0f%sB' % (size, 'Y')
 
+def mongo_sanitize(field):
+    return field.replace('.', '_')
 
 def mongo_dict(d):
     def _mongo_list(d, pk=''):
         pk = pk and pk + '.'
-        return sum([_mongo_list(v, pk+k) if isinstance(v, dict) else [(pk+k, v)] for k, v in d.iteritems()], [])
+        return sum(
+            [
+            _mongo_list(v, pk+mongo_sanitize(k)) if isinstance(v, dict) else [(pk+mongo_sanitize(k), v)]
+            for k, v in d.iteritems()
+            ], []
+        )
     return dict(_mongo_list(d))
 
 

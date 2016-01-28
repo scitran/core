@@ -56,8 +56,8 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         payload = self.request.json_body
-        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/group.json')
-        payload_validator = validators.payload_from_schema_file(self, 'input/group.json')
+        mongo_validator = validators.mongo_from_schema_file(self, 'group.json')
+        payload_validator = validators.payload_from_schema_file(self, 'group.json')
         payload_validator(payload, 'PUT')
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         if result.modified_count == 1:
@@ -69,8 +69,8 @@ class GroupHandler(base.RequestHandler):
         self._init_storage()
         permchecker = groupauth.default(self, None)
         payload = self.request.json_body
-        mongo_validator = validators.mongo_from_schema_file(self, 'mongo/group.json')
-        payload_validator = validators.payload_from_schema_file(self, 'input/group.json')
+        mongo_validator = validators.mongo_from_schema_file(self, 'group.json')
+        payload_validator = validators.payload_from_schema_file(self, 'group.json')
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)

@@ -2,11 +2,10 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Acquisition",
     "type": "object",
-    "allOf": [{"$ref": "mongo/container.json"}],
+    "allOf": [{"$ref": "container.json"}],
     "properties": {
         "created": {},
         "modified": {},
-        "notes": {},
         "permissions": {},
         "files": {},
         "public": {},
