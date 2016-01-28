@@ -70,7 +70,6 @@ def no_op(g, *args):
 def mongo_from_schema_file(handler, schema_file):
     if schema_file is None:
         return no_op
-    schema_file = schema_file.split('/')[1]
     schema = resolver_mongo.resolve(schema_file)[1]
     def g(exec_op):
         def mongo_val(method, **kwargs):
@@ -93,7 +92,6 @@ def mongo_from_schema_file(handler, schema_file):
 def payload_from_schema_file(handler, schema_file):
     if schema_file is None:
         return no_op
-    schema_file = schema_file.split('/')[1]
     schema = resolver_input.resolve(schema_file)[1]
     def g(payload, method):
         if method == 'PUT' and schema.get('required'):
@@ -125,12 +123,7 @@ def key_check(handler, schema_file):
     """
     if schema_file is None:
         return no_op
-    path_elements = schema_file.split('/')
-    schema_file = path_elements[1]
-    if path_elements[0] == 'mongo':
-        schema = resolver_mongo.resolve(schema_file)[1]
-    else:
-        schema = resolver_input.resolve(schema_file)[1]
+    schema = resolver_mongo.resolve(schema_file)[1]
     log.debug(schema)
     if schema.get('key_fields') is None:
         return no_op

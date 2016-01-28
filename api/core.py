@@ -199,7 +199,7 @@ class Core(base.RequestHandler):
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
-            metadata_validator = validators.payload_from_schema_file(self, 'input/enginemetadata.json')
+            metadata_validator = validators.payload_from_schema_file(self, 'enginemetadata.json')
             metadata_validator(file_store.metadata, 'POST')
             file_infos = file_store.metadata['acquisition'].pop('files', [])
             try:
@@ -411,7 +411,7 @@ class Core(base.RequestHandler):
                 config.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
             req_spec = self.request.json_body
-            validator = validators.payload_from_schema_file(self, 'input/download.json')
+            validator = validators.payload_from_schema_file(self, 'download.json')
             validator(req_spec, 'POST')
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
             if self.get_param('format') == 'bids':

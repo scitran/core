@@ -48,8 +48,8 @@ class ContainerHandler(base.RequestHandler):
             'storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
             'permchecker': containerauth.default_container,
             'parent_storage': containerstorage.ContainerStorage('groups', use_object_id=use_object_id['groups']),
-            'storage_schema_file': 'mongo/project.json',
-            'payload_schema_file': 'input/project.json',
+            'storage_schema_file': 'project.json',
+            'payload_schema_file': 'project.json',
             'list_projection': {'metadata': 0},
             'children_cont': 'sessions'
         },
@@ -57,8 +57,8 @@ class ContainerHandler(base.RequestHandler):
             'storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
             'permchecker': containerauth.default_container,
             'parent_storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
-            'storage_schema_file': 'mongo/session.json',
-            'payload_schema_file': 'input/session.json',
+            'storage_schema_file': 'session.json',
+            'payload_schema_file': 'session.json',
             'list_projection': {'metadata': 0},
             'children_cont': 'acquisitions'
         },
@@ -66,8 +66,8 @@ class ContainerHandler(base.RequestHandler):
             'storage': containerstorage.ContainerStorage('acquisitions', use_object_id=use_object_id['acquisitions']),
             'permchecker': containerauth.default_container,
             'parent_storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
-            'storage_schema_file': 'mongo/acquisition.json',
-            'payload_schema_file': 'input/acquisition.json',
+            'storage_schema_file': 'acquisition.json',
+            'payload_schema_file': 'acquisition.json',
             'list_projection': {'metadata': 0}
         }
     }
