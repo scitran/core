@@ -37,12 +37,19 @@ MATCH_TYPES = [
 # TODO: replace with default rules, which get persisted, maintained, upgraded, and reasoned intelligently
 HARDCODED_RULES = [
     {
-        'alg': 'dcm2nii',
+        'alg': 'dicom_mr_classifier',
         'all': [
             ['file.type', 'dicom']
         ]
-    }, {
-        'alg': 'qa',
+    },
+    {
+        'alg': 'dcm_convert',
+        'all': [
+            ['file.type', 'dicom']
+        ]
+    },
+    {
+        'alg': 'qa-report-fmri',
         'all': [
             ['file.name', '*.nii.gz']
         ]
