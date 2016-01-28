@@ -163,7 +163,6 @@ class Core(base.RequestHandler):
                 modified=now,
                 size=file_store.size,
                 hash=file_store.hash,
-                type=file_store.filetype,
                 tags=file_store.tags,
                 metadata=file_store.metadata
             )
@@ -236,7 +235,7 @@ class Core(base.RequestHandler):
             return [{'filename': k, 'hash': v['hash'], 'size': v['size']} for k, v in file_store.files.items()]
 
     def _merge_fileinfos(self, hard_infos, infos):
-        """it takes a dictionary of "hard_infos" (file size, hash, mimetype, filetype)
+        """it takes a dictionary of "hard_infos" (file size, hash)
         merging them with infos derived from a list of infos on the same or on other files
         """
         for info in infos:
