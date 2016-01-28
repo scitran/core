@@ -169,7 +169,7 @@ def retry_job(db, j, force=False):
     Can override the attempt limit by passing force=True.
     """
 
-    if j['attempt'] < 3 or Force:
+    if j['attempt'] < 3 or force:
         job_id = queue_job(db, j['algorithm_id'], convert_to_fileinput(j['input']), attempt_n=j['attempt']+1, previous_job_id=j['_id'])
         log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
     else:
