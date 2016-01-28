@@ -6,13 +6,13 @@ API request handlers for process-job-handling.
 from __future__ import absolute_import
 
 import bson
-from enum import Enum, unique
 import pymongo
 import datetime
 from collections import namedtuple
 
 from . import base
 from . import config
+from . import util
 
 log = config.log
 
@@ -38,18 +38,12 @@ JOB_TRANSITIONS = [
 def valid_transition(from_state, to_state):
     return (from_state + ' --> ' + to_state) in JOB_TRANSITIONS or from_state == to_state
 
-# Represet the general categories of gear function
-@unique
-class Category(Enum):
-    classifier  = 'classifier' # discover metadata
-    converter   = 'converter'  # translate between formats
-    qa          = 'qa'         # quality assurance
-    analytical  = 'analytical' # general purpose
-
-    # Enum strings are prefixed by their class: "Category.classifier".
-    # This overrides that behaviour and removes the prefix.
-    def __str__(self):
-        return str(self.value)
+Category = util.Enum('Category', {
+    'classifier': 'classifier', # discover metadata
+    'converter':  'converter',  # translate between formats
+    'qa':         'qa',         # quality assurance
+    'analytical': 'analytical', # general purpose
+})
 
 Gear = namedtuple('gear', ['name', 'category', 'input'])
 

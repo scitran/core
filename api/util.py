@@ -5,6 +5,7 @@ import datetime
 import mimetypes
 import bson.objectid
 import tempdir as tempfile
+import enum as baseEnum
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
@@ -110,3 +111,9 @@ def custom_json_serializer(obj):
     elif isinstance(obj, datetime.datetime):
         return pytz.timezone('UTC').localize(obj).isoformat()
     raise TypeError(repr(obj) + " is not JSON serializable")
+
+class Enum(baseEnum.Enum):
+    # Enum strings are prefixed by their class: "Category.classifier".
+    # This overrides that behaviour and removes the prefix.
+    def __str__(self):
+        return str(self.name)
