@@ -93,8 +93,9 @@ def path_from_hash(hash_):
     v0/sha384/01/b3/v0-sha384-01b395a1cbc0f218
     """
     hash_version, hash_alg, actual_hash = hash_.split('-')
-    path = [hash_version, hash_alg] + [actual_hash[2 * i : 2 * i + 2] for i in range(2)]
-    path.append(hash_)
+    first_stanza = actual_hash[0:2]
+    second_stanza = actual_hash[2:4]
+    path = (hash_version, hash_alg, first_stanza, second_stanza, hash_)
     return os.path.join(*path)
 
 
