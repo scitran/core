@@ -92,7 +92,7 @@ class FileStore(object):
         # the hash format is:
         # <version>-<hashing algorithm>-<actual hash>
         # version will track changes on hash related methods like for example how we check for identical files.
-        self.hash = '-'.join('v0', hash_alg, self.received_file.get_hash())
+        self.hash = util.format_hash(hash_alg, self.received_file.get_hash())
         self.size = os.path.getsize(self.path)
 
     def _save_multipart_file(self, dest_path, hash_alg):
@@ -156,7 +156,7 @@ class MultiFileStore(object):
                 filename = os.path.basename(form[field].filename)
                 mimetype = util.guess_mimetype(filename)
                 self.files[filename] = {
-                    'hash': form[field].file.get_hash(),
+                    'hash': util.format_hash(hash_alg, form[field].file.get_hash()),
                     'size': os.path.getsize(os.path.join(dest_path, filename)),
                     'mimetype': mimetype,
                     'filetype': util.guess_filetype(filename, mimetype),

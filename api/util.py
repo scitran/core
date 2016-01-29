@@ -107,6 +107,13 @@ def path_from_hash(hash_):
     return os.path.join(*path)
 
 
+def format_hash(hash_alg, hash_):
+    """
+    format the hash including version and algorithm
+    """
+    return '-'.join(('v0', hash_alg, hash_))
+
+
 def custom_json_serializer(obj):
     if isinstance(obj, bson.objectid.ObjectId):
         return str(obj)
