@@ -14,5 +14,6 @@
         "timezone":     {"type": "string"},
         "subject":      {"$ref": "subject.json"}
     },
+    "required": ["label"],
     "additionalProperties": false
 }
