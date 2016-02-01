@@ -138,10 +138,11 @@ class ListHandler(base.RequestHandler):
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id=_id, query_params=kwargs, payload=payload)
         except APIStorageException as e:
             self.abort(400, e.message)
-        if result.modified_count == 1:
-            return {'modified':result.modified_count}
-        else:
+        # abort if the query of the update wasn't able to find any matching documents
+        if result.matched_count == 0:
             self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+        else:
+            return {'modified':result.modified_count}
 
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -262,11 +263,12 @@ class NotesListHandler(ListHandler):
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id=_id, query_params=kwargs, payload=payload)
-
-        if result.modified_count == 1:
-            return {'modified':result.modified_count}
-        else:
+        # abort if the query of the update wasn't able to find any matching documents
+        if result.matched_count == 0:
             self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+        else:
+            return {'modified':result.modified_count}
+
 
 
 class FileListHandler(ListHandler):
