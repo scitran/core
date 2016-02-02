@@ -109,6 +109,7 @@ def data(args):
             'name': filename,
             'size': size,
             'hash': computed_hash,
+            'type': 'dicom', # we are only bootstrapping dicoms at the moment
             'created': created,
             'modified': modified
         }

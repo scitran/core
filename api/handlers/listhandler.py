@@ -341,7 +341,7 @@ class FileListHandler(ListHandler):
                 self.response.app_iter = open(filepath, 'rb')
                 self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
                 if self.is_true('view'):
-                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+                    self.response.headers['Content-Type'] = str(util.guess_mimetype(fileinfo.get('name')))
                 else:
                     self.response.headers['Content-Type'] = 'application/octet-stream'
                     self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
@@ -366,7 +366,6 @@ class FileListHandler(ListHandler):
                 'name': file_store.filename,
                 'size': file_store.size,
                 'hash': file_store.hash,
-                'type': file_store.filetype,
                 'created': file_datetime,
                 'modified': file_datetime,
             }

@@ -79,19 +79,6 @@ def guess_mimetype(filepath):
     return mime or 'application/octet-stream'
 
 
-def guess_filetype(filepath, mimetype):
-    """Guess file type based on filename and MIME type."""
-    type_, subtype = mimetype.split('/')
-    if filepath.endswith('.nii') or filepath.endswith('.nii.gz'):
-        return 'nifti'
-    elif filepath.endswith('_montage.zip'):
-        return 'montage'
-    elif type_ == 'text' and subtype == 'plain':
-        return 'text'
-    else:
-        return subtype
-
-
 def path_from_hash(hash_):
     """
     create a filepath from a hash

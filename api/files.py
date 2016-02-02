@@ -87,8 +87,6 @@ class FileStore(object):
             self._save_body_file(dest_path, filename, hash_alg)
         self.path = os.path.join(dest_path, self.filename)
         self.duration = datetime.datetime.utcnow() - start_time
-        self.mimetype = util.guess_mimetype(self.filename)
-        self.filetype = util.guess_filetype(self.filename, self.mimetype)
         # the hash format is:
         # <version>-<hashing algorithm>-<actual hash>
         # version will track changes on hash related methods like for example how we check for identical files.
@@ -154,11 +152,8 @@ class MultiFileStore(object):
         for field in form:
             if form[field].filename:
                 filename = os.path.basename(form[field].filename)
-                mimetype = util.guess_mimetype(filename)
                 self.files[filename] = {
                     'hash': util.format_hash(hash_alg, form[field].file.get_hash()),
                     'size': os.path.getsize(os.path.join(dest_path, filename)),
-                    'mimetype': mimetype,
-                    'filetype': util.guess_filetype(filename, mimetype),
                     'path': os.path.join(dest_path, filename)
                 }
