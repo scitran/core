@@ -33,14 +33,19 @@ class TargetAcquisition(object):
         fileinfo.update(self.fileinfo)
         for k,v in fileinfo.iteritems():
             update_set['files.$.' + k] = v
-        acquisition_obj = self.dbc.update_one(
+        return self.dbc.find_one_and_update(
             {'_id': self.acquisition['_id'], 'files.name': fileinfo['name']},
-            {'$set': update_set}
+            {'$set': update_set},
+            return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
     def add_file(self, fileinfo):
         fileinfo.update(self.fileinfo)
-        self.dbc.update_one({'_id': self.acquisition['_id']}, {'$push': {'files': fileinfo}})
+        return self.dbc.find_one_and_update(
+            {'_id': self.acquisition['_id']},
+            {'$push': {'files': fileinfo}},
+            return_document=pymongo.collection.ReturnDocument.AFTER
+        )
 
 def update_fileinfo(cont_name, _id, fileinfo):
     update_set = {'files.$.modified': datetime.datetime.utcnow()}
@@ -48,13 +53,18 @@ def update_fileinfo(cont_name, _id, fileinfo):
     # update_set allows to update all the fileinfo like size, hash, etc.
     for k,v in fileinfo.iteritems():
         update_set['files.$.' + k] = v
-    config.db[cont_name].update_one(
+    return config.db[cont_name].find_one_and_update(
         {'_id': _id, 'files.name': fileinfo['name']},
-        {'$set': update_set}
+        {'$set': update_set},
+        return_document=pymongo.collection.ReturnDocument.AFTER
     )
 
 def add_fileinfo(cont_name, _id, fileinfo):
-    config.db[cont_name].update_one({'_id': _id}, {'$push': {'files': fileinfo}})
+    return config.db[cont_name].find_one_and_update(
+        {'_id': _id},
+        {'$push': {'files': fileinfo}},
+        return_document=pymongo.collection.ReturnDocument.AFTER
+    )
 
 def _find_or_create_destination_project(group_name, project_label, created, modified):
     existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]

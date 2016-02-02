@@ -1,6 +1,7 @@
 import os
 import re
 import bson
+import copy
 import json
 import pytz
 import tarfile
@@ -217,31 +218,43 @@ class Core(base.RequestHandler):
                 path = fileinfo['path']
                 target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
                 files.move_file(path, target_path)
-
-            self._merge_fileinfos(file_store.files, file_infos)
+            # merge infos from the actual file and from the metadata
+            merged_infos = self._merge_fileinfos(file_store.files, file_infos)
             # update the fileinfo in mongo if a file already exists
             for f in acquisition_obj['files']:
-                fileinfo = file_store.files.get(f['name'])
+                fileinfo = merged_infos.get(f['name'])
                 if fileinfo:
                     fileinfo.pop('path', None)
-                    reaperutil.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
+                    acquisition_obj = reaperutil.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
                     fileinfo['existing'] = True
             # create the missing fileinfo in mongo
-            for name, fileinfo in file_store.files.items():
+            for name, fileinfo in merged_infos.items():
                 # if the file exists we don't need to create it
                 # skip update fileinfo for files that doesn't have a path
                 if not fileinfo.get('existing') and fileinfo.get('path'):
                     del fileinfo['path']
-                    reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
-            return [{'filename': k, 'hash': v['hash'], 'size': v['size']} for k, v in file_store.files.items()]
+                    acquisition_obj = reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
+
+            for f in acquisition_obj['files']:
+                if f['name'] in file_store.files:
+                    file_ = {
+                        'name': f['name'],
+                        'hash': f['hash'],
+                        'type': f.get('type'),
+                        'measurements': f.get('measurements', [])
+                    }
+                    rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
+            return [{'name': k, 'hash': v['hash'], 'size': v['size']} for k, v in merged_infos.items()]
 
     def _merge_fileinfos(self, hard_infos, infos):
         """it takes a dictionary of "hard_infos" (file size, hash, mimetype, filetype)
         merging them with infos derived from a list of infos on the same or on other files
         """
+        new_infos = copy.deepcopy(hard_infos)
         for info in infos:
-            info.update(hard_infos.get(info['name'], {}))
-            hard_infos[info['name']] = info
+            new_infos[info['name']] = new_infos.get(info['name'], {})
+            new_infos[info['name']].update(info)
+        return new_infos
 
     def _preflight_archivestream(self, req_spec):
         data_path = config.get_item('persistent', 'data_path')
