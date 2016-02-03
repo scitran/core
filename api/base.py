@@ -64,7 +64,7 @@ class RequestHandler(webapp2.RequestHandler):
                         u = u._replace(query=urllib.urlencode(query, True))
                         provider_avatar = urlparse.urlunparse(u)
                 else:
-                    headers = {'WWW-Authenticate': 'Bearer realm="%s", error="invalid_token", error_description="Invalid OAuth2 token."' % site_id}
+                    headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="Invalid OAuth2 token."'.format(site_id)}
                     self.abort(401, 'invalid oauth2 token', headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
