@@ -16,6 +16,8 @@ from . import util
 
 log = config.log
 
+# How many times a job should be retried
+MAX_ATTEMPTS = 3
 
 JOB_STATES = [
     'pending',  # Job is queued
@@ -163,7 +165,7 @@ def retry_job(db, j, force=False):
     Can override the attempt limit by passing force=True.
     """
 
-    if j['attempt'] < 3 or force:
+    if j['attempt'] < MAX_ATTEMPTS or force:
         job_id = queue_job(db, j['algorithm_id'], convert_to_fileinput(j['input']), attempt_n=j['attempt']+1, previous_job_id=j['_id'])
         log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
     else:
@@ -238,14 +240,26 @@ class Jobs(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        # A simple count of jobs by state
+        # Count jobs by state
         result = config.db.jobs.aggregate([{"$group": {"_id": "$state", "count": {"$sum": 1}}}])
-
         # Map mongo result to a useful object
-        stats = {s: 0 for s in JOB_STATES}
-        stats.update({r['_id']: r['count'] for r in result})
+        by_state = {s: 0 for s in JOB_STATES}
+        by_state.update({r['_id']: r['count'] for r in result})
 
-        return stats
+        # Count jobs by tag grouping
+        result = list(config.db.jobs.aggregate([{"$group": {"_id": "$tags", "count": {"$sum": 1}}}]))
+        by_tag = []
+        for r in result:
+            by_tag.append({'tags': r['_id'], 'count': r['count']})
+
+        # Count jobs that will not be retried
+        permafailed = len(list(config.db.jobs.find({"attempt": {"$gte": MAX_ATTEMPTS}, "state":"failed"})))
+
+        return {
+            'by-state': by_state,
+            'by-tag': by_tag,
+            'permafailed': permafailed
+        }
 
     def next(self):
         """
