@@ -253,7 +253,7 @@ class Jobs(base.RequestHandler):
             by_tag.append({'tags': r['_id'], 'count': r['count']})
 
         # Count jobs that will not be retried
-        permafailed = len(list(config.db.jobs.find({"attempt": {"$gte": MAX_ATTEMPTS}, "state":"failed"})))
+        permafailed = config.db.jobs.count({"attempt": {"$gte": MAX_ATTEMPTS}, "state":"failed"})
 
         return {
             'by-state': by_state,
