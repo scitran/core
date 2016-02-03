@@ -4,6 +4,7 @@ import datetime
 from .. import config
 from ..auth import containerauth, always_ok
 from ..dao import containerstorage
+from ..dao import APIStorageException
 
 from containerhandler import ContainerHandler
 

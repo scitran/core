@@ -10,5 +10,6 @@
 
         "group": {"type": "string"}
     },
+    "required": ["label"],
     "additionalProperties": false
 }

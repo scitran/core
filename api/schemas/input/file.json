@@ -3,8 +3,6 @@
   "type": "object",
   "properties": {
     "name":           { "type": "string" },
-    "created":        {"type": "string", "format": "date-time"},
-    "modified":       {"type": "string", "format": "date-time"},
     "type":           { "type": "string" },
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },

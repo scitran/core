@@ -15,5 +15,6 @@
         "timestamp":    {"type": "string"},
         "timezone":     {"type": "string"}
     },
+    "required": ["label"],
     "additionalProperties": false
 }

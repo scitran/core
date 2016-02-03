@@ -258,9 +258,10 @@ class ContainerHandler(base.RequestHandler):
         if target_parent_container:
             if cont_name == 'sessions':
                 payload['group'] = target_parent_container['group']
-            payload['permissions'] = target_parent_container.get('roles')
-            if payload['permissions'] is None:
-                payload['permissions'] = target_parent_container['permissions']
+            if cont_name == 'projects':
+                payload['permissions'] = target_parent_container.get('roles', [])
+            else:
+                payload['permissions'] = target_parent_container.get('permissions', [])
 
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
