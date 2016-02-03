@@ -51,7 +51,7 @@ HARDCODED_RULES = [
     {
         'alg': 'qa-report-fmri',
         'all': [
-            ['file.name', '*.nii.gz']
+            ['file.type', 'nifti']
         ]
     }
 ]
