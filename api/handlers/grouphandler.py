@@ -25,6 +25,8 @@ class GroupHandler(base.RequestHandler):
         return result
 
     def delete(self, _id):
+        if _id == 'unknown':
+            self.abort(400, 'The group "unknown" can\'t be deleted as it is integral within the API')
         self._init_storage()
         group = self._get_group(_id)
         if not group:
