@@ -120,7 +120,7 @@ else
     echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
 fi
 
-TESTDATA_URL="https://github.com/scitran/testdata/archive/master.tar.gz"
+TESTDATA_URL="https://github.com/scitran/testdata/archive/bali.tar.gz"
 TESTDATA_VERSION=$(curl -sLI $TESTDATA_URL | grep ETag | tail -n 1 | cut -f 2 -d '"')
 if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
     echo "Downloading testdata to $SCITRAN_PERSISTENT_PATH/testdata"
