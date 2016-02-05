@@ -256,6 +256,8 @@ class ContainerHandler(base.RequestHandler):
         # In this case, we will check permissions on it.
         target_parent_container, parent_id_property = self._get_parent_container(payload)
         if target_parent_container:
+            if cont_name in ['sessions', 'acquisitions']:
+                payload[parent_id_property] = bson.ObjectId(payload[parent_id_property])
             if cont_name == 'sessions':
                 payload['group'] = target_parent_container['group']
             if cont_name == 'projects':
