@@ -157,7 +157,7 @@ class Core(base.RequestHandler):
                 file_store = files.FileStore(self.request, tempdir_path)
             except files.FileStoreException as e:
                 self.abort(400, str(e))
-            now = datetime.datetime.now()
+            now = datetime.datetime.utcnow()
             fileinfo = dict(
                 name=file_store.filename,
                 created=now,
@@ -208,6 +208,7 @@ class Core(base.RequestHandler):
             metadata_validator = validators.payload_from_schema_file(self, 'enginemetadata.json')
             metadata_validator(file_store.metadata, 'POST')
             file_infos = file_store.metadata['acquisition'].pop('files', [])
+            now = datetime.datetime.utcnow()
             try:
                 acquisition_obj = reaperutil.update_container_hierarchy(file_store.metadata, acquisition_id, level)
             except APIStorageException as e:
@@ -224,6 +225,7 @@ class Core(base.RequestHandler):
                 fileinfo = merged_infos.get(f['name'])
                 if fileinfo:
                     fileinfo.pop('path', None)
+                    fileinfo['modified'] = now
                     acquisition_obj = reaperutil.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
                     fileinfo['existing'] = True
             # create the missing fileinfo in mongo
@@ -232,6 +234,8 @@ class Core(base.RequestHandler):
                 # skip update fileinfo for files that doesn't have a path
                 if not fileinfo.get('existing') and fileinfo.get('path'):
                     del fileinfo['path']
+                    fileinfo['created'] = now
+                    fileinfo['modified'] = now
                     acquisition_obj = reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
 
             for f in acquisition_obj['files']:
