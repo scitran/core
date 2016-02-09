@@ -1,10 +1,21 @@
-language: python
+#See https://github.com/travis-ci/travis-ci/issues/2312 for info on why we need
+# to install python manually
+# Python isn't supported OOTB, so pick a language that makes Travis happy
+language: objective-c
+os: osx
 sudo: false
-python:
-- '2.7'
+env:
+  - SCITRAN_RUNTIME_BOOTSTRAP=test/test_bootstrap.json
 install:
+  - brew update
+  - brew install python
+before_script:
   - bin/install.sh --ci
+  - bin/run.sh -d
 script:
   - bin/runtests.sh unit --ci
+  - bin/runtests.sh integration --ci
 after_success:
   - coveralls
+after_script:
+  - bin/run.sh -s

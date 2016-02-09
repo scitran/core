@@ -1,6 +1,7 @@
 #!/bin/bash
 
 unit_test_path=test/unit_tests/
+integration_test_path=test/integration_tests/
 code_path=api/
 
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
@@ -16,8 +17,14 @@ case "$1-$2" in
   unit---watch)
     PYTHONPATH=. ptw $unit_test_path $code_path --poll -- $unit_test_path
     ;;
-  integration-|integration---ci|integration---watch)
-    echo "Not implemented yet"
+  integration---ci)
+    PYTHONPATH=. py.test $integration_test_path
+    ;;
+  integration-)
+    PYTHONPATH=. py.test $integration_test_path
+    ;;
+  integration---watch)
+    echo "Not implemented"
     ;;
   *)
     echo "Usage: $0 unit|integration [--ci|--watch]"
