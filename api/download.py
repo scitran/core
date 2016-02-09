@@ -1,25 +1,19 @@
-import os
-import re
 import bson
-import copy
 import json
 import pytz
+import os.path
 import tarfile
 import datetime
-import markdown
 import cStringIO
-import validators
 
 from . import base
+from . import validators
+
 from . import util
-from . import files
-from . import rules
 from . import config
-from . import centralclient
-from .dao import reaperutil, APIStorageException
-from . import tempdir as tempfile
 
 log = config.log
+
 
 def _filter_check(property_filter, property_values):
     minus = set(property_filter.get('-', []))
@@ -54,206 +48,7 @@ def _append_targets(targets, container, prefix, total_size, total_cnt, optional,
     return total_size, total_cnt
 
 
-class Config(base.RequestHandler):
-
-    def get(self):
-        return config.get_public_config()
-
-    def get_js(self):
-        self.response.write(
-            'config = ' +
-            json.dumps( self.get(), sort_keys=True, indent=4, separators=(',', ': '), default=util.custom_json_serializer,) +
-            ';'
-        )
-
-
-class Core(base.RequestHandler):
-
-    """/api """
-
-    def head(self):
-        """Return 200 OK."""
-        pass
-
-    def get(self):
-        """Return API documentation"""
-        resources = """
-            Resource                            | Description
-            :-----------------------------------|:-----------------------
-            [(/sites)]                          | local and remote sites
-            /download                           | download
-            [(/users)]                          | list of users
-            [(/users/self)]                     | user identity
-            [(/users/roles)]                    | user roles
-            [(/users/*<uid>*)]                  | details for user *<uid>*
-            [(/users/*<uid>*/groups)]           | groups for user *<uid>*
-            [(/users/*<uid>*/projects)]         | projects for user *<uid>*
-            [(/groups)]                         | list of groups
-            /groups/*<gid>*                     | details for group *<gid>*
-            /groups/*<gid>*/projects            | list of projects for group *<gid>*
-            /groups/*<gid>*/sessions            | list of sessions for group *<gid>*
-            [(/projects)]                       | list of projects
-            [(/projects/groups)]                | groups for projects
-            [(/projects/schema)]                | schema for single project
-            /projects/*<pid>*                   | details for project *<pid>*
-            /projects/*<pid>*/sessions          | list sessions for project *<pid>*
-            [(/sessions)]                       | list of sessions
-            [(/sessions/schema)]                | schema for single session
-            /sessions/*<sid>*                   | details for session *<sid>*
-            /sessions/*<sid>*/move              | move session *<sid>* to a different project
-            /sessions/*<sid>*/acquisitions      | list acquisitions for session *<sid>*
-            [(/acquisitions/schema)]            | schema for single acquisition
-            /acquisitions/*<aid>*               | details for acquisition *<aid>*
-            [(/collections)]                    | list of collections
-            [(/collections/schema)]             | schema for single collection
-            /collections/*<cid>*                | details for collection *<cid>*
-            /collections/*<cid>*/sessions       | list of sessions for collection *<cid>*
-            /collections/*<cid>*/acquisitions   | list of acquisitions for collection *<cid>*
-            [(/schema/group)]                   | group schema
-            [(/schema/user)]                    | user schema
-            """
-
-        if self.debug and self.uid:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s&root=%r)' % (self.uid, self.superuser_request), resources)
-            resources = re.sub(r'(\(.*)\*<uid>\*(.*\))', r'\1%s\2' % self.uid, resources)
-        else:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
-        resources = resources.replace('<', '&lt;').replace('>', '&gt;').strip()
-
-        self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
-        self.response.write('<html>\n')
-        self.response.write('<head>\n')
-        self.response.write('<title>SciTran API</title>\n')
-        self.response.write('<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">\n')
-        self.response.write('<style type="text/css">\n')
-        self.response.write('table {width:0%; border-width:1px; padding: 0;border-collapse: collapse;}\n')
-        self.response.write('table tr {border-top: 1px solid #b8b8b8; background-color: white; margin: 0; padding: 0;}\n')
-        self.response.write('table tr:nth-child(2n) {background-color: #f8f8f8;}\n')
-        self.response.write('table thead tr :last-child {width:100%;}\n')
-        self.response.write('table tr th {font-weight: bold; border: 1px solid #b8b8b8; background-color: #cdcdcd; margin: 0; padding: 6px 13px;}\n')
-        self.response.write('table tr th {font-weight: bold; border: 1px solid #b8b8b8; background-color: #cdcdcd; margin: 0; padding: 6px 13px;}\n')
-        self.response.write('table tr td {border: 1px solid #b8b8b8; margin: 0; padding: 6px 13px;}\n')
-        self.response.write('table tr th :first-child, table tr td :first-child {margin-top: 0;}\n')
-        self.response.write('table tr th :last-child, table tr td :last-child {margin-bottom: 0;}\n')
-        self.response.write('</style>\n')
-        self.response.write('</head>\n')
-        self.response.write('<body style="min-width:900px">\n')
-        if self.debug and not self.get_param('user'):
-            self.response.write('<form name="username" action="" method="get">\n')
-            self.response.write('Username: <input type="text" name="user">\n')
-            self.response.write('Root: <input type="checkbox" name="root" value="1">\n')
-            self.response.write('<input type="submit" value="Generate Custom Links">\n')
-            self.response.write('</form>\n')
-        self.response.write(markdown.markdown(resources, ['extra']))
-        self.response.write('</body>\n')
-        self.response.write('</html>\n')
-
-    def reaper(self):
-        """Receive a sortable reaper upload."""
-        if not self.superuser_request:
-            self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
-            try:
-                file_store = files.FileStore(self.request, tempdir_path)
-            except files.FileStoreException as e:
-                self.abort(400, str(e))
-            now = datetime.datetime.now()
-            fileinfo = dict(
-                name=file_store.filename,
-                created=now,
-                modified=now,
-                size=file_store.size,
-                hash=file_store.hash,
-                tags=file_store.tags,
-                metadata=file_store.metadata
-            )
-            container = reaperutil.create_container_hierarchy(file_store.metadata)
-            f = container.find(file_store.filename)
-            target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
-            if not f:
-                file_store.move_file(target_path)
-                container.add_file(fileinfo)
-                rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)
-            elif not file_store.identical(util.path_from_hash(fileinfo['hash']), f['hash']):
-                file_store.move_file(target_path)
-                container.update_file(fileinfo)
-                rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)
-            throughput = file_store.size / file_store.duration.total_seconds()
-            log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
-
-    def engine(self):
-        """
-        URL format: api/engine?level=<container_type>&id=<container_id>
-
-        It expects a multipart/form-data request with a "metadata" field (json valid against api/schemas/input/enginemetadata)
-        and 0 or more file fields with a non null filename property (filename is null for the "metadata").
-        """
-        level = self.get_param('level')
-        if level != 'acquisition':
-            self.abort(404, 'engine uploads are supported only at the acquisition level')
-        acquisition_id = self.get_param('id')
-        if not acquisition_id:
-            self.abort(404, 'container id is required')
-        else:
-            acquisition_id = bson.ObjectId(acquisition_id)
-        if not self.superuser_request:
-            self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
-            try:
-                file_store = files.MultiFileStore(self.request, tempdir_path)
-            except files.FileStoreException as e:
-                self.abort(400, str(e))
-            if not file_store.metadata:
-                self.abort(400, 'metadata is missing')
-            metadata_validator = validators.payload_from_schema_file(self, 'enginemetadata.json')
-            metadata_validator(file_store.metadata, 'POST')
-            file_infos = file_store.metadata['acquisition'].pop('files', [])
-            try:
-                acquisition_obj = reaperutil.update_container_hierarchy(file_store.metadata, acquisition_id, level)
-            except APIStorageException as e:
-                self.abort(400, e.message)
-            # move the files before updating the database
-            for name, fileinfo in file_store.files.items():
-                path = fileinfo['path']
-                target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
-                files.move_file(path, target_path)
-            # merge infos from the actual file and from the metadata
-            merged_infos = self._merge_fileinfos(file_store.files, file_infos)
-            # update the fileinfo in mongo if a file already exists
-            for f in acquisition_obj['files']:
-                fileinfo = merged_infos.get(f['name'])
-                if fileinfo:
-                    fileinfo.pop('path', None)
-                    acquisition_obj = reaperutil.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
-                    fileinfo['existing'] = True
-            # create the missing fileinfo in mongo
-            for name, fileinfo in merged_infos.items():
-                # if the file exists we don't need to create it
-                # skip update fileinfo for files that doesn't have a path
-                if not fileinfo.get('existing') and fileinfo.get('path'):
-                    del fileinfo['path']
-                    acquisition_obj = reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
-
-            for f in acquisition_obj['files']:
-                if f['name'] in file_store.files:
-                    file_ = {
-                        'name': f['name'],
-                        'hash': f['hash'],
-                        'type': f.get('type'),
-                        'measurements': f.get('measurements', [])
-                    }
-                    rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
-            return [{'name': k, 'hash': v['hash'], 'size': v['size']} for k, v in merged_infos.items()]
-
-    def _merge_fileinfos(self, hard_infos, infos):
-        """it takes a dictionary of "hard_infos" (file size, hash)
-        merging them with infos derived from a list of infos on the same or on other files
-        """
-        new_infos = copy.deepcopy(hard_infos)
-        for info in infos:
-            new_infos[info['name']] = new_infos.get(info['name'], {})
-            new_infos[info['name']].update(info)
-        return new_infos
+class Download(base.RequestHandler):
 
     def _preflight_archivestream(self, req_spec):
         data_path = config.get_item('persistent', 'data_path')
@@ -410,7 +205,6 @@ class Core(base.RequestHandler):
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
-
     def download(self):
         """
         In downloads we use filters in the payload to exclude/include files.
@@ -464,36 +258,3 @@ class Core(base.RequestHandler):
                 return self._preflight_archivestream_bids(req_spec)
             else:
                 return self._preflight_archivestream(req_spec)
-
-    def sites(self):
-        """Return local and remote sites."""
-        projection = ['name', 'onload']
-        # TODO onload for local is true
-        site_id = config.get_item('site', 'id')
-        if self.public_request or self.is_true('all'):
-            sites = list(config.db.sites.find(None, projection))
-        else:
-            # TODO onload based on user prefs
-            remotes = (config.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
-            remote_ids = [r['_id'] for r in remotes] + [site_id]
-            sites = list(config.db.sites.find({'_id': {'$in': remote_ids}}, projection))
-        for s in sites:  # TODO: this for loop will eventually move to public case
-            if s['_id'] == site_id:
-                s['onload'] = True
-                break
-        return sites
-
-    def register(self):
-        if not config.get_item('site', 'registered'):
-            self.abort(400, 'Site not registered with central')
-        if not config.get_item('site', 'ssl_cert'):
-            self.abort(400, 'SSL cert not configured')
-        if not config.get_item('site', 'central_url'):
-            self.abort(400, 'Central URL not configured')
-        if not centralclient.update(config.db, config.get_item('site', 'ssl_cert'), config.get_item('site', 'central_url')):
-            centralclient.fail_count += 1
-        else:
-            centralclient.fail_count = 0
-        if centralclient.fail_count == 3:
-            log.warning('scitran central unreachable, purging all remotes info')
-            centralclient.clean_remotes(mongo.db)

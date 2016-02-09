@@ -10,9 +10,14 @@ local users are permitted to access data in other instances.
 import re
 import json
 import requests
+
+from . import base
+from . import config
+
 import logging
 import logging.config
 
+# FIXME logging should be properly ported using the new config
 logging.basicConfig()
 log = logging.getLogger('scitran.api.centralclient')
 logging.getLogger('urllib3').setLevel(logging.WARNING)  # silence Requests library logging
@@ -79,3 +84,42 @@ def clean_remotes(db, site_id):
     log.debug('removing remotes from users, and remotes collection')
     db.sites.delete_many({'_id': {'$ne': [site_id]}})
     db.users.update_many({'remotes': {'$exists': True}}, {'$unset': {'remotes': ''}})
+
+
+class CentralClient(base.RequestHandler):
+
+    def sites(self):
+        """Return local and remote sites."""
+        projection = ['name', 'onload']
+        # TODO onload for local is true
+        site_id = config.get_item('site', 'id')
+        if self.public_request or self.is_true('all'):
+            sites = list(config.db.sites.find(None, projection))
+        else:
+            # TODO onload based on user prefs
+            remotes = (config.db.users.find_one({'_id': self.uid}, ['remotes']) or {}).get('remotes', [])
+            remote_ids = [r['_id'] for r in remotes] + [site_id]
+            sites = list(config.db.sites.find({'_id': {'$in': remote_ids}}, projection))
+        for s in sites:  # TODO: this for loop will eventually move to public case
+            if s['_id'] == site_id:
+                s['onload'] = True
+                break
+        return sites
+
+    def register(self):
+        self.abort(404, 'register endpoint is not implemented')
+        # FIXME the code below should be properly ported using the new config
+        # every request to this route is aborted at the moment
+        if not config.get_item('site', 'registered'):
+            self.abort(400, 'Site not registered with central')
+        if not config.get_item('site', 'ssl_cert'):
+            self.abort(400, 'SSL cert not configured')
+        if not config.get_item('site', 'central_url'):
+            self.abort(400, 'Central URL not configured')
+        if not update(config.db, config.get_item('site', 'ssl_cert'), config.get_item('site', 'central_url')):
+            fail_count += 1
+        else:
+            centralclient.fail_count = 0
+        if centralclient.fail_count == 3:
+            log.warning('scitran central unreachable, purging all remotes info')
+            clean_remotes(config.db)

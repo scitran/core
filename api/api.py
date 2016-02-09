@@ -3,10 +3,14 @@ import json
 import webapp2
 import webapp2_extras.routes
 
-from . import core
+from . import base
 from . import jobs
+from . import root
 from . import util
 from . import config
+from . import centralclient
+from . import download
+from . import upload
 from handlers import listhandler
 from handlers import userhandler
 from handlers import grouphandler
@@ -14,6 +18,18 @@ from handlers import containerhandler
 from handlers import collectionshandler
 
 log = config.log
+
+class Config(base.RequestHandler):
+
+    def get(self):
+        return config.get_public_config()
+
+    def get_js(self):
+        self.response.write(
+            'config = ' +
+            json.dumps( self.get(), sort_keys=True, indent=4, separators=(',', ': '), default=util.custom_json_serializer,) +
+            ';'
+        )
 
 #regexes used in routing table:
 routing_regexes = {
@@ -51,15 +67,15 @@ def _format(route):
     return route.format(**routing_regexes)
 
 routes = [
-    webapp2.Route(r'/api',                  core.Core),
+    webapp2.Route(r'/api',                  root.Root),
     webapp2_extras.routes.PathPrefixRoute(r'/api', [
-        webapp2.Route(r'/download',         core.Core, handler_method='download', methods=['GET', 'POST'], name='download'),
-        webapp2.Route(r'/reaper',           core.Core, handler_method='reaper', methods=['POST']),
-        webapp2.Route(r'/engine',           core.Core, handler_method='engine', methods=['POST']),
-        webapp2.Route(r'/sites',            core.Core, handler_method='sites', methods=['GET']),
-        webapp2.Route(r'/register',         core.Core, handler_method='register', methods=['POST']),
-        webapp2.Route(r'/config',           core.Config, methods=['GET']),
-        webapp2.Route(r'/config.js',        core.Config, handler_method='get_js', methods=['GET'])
+        webapp2.Route(r'/download',         download.Download, handler_method='download', methods=['GET', 'POST'], name='download'),
+        webapp2.Route(r'/reaper',           upload.Upload, handler_method='reaper', methods=['POST']),
+        webapp2.Route(r'/engine',           upload.Upload, handler_method='engine', methods=['POST']),
+        webapp2.Route(r'/sites',            centralclient.CentralClient, handler_method='sites', methods=['GET']),
+        webapp2.Route(r'/register',         centralclient.CentralClient, handler_method='register', methods=['POST']),
+        webapp2.Route(r'/config',           Config, methods=['GET']),
+        webapp2.Route(r'/config.js',        Config, handler_method='get_js', methods=['GET'])
     ]),
     webapp2.Route(r'/api/users',            userhandler.UserHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/users',            userhandler.UserHandler, methods=['POST']),
