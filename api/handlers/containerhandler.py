@@ -168,10 +168,9 @@ class ContainerHandler(base.RequestHandler):
             elem[dbc_name[:-1] + '_count'] = counts.get(elem['_id'], 0)
 
     def _add_session_measurements(self, results):
-        session_measurements = {}
         session_measurements = config.db.acquisitions.aggregate([
             {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
-            {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$datatype'}}}
+            {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$measurement'}}}
             ])
         session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
         for sess in results:
