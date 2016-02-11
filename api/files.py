@@ -85,6 +85,7 @@ class FileStore(object):
             self.payload = request.POST.mixed()
             self.filename = filename or self.payload.get('filename')
             self._save_body_file(dest_path, filename, hash_alg)
+        self.mimetype = util.guess_mimetype(self.filename)
         self.path = os.path.join(dest_path, self.filename)
         self.duration = datetime.datetime.utcnow() - start_time
         # the hash format is:
@@ -155,5 +156,6 @@ class MultiFileStore(object):
                 self.files[filename] = {
                     'hash': util.format_hash(hash_alg, form[field].file.get_hash()),
                     'size': os.path.getsize(os.path.join(dest_path, filename)),
-                    'path': os.path.join(dest_path, filename)
+                    'path': os.path.join(dest_path, filename),
+                    'mimetype': util.guess_mimetype(filename)
                 }

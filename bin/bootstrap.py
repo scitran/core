@@ -111,7 +111,8 @@ def data(args):
             'hash': computed_hash,
             'type': 'dicom', # we are only bootstrapping dicoms at the moment
             'created': created,
-            'modified': modified
+            'modified': modified,
+            'mimetype': util.guess_mimetype(filename),
         }
         container.add_file(fileinfo)
         rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)

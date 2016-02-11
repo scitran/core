@@ -341,7 +341,7 @@ class FileListHandler(ListHandler):
                 self.response.app_iter = open(filepath, 'rb')
                 self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
                 if self.is_true('view'):
-                    self.response.headers['Content-Type'] = str(util.guess_mimetype(fileinfo.get('name')))
+                    self.response.headers['Content-Type'] = str(fileinfo['mimetype'])
                 else:
                     self.response.headers['Content-Type'] = 'application/octet-stream'
                     self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
@@ -371,6 +371,8 @@ class FileListHandler(ListHandler):
             }
             if file_store.metadata:
                 file_properties['metadata'] = file_store.metadata
+                if file_store.metadata.get('mimetype'):
+                    file_properties['mimetype'] = file_store.metadata['mimetype']
             if file_store.tags:
                 file_properties['tags'] = file_store.tags
             dest_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(file_properties['hash']))
@@ -396,8 +398,9 @@ class FileListHandler(ListHandler):
             file_store.move_file(dest_path)
             payload_validator(payload, method)
             payload.update(file_properties)
+            payload['mimetype'] = payload.get('mimetype') or util.guess_mimetype(file_store.filename)
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
             if not result or result.modified_count != 1:
                 self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-            rules.create_jobs(config.db, container, cont_name[:-1], file_properties)
+            rules.create_jobs(config.db, container, cont_name[:-1], payload)
         return {'modified': result.modified_count}

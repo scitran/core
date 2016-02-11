@@ -34,6 +34,7 @@ class Upload(base.RequestHandler):
                 modified=now,
                 size=file_store.size,
                 hash=file_store.hash,
+                mimetype=util.guess_mimetype(file_store.filename),
                 tags=file_store.tags,
                 metadata=file_store.metadata
             )
@@ -103,9 +104,10 @@ class Upload(base.RequestHandler):
             # create the missing fileinfo in mongo
             for name, fileinfo in merged_infos.items():
                 # if the file exists we don't need to create it
-                # skip update fileinfo for files that doesn't have a path
+                # skip update fileinfo for files that don't have a path
                 if not fileinfo.get('existing') and fileinfo.get('path'):
                     del fileinfo['path']
+                    fileinfo['mimetype'] = fileinfo.get('mimetype') or util.guess_mimetype(name)
                     fileinfo['created'] = now
                     fileinfo['modified'] = now
                     acquisition_obj = reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
@@ -116,7 +118,8 @@ class Upload(base.RequestHandler):
                         'name': f['name'],
                         'hash': f['hash'],
                         'type': f.get('type'),
-                        'measurements': f.get('measurements', [])
+                        'measurements': f.get('measurements', []),
+                        'mimetype': f.get('mimetype')
                     }
                     rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
             return [{'name': k, 'hash': v['hash'], 'size': v['size']} for k, v in merged_infos.items()]
