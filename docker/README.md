@@ -28,7 +28,7 @@ preserving their contents across container instances.
      -p 0.0.0.0:8080:8080 \
      scitran-core \
        uwsgi \
-         --ini /var/scitran/config/uwsgi.config.ini \
+         --ini /var/scitran/config/uwsgi-config.ini \
          --http 0.0.0.0:8080 \
          --python-autoreload 1
 
@@ -75,7 +75,7 @@ docker run \
   -p 0.0.0.0:8080:8080 \
   scitran-core \
     uwsgi \
-      --ini /var/scitran/config/uwsgi.config.ini \
+      --ini /var/scitran/config/uwsgi-config.ini \
       --http 0.0.0.0:8080 \
       --python-autoreload 1
 ```

@@ -38,7 +38,6 @@ RUN mkdir -p \
       /var/scitran/config \
       /var/scitran/data \
       /var/scitran/code/api \
-      /var/scitran/config \
       /var/scitran/logs \
       /var/scitran/keys
 
@@ -59,10 +58,10 @@ VOLUME /var/scitran/logs
 #
 # Split this out for better cache re-use.
 #
-COPY requirements.txt docker/additional.requirements.txt /var/scitran/code/api/
+COPY requirements.txt docker/requirements-docker.txt /var/scitran/code/api/
 
 RUN pip install --upgrade pip wheel setuptools \
-  && pip install -r /var/scitran/code/api/additional.requirements.txt \
+  && pip install -r /var/scitran/code/api/requirements-docker.txt \
   && pip install -r /var/scitran/code/api/requirements.txt
 
 
@@ -73,7 +72,7 @@ COPY . /var/scitran/code/api/
 
 
 COPY docker/uwsgi-entrypoint.sh /var/scitran/
-COPY docker/uwsgi.config.ini /var/scitran/config/
+COPY docker/uwsgi-config.ini /var/scitran/config/
 COPY docker/newrelic.ini /var/scitran/config/
 
 
@@ -88,4 +87,4 @@ RUN /inject_build_info.sh ${BRANCH_LABEL} ${COMMIT_HASH} \
 
 
 ENTRYPOINT ["/var/scitran/uwsgi-entrypoint.sh"]
-CMD ["uwsgi", "--ini", "/var/scitran/config/uwsgi.config.ini", "--http", "0.0.0.0:8080" ]
+CMD ["uwsgi", "--ini", "/var/scitran/config/uwsgi-config.ini", "--http", "0.0.0.0:8080" ]
