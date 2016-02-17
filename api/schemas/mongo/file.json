@@ -6,6 +6,7 @@
     "created":        {},
     "modified":       {},
     "type":           { "type": "string" },
+    "mimetype":       { "type": "string" },
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },
     "instrument":     { "type": "string" },
