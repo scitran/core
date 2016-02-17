@@ -124,60 +124,6 @@ class Download(base.RequestHandler):
         used_subpaths[parent_id] = used_subpaths.get(parent_id, []) + [path]
         return path
 
-    def _preflight_archivestream_bids(self, req_spec):
-        data_path = config.get_item('persistent', 'data_path')
-        file_cnt = 0
-        total_size = 0
-        targets = []
-        # FIXME: check permissions of everything
-        projects = []
-        prefix = 'untitled'
-        used_subpaths = {}
-        if len(req_spec['nodes']) != 1:
-            self.abort(400, 'bids downloads are limited to single dataset downloads')
-        for item in req_spec['nodes']:
-            item_id = bson.ObjectId(item['_id'])
-            if item['level'] == 'project':
-                project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files', 'notes'])
-                projects.append(item_id)
-                prefix = project['label']
-                total_size, file_cnt = _append_targets(targets, project, prefix, total_size,
-                                                       file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                ses_or_subj_list = config.db.sessions.find({'project': item_id}, ['_id', 'label', 'files', 'subject.code', 'subject_code', 'uid', 'timestamp', 'timezone'])
-                subject_prefixes = {
-                    'missing_subject': prefix + '/missing_subject'
-                }
-                sessions = {}
-                for ses_or_subj in ses_or_subj_list:
-                    subj_code = ses_or_subj.get('subject', {}).get('code') or ses_or_subj.get('subject_code')
-                    if subj_code == 'subject':
-                        subject_prefix = prefix + '/' + self._path_from_container(ses_or_subj, used_subpaths, project['_id'])
-                        total_size, file_cnt = _append_targets(targets, ses_or_subj, subject_prefix, total_size,
-                                                               file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                        subject_prefixes[str(ses_or_subj.get('_id'))] = subject_prefix
-                    elif subj_code:
-                        sessions[subj_code] = sessions.get(subj_code, []) + [ses_or_subj]
-                    else:
-                        sessions['missing_subject'] = sessions.get('missing_subject', []) + [ses_or_subj]
-                for subj_code, ses_list in sessions.items():
-                    subject_prefix = subject_prefixes.get(subj_code)
-                    if not subject_prefix:
-                        continue
-                    for session in ses_list:
-                        session_prefix = subject_prefix + '/' + self._path_from_container(session, used_subpaths, subj_code)
-                        total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size,
-                                                               file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                        acquisitions = config.db.acquisitions.find({'session': session['_id']}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
-                        for acq in acquisitions:
-                            acq_prefix = session_prefix + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                            total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size,
-                                                                   file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-        log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-        filename = prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
-        ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, projects)
-        config.db.downloads.insert_one(ticket)
-        return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
-
     def _archivestream(self, ticket):
         BLOCKSIZE = 512
         CHUNKSIZE = 2**20  # stream files in 1MB chunks
@@ -254,7 +200,4 @@ class Download(base.RequestHandler):
             validator = validators.payload_from_schema_file(self, 'download.json')
             validator(req_spec, 'POST')
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
-            if self.get_param('format') == 'bids':
-                return self._preflight_archivestream_bids(req_spec)
-            else:
-                return self._preflight_archivestream(req_spec)
+            return self._preflight_archivestream(req_spec)
