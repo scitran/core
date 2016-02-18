@@ -1,26 +1,27 @@
-import requests
 import json
+import time
 import logging
+
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
-import warnings
-warnings.filterwarnings('ignore')
-base_url = 'http://localhost:8080/api'
 
-import pymongo
-db = pymongo.MongoClient('mongodb://localhost:9001/scitran').get_default_database()
-projects = db.projects
 
-def test_extra_param():
-    payload = {
+def test_extra_param(api_as_admin):
+    label = 'SciTran/testing_' + str(int(time.time() * 1000))
+
+    bad_payload = json.dumps({
         'group': 'unknown',
-        'label': 'SciTran/Testing',
+        'label': label,
         'public': False,
         'extra_param': 'some_value'
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=test@user.com&root=true', data=payload)
+    })
+
+    r = api_as_admin.post('/projects', data=bad_payload)
     assert r.status_code == 400
-    r = projects.delete_many({'label': 'SciTran/Testing'})
-    assert r.deleted_count == 0
+
+    r = api_as_admin.get('/projects')
+    assert r.ok
+    projects = json.loads(r.content)
+    filtered_projects = filter(lambda e: e['label'] == label, projects)
+    assert len(filtered_projects) == 0

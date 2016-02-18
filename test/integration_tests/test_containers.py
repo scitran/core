@@ -1,174 +1,87 @@
-import requests
 import json
 import time
-from nose.tools import with_setup
 import logging
+import pytest
 
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
 
-base_url = 'http://localhost:8080/api'
-adm_user = 'test@user.com'
-test_data = type('',(object,),{})()
 
-def setup_db():
-    global session
-    session = requests.Session()
-    # all the requests will be performed as root
-    session.params = {
-        'user': adm_user,
-        'root': True
-    }
+@pytest.fixture(scope="module")
+def with_two_groups(api_as_admin, bunch, request, data_builder):
+    group_1 = data_builder.create_group('test_group_' + str(int(time.time() * 1000)))
+    group_2 = data_builder.create_group('test_group_' + str(int(time.time() * 1000)))
 
-    # Create a group
-    test_data.group_id = 'test_group_' + str(int(time.time()*1000))
-    payload = {
-        '_id': test_data.group_id
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/groups', data=payload)
-    assert r.ok
-    test_data.group_id_1 = 'test_group_' + str(int(time.time()*1000))
-    payload = {
-        '_id': test_data.group_id_1
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/groups', data=payload)
-    assert r.ok
+    def teardown_db():
+        data_builder.delete_group(group_1)
+        data_builder.delete_group(group_2)
 
-def teardown_db():
-    r = session.delete(base_url + '/groups/' + test_data.group_id)
-    assert r.ok
-    r = session.delete(base_url + '/groups/' + test_data.group_id_1)
-    assert r.ok
+    request.addfinalizer(teardown_db)
 
-@with_setup(setup_db, teardown_db)
-def test_projects():
-    payload = {
-        'group': test_data.group_id,
-        'label': 'test_project',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/projects', data=payload)
-    assert r.ok
-    _id = json.loads(r.content)['_id']
-    r = session.get(base_url + '/projects/' + _id)
-    assert r.ok
-    payload = {
-        'group':  test_data.group_id_1,
-    }
-    payload = json.dumps(payload)
-    r = session.put(base_url + '/projects/' + _id, data=payload)
-    assert r.ok
-    r = session.delete(base_url + '/projects/' + _id)
+    fixture_data = bunch.create()
+    fixture_data.group_1 = group_1
+    fixture_data.group_2 = group_2
+    return fixture_data
+
+
+# Create project
+# Add it to a group
+# Switch the project to the second group
+# Delete the project
+def test_switching_project_between_groups(with_two_groups, data_builder, api_as_user):
+    data = with_two_groups
+
+    pid = data_builder.create_project(data.group_1)
+    assert api_as_user.get('/projects/' + pid).ok
+    r = api_as_user.get('/groups/' + data.group_1 + '/projects')
+    print json.loads(r.content)
+
+    payload = json.dumps({'group': with_two_groups.group_2})
+    r = api_as_user.put('/projects/' + pid, data=payload)
     assert r.ok
 
-@with_setup(setup_db, teardown_db)
-def test_sessions():
-    payload = {
-        'group':  test_data.group_id,
-        'label': 'test_project',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/projects', data=payload)
-    assert r.ok
-    pid = json.loads(r.content)['_id']
-    payload = {
-        'project': pid,
-        'label': 'session_testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/sessions', data=payload)
-    assert r.ok
-    _id = json.loads(r.content)['_id']
-    r = session.get(base_url + '/sessions/' + _id)
-    assert r.ok
-    payload = {
-        'group': test_data.group_id,
-        'label': 'test_project_1',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/projects', data=payload)
-    new_pid = json.loads(r.content)['_id']
-    assert r.ok
-    payload = {
-        'project': new_pid,
-    }
-    payload = json.dumps(payload)
-    r = session.put(base_url + '/sessions/' + _id, data=payload)
-    assert r.ok
-    r = session.delete(base_url + '/sessions/' + _id)
-    assert r.ok
-    r = session.get(base_url + '/sessions/' + _id)
-    assert r.status_code == 404
-    r = session.delete(base_url + '/projects/' + pid)
-    assert r.ok
-    r = session.delete(base_url + '/projects/' + new_pid)
+    r = api_as_user.get('/projects/' + pid)
+    assert r.ok and json.loads(r.content)['group'] == data.group_2
+
+    data_builder.delete_project(pid)
+
+
+def test_switching_session_between_projects(with_two_groups, data_builder, api_as_user):
+    data = with_two_groups
+
+    project_1_id = data_builder.create_project(data.group_1)
+    project_2_id = data_builder.create_project(data.group_1)
+    session_id = data_builder.create_session(project_1_id)
+
+    payload = json.dumps({'project': project_2_id})
+    r = api_as_user.put('/sessions/' + session_id, data=payload)
     assert r.ok
 
-@with_setup(setup_db, teardown_db)
-def test_acquisitions():
-    payload = {
-        'group':  test_data.group_id,
-        'label': 'test_project',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/projects', data=payload)
-    assert r.ok
-    pid = json.loads(r.content)['_id']
-    payload = {
-        'project': pid,
-        'label': 'session_testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/sessions', data=payload)
-    assert r.ok
-    sid = json.loads(r.content)['_id']
+    r = api_as_user.get('/sessions/' + session_id)
+    assert r.ok and json.loads(r.content)['project'] == project_2_id
 
-    payload = {
-        'project': pid,
-        'label': 'session_testing_1',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/sessions', data=payload)
-    assert r.ok
-    new_sid = json.loads(r.content)['_id']
+    data_builder.delete_session(session_id)
+    data_builder.delete_project(project_1_id)
+    data_builder.delete_project(project_2_id)
 
-    payload = {
-        'session': sid,
-        'label': 'acq_testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/acquisitions', data=payload)
-    assert r.ok
-    aid = json.loads(r.content)['_id']
 
-    r = session.get(base_url + '/acquisitions/' + aid)
+def test_switching_acquisition_between_projects(with_two_groups, data_builder, api_as_user):
+    data = with_two_groups
+
+    project_id = data_builder.create_project(data.group_1)
+    session_1_id = data_builder.create_session(project_id)
+    session_2_id = data_builder.create_session(project_id)
+    acquisition_id = data_builder.create_acquisition(session_1_id)
+
+    payload = json.dumps({'session': session_2_id})
+    r = api_as_user.put('/acquisitions/' + acquisition_id, data=payload)
     assert r.ok
 
-    payload = {
-        'session': new_sid
-    }
-    payload = json.dumps(payload)
-    r = session.put(base_url + '/acquisitions/' + aid, data=payload)
-    assert r.ok
+    r = api_as_user.get('/acquisitions/' + acquisition_id)
+    assert r.ok and json.loads(r.content)['session'] == session_2_id
 
-    r = session.delete(base_url + '/acquisitions/' + aid)
-    assert r.ok
-    r = session.get(base_url + '/acquisitions/' + aid)
-    assert r.status_code == 404
-    r = session.delete(base_url + '/sessions/' + sid)
-    assert r.ok
-    r = session.delete(base_url + '/sessions/' + new_sid)
-    assert r.ok
-    r = session.delete(base_url + '/projects/' + pid)
-    assert r.ok
+    data_builder.delete_acquisition(acquisition_id)
+    data_builder.delete_session(session_1_id)
+    data_builder.delete_session(session_2_id)
+    data_builder.delete_project(project_id)

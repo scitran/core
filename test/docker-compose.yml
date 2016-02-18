@@ -1,0 +1,28 @@
+version: '2'
+services:
+  scitran-core:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    links:
+      - mongo
+    environment:
+      - SCITRAN_PERSISTENT_DB_URI=mongodb://mongo:27017/scitran
+      - SCITRAN_CORE_INSECURE=true
+      - SCITRAN_CORE_LOG_LEVEL=debug
+    volumes:
+      - .:/var/scitran/test-config
+      - ..:/var/scitran/code/api/
+  mongo:
+    image: mongo
+  integration-test:
+    build:
+      context: ../test
+      dockerfile: Dockerfile
+    environment:
+      - MONGO_PATH=mongodb://mongo:27017/scitran
+    links:
+      - scitran-core
+      - mongo
+    volumes:
+      - ./integration_tests:/usr/src/tests

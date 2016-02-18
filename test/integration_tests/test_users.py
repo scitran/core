@@ -1,35 +1,38 @@
-import requests
 import json
 import logging
+
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
 
-requests.packages.urllib3.disable_warnings()
 
-base_url = 'http://localhost:8080/api'
+def test_users(api_as_admin):
+    new_user_id = 'new@user.com'
 
-def test_users():
-    _id = 'new@user.com'
-    r = requests.get(base_url + '/users/self?user=test@user.com')
+    # Get self
+    r = api_as_admin.get('/users/self')
     assert r.ok
-    r = requests.get(base_url + '/users/' + _id + '?user=test@user.com&root=true')
+
+    # Add new user
+    r = api_as_admin.get('/users/' + new_user_id)
     assert r.status_code == 404
-    payload = {
-        '_id': _id,
+    payload = json.dumps({
+        '_id': new_user_id,
         'firstname': 'New',
         'lastname': 'User',
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/users?user=test@user.com&root=true', data=payload)
+    })
+    r = api_as_admin.post('/users', data=payload)
     assert r.ok
-    r = requests.get(base_url + '/users/' + _id + '?user=test@user.com&root=true')
+    r = api_as_admin.get('/users/' + new_user_id)
     assert r.ok
-    payload = {
+
+    # Modify existing user
+    payload = json.dumps({
         'firstname': 'Realname'
-    }
-    payload = json.dumps(payload)
-    r = requests.put(base_url + '/users/' + _id + '?user=test@user.com&root=true', data=payload)
+    })
+    r = api_as_admin.put('/users/' + new_user_id, data=payload)
     assert r.ok
-    r = requests.delete(base_url + '/users/' + _id + '?user=test@user.com&root=true')
+
+    # Cleanup
+    r = api_as_admin.delete('/users/' + new_user_id)
     assert r.ok

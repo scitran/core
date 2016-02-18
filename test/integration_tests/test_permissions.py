@@ -1,114 +1,83 @@
-import requests
 import json
 import time
-from nose.tools import with_setup
+import pytest
 import logging
 
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
-log.setLevel(logging.INFO)
-
-adm_user = 'test@user.com'
-user = 'other@user.com'
-user1 = 'other1@user.com'
-test_data = type('',(object,),{})()
-base_url = 'http://localhost:8080/api'
-session = None
-
-def _build_url(_id=None, requestor=adm_user, site='local'):
-    if _id is None:
-        url = test_data.proj_url + '?user=' + requestor
-    else:
-        url = test_data.proj_url + '/' + site + '/' + _id + '?user=' + requestor
-    return url
 
 
-def setup_db():
-    global session
-    session = requests.Session()
-    # all the requests will be performed as root
-    session.params = {
-        'user': adm_user,
-        'root': True
-    }
+def test_permissions(with_a_group_and_a_project, api_as_admin):
+    data = with_a_group_and_a_project
+    permissions_path = '/projects/' + data.project_id + '/permissions'
+    user_1_local_path = permissions_path + '/local/' + data.user_1
+    user_2_local_path = permissions_path + '/local/' + data.user_2
+    user_2_another_path = permissions_path + '/another/' + data.user_2
 
-    # Create a group
-    test_data.group_id = 'test_group_' + str(int(time.time()*1000))
-    payload = {
-        '_id': test_data.group_id
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/groups', data=payload)
-    assert r.ok
-    payload = {
-        'group': test_data.group_id,
-        'label': 'test_project',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/projects', data=payload)
-    test_data.pid = json.loads(r.content)['_id']
-    assert r.ok
-    log.debug('pid = \'{}\''.format(test_data.pid))
-    test_data.proj_url = base_url + '/projects/{}/permissions'.format(test_data.pid)
+    # GET is not allowed for general permissions path
+    r = api_as_admin.get(permissions_path)
+    assert r.status_code == 405
 
-def teardown_db():
-    r = session.delete(base_url + '/projects/' + test_data.pid)
-    assert r.ok
-    r = session.delete(base_url + '/groups/' + test_data.group_id)
-    assert r.ok
-
-@with_setup(setup_db, teardown_db)
-def test_permissions():
-    url_post = _build_url()
-    url_get = _build_url(user)
-    url_get_1 = _build_url(user1)
-    r = requests.get(url_get)
-    assert r.status_code == 404
-    data = {
-        '_id': user,
+    # Add permissions for user 1
+    payload = json.dumps({
+        '_id': data.user_1,
         'site': 'local',
         'access': 'ro'
-    }
-    r = requests.post(url_post, data = json.dumps(data))
+    })
+    r = api_as_admin.post(permissions_path, data=payload)
     assert r.ok
-    r = requests.get(url_get)
+
+    # Verify permissions for user 1
+    r = api_as_admin.get(user_1_local_path)
     assert r.ok
     content = json.loads(r.content)
-    assert content['_id'] == user
+    assert content['_id'] == data.user_1
     assert content['site'] == 'local'
     assert content['access'] == 'ro'
-    data = {
+
+    # Update user 1 to have admin access
+    payload = json.dumps({
         'access': 'admin'
-    }
-    r = requests.put(url_get, data = json.dumps(data))
+    })
+    r = api_as_admin.put(user_1_local_path, data=payload)
     assert r.ok
-    data = {
-        '_id': user1,
+
+    # Add user 2 to have ro access
+    payload = json.dumps({
+        '_id': data.user_2,
         'site': 'local',
         'access': 'ro'
-    }
-    r = requests.post(url_post, data = json.dumps(data))
+    })
+    r = api_as_admin.post(permissions_path, data=payload)
     assert r.ok
-    data = {
-        '_id': user
-    }
-    r = requests.put(url_get_1, data = json.dumps(data))
+
+    # Attempt to change user 2's id to user 1
+    payload = json.dumps({
+        '_id': data.user_1
+    })
+    r = api_as_admin.put(user_2_local_path, data=payload)
     assert r.status_code == 404
-    data = {
+
+    # Change user 2's site
+    payload = json.dumps({
         'site': 'another'
-    }
-    r = requests.put(url_get_1, data = json.dumps(data))
+    })
+    r = api_as_admin.put(user_2_local_path, data=payload)
     assert r.ok
-    url_get_1 = _build_url(user1, site='another')
-    r = requests.get(url_get_1)
+
+    # Verify user 2's site changed
+    r = api_as_admin.get(user_2_another_path)
     assert r.ok
     content = json.loads(r.content)
-    assert content['_id'] == user1
+    assert content['_id'] == data.user_2
     assert content['site'] == 'another'
     assert content['access'] == 'ro'
-    r = requests.delete(url_get_1)
+
+    # Delete user 2
+    r = api_as_admin.delete(user_2_another_path)
     assert r.ok
-    r = requests.get(url_get_1)
+
+    # Ensure user 2 is gone
+    r = api_as_admin.get(user_2_another_path)
     assert r.status_code == 404

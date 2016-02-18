@@ -1,111 +1,67 @@
-import requests
 import json
-import time
-from nose.tools import with_setup
 import logging
 
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
-log.setLevel(logging.INFO)
 
-adm_user = 'admin@user.com'
-test_data = type('',(object,),{})()
-base_url = 'http://localhost:8080/api'
-session = None
 
-def _build_url_and_payload(method, tag, newtag=None, requestor=adm_user):
-    if method == 'POST':
-        url = test_data.proj_url
-        payload = json.dumps({'value': tag})
-    else:
-        url = test_data.proj_url + '/' + tag
-        payload = json.dumps({'value': newtag})
-    return url, payload
-
-def setup_db():
-    global session
-    session = requests.Session()
-    # all the requests will be performed as root
-    session.params = {
-        'user': 'test@user.com',
-        'root': True
-    }
-
-    # Create a group
-    test_data.group_id = 'test_group_' + str(int(time.time()*1000))
-    payload = {
-        '_id': test_data.group_id
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/groups', data=payload)
-    assert r.ok
-    payload = {
-        'group': test_data.group_id,
-        'label': 'test_project',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/projects', data=payload)
-    test_data.pid = json.loads(r.content)['_id']
-    assert r.ok
-    log.debug('pid = \'{}\''.format(test_data.pid))
-    test_data.proj_url = base_url + '/projects/{}/tags'.format(test_data.pid)
-
-def teardown_db():
-    r = session.delete(base_url + '/projects/' + test_data.pid)
-    assert r.ok
-    r = session.delete(base_url + '/groups/' + test_data.group_id)
-    assert r.ok
-
-@with_setup(setup_db, teardown_db)
-def test_tags():
+def test_tags(with_a_group_and_a_project, api_as_admin):
+    data = with_a_group_and_a_project
     tag = 'test_tag'
     new_tag = 'new_test_tag'
     other_tag = 'other_test_tag'
-    url_get_tag, _ = _build_url_and_payload('GET', tag)
-    url_get_new, _ = _build_url_and_payload('GET', new_tag)
-    url_get_other, _ = _build_url_and_payload('GET', other_tag)
 
-    r = session.get(url_get_tag)
+    tags_path = '/projects/' + data.project_id + '/tags'
+    tag_path = tags_path + '/' + tag
+    new_tag_path = tags_path + '/' + new_tag
+    other_tag_path = tags_path + '/' + other_tag
+
+    # Add tag and verify
+    r = api_as_admin.get(tag_path)
     assert r.status_code == 404
-    url_post, payload = _build_url_and_payload('POST', tag)
-    r = session.post(url_post, data=payload)
+    payload = json.dumps({'value': tag})
+    r = api_as_admin.post(tags_path, data=payload)
     assert r.ok
-    r = session.get(url_get_tag)
+    r = api_as_admin.get(tag_path)
     assert r.ok
     assert json.loads(r.content) == tag
 
-    url_post, payload = _build_url_and_payload('POST', new_tag)
-    r = session.post(url_post, data=payload)
+    # Add new tag and verify
+    payload = json.dumps({'value': new_tag})
+    r = api_as_admin.post(tags_path, data=payload)
     assert r.ok
-    url_post, payload = _build_url_and_payload('POST', new_tag)
-    r = session.post(url_post, data=payload)
+    # Add a duplicate tag, returns 404
+    payload = json.dumps({'value': new_tag})
+    r = api_as_admin.post(tags_path, data=payload)
     assert r.status_code == 404
-    r = session.get(url_get_new)
+    r = api_as_admin.get(new_tag_path)
     assert r.ok
     assert json.loads(r.content) == new_tag
 
-    url_put, payload = _build_url_and_payload('PUT', tag, new_tag)
-    r = session.put(url_put, data=payload)
+    # Attempt to update tag, returns 404
+    payload = json.dumps({'value': new_tag})
+    r = api_as_admin.put(tag_path, data=payload)
     assert r.status_code == 404
 
-    r = session.get(url_get_other, verify=False)
+    # Update existing tag to other_tag
+    r = api_as_admin.get(other_tag_path)
     assert r.status_code == 404
-    url_put, payload = _build_url_and_payload('PUT', tag, other_tag)
-    r = session.put(url_put, data=payload)
+    payload = json.dumps({'value': other_tag})
+    r = api_as_admin.put(tag_path, data=payload)
     assert r.ok
-    r = session.get(url_get_other)
+    r = api_as_admin.get(other_tag_path)
     assert r.ok
     assert json.loads(r.content) == other_tag
+    r = api_as_admin.get(tag_path)
+    assert r.status_code == 404
 
-    r = session.get(url_get_tag)
-    assert r.status_code == 404
-    r = session.delete(url_get_other) # url for 'DELETE' is the same as the one for 'GET'
+    # Cleanup
+    r = api_as_admin.delete(other_tag_path)  # url for 'DELETE' is the same as the one for 'GET'
     assert r.ok
-    r = session.get(url_get_other)
+    r = api_as_admin.get(other_tag_path)
     assert r.status_code == 404
-    r = session.delete(url_get_new) # url for 'DELETE' is the same as the one for 'GET'
+    r = api_as_admin.delete(new_tag_path)  # url for 'DELETE' is the same as the one for 'GET'
     assert r.ok
-    r = session.get(url_get_new)
+    r = api_as_admin.get(new_tag_path)
     assert r.status_code == 404

@@ -1,114 +1,92 @@
-import requests
-import os
 import json
 import time
-from nose.tools import with_setup
-
-base_url = 'http://localhost:8080/api'
-adm_user = 'test@user.com'
-user = 'other@user.com'
-test_data = type('',(object,),{})()
+import pytest
 
 
-def setup_db():
-    global session
-    session = requests.Session()
-    # all the requests will be performed as root
-    session.params = {
-        'user': adm_user,
-        'root': True
-    }
+@pytest.fixture()
+def with_a_group_and_a_user(data_builder, api_as_admin, request, bunch):
+    user_id = 'other@user.com'
+    group_id = 'test_group_' + str(int(time.time() * 1000))
+    data_builder.create_group(group_id)
 
-    # Create a group
-    test_data.group_id = 'test_group_' + str(int(time.time()*1000))
-    payload = {
-        '_id': test_data.group_id
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/groups', data=payload)
-    assert r.ok
-    payload = {
-        '_id': user,
+    payload = json.dumps({
+        '_id': user_id,
         'firstname': 'Other',
         'lastname': 'User',
-    }
-    payload = json.dumps(payload)
-    r = session.post(base_url + '/users', data=payload)
-    assert r.ok
-    session.params = {}
-
-def teardown_db():
-    session.params = {
-        'user': adm_user,
-        'root': True
-    }
-    r = session.delete(base_url + '/groups/' + test_data.group_id)
-    assert r.ok
-    r = session.delete(base_url + '/users/' + user)
+    })
+    r = api_as_admin.post('/users', data=payload)
     assert r.ok
 
-def _build_url_and_payload(method, user, access, site='local'):
+    def teardown_db():
+        data_builder.delete_group(group_id)
+        api_as_admin.delete('/users/' + user_id)
 
-    url = os.path.join(base_url, 'groups', test_data.group_id, 'roles')
-    if method == 'POST':
-        payload = {
-            '_id': user,
-            'site': site,
-            'access': access
-        }
-        return url, json.dumps(payload)
-    else:
-        return os.path.join(url, site, user), None
+    request.addfinalizer(teardown_db)
 
-@with_setup(setup_db, teardown_db)
-def test_roles():
-    session.params = {
-        'user': adm_user
-    }
-    url_get, _ = _build_url_and_payload('GET', user, None)
-    r = session.get(url_get)
+    fixture_data = bunch.create()
+    fixture_data.user_id = user_id
+    fixture_data.group_id = group_id
+    return fixture_data
+
+
+def create_role_payload(user, site, access):
+    return json.dumps({
+        '_id': user,
+        'site': site,
+        'access': access
+    })
+
+
+def test_roles(api_as_admin, with_a_group_and_a_user, api_accessor):
+    data = with_a_group_and_a_user
+    api_as_other_user = api_accessor(data.user_id)
+
+    roles_path = '/groups/' + data.group_id + '/roles'
+    local_user_roles_path = roles_path + '/local/' + data.user_id
+    admin_user_roles_path = roles_path + '/local/' + 'admin@user.com'
+
+    # Cannot retrieve roles that don't exist
+    r = api_as_admin.get(local_user_roles_path)
     assert r.status_code == 404
 
-    url_post, payload = _build_url_and_payload('POST', user, 'rw')
-    r = session.post(url_post, data=payload)
+    # Create role for user
+    payload = create_role_payload(data.user_id, 'local', 'rw')
+    r = api_as_admin.post(roles_path, data=payload)
     assert r.ok
-    r = session.get(url_get)
+
+    # Verify new user role
+    r = api_as_admin.get(local_user_roles_path)
     assert r.ok
     content = json.loads(r.content)
     assert content['access'] == 'rw'
-    assert content['_id'] == user
-    session.params = {
-        'user': user
-    }
-    url_get_not_auth, _ = _build_url_and_payload('GET', adm_user, None)
-    r = session.get(url_get_not_auth)
+    assert content['_id'] == data.user_id
+
+    # 'rw' users cannot access other user roles
+    r = api_as_other_user.get(admin_user_roles_path)
     assert r.status_code == 403
-    session.params = {
-        'user': adm_user
-    }
-    payload = json.dumps({'access':'admin'})
-    r = session.put(url_get, data=payload)
+
+    # Upgrade user to admin
+    payload = json.dumps({'access': 'admin'})
+    r = api_as_admin.put(local_user_roles_path, data=payload)
     assert r.ok
-    session.params = {
-        'user': user
-    }
-    r = session.get(url_get_not_auth)
+
+    # User should now be able to access other roles
+    r = api_as_other_user.get(admin_user_roles_path)
     assert r.ok
-    session.params = {
-        'user': adm_user
-    }
-    payload = json.dumps({'access':'rw'})
-    r = session.put(url_get, data=payload)
+
+    # Change user back to 'rw' access
+    payload = json.dumps({'access': 'rw'})
+    r = api_as_admin.put(local_user_roles_path, data=payload)
     assert r.ok
-    session.params = {
-        'user': user
-    }
-    r = session.get(url_get_not_auth)
+
+    # User is now forbidden again
+    r = api_as_other_user.get(admin_user_roles_path)
     assert r.status_code == 403
-    session.params = {
-        'user': adm_user
-    }
-    r = session.delete(url_get)
+
+    # Delete role
+    r = api_as_admin.delete(local_user_roles_path)
     assert r.ok
-    r = session.get(url_get)
+
+    # Verify delete
+    r = api_as_admin.get(local_user_roles_path)
     assert r.status_code == 404
