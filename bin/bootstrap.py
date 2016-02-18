@@ -90,7 +90,7 @@ def data(args):
         except ValueError as e:
             log.warning(str(e))
             continue
-        container = reaperutil.create_container_hierarchy(metadata)
+        target, file_ = reaperutil.create_container_hierarchy(metadata)
         with open(filepath, 'rb') as fd:
             for chunk in iter(lambda: fd.read(2**20), ''):
                 hash_.update(chunk)
@@ -114,8 +114,9 @@ def data(args):
             'modified': modified,
             'mimetype': util.guess_mimetype(filename),
         }
-        container.add_file(fileinfo)
-        rules.create_jobs(config.db, container.acquisition, 'acquisition', fileinfo)
+        fileinfo.update(file_)
+        target.add_file(fileinfo)
+        rules.create_jobs(config.db, target.container, 'acquisition', fileinfo)
 
 
 data_desc = """
