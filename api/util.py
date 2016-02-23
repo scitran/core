@@ -1,4 +1,5 @@
 import os
+import json
 import pytz
 import uuid
 import datetime
@@ -107,6 +108,15 @@ def custom_json_serializer(obj):
     elif isinstance(obj, datetime.datetime):
         return pytz.timezone('UTC').localize(obj).isoformat()
     raise TypeError(repr(obj) + " is not JSON serializable")
+
+def send_json_http_exception(response, message, code):
+    response.set_status(code)
+    content = json.dumps({
+        'message': message,
+        'status_code': code
+    })
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
+    response.write(content)
 
 class Enum(baseEnum.Enum):
     # Enum strings are prefixed by their class: "Category.classifier".

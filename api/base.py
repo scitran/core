@@ -7,6 +7,7 @@ import requests
 import urlparse
 import jsonschema
 
+from . import util
 from . import config
 
 log = config.log
@@ -119,6 +120,18 @@ class RequestHandler(webapp2.RequestHandler):
     def get_param(self, param, default=None):
         return self.request.GET.get(param, default)
 
+    def handle_exception(self, exception, debug):
+        # Log the error.
+        log.error(exception)
+
+        # If the exception is a HTTPException, use its error code.
+        # Otherwise use a generic 500 error code.
+        if isinstance(exception, webapp2.HTTPException):
+            code = exception.code
+        else:
+            code = 500
+        util.send_json_http_exception(self.response, str(exception), code)
+
     def dispatch(self):
         """dispatching and request forwarding"""
         site_id = config.get_item('site', 'id')
@@ -183,3 +196,4 @@ class RequestHandler(webapp2.RequestHandler):
         json_schema = copy.deepcopy(self.json_schema)
         json_schema['properties'].update(updates)
         return json_schema
+
