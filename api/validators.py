@@ -1,5 +1,6 @@
 import os
 import copy
+import glob
 import jsonschema
 
 from . import config
@@ -56,13 +57,15 @@ expected_input_schemas = set([
 mongo_schemas = set()
 input_schemas = set()
 # validate and cache schemas at start time
-for schema_file in os.listdir(schema_path + '/schemas/mongo/'):
+for schema_filepath in glob.glob(schema_path + '/schemas/mongo/*.json'):
+    schema_file = os.path.basename(schema_filepath)
     mongo_schemas.add(schema_file)
     resolver_mongo.resolve(schema_file)
 
 assert mongo_schemas == expected_mongo_schemas, '{} is different from {}'.format(mongo_schemas, expected_mongo_schemas)
 
-for schema_file in os.listdir(schema_path + '/schemas/input/'):
+for schema_filepath in glob.glob(schema_path + '/schemas/input/*.json'):
+    schema_file = os.path.basename(schema_filepath)
     input_schemas.add(schema_file)
     resolver_input.resolve(schema_file)
 

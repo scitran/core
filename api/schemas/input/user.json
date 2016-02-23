@@ -4,21 +4,21 @@
   "type": "object",
   "properties": {
     "_id":              {
-                          "maxLength": 32,
+                          "maxLength": 64,
                           "minLength": 2,
                           "pattern": "^[0-9a-z.@_-]*$",
                           "title": "ID",
                           "type": "string"
                         },
     "firstname":        {
-                          "maxLength": 32,
-                          "minLength": 2,
+                          "maxLength": 64,
+                          "minLength": 1,
                           "title": "First Name",
                           "type": "string"
                         },
     "lastname":         {
-                          "maxLength": 32,
-                          "minLength": 2,
+                          "maxLength": 64,
+                          "minLength": 1,
                           "title": "Last Name",
                           "type": "string"
                         },
