@@ -158,34 +158,26 @@ sleep 1
 # Boostrap users and groups
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
-    bin/bootstrap.py users "$SCITRAN_RUNTIME_BOOTSTRAP"
+    bin/bootstrap.py -i users "$SCITRAN_RUNTIME_BOOTSTRAP"
 else
     echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
 fi
 
 
 # Boostrap test data
-TESTDATA_URL="https://github.com/scitran/testdata/archive/master.tar.gz"
-TESTDATA_VERSION=$(curl -sLI $TESTDATA_URL | grep ETag | tail -n 1 | cut -f 2 -d '"')
+TESTDATA_REPO="https://github.com/scitran/testdata.git"
 if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
-    echo "Downloading testdata to $SCITRAN_PERSISTENT_PATH/testdata"
-    mkdir "$SCITRAN_PERSISTENT_PATH/testdata"
-    curl -L $TESTDATA_URL | tar xz -C "$SCITRAN_PERSISTENT_PATH/testdata" --strip-components 1
+    echo "Cloning testdata to $SCITRAN_PERSISTENT_PATH/testdata"
+    git clone --single-branch --branch bootstrap $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
 else
-    if [ "$TESTDATA_VERSION" != "$(cat $SCITRAN_PERSISTENT_PATH/.testdata_version)" ]; then
-        echo "Testdata out of date; downloading"
-        curl -L $TESTDATA_URL | tar xz -C "$SCITRAN_PERSISTENT_PATH/testdata" --strip-components 1
-    else
-        echo "Testdata up to date"
-    fi
+    echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
+    git -C $SCITRAN_PERSISTENT_PATH/testdata pull
 fi
-builtin echo "$TESTDATA_VERSION" > "$SCITRAN_PERSISTENT_PATH/.testdata_version"
-
 if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
     echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    bin/bootstrap.py data --copy $SCITRAN_PERSISTENT_PATH/testdata
+    bin/bootstrap.py -i data $SCITRAN_PERSISTENT_PATH/testdata
     echo "Bootstrapped testdata"
     touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
 fi
