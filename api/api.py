@@ -134,11 +134,13 @@ routes = [
 
 
 def dispatcher(router, request, response):
-    rv = router.default_dispatcher(request, response)
-    if rv is not None:
-        response.write(json.dumps(rv, default=util.custom_json_serializer))
-        response.headers['Content-Type'] = 'application/json; charset=utf-8'
-
+    try:
+        rv = router.default_dispatcher(request, response)
+        if rv is not None:
+            response.write(json.dumps(rv, default=util.custom_json_serializer))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+    except (webapp2.exc.HTTPNotFound, webapp2.exc.HTTPMethodNotAllowed) as e:
+        util.send_json_http_exception(response, str(e), e.code)
 
 def app_factory(*_, **__):
     # don't use config.get_item() as we don't want to require the database at startup
