@@ -47,6 +47,9 @@ DEFAULT_CONFIG = {
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
     },
+    'elasticsearch': {
+        'es_endpoint': 'flywheel-elasticsearch:9200'
+    }
 }
 
 __config = copy.deepcopy(DEFAULT_CONFIG)
