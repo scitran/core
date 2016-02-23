@@ -148,8 +148,6 @@ def create_container_hierarchy(metadata):
 
     if acquisition.get('timestamp'):
         acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
-        #FIXME timezone is always set to the value of the new acquisition
-        config.db.projects.update_one({'_id': project_obj['_id']}, {'$max': dict(timestamp=acquisition['timestamp'])})
         session_operations = {'$min': dict(timestamp=acquisition['timestamp'])}
         if acquisition.get('timezone'):
             session_operations['$set'] = {'timezone': acquisition['timezone']}
