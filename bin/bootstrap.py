@@ -14,6 +14,7 @@ import datetime
 import requests
 import requests_toolbelt
 
+from api import validators
 from api import tempdir as tempfile
 
 logging.basicConfig(
@@ -93,6 +94,7 @@ example:
 def data(args):
     log.info('Inspecting  %s' % args.path)
     files = []
+    schema_validator = validators.payload_from_schema_file(None, 'uploader.json')
     with requests.Session() as rs:
         rs.verify = not args.insecure
         rs.headers = HTTP_HEADERS
@@ -112,14 +114,19 @@ def data(args):
                     try:
                         metadata = json.load(fd)
                     except ValueError:
-                        log.warning('Skipping    %s: Invalid metadata' % dirpath)
+                        log.warning('Skipping    %s: Unparsable metadata' % dirpath)
                         continue
-                # FIXME need schema validation
                 with tempfile.TemporaryDirectory() as tempdir:
                     log.info('Packaging   %s' % dirpath)
                     filepath = create_archive(dirpath, os.path.basename(dirpath), metadata, tempdir, filenames)
                     filename = os.path.basename(filepath)
-                    metadata.get('acquisition', {}).get('files', [{}])[0]['name'] = filename
+                    metadata['acquisition'].setdefault('files', [{}])[0]['name'] = filename
+                    log.info('Validating  %s' % filename)
+                    try:
+                        schema_validator(metadata, 'POST')
+                    except Exception:
+                        log.warning('Skipping    %s: Invalid metadata' % dirpath)
+                        continue
                     log.info('Uploading   %s' % filename)
                     with open(filepath, 'rb') as fd:
                         metadata_json = json.dumps(metadata, default=metadata_encoder)

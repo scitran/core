@@ -96,7 +96,7 @@ def create_fileinput_from_reference(container, container_type, file_):
     # File container information
     container_id = str(container['_id'])
 
-    log.info('File ' + filename + 'is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
+    log.info('File ' + filename + ' is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
 
     # Spawn rules currently do not look at container hierarchy, and only care about a single file.
     # Further, one algorithm is unconditionally triggered for each dirty file.
