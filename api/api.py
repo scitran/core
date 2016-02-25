@@ -131,7 +131,7 @@ routes = [
 
     webapp2.Route(_format(r'/api/<par_cont_name:groups>/<par_id:{group_id_re}>/<cont_name:projects>'),          containerhandler.ContainerHandler, name='cont_sublist_groups', handler_method='get_all', methods=['GET']),
     webapp2.Route(_format(r'/api/<par_cont_name:{cont_name_re}>/<par_id:{cid_re}>/<cont_name:{cont_name_re}>'), containerhandler.ContainerHandler, name='cont_sublist', handler_method='get_all', methods=['GET']),
-    webapp2.Route(_format(r'/api/search'),                 searchhandler.SearchHandler, name='es_proxy', methods=['GET']),
+    webapp2.Route(_format(r'/api/search'),                                            searchhandler.SearchHandler, name='es_proxy', methods=['GET']),
     webapp2.Route(_format(r'/api/search/<cont_name:{cont_name_re}>'),                 searchhandler.SearchHandler, name='es_proxy', methods=['GET']),
 ]
 

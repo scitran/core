@@ -7,7 +7,7 @@ from .. import config
 
 log = config.log
 
-es_client = elasticsearch.Elasticsearch([config.get_item('elasticsearch', 'es_endpoint')])
+es_client = elasticsearch.Elasticsearch([config.get_item('persistent', 'elasticsearch_host')])
 
 
 class SearchHandler(base.RequestHandler):
@@ -19,11 +19,7 @@ class SearchHandler(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         size = self.get_param('size')
-        body = self.request.json_body if self.request.body else {
-          'query': {
-            'match_all': {}
-          }
-        }
+        body = self.request.json_body
         try:
             results = es_client.search(index='scitran', doc_type=cont_name, body=body, _source=['_id'], size=size or 10)
         except elasticsearch.exceptions.ConnectionError as e:
