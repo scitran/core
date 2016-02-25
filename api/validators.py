@@ -1,11 +1,16 @@
 import os
 import copy
-import webapp2
 import jsonschema
 
 from . import config
 
 log = config.log
+
+class InputValidationException(Exception):
+    pass
+
+class DBValidationException(Exception):
+    pass
 
 # following https://github.com/Julian/jsonschema/issues/98
 # json schema files are expected to be in the schemas folder relative to this module
@@ -84,7 +89,10 @@ def mongo_from_schema_file(schema_file):
             else:
                 _schema = schema
             if method in ['POST', 'PUT']:
-                _validate_json(payload, _schema, resolver_mongo)
+                try:
+                    _validate_json(payload, _schema, resolver_mongo)
+                except jsonschema.ValidationError as e:
+                    raise DBValidationException(str(e))
             return exec_op(method, **kwargs)
         return mongo_val
     return g
@@ -103,7 +111,7 @@ def payload_from_schema_file(schema_file):
             try:
                 _validate_json(payload, _schema, resolver_input)
             except jsonschema.ValidationError as e:
-                raise webapp2.exc.HTTPBadRequest(str(e))
+                raise InputValidationException(str(e))
     return g
 
 def key_check(schema_file):
@@ -133,7 +141,7 @@ def key_check(schema_file):
                 try:
                     exclude_params = _post_exclude_params(schema.get('key_fields', []), payload)
                 except KeyError as e:
-                    raise webapp2.exc.HTTPBadRequest('missing key {} in payload'.format(e.args))
+                    raise InputValidationException('missing key {} in payload'.format(e.args))
             else:
                 _check_query_params(schema.get('key_fields'), query_params)
                 if method == 'PUT' and schema.get('key_fields'):
