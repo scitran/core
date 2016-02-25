@@ -39,14 +39,14 @@ DEFAULT_CONFIG = {
         'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
         'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
         'verify_endpoint': 'https://www.googleapis.com/oauth2/v1/tokeninfo',
-
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
         'db_connect_timeout': '2000',
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
-    },
+        'elasticsearch_host': 'localhost:9200',
+    }
 }
 
 __config = copy.deepcopy(DEFAULT_CONFIG)
