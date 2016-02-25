@@ -22,7 +22,7 @@ export PYTHONPATH=.
 
 
 # Bootstrap Users
-./bin/bootstrap.py users ${bootstrap_user_file}
+./bin/bootstrap.py -i users ${bootstrap_user_file}
 
 
 )

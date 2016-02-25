@@ -52,6 +52,6 @@ builtin echo "$TESTDATA_VERSION" > "$TESTDATA_DIR/.testdata_version"
 
 
 ## load the test data in
-./bin/bootstrap.py data --copy $TESTDATA_DIR/download
+./bin/bootstrap.py -i data $TESTDATA_DIR/download
 
 )
