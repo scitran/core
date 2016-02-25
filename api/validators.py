@@ -1,5 +1,6 @@
 import os
 import copy
+import webapp2
 import jsonschema
 
 from . import config
@@ -69,7 +70,7 @@ def _validate_json(json_data, schema, resolver):
 def no_op(g, *args):
     return g
 
-def mongo_from_schema_file(handler, schema_file):
+def mongo_from_schema_file(schema_file):
     if schema_file is None:
         return no_op
     schema = resolver_mongo.resolve(schema_file)[1]
@@ -83,15 +84,12 @@ def mongo_from_schema_file(handler, schema_file):
             else:
                 _schema = schema
             if method in ['POST', 'PUT']:
-                try:
-                    _validate_json(payload, _schema, resolver_mongo)
-                except jsonschema.ValidationError as e:
-                    handler.abort(500, str(e))
+                _validate_json(payload, _schema, resolver_mongo)
             return exec_op(method, **kwargs)
         return mongo_val
     return g
 
-def payload_from_schema_file(handler, schema_file):
+def payload_from_schema_file(schema_file):
     if schema_file is None:
         return no_op
     schema = resolver_input.resolve(schema_file)[1]
@@ -105,10 +103,10 @@ def payload_from_schema_file(handler, schema_file):
             try:
                 _validate_json(payload, _schema, resolver_input)
             except jsonschema.ValidationError as e:
-                handler.abort(400, str(e))
+                raise webapp2.exc.HTTPBadRequest(str(e))
     return g
 
-def key_check(handler, schema_file):
+def key_check(schema_file):
     """
     for sublists of mongo container there is no automatic key check when creating, updating or deleting an object.
     We are adding a custom array field to the json schemas ("key_fields").
@@ -135,7 +133,7 @@ def key_check(handler, schema_file):
                 try:
                     exclude_params = _post_exclude_params(schema.get('key_fields', []), payload)
                 except KeyError as e:
-                    handler.abort(400, 'missing key {} in payload'.format(e.args))
+                    raise webapp2.exc.HTTPBadRequest('missing key {} in payload'.format(e.args))
             else:
                 _check_query_params(schema.get('key_fields'), query_params)
                 if method == 'PUT' and schema.get('key_fields'):
