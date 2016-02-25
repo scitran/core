@@ -308,8 +308,8 @@ class ContainerHandler(base.RequestHandler):
 
 
     def _get_validators(self):
-        mongo_validator = validators.mongo_from_schema_file(self, self.config.get('storage_schema_file'))
-        payload_validator = validators.payload_from_schema_file(self, self.config.get('payload_schema_file'))
+        mongo_validator = validators.mongo_from_schema_file(self.config.get('storage_schema_file'))
+        payload_validator = validators.payload_from_schema_file(self.config.get('payload_schema_file'))
         return mongo_validator, payload_validator
 
     def _get_parent_container(self, payload):

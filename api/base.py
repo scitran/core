@@ -9,6 +9,7 @@ import jsonschema
 
 from . import util
 from . import config
+from . import validators
 
 log = config.log
 
@@ -128,6 +129,8 @@ class RequestHandler(webapp2.RequestHandler):
         # Otherwise use a generic 500 error code.
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
+        elif isinstance(exception, validators.InputValidationException):
+            code = 400
         else:
             code = 500
         util.send_json_http_exception(self.response, str(exception), code)
