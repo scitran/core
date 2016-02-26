@@ -67,22 +67,22 @@ def users(args):
     now = datetime.datetime.utcnow()
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
-    log.info('bootstrapping users...')
     with requests.Session() as rs:
+        log.info('bootstrapping users...')
         rs.verify = not args.insecure
         rs.headers = HTTP_HEADERS
         for u in input_data.get('users', []):
             log.info('    ' + u['_id'])
             rs.post(API_URL + '/users', json=u)
-    log.info('bootstrapping groups... foo')
-    site_id = 'local' #config.get_item('site', 'id')
-    for g in input_data.get('groups', []):
-        log.info('    ' + g['_id'])
-        roles = g.pop('roles')
-        rs.post(API_URL + '/groups' , json=g)
-        for r in roles:
-            r.setdefault('site', site_id)
-            rs.post(API_URL + '/groups/' + g['_id'] + '/roles' , json=r)
+        log.info('bootstrapping groups...')
+        site_id = rs.get(API_URL + '/config').json()['site']['id']
+        for g in input_data.get('groups', []):
+            log.info('    ' + g['_id'])
+            roles = g.pop('roles')
+            rs.post(API_URL + '/groups' , json=g)
+            for r in roles:
+                r.setdefault('site', site_id)
+                rs.post(API_URL + '/groups/' + g['_id'] + '/roles' , json=r)
     log.info('bootstrapping complete')
 
 users_desc = """
