@@ -94,7 +94,7 @@ example:
 def data(args):
     log.info('Inspecting  %s' % args.path)
     files = []
-    schema_validator = validators.payload_from_schema_file(None, 'uploader.json')
+    schema_validator = validators.payload_from_schema_file('uploader.json')
     with requests.Session() as rs:
         rs.verify = not args.insecure
         rs.headers = HTTP_HEADERS
@@ -120,11 +120,11 @@ def data(args):
                     log.info('Packaging   %s' % dirpath)
                     filepath = create_archive(dirpath, os.path.basename(dirpath), metadata, tempdir, filenames)
                     filename = os.path.basename(filepath)
-                    metadata['acquisition'].setdefault('files', [{}])[0]['name'] = filename
+                    metadata.setdefault('acquisition', {}).setdefault('files', [{}])[0]['name'] = filename
                     log.info('Validating  %s' % filename)
                     try:
                         schema_validator(metadata, 'POST')
-                    except Exception:
+                    except validators.InputValidationException:
                         log.warning('Skipping    %s: Invalid metadata' % dirpath)
                         continue
                     log.info('Uploading   %s' % filename)

@@ -168,7 +168,7 @@ fi
 TESTDATA_REPO="https://github.com/scitran/testdata.git"
 if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
     echo "Cloning testdata to $SCITRAN_PERSISTENT_PATH/testdata"
-    git clone --single-branch --branch bootstrap $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
+    git clone --single-branch $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
 else
     echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
     git -C $SCITRAN_PERSISTENT_PATH/testdata pull
