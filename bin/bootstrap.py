@@ -3,66 +3,86 @@
 """This script helps bootstrap users and data"""
 
 import os
+import sys
 import json
 import shutil
 import hashlib
+import logging
 import zipfile
 import argparse
 import datetime
 import requests
+import requests_toolbelt
+
+from api import validators
+from api import tempdir as tempfile
+
+logging.basicConfig(
+    format='%(asctime)s %(name)16.16s %(filename)24.24s %(lineno)5d:%(levelname)4.4s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.DEBUG,
+)
+log = logging.getLogger('scitran.bootstrap')
+
+logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library
 
 
-from api.dao import reaperutil
-from api import util
-from api import rules
-from api import config
+if 'SCITRAN_CORE_DRONE_SECRET' not in os.environ:
+    log.error('SCITRAN_CORE_DRONE_SECRET not configured')
+    sys.exit(1)
 
-log = config.log
+if 'SCITRAN_RUNTIME_HOST' not in os.environ or 'SCITRAN_RUNTIME_PORT' not in os.environ:
+    log.error('SCITRAN_RUNTIME_HOST or SCITRAN_RUNTIME_PORT not configured')
+    sys.exit(1)
+else:
+    API_URL = 'https://%s:%s/api' % (os.environ['SCITRAN_RUNTIME_HOST'], os.environ['SCITRAN_RUNTIME_PORT'])
+
+if 'SCITRAN_PERSISTENT_PATH' in os.environ and 'SCITRAN_PERSISTENT_DATA_PATH' not in os.environ:
+    os.environ['SCITRAN_PERSISTENT_DATA_PATH'] = os.path.join(os.environ['SCITRAN_PERSISTENT_PATH'], 'data')
+
+HTTP_HEADERS = {'X-SciTran-Auth': os.environ['SCITRAN_CORE_DRONE_SECRET'], 'User-Agent': 'SciTran Drone Bootstrapper'}
 
 
-def clean(args):
-    config.db.client.drop_database(config.db)
+def metadata_encoder(o):
+    if isinstance(o, datetime.datetime):
+        if o.tzinfo is None:
+            o = pytz.timezone('UTC').localize(o)
+        return o.isoformat()
+    elif isinstance(o, datetime.tzinfo):
+        return o.zone
+    raise TypeError(repr(o) + ' is not JSON serializable')
 
-clean_desc = """
-example:
-./bin/bootstrap.py clean
-"""
+
+def create_archive(content, arcname, metadata, outdir=None, filenames=None):
+    path = (os.path.join(outdir, arcname) if outdir else content) + '.zip'
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+        zf.comment = json.dumps(metadata, default=metadata_encoder)
+        zf.write(content, arcname)
+        for fn in filenames or os.listdir(content):
+            zf.write(os.path.join(content, fn), os.path.join(arcname, fn))
+    return path
 
 
 def users(args):
     now = datetime.datetime.utcnow()
     with open(args.json) as json_dump:
         input_data = json.load(json_dump)
-    log.info('bootstrapping users...')
     with requests.Session() as rs:
-        rs.params = {'d': '404'}
+        log.info('bootstrapping users...')
+        rs.verify = not args.insecure
+        rs.headers = HTTP_HEADERS
         for u in input_data.get('users', []):
             log.info('    ' + u['_id'])
-            u['created'] = now
-            u['modified'] = now
-            u.setdefault('email', u['_id'])
-            u.setdefault('preferences', {})
-            gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(u['email']).hexdigest() + '?s=512'
-            if rs.head(gravatar):
-                u.setdefault('avatar', gravatar)
-            u.setdefault('avatars', {})
-            u['avatars'].setdefault('gravatar', gravatar)
-            config.db.users.update_one({'_id': u['_id']}, {'$setOnInsert': u}, upsert=True)
-    log.info('bootstrapping groups...')
-    site_id = config.get_item('site', 'id')
-    for g in input_data.get('groups', []):
-        log.info('    ' + g['_id'])
-        g['created'] = now
-        g['modified'] = now
-        for r in g['roles']:
-            r.setdefault('site', site_id)
-        config.db.groups.update_one({'_id': g['_id']}, {'$setOnInsert': g}, upsert=True)
-    log.info('bootstrapping drones...')
-    for d in input_data.get('drones', []):
-        log.info('    ' + d['_id'])
-        d['created'] = now
-        d['modified'] = now
-        config.db.drones.update_one({'_id': d['_id']}, {'$setOnInsert': d}, upsert=True)
+            rs.post(API_URL + '/users', json=u)
+        log.info('bootstrapping groups...')
+        site_id = rs.get(API_URL + '/config').json()['site']['id']
+        for g in input_data.get('groups', []):
+            log.info('    ' + g['_id'])
+            roles = g.pop('roles')
+            rs.post(API_URL + '/groups' , json=g)
+            for r in roles:
+                r.setdefault('site', site_id)
+                rs.post(API_URL + '/groups/' + g['_id'] + '/roles' , json=r)
     log.info('bootstrapping complete')
 
 users_desc = """
@@ -72,52 +92,46 @@ example:
 
 
 def data(args):
-    log.info('inspecting %s' % args.path)
+    log.info('Inspecting  %s' % args.path)
     files = []
-    for dirpath, dirnames, filenames in os.walk(args.path):
-        for filepath in [os.path.join(dirpath, fn) for fn in filenames if not fn.startswith('.')]:
-            if not os.path.islink(filepath):
-                files.append(filepath)
-        dirnames[:] = [dn for dn in dirnames if not dn.startswith('.')] # need to use slice assignment to influence walk behavior
-    file_cnt = len(files)
-    log.info('found %d files to sort (ignoring symlinks and dotfiles)' % file_cnt)
-    for i, filepath in enumerate(files):
-        log.info('Loading     %s [%s] (%d/%d)' % (os.path.basename(filepath), util.hrsize(os.path.getsize(filepath)), i+1, file_cnt))
-        hash_ = hashlib.sha384()
-        size = os.path.getsize(filepath)
-        try:
-            metadata = json.loads(zipfile.ZipFile(filepath).comment)
-        except ValueError as e:
-            log.warning(str(e))
-            continue
-        target, file_ = reaperutil.create_container_hierarchy(metadata)
-        with open(filepath, 'rb') as fd:
-            for chunk in iter(lambda: fd.read(2**20), ''):
-                hash_.update(chunk)
-        computed_hash = 'v0-sha384-' + hash_.hexdigest()
-        destpath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(computed_hash))
-        dir_destpath = os.path.dirname(destpath)
-        filename = os.path.basename(filepath)
-        if not os.path.exists(dir_destpath):
-            os.makedirs(dir_destpath)
-        if args.copy:
-            shutil.copyfile(filepath, destpath)
-        else:
-            shutil.move(filepath, destpath)
-        created = modified = datetime.datetime.utcnow()
-        fileinfo = {
-            'name': filename,
-            'size': size,
-            'hash': computed_hash,
-            'type': 'dicom', # we are only bootstrapping dicoms at the moment
-            'created': created,
-            'modified': modified,
-            'mimetype': util.guess_mimetype(filename),
-        }
-        fileinfo.update(file_)
-        target.add_file(fileinfo)
-        rules.create_jobs(config.db, target.container, 'acquisition', fileinfo)
-
+    schema_validator = validators.payload_from_schema_file('uploader.json')
+    with requests.Session() as rs:
+        rs.verify = not args.insecure
+        rs.headers = HTTP_HEADERS
+        for dirpath, dirnames, filenames in os.walk(args.path):
+            dirnames[:] = [dn for dn in dirnames if not dn.startswith('.')] # use slice assignment to influence walk
+            if not dirnames and filenames:
+                for metadata_file in filenames:
+                    if metadata_file.lower() == 'metadata.json':
+                        filenames.remove(metadata_file)
+                        break
+                else:
+                    metadata_file = None
+                if not metadata_file:
+                    log.warning('Skipping    %s: No metadata found' % dirpath)
+                    continue
+                with open(os.path.join(dirpath, metadata_file)) as fd:
+                    try:
+                        metadata = json.load(fd)
+                    except ValueError:
+                        log.warning('Skipping    %s: Unparsable metadata' % dirpath)
+                        continue
+                with tempfile.TemporaryDirectory() as tempdir:
+                    log.info('Packaging   %s' % dirpath)
+                    filepath = create_archive(dirpath, os.path.basename(dirpath), metadata, tempdir, filenames)
+                    filename = os.path.basename(filepath)
+                    metadata.setdefault('acquisition', {}).setdefault('files', [{}])[0]['name'] = filename
+                    log.info('Validating  %s' % filename)
+                    try:
+                        schema_validator(metadata, 'POST')
+                    except validators.InputValidationException:
+                        log.warning('Skipping    %s: Invalid metadata' % dirpath)
+                        continue
+                    log.info('Uploading   %s' % filename)
+                    with open(filepath, 'rb') as fd:
+                        metadata_json = json.dumps(metadata, default=metadata_encoder)
+                        mpe = requests_toolbelt.multipart.encoder.MultipartEncoder(fields={'metadata': metadata_json, 'file': (filename, fd)})
+                        rs.post(API_URL + '/uploader', data=mpe, headers={'Content-Type': mpe.content_type})
 
 data_desc = """
 example:
@@ -127,14 +141,6 @@ example:
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='operation to perform')
-
-clean_parser = subparsers.add_parser(
-        name='clean',
-        help='reset database to clean state',
-        description=clean_desc,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        )
-clean_parser.set_defaults(func=clean)
 
 users_parser = subparsers.add_parser(
         name='users',
@@ -151,9 +157,13 @@ data_parser = subparsers.add_parser(
         description=data_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-data_parser.add_argument('-c', '--copy', action='store_true', help='copy data instead of moving it')
 data_parser.add_argument('path', help='filesystem path to data')
 data_parser.set_defaults(func=data)
 
+parser.add_argument('-i', '--insecure', action='store_true', help='do not verify SSL connections')
 args = parser.parse_args()
+
+if args.insecure:
+    requests.packages.urllib3.disable_warnings()
+
 args.func(args)

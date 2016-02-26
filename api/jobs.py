@@ -96,7 +96,7 @@ def create_fileinput_from_reference(container, container_type, file_):
     # File container information
     container_id = str(container['_id'])
 
-    log.info('File ' + filename + 'is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
+    log.info('File ' + filename + ' is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
 
     # Spawn rules currently do not look at container hierarchy, and only care about a single file.
     # Further, one algorithm is unconditionally triggered for each dirty file.
@@ -156,7 +156,7 @@ def queue_job(db, algorithm_id, input, tags=[], attempt_n=1, previous_job_id=Non
     result = db.jobs.insert_one(job)
     _id = result.inserted_id
 
-    log.info('Running %s as job %s to process %s %s' % (gear.name, str(_id), input.container_type, input.container_id))
+    log.info('Enqueuing %s as job %s to process %s %s' % (gear.name, str(_id), input.container_type, input.container_id))
     return _id
 
 def retry_job(db, j, force=False):

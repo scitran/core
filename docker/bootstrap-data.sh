@@ -15,7 +15,13 @@ GET_LATEST_DATA=${1:-N}
 
 # Hard code some other vars important for bootstrapping
 #
-bootstrap_data_branch=master
+
+# Set the commit hash or tag or branch desired for scitran/testdata.
+# Branch name should only be used for testing convenience.
+#
+# When changing scitran/testdata, merge that change to master first,
+# then reference that resulting commit hash here.
+bootstrap_data_label=9362b768d54caf6e5cd35f00498208c3b2bff77d
 
 
 # Move to API folder for relative path assumptions later on
@@ -30,7 +36,7 @@ export PYTHONPATH=.
 # Bootstrap data
 
 # Compare hash of source test data to most recent download. Remove local copy to force re-download if they are different.
-TESTDATA_URL="https://github.com/scitran/testdata/archive/${bootstrap_data_branch}.tar.gz"
+TESTDATA_URL="https://github.com/scitran/testdata/archive/${bootstrap_data_label}.tar.gz"
 TESTDATA_VERSION=$(curl -sLI ${TESTDATA_URL} | grep ETag | tail -n 1 | cut -f 2 -d '"')
 
 # use hidden
@@ -52,6 +58,6 @@ builtin echo "$TESTDATA_VERSION" > "$TESTDATA_DIR/.testdata_version"
 
 
 ## load the test data in
-./bin/bootstrap.py data --copy $TESTDATA_DIR/download
+./bin/bootstrap.py -i data $TESTDATA_DIR/download
 
 )

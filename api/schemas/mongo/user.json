@@ -4,34 +4,25 @@
   "type": "object",
   "properties": {
     "_id":              {
-                          "maxLength": 32,
-                          "minLength": 2,
-                          "pattern": "^[0-9a-z.@_-]*$",
                           "title": "ID",
                           "type": "string"
                         },
     "created":          {},
     "modified":         {},
     "firstname":        {
-                          "maxLength": 32,
-                          "minLength": 2,
                           "title": "First Name",
                           "type": "string"
                         },
     "lastname":         {
-                          "maxLength": 32,
-                          "minLength": 2,
                           "title": "Last Name",
                           "type": "string"
                         },
     "email":            {
-                          "format": "email",
                           "title": "Email",
                           "type": "string"
                         },
     "avatars":          { "$ref": "avatars.json"},
     "avatar":           {
-                          "format": "uri",
                           "title": "Avatar",
                           "type": "string"
                         },
