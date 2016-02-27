@@ -33,7 +33,7 @@ class Upload(base.RequestHandler):
                 hash=file_store.hash,
                 mimetype=util.guess_mimetype(file_store.filename),
                 tags=file_store.tags,
-                metadata=file_store.metadata
+                metadata=file_store.metadata.get('file', {}).get('metadata', {})
             )
 
             target, file_metadata = reaperutil.create_container_hierarchy(file_store.metadata)
