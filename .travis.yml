@@ -11,11 +11,8 @@ install:
   - brew install python
 before_script:
   - bin/install.sh --ci
-  - bin/run.sh -d
 script:
   - bin/runtests.sh unit --ci
   - bin/runtests.sh integration --ci
 after_success:
   - coveralls
-after_script:
-  - bin/run.sh -s
