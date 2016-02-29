@@ -226,7 +226,7 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('inherit') and cont_name == 'projects':
             payload['permissions'] = parent_container.get('roles')
         elif cont_name =='projects':
-            payload['permissions'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}]
+            payload['permissions'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}] if self.uid else []
         else:
             payload['permissions'] = parent_container.get('permissions', [])
         # Created and modified timestamps are added here to the payload
