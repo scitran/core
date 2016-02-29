@@ -36,7 +36,7 @@ class GroupHandler(base.RequestHandler):
         if result.deleted_count == 1:
             return {'deleted': result.deleted_count}
         else:
-            self.abort(404, 'User {} not removed'.format(_id))
+            self.abort(404, 'Group {} not removed'.format(_id))
         return result
 
     def get_all(self, uid=None):
@@ -65,7 +65,7 @@ class GroupHandler(base.RequestHandler):
         if result.modified_count == 1:
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'User {} not updated'.format(_id))
+            self.abort(404, 'Group {} not updated'.format(_id))
 
     def post(self):
         self._init_storage()
@@ -78,16 +78,20 @@ class GroupHandler(base.RequestHandler):
         payload['roles'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}] if self.uid else []
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
-            return {'_id': result.inserted_id}
+            if result.upserted_id:
+                return {'_id': result.upserted_id}
+            else:
+                self.response.status_int = 201
+                return {'_id': payload['_id']}
         else:
             self.abort(404, 'User {} not updated'.format(_id))
 
     def _init_storage(self):
-        self.storage = containerstorage.ContainerStorage('groups', use_object_id=False)
+        self.storage = containerstorage.GroupStorage('groups', use_object_id=False)
 
     def _get_group(self, _id):
         group = self.storage.get_container(_id)
         if group is not None:
             return group
         else:
-            self.abort(404, 'user {} not found'.format(_id))
+            self.abort(404, 'Group {} not found'.format(_id))

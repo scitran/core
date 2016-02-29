@@ -83,3 +83,17 @@ class ContainerStorage(object):
         result = self.dbc.find(query, projection)
         return list(result)
 
+
+class GroupStorage(ContainerStorage):
+
+    def _create_el(self, payload):
+        log.debug(payload)
+        roles = payload.pop('roles')
+        return self.dbc.update_one(
+            {'_id': payload['_id']},
+            {
+                '$set': payload,
+                '$setOnInsert': {'roles': roles}
+            },
+            upsert=True)
+

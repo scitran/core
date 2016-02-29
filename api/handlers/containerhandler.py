@@ -259,9 +259,7 @@ class ContainerHandler(base.RequestHandler):
                 payload[parent_id_property] = bson.ObjectId(payload[parent_id_property])
             if cont_name == 'sessions':
                 payload['group'] = target_parent_container['group']
-            if cont_name == 'projects':
-                payload['permissions'] = target_parent_container.get('roles', [])
-            else:
+            if cont_name != 'projects':
                 payload['permissions'] = target_parent_container.get('permissions', [])
 
         payload['modified'] = datetime.datetime.utcnow()

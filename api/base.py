@@ -189,13 +189,8 @@ class RequestHandler(webapp2.RequestHandler):
                 'validator': detail.validator,
                 'validator_value': detail.validator_value,
             }
-        log.warning(str(code) + ' ' + str(detail))
-        json_body = {
-                'uid': self.uid,
-                'code': code,
-                'detail': detail,
-                }
-        webapp2.abort(code, json_body=json_body, **kwargs)
+        log.warning(str(self.uid) + ' ' + str(code) + ' ' + str(detail))
+        webapp2.abort(code, detail=detail, **kwargs)
 
     def schema(self, updates={}):
         json_schema = copy.deepcopy(self.json_schema)
