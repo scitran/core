@@ -1,11 +1,12 @@
 import copy
-import json
-import urllib
-import webapp2
 import datetime
-import requests
-import urlparse
+import json
 import jsonschema
+import requests
+import traceback
+import urllib
+import urlparse
+import webapp2
 
 from . import util
 from . import config
@@ -123,7 +124,8 @@ class RequestHandler(webapp2.RequestHandler):
 
     def handle_exception(self, exception, debug):
         # Log the error.
-        log.error(exception)
+        tb = traceback.format_exc()
+        log.error(tb)
 
         # If the exception is a HTTPException, use its error code.
         # Otherwise use a generic 500 error code.
