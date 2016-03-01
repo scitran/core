@@ -159,6 +159,7 @@ sleep 1
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
     bin/bootstrap.py -i users "$SCITRAN_RUNTIME_BOOTSTRAP"
+    echo "Bootstrapped users"
 else
     echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
 fi

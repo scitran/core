@@ -128,6 +128,7 @@ def data(args):
                         log.warning('Skipping    %s: Invalid metadata' % dirpath)
                         continue
                     log.info('Uploading   %s' % filename)
+                    rs.post(API_URL + '/groups', json={'_id': metadata['group']['_id']}).json()
                     with open(filepath, 'rb') as fd:
                         metadata_json = json.dumps(metadata, default=metadata_encoder)
                         mpe = requests_toolbelt.multipart.encoder.MultipartEncoder(fields={'metadata': metadata_json, 'file': (filename, fd)})
