@@ -170,7 +170,8 @@ class Upload(base.RequestHandler):
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
-            metadata_validator = validators.payload_from_schema_file('uploader.json')
+            payload_schema_uri = util.schema_uri(self, 'input', 'uploader.json')
+            metadata_validator = validators.from_schema_path(payload_schema_uri)
             metadata_validator(file_store.metadata, 'POST')
             try:
                 target_containers = reaperutil.create_root_to_leaf_hierarchy(file_store.metadata, file_store.files)
@@ -216,7 +217,8 @@ class Upload(base.RequestHandler):
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
-            metadata_validator = validators.payload_from_schema_file('enginemetadata.json')
+            payload_schema_uri = util.schema_uri(self, 'input', 'enginemetadata.json')
+            metadata_validator = validators.from_schema_path(payload_schema_uri)
             metadata_validator(file_store.metadata, 'POST')
             file_infos = file_store.metadata['acquisition'].pop('files', [])
             now = datetime.datetime.utcnow()

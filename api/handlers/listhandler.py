@@ -183,9 +183,11 @@ class ListHandler(base.RequestHandler):
                 permchecker = permchecker(self, container)
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
-        mongo_validator = validators.mongo_from_schema_file(config.get('storage_schema_file'))
-        input_validator = validators.payload_from_schema_file(config.get('input_schema_file'))
-        keycheck = validators.key_check(config.get('storage_schema_file'))
+        mongo_schema_uri = util.schema_uri(self, 'mongo', config.get('storage_schema_file'))
+        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+        input_schema_uri = util.schema_uri(self, 'input', config.get('input_schema_file'))
+        input_validator = validators.from_schema_path(input_schema_uri)
+        keycheck = validators.key_check(mongo_schema_uri)
         return container, permchecker, storage, mongo_validator, input_validator, keycheck
 
 
