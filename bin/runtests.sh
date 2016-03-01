@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 unit_test_path=test/unit_tests/
 integration_test_path=test/integration_tests/
