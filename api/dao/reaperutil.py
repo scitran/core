@@ -177,17 +177,21 @@ def create_root_to_leaf_hierarchy(metadata, files):
 
     group = metadata['group']
     project = metadata['project']
-    session = metadata['session']
-    acquisition = metadata['acquisition']
+    session = metadata.get('session')
+    acquisition = metadata.get('acquisition')
 
     now = datetime.datetime.utcnow()
 
     group_obj = config.db.groups.find_one({'_id': group['_id']})
     if not group_obj:
         raise APIStorageException('group does not exist')
-    project['modified'] = session['modified'] = acquisition['modified'] = now
+    project['modified'] = now
     project_files = merge_fileinfos(files, project.pop('files', []))
-    project_obj = config.db.projects.find_one_and_update({'label': project['label']},
+    project_obj = config.db.projects.find_one_and_update(
+        {
+            'label': project['label'],
+            'group': group['_id']
+        },
         {
             '$setOnInsert': dict(
                 group=group_obj['_id'],
@@ -203,6 +207,9 @@ def create_root_to_leaf_hierarchy(metadata, files):
     target_containers.append(
         (TargetContainer(project_obj, 'projects'), project_files)
     )
+    if not session:
+        return target_containers
+    session['modified'] = now
     session_files = merge_fileinfos(files, session.pop('files', []))
     session_operations = {
         '$setOnInsert': dict(
@@ -226,6 +233,9 @@ def create_root_to_leaf_hierarchy(metadata, files):
     target_containers.append(
         (TargetContainer(session_obj, 'sessions'), session_files)
     )
+    if not acquisition:
+        return target_containers
+    acquisition['modified'] = now
     acquisition_files = merge_fileinfos(files, acquisition.pop('files', []))
     acq_operations = {
         '$setOnInsert': dict(

@@ -64,6 +64,6 @@
             "required": ["label"]
         }
     },
-    "required": ["acquisition", "group", "project", "session"],
+    "required": ["group", "project"],
     "additionalProperties": false
 }
