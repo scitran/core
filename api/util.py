@@ -79,6 +79,24 @@ def guess_mimetype(filepath):
     mime, _ = mimetypes.guess_type(filepath)
     return mime or 'application/octet-stream'
 
+def sanitize_string_to_filename(value):
+    """
+    Best-effort attempt to remove blatantly poor characters from a string before turning into a filename.
+
+    Happily stolen from the internet.
+    http://stackoverflow.com/a/7406369
+    """
+
+    keepcharacters = (' ','.','_')
+    return "".join([c for c in value if c.isalnum() or c in keepcharacters]).rstrip()
+
+def obj_from_map(_map):
+    """
+    Creates an anonymous object with properties determined by the passed (shallow) map.
+    Hides the esoteric python syntax.
+    """
+
+    return type('',(object,),_map)()
 
 def path_from_hash(hash_):
     """

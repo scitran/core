@@ -48,6 +48,34 @@ class TargetContainer(object):
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
+# TODO: already in code elsewhere? Location?
+def get_container(cont_name, _id):
+    cont_name += 's'
+    _id = bson.ObjectId(_id)
+
+    return config.db[cont_name].find_one({
+        '_id': _id,
+    })
+
+def upsert_fileinfo(cont_name, _id, fileinfo):
+    # TODO: make all functions take singular noun
+    cont_name += 's'
+
+    # TODO: make all functions consume strings
+    _id = bson.ObjectId(_id)
+
+    # OPPORTUNITY: could potentially be atomic if we pass a closure to perform the modification
+    result = config.db[cont_name].find_one({
+        '_id': _id,
+        'files.name': fileinfo['name'],
+    })
+
+    if result is None:
+        fileinfo['created'] = fileinfo['modified']
+        return add_fileinfo(cont_name, _id, fileinfo)
+    else:
+        return update_fileinfo(cont_name, _id, fileinfo)
+
 def update_fileinfo(cont_name, _id, fileinfo):
     update_set = {'files.$.modified': datetime.datetime.utcnow()}
     # in this method, we are overriding an existing file.
