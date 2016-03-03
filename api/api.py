@@ -73,7 +73,6 @@ routes = [
         webapp2.Route(r'/download',         download.Download, handler_method='download', methods=['GET', 'POST'], name='download'),
         webapp2.Route(r'/reaper',           upload.Upload, handler_method='reaper', methods=['POST']),
         webapp2.Route(r'/uploader',         upload.Upload, handler_method='uploader', methods=['POST']),
-        webapp2.Route(r'/packfile',         upload.Upload, handler_method='packfile', methods=['POST']),
         webapp2.Route(r'/engine',           upload.Upload, handler_method='engine', methods=['POST']),
         webapp2.Route(r'/sites',            centralclient.CentralClient, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/register',         centralclient.CentralClient, handler_method='register', methods=['POST']),
@@ -118,6 +117,7 @@ routes = [
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>'),                                      listhandler.ListHandler, methods=['POST'], name='tags_post'),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.ListHandler, name='tags'),
 
+    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/packfile'),                                     listhandler.FileListHandler, name='packfile', handler_method='packfile', methods=['POST']),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>'),                                     listhandler.FileListHandler, name='files_post', methods=['POST']),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>/<name:{filename_re}>'),            listhandler.FileListHandler, name='files'),
 

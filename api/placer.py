@@ -166,6 +166,10 @@ class PackfilePlacer(Placer):
         self.s_label = self.metadata['session']['label']
         self.a_label = self.metadata['acquisition']['label']
 
+        # Get project permissions
+        project = config.db['projects'].find_one({ '_id': bson.ObjectId(self.p_id)})
+        self.permissions = project.get('permissions', {})
+
         # If a timestamp was provided, use that for zip files. Otherwise use a set date.
         # Normally we'd use epoch, but zips cannot support years older than 1980, so let's use that instead.
         # Then, given the ISO string, convert it to an epoch integer.
@@ -238,11 +242,17 @@ class PackfilePlacer(Placer):
             'label': self.s_label
         }
 
+        # self.permissions
+
         # Add the subject if one was provided
         new_s = copy.deepcopy(s)
         subject = self.metadata['session'].get('subject')
         if subject is not None:
             new_s['subject'] = subject
+        new_s = util.mongo_dict(new_s)
+
+        # Permissions should always be an exact copy
+        new_s['permissions'] = self.permissions
 
         session = config.db['session' + 's'].find_one_and_update(s, {
                 '$set': new_s
@@ -257,8 +267,11 @@ class PackfilePlacer(Placer):
             'label': self.a_label
         }
 
+        new_a = copy.deepcopy(fields)
+        new_a['permissions'] = self.permissions
+
         acquisition = config.db['acquisition' + 's'].find_one_and_update(fields, {
-                '$set': fields
+                '$set': new_a
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER

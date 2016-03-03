@@ -355,10 +355,6 @@ class FileListHandler(ListHandler):
         return result
 
     def post(self, cont_name, list_name, **kwargs):
-
-        # TODO: plural consistency
-        cont_name = cont_name[:-1]
-
         _id = kwargs.pop('cid')
 
         # Authorize
@@ -366,3 +362,29 @@ class FileListHandler(ListHandler):
         permchecker(noop)('POST', _id=_id)
 
         return upload.process_upload(self.request, upload.Strategy.targeted, cont_name, _id)
+
+    def packfile(self, cont_name, **kwargs):
+        _id = kwargs.pop('cid')
+
+        if cont_name != 'projects':
+            raise Exception('Packfiles can only be targeted at projects')
+
+        # Authorize: confirm project exists
+        project = config.db['projects'].find_one({ '_id': bson.ObjectId(_id)})
+
+        print project
+
+        if project is None:
+            raise Exception('Project ' + _id + ' does not exist')
+
+        # Authorize: confirm user has admin/write perms
+        if not self.superuser_request:
+            perms = project.get('permissions', [])
+
+            for p in perms:
+                if p['_id'] == self.uid and p['access'] in ('rw', 'admin'):
+                    break
+            else:
+                raise Exception('Not authorized')
+
+        return upload.process_upload(self.request, upload.Strategy.packfile)

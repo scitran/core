@@ -266,7 +266,3 @@ class Upload(base.RequestHandler):
                     rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
             return [{'name': k, 'hash': v.info.get('hash'), 'size': v.info.get('size')} for k, v in merged_files.items()]
 
-    def packfile(self):
-        # TODO: Perm check
-
-        return process_upload(self.request, Strategy.packfile)
