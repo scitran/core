@@ -13,6 +13,7 @@ from . import util
 from . import config
 from .types import Origin
 from . import validators
+from .dao import APIConsistencyException
 
 log = config.log
 
@@ -193,6 +194,8 @@ class RequestHandler(webapp2.RequestHandler):
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
         elif isinstance(exception, validators.InputValidationException):
+            code = 400
+        elif isinstance(exception, dao.APIConsistencyException):
             code = 400
         else:
             code = 500
