@@ -51,6 +51,7 @@ expected_input_schemas = set([
     'download.json',
     'tag.json',
     'enginemetadata.json',
+    'packfile.json',
     'uploader.json',
     'reaper.json'
 ])
@@ -70,6 +71,19 @@ for schema_filepath in glob.glob(schema_path + '/schemas/input/*.json'):
     resolver_input.resolve(schema_file)
 
 assert input_schemas == expected_input_schemas, '{} is different from {}'.format(input_schemas, expected_input_schemas)
+
+def validate_data(data, schema_name, verb, optional=False):
+    """
+    Convenience method to validate a JSON schema against some action.
+
+    If optional is set, validate_data won't complain about null data.
+    """
+
+    if optional and data is None:
+        return
+
+    validator = payload_from_schema_file(schema_name)
+    validator(data, verb)
 
 def _validate_json(json_data, schema, resolver):
     jsonschema.validate(json_data, schema, resolver=resolver)

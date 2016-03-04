@@ -1,17 +1,129 @@
 import bson
-import os.path
 import datetime
+import json
+import os.path
 
 from . import base
-from . import util
+from . import config
 from . import files
 from . import rules
-from . import config
-from .dao import reaperutil, APIStorageException
-from . import validators
 from . import tempdir as tempfile
+from . import placer as pl
+from . import util
+from . import validators
+from .dao import reaperutil, APIStorageException
 
 log = config.log
+
+Strategy = util.Enum('Strategy', {
+    'targeted' : pl.TargetedPlacer,   # Upload N files to a container.
+    'reaper':    pl.ReaperPlacer,     # Upload N files from a scientific data source.
+    'engine'   : pl.EnginePlacer,	  # Upload N files from the result of a successful job.
+    'packfile' : pl.PackfilePlacer	  # Upload N files as a new packfile to a container.
+})
+
+def process_upload(request, strategy, container_type=None, id=None):
+    """
+    Universal file upload entrypoint.
+
+    Format:
+        Multipart form upload with N file fields, each with their desired filename.
+        For technical reasons, no form field names can be repeated. Instead, use (file1, file2) and so forth.
+
+        Depending on the type of upload, a non-file form field called "metadata" may/must also be sent.
+        If present, it is expected to be a JSON string matching the schema for the upload strategy.
+
+        Currently, the JSON returned may vary by strategy.
+
+        Some examples:
+        curl -F file1=@science.png   -F file2=@rules.png url
+        curl -F metadata=<stuff.json -F file=@data.zip   url
+        http --form POST url metadata=@stuff.json file@data.zip
+
+    Features:
+                                               | targeted |  reaper   | engine | packfile
+        Must specify a target container        |     X    |           |    X   |
+        May create hierarchy on demand         |          |     X     |        |     X
+
+        May  send metadata about the files     |     X    |     X     |    X   |     X
+        MUST send metadata about the files     |          |     X     |        |     X
+
+        Creates a packfile from uploaded files |          |           |        |     X
+    """
+
+    if not isinstance(strategy, Strategy):
+        raise Exception('Unknown upload strategy')
+
+    if id is not None and container_type == None:
+        raise Exception('Unspecified container type')
+
+    if container_type is not None and container_type not in ('acquisition', 'session', 'project', 'collection'):
+        raise Exception('Unknown container type')
+
+    timestamp = datetime.datetime.utcnow()
+
+    container = None
+    if container_type and id:
+        container = reaperutil.get_container(container_type, id)
+
+    # The vast majority of this function's wall-clock time is spent here.
+    # Tempdir is deleted off disk once out of scope, so let's hold onto this reference.
+    form, tempdir = files.process_form(request)
+
+    metadata = None
+    if 'metadata' in form:
+        # Slight misnomer: the metadata field, if present, is sent as a normal form field, NOT a file form field.
+        metadata = json.loads(form['metadata'].file.getvalue())
+
+    placer_class = strategy.value
+    placer = placer_class(container_type, container, id, metadata, timestamp)
+    placer.check()
+
+    # Browsers, when sending a multipart upload, will send files with field name "file" (if sinuglar)
+    # or "file1", "file2", etc (if multiple). Following this convention is probably a good idea.
+    # Here, we accept any
+    file_fields = filter(lambda x: form[x].filename is not None, form)
+
+    # TODO: Change schemas to enabled targeted uploads of more than one file.
+    # Ref docs from placer.TargetedPlacer for details.
+    if strategy == Strategy.targeted and len(file_fields) > 1:
+        raise Exception("Targeted uploads can only send one file")
+
+    for field in file_fields:
+        field = form[field]
+
+        # Sanitize form's filename (read: prevent malicious escapes, bad characters, etc)
+        field.filename = os.path.basename(field.filename)
+        field.filename = util.sanitize_string_to_filename(field.filename)
+
+        # Augment the cgi.FieldStorage with a variety of custom fields.
+        # Not the best practice. Open to improvements.
+        # These are presumbed to be required by every function later called with field as a parameter.
+        field.path	 = os.path.join(tempdir.name, field.filename)
+        field.size	 = os.path.getsize(field.path)
+        field.hash	 = field.file.get_formatted_hash()
+        field.mimetype = util.guess_mimetype(field.filename) # TODO: does not honor metadata's mime type if any
+        field.modified = timestamp
+
+        # create a file-info map commonly used elsewhere in the codebase.
+        # Stands in for a dedicated object... for now.
+        info = {
+            'name':	 field.filename,
+            'modified': field.modified, #
+            'size':	 field.size,
+            'hash':	 field.hash,
+
+            'type': None,
+            'instrument': None,
+            'measurements': [],
+            'tags': [],
+            'metadata': {}
+        }
+
+        placer.process_file_field(field, info)
+
+    return placer.finalize()
+
 
 class Upload(base.RequestHandler):
 
@@ -153,3 +265,4 @@ class Upload(base.RequestHandler):
                     }
                     rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
             return [{'name': k, 'hash': v.info.get('hash'), 'size': v.info.get('size')} for k, v in merged_files.items()]
+

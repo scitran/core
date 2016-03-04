@@ -4,13 +4,15 @@ import copy
 import datetime
 
 from .. import base
-from .. import util
+from .. import config
 from .. import files
 from .. import rules
-from .. import config
-from .. import validators
 from .. import tempdir as tempfile
+from .. import upload
+from .. import util
+from .. import validators
 from ..auth import listauth, always_ok
+from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 
@@ -353,54 +355,36 @@ class FileListHandler(ListHandler):
         return result
 
     def post(self, cont_name, list_name, **kwargs):
-        force = self.is_true('force')
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
-        result = None
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
-            file_store = files.FileStore(self.request, tempdir_path, filename=kwargs.get('name'))
-            payload = file_store.payload
-            file_datetime = datetime.datetime.utcnow()
-            file_properties = {
-                'name': file_store.filename,
-                'size': file_store.size,
-                'hash': file_store.hash,
-                'created': file_datetime,
-                'modified': file_datetime,
-            }
-            if file_store.metadata:
-                file_properties['metadata'] = file_store.metadata
-                if file_store.metadata.get('mimetype'):
-                    file_properties['mimetype'] = file_store.metadata['mimetype']
-            if file_store.tags:
-                file_properties['tags'] = file_store.tags
-            dest_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(file_properties['hash']))
-            query_params = None
-            if not force:
-                method = 'POST'
+        # Authorize
+        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name + 's', list_name, _id)
+        permchecker(noop)('POST', _id=_id)
+
+        return upload.process_upload(self.request, upload.Strategy.targeted, cont_name, _id)
+
+    def packfile(self, cont_name, **kwargs):
+        _id = kwargs.pop('cid')
+
+        if cont_name != 'projects':
+            raise Exception('Packfiles can only be targeted at projects')
+
+        # Authorize: confirm project exists
+        project = config.db['projects'].find_one({ '_id': bson.ObjectId(_id)})
+
+        print project
+
+        if project is None:
+            raise Exception('Project ' + _id + ' does not exist')
+
+        # Authorize: confirm user has admin/write perms
+        if not self.superuser_request:
+            perms = project.get('permissions', [])
+
+            for p in perms:
+                if p['_id'] == self.uid and p['access'] in ('rw', 'admin'):
+                    break
             else:
-                filename = file_store.filename
-                filepath = file_store.path
-                for f in container.get('files', []):
-                    if f['name'] == filename:
-                        if file_store.identical(filepath, f['hash']):
-                            log.debug('Dropping    %s (identical)' % filename)
-                            os.remove(filepath)
-                            return {'modified': 0}
-                        else:
-                            log.debug('Replacing   %s' % filename)
-                            method = 'PUT'
-                            query_params = {'name':filename}
-                        break
-                else:
-                    method = 'POST'
-            file_store.move_file(dest_path)
-            payload_validator(payload, method)
-            payload.update(file_properties)
-            payload['mimetype'] = payload.get('mimetype') or util.guess_mimetype(file_store.filename)
-            result = keycheck(mongo_validator(permchecker(storage.exec_op)))(method, _id=_id, query_params=query_params, payload=payload)
-            if not result or result.modified_count != 1:
-                self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-            rules.create_jobs(config.db, container, cont_name[:-1], payload)
-        return {'modified': result.modified_count}
+                raise Exception('Not authorized')
+
+        return upload.process_upload(self.request, upload.Strategy.packfile)
