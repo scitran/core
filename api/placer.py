@@ -166,9 +166,10 @@ class PackfilePlacer(Placer):
         self.s_label = self.metadata['session']['label']
         self.a_label = self.metadata['acquisition']['label']
 
-        # Get project permissions
+        # Get project info that we need later
         project = config.db['projects'].find_one({ '_id': bson.ObjectId(self.p_id)})
         self.permissions = project.get('permissions', {})
+        self.g_id = project['group']
 
         # If a timestamp was provided, use that for zip files. Otherwise use a set date.
         # Normally we'd use epoch, but zips cannot support years older than 1980, so let's use that instead.
@@ -239,7 +240,8 @@ class PackfilePlacer(Placer):
         # Get or create a session based on the hierarchy and provided labels.
         s = {
             'project': bson.ObjectId(self.p_id),
-            'label': self.s_label
+            'label': self.s_label,
+            'group': self.g_id
         }
 
         # self.permissions
