@@ -7,3 +7,5 @@ pylint==1.5.3
 pytest==2.8.5
 pytest-cov==2.2.0
 pytest-watch==3.8.0
+
+git+https://github.com/scitran/reaper.git@folder-reaper
