@@ -88,4 +88,4 @@ RUN /inject_build_info.sh ${BRANCH_LABEL} ${COMMIT_HASH} \
 
 
 ENTRYPOINT ["/var/scitran/uwsgi-entrypoint.sh"]
-CMD ["uwsgi", "--ini", "/var/scitran/config/uwsgi-config.ini", "--http", "0.0.0.0:8080" ]
+CMD ["uwsgi", "--ini", "/var/scitran/config/uwsgi-config.ini", "--http", "0.0.0.0:8080", "--http-keepalive", "--so-keepalive", "--add-header", "Connection: Keep-Alive" ]
