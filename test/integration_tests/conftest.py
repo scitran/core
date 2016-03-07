@@ -103,7 +103,12 @@ def with_a_group_and_a_project(api_as_admin, data_builder, request, bunch):
 def data_builder(api_as_admin):
     class DataBuilder:
 
-        # This madness allows us nicer reading code by auto-generating fucntions.
+        # This function is called whenever DataBuilder.create_X() or
+        # DataBuilder.delete_X() is called (those functions don't
+        # actually exist). It returns a callable object that does the right
+        # thing based on what X is.
+        # This madness allows significantly reduced copy/paste code and more
+        # readable tests.
         def __getattr__(self, name):
             parent_attribute = {
                 'group': '_id',
