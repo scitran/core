@@ -110,8 +110,13 @@ def process_form(request, hash_alg=None):
 def getHashingFieldStorage(upload_dir, hash_alg):
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
+
         def make_file(self, binary=None):
-            self.open_file = HashingFile(os.path.join(upload_dir, os.path.basename(self.filename)), hash_alg)
+            # Sanitize form's filename (read: prevent malicious escapes, bad characters, etc)
+            self.filename = os.path.basename(self.filename)
+            self.filename = util.sanitize_string_to_filename(self.filename)
+
+            self.open_file = HashingFile(os.path.join(upload_dir, self.filename), hash_alg)
             return self.open_file
 
         # override private method __write of superclass FieldStorage

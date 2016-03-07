@@ -92,10 +92,6 @@ def process_upload(request, strategy, container_type=None, id=None):
     for field in file_fields:
         field = form[field]
 
-        # Sanitize form's filename (read: prevent malicious escapes, bad characters, etc)
-        field.filename = os.path.basename(field.filename)
-        field.filename = util.sanitize_string_to_filename(field.filename)
-
         # Augment the cgi.FieldStorage with a variety of custom fields.
         # Not the best practice. Open to improvements.
         # These are presumbed to be required by every function later called with field as a parameter.
