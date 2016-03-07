@@ -83,11 +83,11 @@ def sanitize_string_to_filename(value):
     """
     Best-effort attempt to remove blatantly poor characters from a string before turning into a filename.
 
-    Happily stolen from the internet.
+    Happily stolen from the internet, then modified.
     http://stackoverflow.com/a/7406369
     """
 
-    keepcharacters = (' ','.','_')
+    keepcharacters = (' ', '.', '_', '-')
     return "".join([c for c in value if c.isalnum() or c in keepcharacters]).rstrip()
 
 def obj_from_map(_map):
