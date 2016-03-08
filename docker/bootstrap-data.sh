@@ -22,6 +22,7 @@ GET_LATEST_DATA=${1:-N}
 # When changing scitran/testdata, merge that change to master first,
 # then reference that resulting commit hash here.
 bootstrap_data_label=9362b768d54caf6e5cd35f00498208c3b2bff77d
+bootstrap_data_label=reaping
 
 
 # Move to API folder for relative path assumptions later on
@@ -44,11 +45,18 @@ TESTDATA_DIR=$SCITRAN_PERSISTENT_PATH/testdata
 
 if [ ! -d "$TESTDATA_DIR" ] || [ ! -d "$TESTDATA_DIR/download" ] || [ ! -f "$TESTDATA_DIR/.testdata_version" ]; then
     echo "Downloading testdata to $TESTDATA_DIR"
+
+    # Remove old contents, as they may not be forward compatible.
+    rm -rf "$TESTDATA_DIR"
     mkdir -p "$TESTDATA_DIR/download"
     curl -L $TESTDATA_URL | tar xz -C "$TESTDATA_DIR/download" --strip-components 1
 else
     if [ "$TESTDATA_VERSION" != "$(cat $TESTDATA_DIR/.testdata_version)" ]; then
         echo "Testdata out of date; downloading"
+
+        # Remove old contents, as they may not be forward compatible.
+        rm -rf "$TESTDATA_DIR"
+        mkdir -p "$TESTDATA_DIR/download"
         curl -L $TESTDATA_URL | tar xz -C "$TESTDATA_DIR/download" --strip-components 1
     else
         echo "Testdata up to date"
@@ -57,7 +65,10 @@ fi
 builtin echo "$TESTDATA_VERSION" > "$TESTDATA_DIR/.testdata_version"
 
 
+## delete .DS_Store files, as the reaper at this point doesn't like them.
+find "$TESTDATA_DIR/download/" -name ".DS_Store" -type f -delete
+
 ## load the test data in
-./bin/bootstrap.py -i data $TESTDATA_DIR/download
+folder_reaper --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${API_URL}" "$TESTDATA_DIR/download"
 
 )
