@@ -1,13 +1,10 @@
 import datetime
 import elasticsearch
-from requests import ConnectionError
 
 from .. import base
 from .. import config
 
 log = config.log
-
-es_client = elasticsearch.Elasticsearch([config.get_item('persistent', 'elasticsearch_host')])
 
 
 class SearchHandler(base.RequestHandler):
@@ -21,7 +18,7 @@ class SearchHandler(base.RequestHandler):
         size = self.get_param('size')
         body = self.request.json_body
         try:
-            results = es_client.search(index='scitran', doc_type=cont_name, body=body, _source=['_id'], size=size or 10)
+            results = config.es.search(index='scitran', doc_type=cont_name, body=body, _source=['_id'], size=size or 10)
         except elasticsearch.exceptions.ConnectionError as e:
             self.abort(503, 'elasticsearch is not available')
         return results['hits']['hits']
