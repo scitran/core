@@ -18,6 +18,7 @@ RUN apt-get update \
 		python-pip \
 		libffi-dev \
 		libssl-dev \
+		git \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& pip install -U pip
 

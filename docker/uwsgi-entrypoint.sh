@@ -32,6 +32,11 @@ if [ "${1:0:1}" = '-' ]; then
 	set -- uwsgi "$@"
 fi
 
+# run $PRE_RUNAS_CMD as root if provided. Useful for things like JIT pip insalls.
+if [ ! -z "${PRE_RUNAS_CMD}" ]; then
+	${PRE_RUNAS_CMD}
+fi
+
 if [ "$1" = 'uwsgi' ]; then
 	exec gosu ${RUNAS_USER} "$@"
 fi

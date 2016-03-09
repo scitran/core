@@ -25,7 +25,6 @@ fi
 SCITRAN_RUNTIME_HOST=${SCITRAN_RUNTIME_HOST:-"127.0.0.1"}
 SCITRAN_RUNTIME_PORT=${SCITRAN_RUNTIME_PORT:-"8080"}
 SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"./runtime"}
-SCITRAN_RUNTIME_SSL_PEM=${SCITRAN_RUNTIME_SSL_PEM:-""}
 SCITRAN_RUNTIME_BOOTSTRAP=${SCITRAN_RUNTIME_BOOTSTRAP:-"bootstrap.json"}
 SCITRAN_PERSISTENT_PATH=${SCITRAN_PERSISTENT_PATH:-"./persistent"}
 SCITRAN_PERSISTENT_DATA_PATH=${SCITRAN_PERSISTENT_DATA_PATH:-"$SCITRAN_PERSISTENT_PATH/data"}
@@ -155,10 +154,15 @@ trap "{
 sleep 1
 
 
+# Set API URL
+[ -z "$SCITRAN_RUNTIME_SSL_PEM" ] && API_URL="http" || API_URL="https"
+API_URL="$API_URL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
+
+
 # Boostrap users and groups
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
-    bin/bootstrap.py -i users "$SCITRAN_RUNTIME_BOOTSTRAP"
+    bin/bootstrap.py --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $API_URL "$SCITRAN_RUNTIME_BOOTSTRAP"
     echo "Bootstrapped users"
 else
     echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
@@ -174,11 +178,12 @@ else
     echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
     git -C $SCITRAN_PERSISTENT_PATH/testdata pull
 fi
+
 if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
     echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    bin/bootstrap.py -i data $SCITRAN_PERSISTENT_PATH/testdata
+    folder_reaper --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
     echo "Bootstrapped testdata"
     touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
 fi
