@@ -22,6 +22,7 @@ preserving their contents across container instances.
      --name scitran-core \
      -e "SCITRAN_PERSISTENT_DB_URI=mongodb://some-mongo:27017/scitran" \
      -e "SCITRAN_CORE_INSECURE=true" \
+     -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
      -v $(pwd)/persistent/data:/var/scitran/data \
      -v $(pwd):/var/scitran/code/api \
      --link some-mongo \
@@ -30,26 +31,34 @@ preserving their contents across container instances.
        uwsgi \
          --ini /var/scitran/config/uwsgi-config.ini \
          --http 0.0.0.0:8080 \
+         --http-keepalive \
          --python-autoreload 1
 
 
 # Bootstrap Account Example:
    docker run \
-     -e "SCITRAN_PERSISTENT_DB_URI=mongodb://some-mongo:27017/scitran" \
-     --link some-mongo \
+     -e "SCITRAN_RUNTIME_HOST=scitran-core" \
+     -e "SCITRAN_RUNTIME_PORT=8080" \
+     -e "SCITRAN_RUNTIME_PROTOCOL=http" \
+     -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
+     --link scitran-core \
      --rm \
-     -v /dev/bali.prod/docker/uwsgi/bootstrap-dev.json:/accounts.json \
-     scitran/core \
+     -v /dev/bali.prod/docker/uwsgi/bootstrap.json:/accounts.json \
+     scitran-core \
        /var/scitran/code/api/docker/bootstrap-accounts.sh \
        /accounts.json
 
+
 # Bootstrap Data Example:
    docker run \
-     -e "SCITRAN_PERSISTENT_DB_URI=mongodb://some-mongo:27017/scitran" \
-     --link some-mongo \
+     -e "SCITRAN_RUNTIME_HOST=scitran-core" \
+     -e "SCITRAN_RUNTIME_PORT=8080" \
+     -e "SCITRAN_RUNTIME_PROTOCOL=http" \
+     -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
+     --link scitran-core \
      --volumes-from scitran-core \
      --rm \
-     scitran/core \
+     scitran-core \
        /var/scitran/code/api/docker/bootstrap-data.sh
 ```
 
@@ -77,5 +86,6 @@ docker run \
     uwsgi \
       --ini /var/scitran/config/uwsgi-config.ini \
       --http 0.0.0.0:8080 \
+      --http-keepalive \
       --python-autoreload 1
 ```

@@ -24,6 +24,9 @@ GET_LATEST_DATA=${1:-N}
 bootstrap_data_label=9362b768d54caf6e5cd35f00498208c3b2bff77d
 bootstrap_data_label=reaping
 
+# Same as bootstrap_data_label above, except for scitran/reaper.
+bootstrap_reaper_label=folder-reaper
+
 
 # Move to API folder for relative path assumptions later on
 #
@@ -64,9 +67,12 @@ else
 fi
 builtin echo "$TESTDATA_VERSION" > "$TESTDATA_DIR/.testdata_version"
 
+# pull reaper module
+pip install "git+https://github.com/scitran/reaper.git@${bootstrap_reaper_label}"
 
-## delete .DS_Store files, as the reaper at this point doesn't like them.
-find "$TESTDATA_DIR/download/" -name ".DS_Store" -type f -delete
+
+# Set API URL
+API_URL="$SCITRAN_RUNTIME_PROTOCOL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
 
 ## load the test data in
 folder_reaper --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${API_URL}" "$TESTDATA_DIR/download"
