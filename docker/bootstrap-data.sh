@@ -21,11 +21,11 @@ GET_LATEST_DATA=${1:-N}
 #
 # When changing scitran/testdata, merge that change to master first,
 # then reference that resulting commit hash here.
-bootstrap_data_label=9362b768d54caf6e5cd35f00498208c3b2bff77d
-bootstrap_data_label=reaping
+bootstrap_data_label=00359460fa7c7dd3f0d2b7e2590865e6e50e1e4c
+
 
 # Same as bootstrap_data_label above, except for scitran/reaper.
-bootstrap_reaper_label=folder-reaper
+bootstrap_reaper_label=30215c66a33b18685e1608dbe952e78c370d8765
 
 
 # Move to API folder for relative path assumptions later on
