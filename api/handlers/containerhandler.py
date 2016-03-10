@@ -132,6 +132,9 @@ class ContainerHandler(base.RequestHandler):
             query = {par_cont_name[:-1]: par_id}
         else:
             query = {}
+        # only return unarchived sessions and acquisitions when includeArchived flag is present
+        if cont_name in ['sessions', 'acquisitions'] and not self.is_true('includeArchived'):
+            query['archived'] = {'$ne': True}
         # this request executes the actual reqeust filtering containers based on the user permissions
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
