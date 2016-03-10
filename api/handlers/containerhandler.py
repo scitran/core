@@ -132,7 +132,7 @@ class ContainerHandler(base.RequestHandler):
             query = {par_cont_name[:-1]: par_id}
         else:
             query = {}
-        if not self.is_true('includeArchived'):
+        if not self.is_true('archived'):
             query['archived'] = {'$ne': True}
         # this request executes the actual reqeust filtering containers based on the user permissions
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
@@ -305,7 +305,6 @@ class ContainerHandler(base.RequestHandler):
         """
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
         return list(config.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
-
 
     def _get_validators(self):
         mongo_validator = validators.mongo_from_schema_file(self.config.get('storage_schema_file'))
