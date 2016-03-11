@@ -170,7 +170,7 @@ class Upload(base.RequestHandler):
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
-            payload_schema_uri = util.schema_uri(self, 'input', 'uploader.json')
+            payload_schema_uri = util.schema_uri('input', 'uploader.json')
             metadata_validator = validators.from_schema_path(payload_schema_uri)
             metadata_validator(file_store.metadata, 'POST')
             try:
@@ -217,7 +217,7 @@ class Upload(base.RequestHandler):
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
-            payload_schema_uri = util.schema_uri(self, 'input', 'enginemetadata.json')
+            payload_schema_uri = util.schema_uri('input', 'enginemetadata.json')
             metadata_validator = validators.from_schema_path(payload_schema_uri)
             metadata_validator(file_store.metadata, 'POST')
             file_infos = file_store.metadata['acquisition'].pop('files', [])

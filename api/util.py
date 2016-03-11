@@ -8,6 +8,7 @@ import bson.objectid
 import tempdir as tempfile
 import enum as baseEnum
 
+from . import config
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
     ('.bval', 'text', 'bval'),
@@ -136,12 +137,12 @@ def send_json_http_exception(response, message, code):
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.write(content)
 
-def schema_uri(handler, type_, schema_name):
-    return handler.uri_for(
+def schema_uri(type_, schema_name):
+    return '/'.join([
+        config.get_item('site', 'api_url'),
         'schemas',
-        schema=type_ + '/' + schema_name,
-        _full=True
-    )
+        type_, schema_name
+    ])
 
 class Enum(baseEnum.Enum):
     # Enum strings are prefixed by their class: "Category.classifier".

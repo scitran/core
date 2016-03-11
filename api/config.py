@@ -129,7 +129,8 @@ expected_input_schemas = set([
 ])
 mongo_schemas = set()
 input_schemas = set()
-# validate and cache schemas at start time
+
+# check that the lists of schemas are correct
 for schema_filepath in glob.glob(schema_path + '/mongo/*.json'):
     schema_file = os.path.basename(schema_filepath)
     mongo_schemas.add(schema_file)

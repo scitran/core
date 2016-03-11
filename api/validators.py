@@ -22,7 +22,6 @@ def validate_data(data, schema_url, verb, optional=False):
 
     If optional is set, validate_data won't complain about null data.
     """
-    raise NotImplementedError('this needs to be adapted, using the new schema endpoint')
 
     if optional and data is None:
         return
@@ -37,7 +36,7 @@ class RefResolver(jsonschema.RefResolver):
 
     def resolve_remote(self, uri):
         """override default resolve_remote
-        to allow testing then there is no ssl certificate
+        to allow testing when there is no ssl certificate
         """
         scheme = urlsplit(uri).scheme
 
