@@ -251,13 +251,17 @@ class PackfilePlacer(Placer):
         subject = self.metadata['session'].get('subject')
         if subject is not None:
             new_s['subject'] = subject
+        new_s['modified']    = self.timestamp
         new_s = util.mongo_dict(new_s)
 
         # Permissions should always be an exact copy
         new_s['permissions'] = self.permissions
 
         session = config.db['session' + 's'].find_one_and_update(s, {
-                '$set': new_s
+                '$set': new_s,
+                '$setOnInsert': {
+                    'created': self.timestamp
+                }
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER
@@ -271,9 +275,13 @@ class PackfilePlacer(Placer):
 
         new_a = copy.deepcopy(fields)
         new_a['permissions'] = self.permissions
+        new_a['modified']    = self.timestamp
 
         acquisition = config.db['acquisition' + 's'].find_one_and_update(fields, {
-                '$set': new_a
+                '$set': new_a,
+                '$setOnInsert': {
+                    'created': self.timestamp
+                }
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER
