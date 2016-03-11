@@ -51,6 +51,7 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
             'list_projection': {'metadata': 0},
+            'propagated_properties': ['archived'],
             'children_cont': 'sessions'
         },
         'sessions': {
@@ -60,6 +61,7 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
             'list_projection': {'metadata': 0},
+            'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
         'acquisitions': {
@@ -253,6 +255,13 @@ class ContainerHandler(base.RequestHandler):
 
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
+        # Check if any payload keys are a propogated property, ensure they all are
+        rec = False
+        if set(payload.keys()) & set(self.config['propagated_properties']):
+            if not set(payload.keys()).issubset(set(self.config['propagated_properties'])):
+                self.abort(400, 'Cannot update propagated properties together with unpropagated properties')
+            else:
+                rec = True  # Mark PUT request for propogation
         # Check if we are updating the parent container of the element (ie we are moving the container)
         # In this case, we will check permissions on it.
         target_parent_container, parent_id_property = self._get_parent_container(payload)
@@ -272,7 +281,7 @@ class ContainerHandler(base.RequestHandler):
         try:
             # This line exec the actual request validating the payload that will update the container
             # and checking permissions using respectively the two decorators, mongo_validator and permchecker
-            result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
+            result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload, recursive=rec)
         except APIStorageException as e:
             self.abort(400, e.message)
 
