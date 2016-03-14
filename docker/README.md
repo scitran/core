@@ -43,7 +43,7 @@ preserving their contents across container instances.
      -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
      --link scitran-core \
      --rm \
-     -v /dev/bali.prod/docker/uwsgi/bootstrap.json:/accounts.json \
+     -v /dev/bali.prod/docker/uwsgi/bootstrap-dev.json:/accounts.json \
      scitran-core \
        /var/scitran/code/api/docker/bootstrap-accounts.sh \
        /accounts.json
@@ -55,11 +55,12 @@ preserving their contents across container instances.
      -e "SCITRAN_RUNTIME_PORT=8080" \
      -e "SCITRAN_RUNTIME_PROTOCOL=http" \
      -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
+     -e "PRE_RUNAS_CMD=/var/scitran/code/api/docker/bootstrap-data.sh" \
      --link scitran-core \
      --volumes-from scitran-core \
      --rm \
      scitran-core \
-       /var/scitran/code/api/docker/bootstrap-data.sh
+       echo "Data bootstrap complete."
 ```
 
 
