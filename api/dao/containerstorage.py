@@ -73,6 +73,8 @@ class ContainerStorage(object):
         elif self.cont_name == "sessions":
             config.db.acquisitions.update_many(
                 {'session': _id}, update)
+        else:
+            raise ValueError('changes can only be propagated from project or session level')
 
     def _delete_el(self, _id):
         if self.use_object_id:

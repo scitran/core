@@ -257,7 +257,7 @@ class ContainerHandler(base.RequestHandler):
         payload_validator(payload, 'PUT')
         # Check if any payload keys are a propogated property, ensure they all are
         rec = False
-        if set(payload.keys()).intersection(set(self.config['propagated_properties'])):
+        if set(payload.keys()).intersection(set(self.config.get('propagated_properties', []))):
             if not set(payload.keys()).issubset(set(self.config['propagated_properties'])):
                 self.abort(400, 'Cannot update propagated properties together with unpropagated properties')
             else:
