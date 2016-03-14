@@ -7,6 +7,7 @@ import traceback
 import urllib
 import urlparse
 import webapp2
+import pprint
 
 from . import util
 from . import config
@@ -67,8 +68,10 @@ class RequestHandler(webapp2.RequestHandler):
                         u = u._replace(query=urllib.urlencode(query, True))
                         provider_avatar = urlparse.urlunparse(u)
                 else:
-                    headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="Invalid OAuth2 token."'.format(site_id)}
-                    self.abort(401, 'invalid oauth2 token', headers=headers)
+                    err_msg = 'Invalid OAuth2 token.'
+                    headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="{}"'.format(site_id, err_msg)}
+                    log.warn('{} Request headers: {}'.format(err_msg, util.str_from_dict(self.request.headers)))
+                    self.abort(401, err_msg, headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
         elif self.debug and self.get_param('user'):
