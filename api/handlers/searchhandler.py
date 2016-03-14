@@ -12,7 +12,10 @@ parent_container = {
     'sessions': 'projects'
 }
 
-def _filter_body_by_type(body, doc_type):
+def _filter_body_by_type(body, doc_type, min_score):
+    """wrap the body to filter by doc_type
+    as some full text queries seem to break in ElasticSearch
+    if, instead, we pass the doc_type in the URL path."""
     query = {
         'query': {
             'filtered': {
@@ -24,7 +27,7 @@ def _filter_body_by_type(body, doc_type):
                 }
             }
         },
-        'min_score': 0.5
+        'min_score': min_score
     }
     return query
 
@@ -86,8 +89,9 @@ class SearchHandler(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         size = self.get_param('size')
+        min_score = self.get_param('min_score', 0.5)
         body = self.request.json_body
-        query = _filter_body_by_type(body, cont_name)
+        query = _filter_body_by_type(body, cont_name, min_score)
         try:
             results = config.es.search(index='scitran', body=body, _source=['_id'], size=size or 10)
         except elasticsearch.exceptions.ConnectionError as e:
@@ -98,8 +102,9 @@ class SearchHandler(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         size = self.get_param('size')
+        min_score = self.get_param('min_score', 0.5)
         body = self.request.json_body
-        query = _filter_body_by_type(body, 'files')
+        query = _filter_body_by_type(body, 'files', min_score)
         try:
             es_results = config.es.search(index='scitran', body=query, size=size or 10)
             ## elastic search results are wrapped in subkey ['hits']['hits']
