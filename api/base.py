@@ -7,7 +7,6 @@ import traceback
 import urllib
 import urlparse
 import webapp2
-import pprint
 
 from . import util
 from . import config
