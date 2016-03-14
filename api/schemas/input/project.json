@@ -5,6 +5,7 @@
     "allOf": [{"$ref": "container.json"}],
     "properties": {
         "public": {},
+        "archived": {},
         "label": {},
         "metadata": {},
 

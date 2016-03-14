@@ -23,7 +23,8 @@ class ContainerStorage(object):
     def get_container(self, _id):
         return self._get_el(_id)
 
-    def exec_op(self, action, _id=None, payload=None, query=None, user=None, public=False, projection=None):
+    def exec_op(self, action, _id=None, payload=None, query=None, user=None, 
+                public=False, projection=None, recursive=False):
         """
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
@@ -36,7 +37,7 @@ class ContainerStorage(object):
         if action == 'DELETE':
             return self._delete_el(_id)
         if action == 'PUT':
-            return self._update_el(_id, payload)
+            return self._update_el(_id, payload, recursive)
         if action == 'POST':
             return self._create_el(payload)
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
@@ -45,7 +46,7 @@ class ContainerStorage(object):
         log.debug(payload)
         return self.dbc.insert_one(payload)
 
-    def _update_el(self, _id, payload):
+    def _update_el(self, _id, payload, recursive=False):
         update = {
             '$set': util.mongo_dict(payload)
         }
@@ -54,7 +55,26 @@ class ContainerStorage(object):
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
+        if recursive:
+            self._propagate_changes(_id, update)
         return self.dbc.update_one({'_id': _id}, update)
+
+    def _propagate_changes(self, _id, update):
+        """
+        Propagates changes down the heirarchy tree when a PUT is marked as recursive.
+        """
+
+        if self.cont_name == "projects":
+            session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
+            config.db.sessions.update_many(
+                {'project': _id}, update)
+            config.db.acquisitions.update_many(
+                {'session': {'$in': session_ids}}, update)
+        elif self.cont_name == "sessions":
+            config.db.acquisitions.update_many(
+                {'session': _id}, update)
+        else:
+            raise ValueError('changes can only be propagated from project or session level')
 
     def _delete_el(self, _id):
         if self.use_object_id:

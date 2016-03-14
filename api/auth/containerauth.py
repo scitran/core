@@ -33,7 +33,10 @@ def default_container(handler, container=None, target_parent_container=None):
                     _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
                 )
             elif method == 'PUT' and target_parent_container is None:
-                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['rw']
+                required_perm = 'rw'
+                if 'archived' in payload.keys():
+                    required_perm = 'admin'
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES[required_perm]
             else:
                 has_access = False
 
