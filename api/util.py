@@ -149,3 +149,17 @@ class Enum(baseEnum.Enum):
     # This overrides that behaviour and removes the prefix.
     def __str__(self):
         return str(self.name)
+
+    # Allow equality comparison with strings against the enum's name.
+
+    def __ne__(self, other):
+        if isinstance(other, basestring):
+            return self.name != other
+        else:
+            return super.__ne__(other)
+
+    def __eq__(self, other):
+        if isinstance(other, basestring):
+            return self.name == other
+        else:
+            return super.__eq__(other)

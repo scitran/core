@@ -172,7 +172,7 @@ def retry_job(db, j, force=False):
         log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
 
 
-def generate_formula(algorithm_id, i):
+def generate_formula(algorithm_id, i, job_id=None):
     """
     Given an intent, generates a formula to execute a job.
 
@@ -182,6 +182,8 @@ def generate_formula(algorithm_id, i):
         Human-friendly unique name of the algorithm
     i: FileInput
         The input to be used by this job
+    job_id: string
+        The job ID this will be placed on. Enhances the file origin by adding the job ID to the upload URL.
     """
 
     gear = get_gear_by_name(algorithm_id)
@@ -210,6 +212,9 @@ def generate_formula(algorithm_id, i):
             },
         ],
     }
+
+    if job_id:
+        f['outputs'][0]['uri'] += '&job=' + job_id
 
     return f
 
@@ -286,13 +291,15 @@ class Jobs(base.RequestHandler):
         if result is None:
             self.abort(400, 'No jobs to process')
 
+        str_id = str(result['_id'])
+
         # Second, update document to store formula request.
         result = config.db.jobs.find_one_and_update(
             {
                 '_id': result['_id']
             },
             { '$set': {
-                'request': generate_formula(result['algorithm_id'], result['input'])}
+                'request': generate_formula(result['algorithm_id'], result['input'], str_id)}
             },
             return_document=pymongo.collection.ReturnDocument.AFTER
         )

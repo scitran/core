@@ -2,6 +2,7 @@ import copy
 import datetime
 import json
 import jsonschema
+import pymongo
 import requests
 import traceback
 import urllib
@@ -10,10 +11,13 @@ import webapp2
 
 from . import util
 from . import config
+from .types import Origin
 from . import validators
 
 log = config.log
 
+# When authenticating as a drone, the user agent must start with this prefix.
+DRONE_PREFIX = 'SciTran Drone '
 
 class RequestHandler(webapp2.RequestHandler):
 
@@ -29,6 +33,7 @@ class RequestHandler(webapp2.RequestHandler):
         self.uid = None
         self.source_site = None
         drone_request = False
+        drone_name = ''
 
         user_agent = self.request.headers.get('User-Agent', '')
         access_token = self.request.headers.get('Authorization', None)
@@ -75,13 +80,14 @@ class RequestHandler(webapp2.RequestHandler):
             self.uid = self.get_param('user')
 
         # Drone shared secret authentication
-        elif drone_secret is not None and user_agent.startswith('SciTran Drone '):
+        elif drone_secret is not None and user_agent.startswith(DRONE_PREFIX):
             if config.get_item('core', 'drone_secret') is None:
                 self.abort(401, 'drone secret not configured')
             if drone_secret != config.get_item('core', 'drone_secret'):
                 self.abort(401, 'invalid drone secret')
-            log.info('drone "' + user_agent.replace('SciTran Drone ', '') + '" request accepted')
             drone_request = True
+            drone_name = user_agent.replace(DRONE_PREFIX, '')
+            log.info('drone "' + drone_name + '" request accepted')
 
         # Cross-site authentication
         elif user_agent.startswith('SciTran Instance '):
@@ -115,6 +121,61 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(403, 'user ' + self.uid + ' is not authorized to make superuser requests')
             else:
                 self.superuser_request = False
+
+        self.set_origin(drone_request, drone_name)
+
+    def set_origin(self, drone_request, drone_name):
+        """
+        Add an origin to the request object. Used later in request handler logic.
+
+        Pretty clear duplication of logic with superuser_request / drone_request;
+        this map serves a different purpose, and specifically matches the desired file-origin map.
+        Might be a good future project to remove one or the other.
+        """
+
+        if self.uid is not None:
+            self.origin = {
+                'type': str(Origin.user),
+                'id': self.uid
+            }
+        elif drone_request:
+            self.origin = {
+                'type': str(Origin.device),
+                'id': drone_name
+            }
+
+            # Upsert device record, with last-contacted time.
+            # In the future, consider merging any keys into self.origin?
+            device_record = config.db['devices'].find_one_and_update({
+                    '_id': self.origin['id']
+                }, {
+                    '$set': {
+                        '_id': self.origin['id'],
+                        'last-seen': datetime.datetime.utcnow()
+                    }
+                },
+                upsert=True,
+                return_document=pymongo.collection.ReturnDocument.AFTER
+            )
+
+            # Bit hackish - detect from route if a job is the origin, and if so what job ID.
+            # Could be removed if routes get reorganized. POST /api/jobs/id/result, maybe?
+            is_job_upload = self.request.path.startswith('/api/engine')
+            job_id        = self.request.GET.get('job')
+
+            # This runs after the standard drone-request upsert above so that we can still update the last-seen timestamp.
+            if is_job_upload and job_id is not None:
+                self.origin = {
+                    'type': str(Origin.job),
+                    'id': job_id
+                }
+        else:
+            self.origin = {
+                'type': str(Origin.unknown),
+                'id': None
+            }
+
+        # print json.dumps(self.origin)
 
     def is_true(self, param):
         return self.request.GET.get(param, '').lower() in ('1', 'true')
