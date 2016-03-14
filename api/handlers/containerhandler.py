@@ -316,8 +316,10 @@ class ContainerHandler(base.RequestHandler):
         return list(config.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
 
     def _get_validators(self):
-        mongo_validator = validators.mongo_from_schema_file(self.config.get('storage_schema_file'))
-        payload_validator = validators.payload_from_schema_file(self.config.get('payload_schema_file'))
+        mongo_schema_uri = util.schema_uri('mongo', self.config.get('storage_schema_file'))
+        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+        payload_schema_uri = util.schema_uri('input', self.config.get('payload_schema_file'))
+        payload_validator = validators.from_schema_path(payload_schema_uri)
         return mongo_validator, payload_validator
 
     def _get_parent_container(self, payload):
@@ -338,7 +340,6 @@ class ContainerHandler(base.RequestHandler):
             parent_container = None
         log.debug(parent_container)
         return parent_container, parent_id_property
-
 
     def _get_container(self, _id):
         try:

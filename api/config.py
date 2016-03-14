@@ -1,5 +1,6 @@
 import os
 import copy
+import glob
 import logging
 import pymongo
 import datetime
@@ -30,7 +31,7 @@ DEFAULT_CONFIG = {
     'site': {
         'id': 'local',
         'name': 'Local',
-        'url': 'https://localhost/api',
+        'api_url': 'https://localhost/api',
         'central_url': 'https://sdmc.scitran.io/api',
         'registered': False,
         'ssl_cert': None,
@@ -46,8 +47,9 @@ DEFAULT_CONFIG = {
         'db_connect_timeout': '2000',
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
+        'schema_path': 'api/schemas',
         'elasticsearch_host': 'localhost:9200',
-    }
+    },
 }
 
 __config = copy.deepcopy(DEFAULT_CONFIG)
@@ -87,6 +89,63 @@ log.debug(str(db))
 
 es = elasticsearch.Elasticsearch([__config['persistent']['elasticsearch_host']])
 
+# validate the lists of json schemas
+schema_path = __config['persistent']['schema_path']
+
+expected_mongo_schemas = set([
+    'acquisition.json',
+    'collection.json',
+    'container.json',
+    'file.json',
+    'group.json',
+    'note.json',
+    'permission.json',
+    'project.json',
+    'session.json',
+    'subject.json',
+    'user.json',
+    'avatars.json',
+    'tag.json'
+])
+expected_input_schemas = set([
+    'acquisition.json',
+    'collection.json',
+    'container.json',
+    'file.json',
+    'group.json',
+    'note.json',
+    'packfile.json',
+    'permission.json',
+    'project.json',
+    'session.json',
+    'subject.json',
+    'user.json',
+    'avatars.json',
+    'download.json',
+    'tag.json',
+    'enginemetadata.json',
+    'uploader.json',
+    'reaper.json'
+])
+mongo_schemas = set()
+input_schemas = set()
+
+# check that the lists of schemas are correct
+for schema_filepath in glob.glob(schema_path + '/mongo/*.json'):
+    schema_file = os.path.basename(schema_filepath)
+    mongo_schemas.add(schema_file)
+    with open(schema_filepath, 'rU') as f:
+        pass
+
+assert mongo_schemas == expected_mongo_schemas, '{} is different from {}'.format(mongo_schemas, expected_mongo_schemas)
+
+for schema_filepath in glob.glob(schema_path + '/input/*.json'):
+    schema_file = os.path.basename(schema_filepath)
+    input_schemas.add(schema_file)
+    with open(schema_filepath, 'rU') as f:
+        pass
+
+assert input_schemas == expected_input_schemas, '{} is different from {}'.format(input_schemas, expected_input_schemas)
 
 def initialize_db():
     log.info('Initializing database, creating indexes')
@@ -104,7 +163,7 @@ def initialize_db():
 
     now = datetime.datetime.utcnow()
     db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
-    db.sites.replace_one({'_id': __config['site']['id']}, {'name': __config['site']['name'], 'site_url': __config['site']['url']}, upsert=True)
+    db.sites.replace_one({'_id': __config['site']['id']}, {'name': __config['site']['name'], 'site_url': __config['site']['api_url']}, upsert=True)
 
 
 def get_config():

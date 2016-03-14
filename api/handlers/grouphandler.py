@@ -1,6 +1,7 @@
 import datetime
 
 from .. import base
+from .. import util
 from .. import config
 from .. import debuginfo
 from .. import validators
@@ -58,8 +59,10 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         payload = self.request.json_body
-        mongo_validator = validators.mongo_from_schema_file('group.json')
-        payload_validator = validators.payload_from_schema_file('group.json')
+        mongo_schema_uri = util.schema_uri('mongo', 'group.json')
+        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+        payload_schema_uri = util.schema_uri('input', 'group.json')
+        payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'PUT')
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         if result.modified_count == 1:
@@ -71,8 +74,10 @@ class GroupHandler(base.RequestHandler):
         self._init_storage()
         permchecker = groupauth.default(self, None)
         payload = self.request.json_body
-        mongo_validator = validators.mongo_from_schema_file('group.json')
-        payload_validator = validators.payload_from_schema_file('group.json')
+        mongo_schema_uri = util.schema_uri('mongo', 'group.json')
+        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+        payload_schema_uri = util.schema_uri('input', 'group.json')
+        payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         payload['roles'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}] if self.uid else []

@@ -1,7 +1,10 @@
 import os
+import re
 import copy
-import glob
+import json
+import requests
 import jsonschema
+from jsonschema.compat import urlopen, urlsplit
 
 from . import config
 
@@ -13,66 +16,7 @@ class InputValidationException(Exception):
 class DBValidationException(Exception):
     pass
 
-# following https://github.com/Julian/jsonschema/issues/98
-# json schema files are expected to be in the schemas folder relative to this module
-schema_path = os.path.abspath(os.path.dirname(__file__))
-
-resolver_input = jsonschema.RefResolver('file://' + schema_path + '/schemas/input/', None)
-resolver_mongo = jsonschema.RefResolver('file://' + schema_path + '/schemas/mongo/', None)
-
-expected_mongo_schemas = set([
-    'acquisition.json',
-    'collection.json',
-    'container.json',
-    'file.json',
-    'group.json',
-    'note.json',
-    'permission.json',
-    'project.json',
-    'session.json',
-    'subject.json',
-    'user.json',
-    'avatars.json',
-    'tag.json'
-])
-expected_input_schemas = set([
-    'acquisition.json',
-    'collection.json',
-    'container.json',
-    'file.json',
-    'group.json',
-    'note.json',
-    'permission.json',
-    'project.json',
-    'session.json',
-    'subject.json',
-    'user.json',
-    'avatars.json',
-    'download.json',
-    'tag.json',
-    'enginemetadata.json',
-    'packfile.json',
-    'uploader.json',
-    'reaper.json'
-])
-mongo_schemas = set()
-input_schemas = set()
-# validate and cache schemas at start time
-for schema_filepath in glob.glob(schema_path + '/schemas/mongo/*.json'):
-    schema_file = os.path.basename(schema_filepath)
-    mongo_schemas.add(schema_file)
-    resolver_mongo.resolve(schema_file)
-
-assert mongo_schemas == expected_mongo_schemas, '{} is different from {}'.format(mongo_schemas, expected_mongo_schemas)
-
-for schema_filepath in glob.glob(schema_path + '/schemas/input/*.json'):
-    schema_file = os.path.basename(schema_filepath)
-    input_schemas.add(schema_file)
-    resolver_input.resolve(schema_file)
-
-assert input_schemas == expected_input_schemas, '{} is different from {}'.format(input_schemas, expected_input_schemas)
-
-def validate_data(data, schema_name, verb, optional=False):
+def validate_data(data, schema_url, verb, optional=False):
     """
     Convenience method to validate a JSON schema against some action.
 
@@ -82,22 +26,58 @@ def validate_data(data, schema_name, verb, optional=False):
     if optional and data is None:
         return
 
-    validator = payload_from_schema_file(schema_name)
+    validator = from_schema_path(schema_url)
     validator(data, verb)
 
 def _validate_json(json_data, schema, resolver):
     jsonschema.validate(json_data, schema, resolver=resolver)
-    #jsonschema.Draft4Validator(schema, resolver=resolver).validate(json_data)
+
+class RefResolver(jsonschema.RefResolver):
+
+    def resolve_remote(self, uri):
+        """override default resolve_remote
+        to allow testing when there is no ssl certificate
+        """
+        scheme = urlsplit(uri).scheme
+
+        if scheme in self.handlers:
+            result = self.handlers[scheme](uri)
+        elif (
+            scheme in [u"http", u"https"] and
+            requests and
+            getattr(requests.Response, "json", None) is not None
+        ):
+            # Requests has support for detecting the correct encoding of
+            # json over http
+            if callable(requests.Response.json):
+                result = requests.get(uri, verify=False).json()
+            else:
+                result = requests.get(uri, verify=False).json
+        else:
+            # Otherwise, pass off to urllib and assume utf-8
+            result = json.loads(urlopen(uri).read().decode("utf-8"))
+
+        if self.cache_remote:
+            self.store[uri] = result
+        return result
+
+# We store the resolvers for each base_uri we use, so that we reuse the schemas cached by the resolvers.
+resolvers = {}
+def _resolve_schema(schema_url):
+    base_uri, schema_name = re.match('(.*/)(.*)', schema_url).groups()
+    if not resolvers.get(base_uri):
+        resolvers[base_uri] = RefResolver(base_uri, None)
+    return resolvers[base_uri].resolve(schema_name)[1], resolvers[base_uri]
 
 def no_op(g, *args):
     return g
 
-def mongo_from_schema_file(schema_file):
-    if schema_file is None:
+def decorator_from_schema_path(schema_url):
+    if schema_url is None:
         return no_op
-    schema = resolver_mongo.resolve(schema_file)[1]
+    schema, resolver = _resolve_schema(schema_url)
     def g(exec_op):
-        def mongo_val(method, **kwargs):
+        def validator(method, **kwargs):
             payload = kwargs['payload']
             log.debug(payload)
             if method == 'PUT' and schema.get('required'):
@@ -107,17 +87,18 @@ def mongo_from_schema_file(schema_file):
                 _schema = schema
             if method in ['POST', 'PUT']:
                 try:
-                    _validate_json(payload, _schema, resolver_mongo)
+                    _validate_json(payload, _schema, resolver)
                 except jsonschema.ValidationError as e:
                     raise DBValidationException(str(e))
             return exec_op(method, **kwargs)
-        return mongo_val
+        return validator
     return g
 
-def payload_from_schema_file(schema_file):
-    if schema_file is None:
+def from_schema_path(schema_url):
+    if schema_url is None:
         return no_op
-    schema = resolver_input.resolve(schema_file)[1]
+    # split the url in base_uri and schema_name
+    schema, resolver = _resolve_schema(schema_url)
     def g(payload, method):
         if method == 'PUT' and schema.get('required'):
             _schema = copy.copy(schema)
@@ -126,12 +107,12 @@ def payload_from_schema_file(schema_file):
             _schema = schema
         if method in ['POST', 'PUT']:
             try:
-                _validate_json(payload, _schema, resolver_input)
+                _validate_json(payload, _schema, resolver)
             except jsonschema.ValidationError as e:
                 raise InputValidationException(str(e))
     return g
 
-def key_check(schema_file):
+def key_check(schema_url):
     """
     for sublists of mongo container there is no automatic key check when creating, updating or deleting an object.
     We are adding a custom array field to the json schemas ("key_fields").
@@ -146,9 +127,9 @@ def key_check(schema_file):
     2. a GET will retrieve a single item
     3. a DELETE (most importantly) will delete a single item
     """
-    if schema_file is None:
+    if schema_url is None:
         return no_op
-    schema = resolver_mongo.resolve(schema_file)[1]
+    schema, _ = _resolve_schema(schema_url)
     log.debug(schema)
     if schema.get('key_fields') is None:
         return no_op

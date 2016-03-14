@@ -23,6 +23,7 @@ preserving their contents across container instances.
      -e "SCITRAN_PERSISTENT_DB_URI=mongodb://some-mongo:27017/scitran" \
      -e "SCITRAN_CORE_INSECURE=true" \
      -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
+     -e "SCITRAN_SITE_API_URL=http://localhost:8080/api" \
      -v $(pwd)/persistent/data:/var/scitran/data \
      -v $(pwd):/var/scitran/code/api \
      --link some-mongo \

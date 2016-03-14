@@ -32,6 +32,9 @@ SCITRAN_PERSISTENT_DB_PATH=${SCITRAN_PERSISTENT_DB_PATH:-"$SCITRAN_PERSISTENT_PA
 SCITRAN_PERSISTENT_DB_PORT=${SCITRAN_PERSISTENT_DB_PORT:-"9001"}
 SCITRAN_PERSISTENT_DB_URI=${SCITRAN_PERSISTENT_DB_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"}
 
+[ -z "$SCITRAN_RUNTIME_SSL_PEM" ] && SCITRAN_SITE_API_URL="http" || SCITRAN_SITE_API_URL="https"
+SCITRAN_SITE_API_URL="$SCITRAN_SITE_API_URL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
+
 set +o allexport
 
 
@@ -154,15 +157,13 @@ trap "{
 sleep 1
 
 
-# Set API URL
-[ -z "$SCITRAN_RUNTIME_SSL_PEM" ] && API_URL="http" || API_URL="https"
-API_URL="$API_URL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
+
 
 
 # Boostrap users and groups
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
     echo "Bootstrapping users"
-    bin/bootstrap.py --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $API_URL "$SCITRAN_RUNTIME_BOOTSTRAP"
+    bin/bootstrap.py --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_RUNTIME_BOOTSTRAP"
     echo "Bootstrapped users"
 else
     echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
@@ -183,7 +184,7 @@ if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
     echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    folder_reaper --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
+    folder_reaper --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
     echo "Bootstrapped testdata"
     touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
 fi

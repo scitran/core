@@ -17,6 +17,7 @@ from handlers import grouphandler
 from handlers import containerhandler
 from handlers import collectionshandler
 from handlers import searchhandler
+from handlers import schemahandler
 
 log = config.log
 
@@ -56,12 +57,14 @@ routing_regexes = {
     # any character allowed except '/''
     'tag_re': '[^/]{3,24}',
     # filename regex
-    # length between 3 and 60 characters
     # any character allowed except '/'
     'filename_re': '[^/]+',
     # note id regex
     # hexadecimal string exactly of length 24
-    'note_id_re': '[0-9a-f]{24}'
+    'note_id_re': '[0-9a-f]{24}',
+    # schema regex
+    # example: schema_path/schema.json
+    'schema_re': '[^/.]{3,60}/[^/.]{3,60}\.json'
 }
 
 def _format(route):
@@ -134,7 +137,8 @@ routes = [
     webapp2.Route(_format(r'/api/<par_cont_name:groups>/<par_id:{group_id_re}>/<cont_name:projects>'),          containerhandler.ContainerHandler, name='cont_sublist_groups', handler_method='get_all', methods=['GET']),
     webapp2.Route(_format(r'/api/<par_cont_name:{cont_name_re}>/<par_id:{cid_re}>/<cont_name:{cont_name_re}>'), containerhandler.ContainerHandler, name='cont_sublist', handler_method='get_all', methods=['GET']),
     webapp2.Route(_format(r'/api/search'),                                            searchhandler.SearchHandler, name='es_proxy', methods=['GET']),
-    webapp2.Route(_format(r'/api/search/<cont_name:{cont_name_re}>'),                 searchhandler.SearchHandler, name='es_proxy', methods=['GET']),
+    webapp2.Route(_format(r'/api/search/<cont_name:{cont_name_re}>'),                 searchhandler.SearchHandler, name='es_proxy_1', methods=['GET']),
+    webapp2.Route(_format(r'/api/schemas/<schema:{schema_re}>'),                      schemahandler.SchemaHandler, name='schemas', methods=['GET']),
 ]
 
 

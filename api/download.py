@@ -198,7 +198,8 @@ class Download(base.RequestHandler):
                 config.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
             req_spec = self.request.json_body
-            validator = validators.payload_from_schema_file(self, 'download.json')
+            payload_schema_uri = util.schema_uri('input', 'download.json')
+            validator = validators.from_schema_path(payload_schema_uri)
             validator(req_spec, 'POST')
             log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
             return self._preflight_archivestream(req_spec)
