@@ -89,7 +89,7 @@ class TargetedPlacer(Placer):
 
     def check(self):
         self.requireTarget()
-        validators.validate_data(self.metadata, 'file.json', 'POST', optional=True)
+        validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
         self.saved = []
 
     def process_file_field(self, field, info):
@@ -124,7 +124,7 @@ class EnginePlacer(Placer):
 
     def check(self):
         self.requireTarget()
-        validators.validate_data(self.metadata, 'enginemetadata.json', 'POST', optional=True)
+        validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
 
     def process_file_field(self, field, info):
         if self.metadata is not None:
@@ -160,7 +160,7 @@ class PackfilePlacer(Placer):
 
     def check(self):
         self.requireMetadata()
-        validators.validate_data(self.metadata, 'packfile.json', 'POST')
+        validators.validate_data(self.metadata, 'packfile.json', 'input', 'POST')
 
         # Save required fields
         self.p_id  = self.metadata['project']['_id']
