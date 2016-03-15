@@ -15,7 +15,7 @@ def default_container(handler, container=None, target_parent_container=None):
     on the container before actually executing this method.
     """
     def g(exec_op):
-        def f(method, _id=None, payload=None):
+        def f(method, _id=None, payload=None, recursive=False):
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
