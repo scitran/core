@@ -115,7 +115,6 @@ class SearchHandler(base.RequestHandler):
                 result = result['_source']
                 # add to the result the container hierarchy references
                 container = result.pop('container')
-                container.pop('permissions')
                 cont_name = result['container_name']
                 result[cont_name[:-1]] = container
                 while parent_container.get(cont_name):
