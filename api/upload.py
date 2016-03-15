@@ -22,7 +22,7 @@ Strategy = util.Enum('Strategy', {
     'packfile' : pl.PackfilePlacer	  # Upload N files as a new packfile to a container.
 })
 
-def process_upload(request, strategy, container_type=None, id=None):
+def process_upload(request, strategy, container_type=None, id=None, origin=None):
     """
     Universal file upload entrypoint.
 
@@ -76,7 +76,7 @@ def process_upload(request, strategy, container_type=None, id=None):
         metadata = json.loads(form['metadata'].file.getvalue())
 
     placer_class = strategy.value
-    placer = placer_class(container_type, container, id, metadata, timestamp)
+    placer = placer_class(container_type, container, id, metadata, timestamp, origin)
     placer.check()
 
     # Browsers, when sending a multipart upload, will send files with field name "file" (if sinuglar)
@@ -108,6 +108,7 @@ def process_upload(request, strategy, container_type=None, id=None):
             'modified': field.modified, #
             'size':	 field.size,
             'hash':	 field.hash,
+            'origin': origin,
 
             'type': None,
             'instrument': None,
@@ -141,7 +142,8 @@ class Upload(base.RequestHandler):
                 hash=file_store.hash,
                 mimetype=util.guess_mimetype(file_store.filename),
                 tags=file_store.tags,
-                metadata=file_store.metadata.get('file', {}).get('metadata', {})
+                metadata=file_store.metadata.get('file', {}).get('metadata', {}),
+                origin=self.origin
             )
 
             target, file_metadata = reaperutil.create_container_hierarchy(file_store.metadata)
@@ -180,6 +182,7 @@ class Upload(base.RequestHandler):
             for target, file_dict in target_containers:
                 for filename, parsed_file in file_dict.items():
                     fileinfo = parsed_file.info
+                    fileinfo['origin'] = self.origin
                     f = target.find(filename)
                     target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
                     if not f:
@@ -250,6 +253,7 @@ class Upload(base.RequestHandler):
                     fileinfo['mimetype'] = fileinfo.get('mimetype') or util.guess_mimetype(name)
                     fileinfo['created'] = now
                     fileinfo['modified'] = now
+                    fileinfo['origin'] = self.origin
                     acquisition_obj = reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
 
             for f in acquisition_obj['files']:

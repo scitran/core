@@ -21,12 +21,13 @@ class Placer(object):
     Interface for a placer, which knows how to process files and place them where they belong - on disk and database.
     """
 
-    def __init__(self, container_type, container, id, metadata, timestamp):
+    def __init__(self, container_type, container, id, metadata, timestamp, origin):
         self.container_type = container_type
-        self.container	  = container
-        self.id			 = id
-        self.metadata	   = metadata
-        self.timestamp	  = timestamp
+        self.container      = container
+        self.id             = id
+        self.metadata       = metadata
+        self.timestamp      = timestamp
+        self.origin         = origin
 
     def check(self):
         """
@@ -88,7 +89,7 @@ class TargetedPlacer(Placer):
 
     def check(self):
         self.requireTarget()
-        validators.validate_data(self.metadata, 'file.json', 'POST', optional=True)
+        validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
         self.saved = []
 
     def process_file_field(self, field, info):
@@ -123,7 +124,7 @@ class EnginePlacer(Placer):
 
     def check(self):
         self.requireTarget()
-        validators.validate_data(self.metadata, 'enginemetadata.json', 'POST', optional=True)
+        validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
 
     def process_file_field(self, field, info):
         if self.metadata is not None:
@@ -159,7 +160,7 @@ class PackfilePlacer(Placer):
 
     def check(self):
         self.requireMetadata()
-        validators.validate_data(self.metadata, 'packfile.json', 'POST')
+        validators.validate_data(self.metadata, 'packfile.json', 'input', 'POST')
 
         # Save required fields
         self.p_id  = self.metadata['project']['_id']
@@ -234,7 +235,11 @@ class PackfilePlacer(Placer):
             'instrument': None,
             'measurements': [],
             'tags': [],
-            'metadata': {}
+            'metadata': {},
+
+            # Manually add the file orign to the packfile metadata.
+            # This is set by upload.process_upload on each file, but we're not storing those.
+            'origin': self.origin
         }
 
         # Get or create a session based on the hierarchy and provided labels.

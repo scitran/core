@@ -2,6 +2,7 @@ import os
 import re
 import copy
 import json
+import util
 import requests
 import jsonschema
 from jsonschema.compat import urlopen, urlsplit
@@ -16,7 +17,7 @@ class InputValidationException(Exception):
 class DBValidationException(Exception):
     pass
 
-def validate_data(data, schema_url, verb, optional=False):
+def validate_data(data, schema_json, schema_type, verb, optional=False):
     """
     Convenience method to validate a JSON schema against some action.
 
@@ -26,7 +27,8 @@ def validate_data(data, schema_url, verb, optional=False):
     if optional and data is None:
         return
 
-    validator = from_schema_path(schema_url)
+    schema_uri = util.schema_uri(schema_type, schema_json)
+    validator = from_schema_path(schema_uri)
     validator(data, verb)
 
 def _validate_json(json_data, schema, resolver):

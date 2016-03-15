@@ -1,4 +1,5 @@
 import bson
+import json
 import datetime
 
 from .. import base
@@ -8,6 +9,7 @@ from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage
+from ..types import Origin
 
 log = config.log
 
@@ -99,6 +101,48 @@ class ContainerHandler(base.RequestHandler):
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, result)
+
+        return self.handle_origin(result)
+
+    def handle_origin(self, result):
+        """
+        Given an object with a `files` array key, coalesce and merge file origins if requested.
+        """
+
+        # If `join=origin` passed as a request param, join out that key
+        join_origin = 'origin' in self.request.params.getall('join')
+
+        # If it was requested, create a map of each type of origin to hold the join
+        if join_origin:
+            result['join-origin'] = {
+                Origin.user.name:   {},
+                Origin.device.name: {},
+                Origin.job.name:    {}
+            }
+
+        for f in result.get('files', []):
+            origin = f.get('origin', None)
+
+            if origin is None:
+                # Backfill origin maps if none provided from DB
+                f['origin'] = {
+                    'type': str(Origin.unknown),
+                    'id': None
+                }
+
+            elif join_origin:
+                j_type = f['origin']['type']
+                j_id   = f['origin']['id']
+                j_id_b = j_id
+
+                # Some tables don't use BSON for their primary keys.
+                if j_type not in (Origin.user, Origin.device):
+                    j_id_b = bson.ObjectId(j_id)
+
+                # Join from database if we haven't for this origin before
+                if result['join-origin'][j_type].get(j_id, None) is None:
+                    result['join-origin'][j_type][j_id] = config.db[j_type + 's'].find_one({'_id': j_id_b})
+
         return result
 
     def _filter_permissions(self, result, uid, site):
@@ -151,6 +195,10 @@ class ContainerHandler(base.RequestHandler):
             self._add_session_measurements(results)
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, results)
+
+        for result in results:
+            result = self.handle_origin(result)
+
         return results
 
     def _filter_all_permissions(self, results, uid, site):
