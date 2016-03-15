@@ -370,7 +370,7 @@ class FileListHandler(ListHandler):
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name_plural, list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
-        return upload.process_upload(self.request, upload.Strategy.targeted, cont_name, _id, self.origin)
+        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id=_id, origin=self.origin)
 
     def packfile(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -396,4 +396,4 @@ class FileListHandler(ListHandler):
             else:
                 raise Exception('Not authorized')
 
-        return upload.process_upload(self.request, upload.Strategy.packfile, None, None, self.origin)
+        return upload.process_upload(self.request, upload.Strategy.packfile, origin=self.origin)
