@@ -3,6 +3,7 @@ import bson.objectid
 
 from .. import util
 from .. import config
+from . import consistencychecker
 from . import APIStorageException
 
 log = config.log
@@ -29,7 +30,8 @@ class ContainerStorage(object):
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
         """
-
+        check = consistencychecker.get_container_storage_checker(action, self.cont_name)
+        check(payload)
         if action == 'GET' and _id:
             return self._get_el(_id, projection)
         if action == 'GET':
