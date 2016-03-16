@@ -98,24 +98,6 @@ def obj_from_map(_map):
 
     return type('',(object,),_map)()
 
-def str_from_dict(_dict):
-    """
-    Attempts to create a string in the format 'key: value, key: value, ... ' from a python dict.
-    Best for when some values might not be json serializable, making json.dumps unusable.
-    """
-
-    key_values = []
-    for k,v in _dict.items():
-        key_value = k + ': '
-        try:
-            key_value += str(v)
-        except:
-            key_value += '<Could not be converted to string>'
-        key_values.append(key_value)
-
-    return ", ".join(key_values)
-
-
 def path_from_hash(hash_):
     """
     create a filepath from a hash

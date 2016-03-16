@@ -69,7 +69,7 @@ class RequestHandler(webapp2.RequestHandler):
                 else:
                     err_msg = 'Invalid OAuth2 token.'
                     headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="{}"'.format(site_id, err_msg)}
-                    log.warn('{} Request headers: {}'.format(err_msg, util.str_from_dict(self.request.headers)))
+                    log.warn('{} Request headers: {}'.format(err_msg, str(self.request.headers.items())))
                     self.abort(401, err_msg, headers=headers)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
