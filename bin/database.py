@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+
+"""
+Suggested parameters:
+    upgradeSchema       Upgrades the DB to the required schema version.
+                        Returns (0) if upgrade is successful
+
+    confirmSchemaMatch  Returns (0) if DB schema version matches requirements.
+                        Returns (42) if DB schema version does not match requirements.
+"""
+
+
 import json
 
 from api import config
