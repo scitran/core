@@ -381,8 +381,6 @@ class FileListHandler(ListHandler):
         # Authorize: confirm project exists
         project = config.db['projects'].find_one({ '_id': bson.ObjectId(_id)})
 
-        print project
-
         if project is None:
             raise Exception('Project ' + _id + ' does not exist')
 
