@@ -86,8 +86,10 @@ routes = [
     webapp2.Route(r'/api/users',            userhandler.UserHandler, methods=['POST']),
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
         webapp2.Route(r'/self',                                 userhandler.UserHandler, handler_method='self', methods=['GET']),
+        webapp2.Route(r'/self/avatar',                          userhandler.UserHandler, handler_method='self_avatar', methods=['GET']),
         webapp2.Route(_format(r'/<_id:{user_id_re}>'),          userhandler.UserHandler, name='user'),
         webapp2.Route(_format(r'/<uid:{user_id_re}>/groups'),   grouphandler.GroupHandler, handler_method='get_all', methods=['GET'], name='groups'),
+        webapp2.Route(_format(r'/<uid:{user_id_re}>/avatar'),   userhandler.UserHandler, handler_method='avatar', methods=['GET'], name='avatar'),
     ]),
     webapp2.Route(r'/api/jobs',             jobs.Jobs),
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [

@@ -1,5 +1,6 @@
-import hashlib
 import datetime
+import hashlib
+import pymongo
 import requests
 
 from .. import base
@@ -89,11 +90,7 @@ class UserHandler(base.RequestHandler):
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         payload['root'] = payload.get('root', False)
         payload.setdefault('email', payload['_id'])
-        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(payload['email']).hexdigest() + '?s=512'
-        if requests.head(gravatar, params={'d': '404'}):
-            payload.setdefault('avatar', gravatar)
         payload.setdefault('avatars', {})
-        payload['avatars'].setdefault('gravatar', gravatar)
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             return {'_id': result.inserted_id}
@@ -102,6 +99,68 @@ class UserHandler(base.RequestHandler):
 
     def _init_storage(self):
         self.storage = containerstorage.ContainerStorage('users', use_object_id=False)
+
+    def avatar(self, uid):
+        self._init_storage()
+        self.resolve_avatar(uid, default=self.request.GET.get('default'))
+
+    def self_avatar(self):
+        if self.uid is None:
+            self.abort(404, 'not a logged-in user')
+        self._init_storage()
+        self.resolve_avatar(self.uid, default=self.request.GET.get('default'))
+
+    def resolve_avatar(self, email, default=None):
+        """
+        Given an email, redirects to their avatar.
+        On failure, either 404s or redirects to default, if provided.
+        """
+
+        # Storage throws a 404; we want to catch that and handle it separately in the case of a provided default.
+        try:
+            user = self._get_user(email)
+        except:
+            user = {}
+
+        avatar  = user.get('avatar', None)
+        avatars = user.get('avatars', {})
+
+        # If the user exists but has no set avatar, try to get one
+        if user and avatar is None:
+            gravatar = self._resolve_gravatar(email)
+
+            if gravatar is not None:
+                user = config.db['users'].find_one_and_update({
+                        '_id': email,
+                    }, {
+                        '$set': {
+                            'avatar': gravatar,
+                            'avatars.gravatar': gravatar,
+                        }
+                    },
+                    return_document=pymongo.collection.ReturnDocument.AFTER
+                )
+
+        if user.get('avatar', None):
+            # Our data is unicode, but webapp2 wants a python-string for its headers.
+            self.redirect(str(user['avatar']), code=307)
+        elif default is not None:
+            self.redirect(str(default), code=307)
+        else:
+            self.abort(404, 'no avatar')
+
+    def _resolve_gravatar(self, email):
+        """
+        Given an email, returns a URL if that email has a gravatar set.
+        Otherwise returns None.
+        """
+
+        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(email).hexdigest() + '?s=512'
+
+        if requests.head(gravatar, params={'d': '404'}):
+            return gravatar
+        else:
+            return None
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

@@ -27,7 +27,6 @@ class RequestHandler(webapp2.RequestHandler):
         self.initialize(request, response)
         self.debug = config.get_item('core', 'insecure')
         request_start = datetime.datetime.utcnow()
-        provider_avatar = None
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
@@ -45,37 +44,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         # User (oAuth) authentication
         if access_token:
-            cached_token = config.db.authtokens.find_one({'_id': access_token})
-            if cached_token:
-                self.uid = cached_token['uid']
-                log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
-            else:
-                r = requests.get(config.get_item('auth', 'id_endpoint'), headers={'Authorization': 'Bearer ' + access_token})
-                if r.ok:
-                    identity = json.loads(r.content)
-                    self.uid = identity.get('email')
-                    if not self.uid:
-                        self.abort(400, 'OAuth2 token resolution did not return email address')
-                    config.db.authtokens.replace_one({'_id': access_token}, {'uid': self.uid, 'timestamp': request_start}, upsert=True)
-                    config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': request_start}})
-                    config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': request_start}})
-                    log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - request_start).total_seconds() * 1000.))
-
-                    # Set user's auth provider avatar
-                    # TODO: switch on auth.provider rather than manually comparing endpoint URL.
-                    if config.get_item('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
-                        provider_avatar = identity.get('picture', '')
-                        # Remove attached size param from URL.
-                        u = urlparse.urlparse(provider_avatar)
-                        query = urlparse.parse_qs(u.query)
-                        query.pop('sz', None)
-                        u = u._replace(query=urllib.urlencode(query, True))
-                        provider_avatar = urlparse.urlunparse(u)
-                else:
-                    err_msg = 'Invalid OAuth2 token.'
-                    headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="{}"'.format(site_id, err_msg)}
-                    log.warn('{} Request headers: {}'.format(err_msg, str(self.request.headers.items())))
-                    self.abort(401, err_msg, headers=headers)
+            self.uid = self.authenticate_user(access_token)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
         elif self.debug and self.get_param('user'):
@@ -101,8 +70,8 @@ class RequestHandler(webapp2.RequestHandler):
                     self.abort(402, remote_instance + ' is not an authorized remote instance')
             else:
                 self.abort(401, 'no valid SSL client certificate')
-        self.user_site = self.source_site or site_id
 
+        self.user_site = self.source_site or site_id
         self.public_request = not drone_request and not self.uid
 
         if self.public_request or self.source_site:
@@ -113,9 +82,6 @@ class RequestHandler(webapp2.RequestHandler):
             user = config.db.users.find_one({'_id': self.uid}, ['root'])
             if not user:
                 self.abort(403, 'user ' + self.uid + ' does not exist')
-            if provider_avatar:
-                config.db.users.update_one({'_id': self.uid, 'avatar': None}, {'$set':{'avatar': provider_avatar, 'modified': request_start}})
-                config.db.users.update_one({'_id': self.uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': request_start}})
             if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
@@ -125,6 +91,79 @@ class RequestHandler(webapp2.RequestHandler):
                 self.superuser_request = False
 
         self.set_origin(drone_request, drone_name)
+
+    def authenticate_user(self, access_token):
+        """
+        AuthN for user accounts. Calls self.abort on failure.
+
+        Returns the user's UID.
+        """
+
+        uid = None
+        timestamp = datetime.datetime.utcnow()
+        cached_token = config.db.authtokens.find_one({'_id': access_token})
+
+        if cached_token:
+            uid = cached_token['uid']
+            log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
+        else:
+            uid = self.validate_oauth_token(access_token, timestamp)
+            log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
+
+            # Cache the token for future requests
+            config.db.authtokens.replace_one({'_id': access_token}, {'uid': uid, 'timestamp': timestamp}, upsert=True)
+
+        return uid
+
+    def validate_oauth_token(self, access_token, timestamp):
+        """
+        Validates a token assertion against the configured ID endpoint. Calls self.abort on failure.
+
+        Returns the user's UID.
+        """
+
+        r = requests.get(config.get_item('auth', 'id_endpoint'), headers={'Authorization': 'Bearer ' + access_token})
+
+        if not r.ok:
+            # Oauth authN failed; for now assume it was an invalid token. Could be more accurate in the future.
+            err_msg = 'Invalid OAuth2 token.'
+            site_id = config.get_item('site', 'id')
+            headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="{}"'.format(site_id, err_msg)}
+            log.warn('{} Request headers: {}'.format(err_msg, str(self.request.headers.items())))
+            self.abort(401, err_msg, headers=headers)
+
+        identity = json.loads(r.content)
+        uid = identity.get('email')
+
+        if not uid:
+            self.abort(400, 'OAuth2 token resolution did not return email address')
+
+        # If this is the first time they've logged in, record that
+        config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})
+
+        # Unconditionally set their most recent login time
+        config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': timestamp}})
+
+        # Set user's auth provider avatar
+        # TODO: switch on auth.provider rather than manually comparing endpoint URL.
+        if config.get_item('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
+            # A google-specific avatar URL is provided in the identity return.
+            provider_avatar = identity.get('picture', '')
+
+            # Remove attached size param from URL.
+            u = urlparse.urlparse(provider_avatar)
+            query = urlparse.parse_qs(u.query)
+            query.pop('sz', None)
+            u = u._replace(query=urllib.urlencode(query, True))
+            provider_avatar = urlparse.urlunparse(u)
+
+            # If the user has no avatar set, mark this as their chosen avatar.
+            config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': provider_avatar, 'modified': timestamp}})
+
+            # Update the user's provider avatar if it has changed.
+            config.db.users.update_one({'_id': uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': timestamp}})
+
+        return uid
 
     def set_origin(self, drone_request, drone_name):
         """
@@ -177,7 +216,6 @@ class RequestHandler(webapp2.RequestHandler):
                 'id': None
             }
 
-        # print json.dumps(self.origin)
 
     def is_true(self, param):
         return self.request.GET.get(param, '').lower() in ('1', 'true')
