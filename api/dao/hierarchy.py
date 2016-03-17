@@ -5,7 +5,6 @@ import pymongo
 import datetime
 import dateutil.parser
 
-from .. import files
 from .. import util
 from .. import config
 from . import APIStorageException
@@ -95,21 +94,26 @@ def add_fileinfo(cont_name, _id, fileinfo):
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
 
-def _find_or_create_destination_project(group_name, project_label, created, modified):
+def _group_name_fuzzy_match(group_name, project_label):
     existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]
+    log.error(str(existing_group_ids))
     group_id_matches = difflib.get_close_matches(group_name, existing_group_ids, cutoff=0.8)
     if len(group_id_matches) == 1:
         group_name = group_id_matches[0]
     else:
         project_label = group_name + '_' + project_label
         group_name = 'unknown'
+    return group_name, project_label
+
+def _find_or_create_destination_project(group_name, project_label, timestamp):
+    group_name, project_label = _group_name_fuzzy_match(group_name, project_label)
     group = config.db.groups.find_one({'_id': group_name})
     project = config.db.projects.find_one_and_update(
         {'group': group['_id'], 'label': project_label},
         {
             '$setOnInsert': {
                 'permissions': group['roles'], 'public': False,
-                'created': created, 'modified': modified
+                'created': timestamp, 'modified': timestamp
             }
         },
         PROJECTION_FIELDS,
@@ -118,17 +122,108 @@ def _find_or_create_destination_project(group_name, project_label, created, modi
         )
     return project
 
-def create_container_hierarchy(metadata):
-    #TODO: possibly try to keep a list of session IDs on the project, instead of having the session point to the project
-    #      same for the session and acquisition
-    #      queries might be more efficient that way
 
+def _create_session_query(session, project, type_):
+    if type_ == 'label':
+        return {
+            'label': session['label'],
+            'project': project['_id']
+        }
+    elif type_ == 'uid':
+        return {
+            'uid': session['uid']
+        }
+    else:
+        raise NotImplementedError('upload type is not handled by _create_session_query')
+
+
+def _create_acquisition_query(acquisition, session, type_):
+    if type_ == 'label':
+        return {
+            'label': acquisition['label'],
+            'session': session['_id']
+        }
+    elif type_ == 'uid':
+        return {
+            'uid': acquisition['uid']
+        }
+    else:
+        raise NotImplementedError('upload type is not handled by _create_acquisition_query')
+
+
+def _upsert_session(session, project_obj, type_, timestamp):
+    session['modified'] = timestamp
+    if session.get('timestamp'):
+        session['timestamp'] = dateutil.parser.parse(session['timestamp'])
+    session_operations = {
+        '$setOnInsert': dict(
+            group=project_obj['group'],
+            project=project_obj['_id'],
+            permissions=project_obj['permissions'],
+            public=project_obj['public'],
+            created=timestamp
+        ),
+        '$set': session
+    }
+    session_obj = config.db.sessions.find_one_and_update(
+        _create_session_query(session, project_obj, type_),
+        session_operations,
+        upsert=True,
+        return_document=pymongo.collection.ReturnDocument.AFTER,
+    )
+    return session_obj
+
+def _upsert_acquisition(acquisition, session_obj, type_, timestamp):
+    if acquisition.get('timestamp'):
+        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
+        session_operations = {'$min': dict(timestamp=acquisition['timestamp'])}
+        if acquisition.get('timezone'):
+            session_operations['$set'] = {'timezone': acquisition['timezone']}
+        config.db.sessions.update_one({'_id': session_obj['_id']}, session_operations)
+
+    acquisition['modified'] = timestamp
+    acq_operations = {
+        '$setOnInsert': dict(
+            session=session_obj['_id'],
+            permissions=session_obj['permissions'],
+            public=session_obj['public'],
+            created=timestamp
+        ),
+        '$set': acquisition
+    }
+    acquisition_obj = config.db.acquisitions.find_one_and_update(
+        _create_acquisition_query(acquisition, session_obj, type_),
+        acq_operations,
+        upsert=True,
+        return_document=pymongo.collection.ReturnDocument.AFTER
+    )
+    return acquisition_obj
+
+
+def _get_targets(project_obj, session, acquisition, type_, timestamp):
+    target_containers = []
+    if not session:
+        return target_containers
+    session_files = dict_fileinfos(session.pop('files', []))
+    session_obj = _upsert_session(session, project_obj, type_, timestamp)
+    target_containers.append(
+        (TargetContainer(session_obj, 'session'), session_files)
+    )
+    if not acquisition:
+        return target_containers
+    acquisition_files = dict_fileinfos(acquisition.pop('files', []))
+    acquisition_obj = _upsert_acquisition(acquisition, session_obj, type_, timestamp)
+    target_containers.append(
+        (TargetContainer(acquisition_obj, 'acquisition'), acquisition_files)
+    )
+    return target_containers
+
+
+def upsert_bottom_up_hierarchy(metadata):
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
     acquisition = metadata.get('acquisition', {})
-    subject = metadata.get('subject')
-    file_ = metadata.get('file')
 
     # Fail if some fields are missing
     try:
@@ -140,171 +235,44 @@ def create_container_hierarchy(metadata):
         log.error(metadata)
         raise APIStorageException(str(e))
 
-    subject = metadata.get('subject')
-    file_ = metadata.get('file')
-
     now = datetime.datetime.utcnow()
 
     session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
+        project_files = dict_fileinfos(project.pop('files', []))
         project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
+        target_containers = _get_targets(project_obj, session, acquisition, 'uid', now)
+        target_containers.append(
+            (TargetContainer(project_obj, 'project'), project_files)
+        )
+        return target_containers
     else:
-        project_obj = _find_or_create_destination_project(group_id, project_label, now, now)
-    session['subject'] = subject or {}
-    #FIXME session modified date should be updated on updates
-    if session.get('timestamp'):
-        session['timestamp'] = dateutil.parser.parse(session['timestamp'])
-    session['modified'] = now
-    session_obj = config.db.sessions.find_one_and_update(
-        {'uid': session_uid},
-        {
-            '$setOnInsert': dict(
-                group=project_obj['group'],
-                project=project_obj['_id'],
-                permissions=project_obj['permissions'],
-                public=project_obj['public'],
-                created=now
-            ),
-            '$set': session,
-        },
-        PROJECTION_FIELDS,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER,
-    )
+        return upsert_top_down_hierarchy(metadata, 'uid')
 
-    log.info('Storing     %s -> %s -> %s' % (project_obj['group'], project_obj['label'], session_uid))
 
-    if acquisition.get('timestamp'):
-        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
-        session_operations = {'$min': dict(timestamp=acquisition['timestamp'])}
-        if acquisition.get('timezone'):
-            session_operations['$set'] = {'timezone': acquisition['timezone']}
-        config.db.sessions.update_one({'_id': session_obj['_id']}, session_operations)
-
-    acquisition['modified'] = now
-    acq_operations = {
-        '$setOnInsert': dict(
-            session=session_obj['_id'],
-            permissions=session_obj['permissions'],
-            public=session_obj['public'],
-            created=now
-        ),
-        '$set': acquisition
-    }
-    #FIXME acquisition modified date should be updated on updates
-    acquisition_obj = config.db.acquisitions.find_one_and_update(
-        {'uid': acquisition_uid},
-        acq_operations,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER
-    )
-    return TargetContainer(acquisition_obj, 'acquisitions'), file_
-
-def create_root_to_leaf_hierarchy(metadata, files):
-    target_containers = []
-
+def upsert_top_down_hierarchy(metadata, type_='label'):
     group = metadata['group']
     project = metadata['project']
     session = metadata.get('session')
     acquisition = metadata.get('acquisition')
 
     now = datetime.datetime.utcnow()
+    group_id = group['_id']
 
-    group_obj = config.db.groups.find_one({'_id': group['_id']})
-    if not group_obj:
-        raise APIStorageException('group does not exist')
-    project['modified'] = now
-    project_files = merge_fileinfos(files, project.pop('files', []))
-    project_obj = config.db.projects.find_one_and_update(
-        {
-            'label': project['label'],
-            'group': group['_id']
-        },
-        {
-            '$setOnInsert': dict(
-                group=group_obj['_id'],
-                permissions=group_obj['roles'],
-                public=False,
-                created=now
-            ),
-            '$set': project
-        },
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER,
-    )
+    project_files = dict_fileinfos(project.pop('files', []))
+    project_obj = _find_or_create_destination_project(group_id, project['label'], now)
+    target_containers = _get_targets(project_obj, session, acquisition, type_, now)
     target_containers.append(
-        (TargetContainer(project_obj, 'projects'), project_files)
-    )
-    if not session:
-        return target_containers
-    session['modified'] = now
-    session_files = merge_fileinfos(files, session.pop('files', []))
-    session_operations = {
-        '$setOnInsert': dict(
-            group=project_obj['group'],
-            project=project_obj['_id'],
-            permissions=project_obj['permissions'],
-            public=project_obj['public'],
-            created=now
-        ),
-        '$set': session
-    }
-    session_obj = config.db.sessions.find_one_and_update(
-        {
-            'label': session['label'],
-            'project': project_obj['_id'],
-        },
-        session_operations,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER,
-    )
-    target_containers.append(
-        (TargetContainer(session_obj, 'sessions'), session_files)
-    )
-    if not acquisition:
-        return target_containers
-    acquisition['modified'] = now
-    acquisition_files = merge_fileinfos(files, acquisition.pop('files', []))
-    acq_operations = {
-        '$setOnInsert': dict(
-            session=session_obj['_id'],
-            permissions=session_obj['permissions'],
-            public=session_obj['public'],
-            created=now
-        ),
-        '$set': acquisition
-    }
-    acquisition_obj = config.db.acquisitions.find_one_and_update(
-        {
-            'label': acquisition['label'],
-            'session': session_obj['_id']
-        },
-        acq_operations,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER
-    )
-    target_containers.append(
-        (TargetContainer(acquisition_obj, 'acquisitions'), acquisition_files)
+        (TargetContainer(project_obj, 'project'), project_files)
     )
     return target_containers
 
 
-def merge_fileinfos(parsed_files, infos):
-    """it takes a dictionary of "hard_infos" (file size, hash)
-    merging them with infos derived from a list of infos on the same or on other files
-    """
-    merged_files = {}
+def dict_fileinfos(infos):
+    dict_infos = {}
     for info in infos:
-        parsed = parsed_files.get(info['name'])
-        if parsed:
-            path = parsed.path
-            new_infos = copy.deepcopy(parsed.info)
-        else:
-            path = None
-            new_infos = {}
-        new_infos.update(info)
-        merged_files[info['name']] = files.ParsedFile(new_infos, path)
-    return merged_files
+        dict_infos[info['name']] = info
+    return dict_infos
 
 
 def update_container_hierarchy(metadata, acquisition_id, level):
