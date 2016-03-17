@@ -107,6 +107,7 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None)
             'name':	 field.filename,
             'modified': field.modified, #
             'size':	 field.size,
+            'mimetype': field.mimetype,
             'hash':	 field.hash,
             'origin': origin,
 
