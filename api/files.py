@@ -114,7 +114,7 @@ def getHashingFieldStorage(upload_dir, hash_alg):
         def make_file(self, binary=None):
             # Sanitize form's filename (read: prevent malicious escapes, bad characters, etc)
             self.filename = os.path.basename(self.filename)
-            self.filename = util.sanitize_string_to_filename(self.filename)
+            # self.filename = util.sanitize_string_to_filename(self.filename)
 
             self.open_file = HashingFile(os.path.join(upload_dir, self.filename), hash_alg)
             return self.open_file
