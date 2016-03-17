@@ -2,6 +2,7 @@ import bson.errors
 import bson.objectid
 
 from .. import config
+from . import consistencychecker
 from . import APIStorageException
 
 log = config.log
