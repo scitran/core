@@ -1,6 +1,7 @@
 import sys
 import json
 import webapp2
+import traceback
 import webapp2_extras.routes
 
 from . import base
@@ -149,8 +150,14 @@ def dispatcher(router, request, response):
         if rv is not None:
             response.write(json.dumps(rv, default=util.custom_json_serializer))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
-    except (webapp2.exc.HTTPNotFound, webapp2.exc.HTTPMethodNotAllowed) as e:
+    except webapp2.exc.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)
+    except Exception as e:
+        if config.get_item('core', 'debug'):
+            message = traceback.format_exc()
+        else:
+            message = 'Internal Server Error'
+        util.send_json_http_exception(response, message, 500)
 
 def app_factory(*_, **__):
     # don't use config.get_item() as we don't want to require the database at startup
