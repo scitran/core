@@ -16,10 +16,16 @@ def default_container(handler, container=None, target_parent_container=None):
     """
     def g(exec_op):
         def f(method, _id=None, payload=None, recursive=False):
+            projection = None
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['ro']
+                has_access = True
+                if not _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['ro']:
+                    projection = {
+                        'subject.firstname': 0,
+                        'subject.lastname' : 0
+                    }
             elif method == 'POST':
                 has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
             elif method == 'DELETE':
@@ -40,7 +46,9 @@ def default_container(handler, container=None, target_parent_container=None):
             else:
                 has_access = False
 
-            if has_access:
+            if has_access and projection:
+                return exec_op(method, _id=_id, payload=payload, projection=projection)
+            elif has_access:
                 return exec_op(method, _id=_id, payload=payload)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the container'.format(method))
