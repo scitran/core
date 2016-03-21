@@ -46,7 +46,7 @@ routing_regexes = {
     # site id regex
     # length less than 24 characters
     # allowed characters are [0-9a-z]
-    'site_id_re': '[0-9a-z]{0,24}',
+    'site_id_re': '[0-9a-z_]{0,24}',
     # user id regex
     # any length, allowed chars are [0-9a-z.@_-]
     'user_id_re': '[0-9a-z.@_-]*',
