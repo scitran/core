@@ -23,9 +23,7 @@ case "$1-$2" in
         -f test/docker-compose.yml \
         run \
         --rm \
-        -e PYTHONPATH=/var/scitran/code/api \
-        --entrypoint /var/scitran/code/api/bin/bootstrap.py \
-        bootstrap users /var/scitran/test-config/test_bootstrap.json && \
+        bootstrap  && \
       docker-compose -f test/docker-compose.yml run --rm integration-test
     docker-compose -f test/docker-compose.yml down
     ;;

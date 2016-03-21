@@ -9,10 +9,11 @@ services:
     links:
       - mongo
     environment:
-      - SCITRAN_CORE_DRONE_SECRET="changeme"
+      - SCITRAN_CORE_DRONE_SECRET=changeme
       - SCITRAN_PERSISTENT_DB_URI=mongodb://mongo:27017/scitran
       - SCITRAN_CORE_INSECURE=true
       - SCITRAN_CORE_LOG_LEVEL=debug
+      - SCITRAN_SITE_API_URL=http://127.0.0.1:8080/api
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
@@ -22,13 +23,10 @@ services:
     extends: scitran-base
     links:
       - scitran-core
-    environment:
-      - SCITRAN_CORE_DRONE_SECRET="changeme"
-      - SCITRAN_RUNTIME_HOST=scitran-core
-      - SCITRAN_RUNTIME_PORT=8080
-      - SCITRAN_RUNTIME_PROTO=http
     volumes:
       - .:/var/scitran/test-config
+      - ..:/var/scitran/code/api
+    command: /var/scitran/code/api/bin/bootstrap.py --insecure --secret changeme http://scitran-core:8080/api  /var/scitran/test-config/test_bootstrap.json
   mongo:
     image: mongo
   integration-test:
