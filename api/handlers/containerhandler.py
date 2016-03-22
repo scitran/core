@@ -53,7 +53,7 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
             'list_projection': {'metadata': 0},
-            'propagated_properties': ['archived'],
+            'propagated_properties': ['archived', 'public'],
             'children_cont': 'sessions'
         },
         'sessions': {
