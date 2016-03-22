@@ -1,94 +1,67 @@
-import requests
 import json
-import warnings
-from nose.tools import with_setup
 import logging
 
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
-log.setLevel(logging.INFO)
-warnings.filterwarnings('ignore')
-
-adm_user = 'admin@user.com'
-test_data = type('',(object,),{})()
-base_url = 'https://localhost:8443/api'
-
-def _build_url_and_payload(method, tag, newtag=None, requestor=adm_user):
-    if method == 'POST':
-        url = test_data.proj_url + '?user=' + requestor
-        payload = json.dumps({'value': tag})
-    else:
-        url = test_data.proj_url + '/' + tag + '?user=' + requestor
-        payload = json.dumps({'value': newtag})
-    return url, payload
 
 
-def setup_db():
-    payload = {
-        'group': 'unknown',
-        'label': 'SciTran/Testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=admin@user.com&root=true', data=payload, verify=False)
-    test_data.pid = json.loads(r.content)['_id']
-    assert r.ok
-    log.debug('pid = \'{}\''.format(test_data.pid))
-    test_data.proj_url = base_url + '/projects/{}/tags'.format(test_data.pid)
-
-def teardown_db():
-    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=admin@user.com&root=true', verify=False)
-    assert r.ok
-
-@with_setup(setup_db, teardown_db)
-def test_tags():
+def test_tags(with_a_group_and_a_project, api_as_admin):
+    data = with_a_group_and_a_project
     tag = 'test_tag'
     new_tag = 'new_test_tag'
     other_tag = 'other_test_tag'
-    url_get_tag, _ = _build_url_and_payload('GET', tag)
-    url_get_new, _ = _build_url_and_payload('GET', new_tag)
-    url_get_other, _ = _build_url_and_payload('GET', other_tag)
 
-    r = requests.get(url_get_tag, verify=False)
+    tags_path = '/projects/' + data.project_id + '/tags'
+    tag_path = tags_path + '/' + tag
+    new_tag_path = tags_path + '/' + new_tag
+    other_tag_path = tags_path + '/' + other_tag
+
+    # Add tag and verify
+    r = api_as_admin.get(tag_path)
     assert r.status_code == 404
-    url_post, payload = _build_url_and_payload('POST', tag)
-    r = requests.post(url_post, data=payload, verify=False)
+    payload = json.dumps({'value': tag})
+    r = api_as_admin.post(tags_path, data=payload)
     assert r.ok
-    r = requests.get(url_get_tag, verify=False)
+    r = api_as_admin.get(tag_path)
     assert r.ok
     assert json.loads(r.content) == tag
 
-    url_post, payload = _build_url_and_payload('POST', new_tag)
-    r = requests.post(url_post, data=payload, verify=False)
+    # Add new tag and verify
+    payload = json.dumps({'value': new_tag})
+    r = api_as_admin.post(tags_path, data=payload)
     assert r.ok
-    url_post, payload = _build_url_and_payload('POST', new_tag)
-    r = requests.post(url_post, data=payload, verify=False)
+    # Add a duplicate tag, returns 404
+    payload = json.dumps({'value': new_tag})
+    r = api_as_admin.post(tags_path, data=payload)
     assert r.status_code == 404
-    r = requests.get(url_get_new, verify=False)
+    r = api_as_admin.get(new_tag_path)
     assert r.ok
     assert json.loads(r.content) == new_tag
 
-    url_put, payload = _build_url_and_payload('PUT', tag, new_tag)
-    r = requests.put(url_put, data=payload, verify=False)
+    # Attempt to update tag, returns 404
+    payload = json.dumps({'value': new_tag})
+    r = api_as_admin.put(tag_path, data=payload)
     assert r.status_code == 404
 
-    r = requests.get(url_get_other, verify=False)
+    # Update existing tag to other_tag
+    r = api_as_admin.get(other_tag_path)
     assert r.status_code == 404
-    url_put, payload = _build_url_and_payload('PUT', tag, other_tag)
-    r = requests.put(url_put, data=payload, verify=False)
+    payload = json.dumps({'value': other_tag})
+    r = api_as_admin.put(tag_path, data=payload)
     assert r.ok
-    r = requests.get(url_get_other, verify=False)
+    r = api_as_admin.get(other_tag_path)
     assert r.ok
     assert json.loads(r.content) == other_tag
+    r = api_as_admin.get(tag_path)
+    assert r.status_code == 404
 
-    r = requests.get(url_get_tag, verify=False)
-    assert r.status_code == 404
-    r = requests.delete(url_get_other, verify=False) # url for 'DELETE' is the same as the one for 'GET'
+    # Cleanup
+    r = api_as_admin.delete(other_tag_path)  # url for 'DELETE' is the same as the one for 'GET'
     assert r.ok
-    r = requests.get(url_get_other, verify=False)
+    r = api_as_admin.get(other_tag_path)
     assert r.status_code == 404
-    r = requests.delete(url_get_new, verify=False) # url for 'DELETE' is the same as the one for 'GET'
+    r = api_as_admin.delete(new_tag_path)  # url for 'DELETE' is the same as the one for 'GET'
     assert r.ok
-    r = requests.get(url_get_new, verify=False)
+    r = api_as_admin.get(new_tag_path)
     assert r.status_code == 404

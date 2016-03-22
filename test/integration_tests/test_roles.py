@@ -1,61 +1,92 @@
-import requests
 import json
-from pprint import pprint
+import time
+import pytest
 
-import warnings
-warnings.filterwarnings('ignore')
 
-base_url = 'https://localhost:8443/api/groups/scitran/roles'
+@pytest.fixture()
+def with_a_group_and_a_user(data_builder, api_as_admin, request, bunch):
+    user_id = 'other@user.com'
+    group_id = 'test_group_' + str(int(time.time() * 1000))
+    data_builder.create_group(group_id)
 
-def _build_url_and_payload(method, user, access, requestor, site='local'):
-    if method == 'POST':
-        url = base_url + '?user=' + requestor
-        payload = {
-            '_id': user,
-            'site': site,
-            'access': access
-        }
-        return url, json.dumps(payload)
-    else:
-        url = base_url + '/' + site + '/' + user + '?user=' + requestor
-        return url, None
+    payload = json.dumps({
+        '_id': user_id,
+        'firstname': 'Other',
+        'lastname': 'User',
+    })
+    r = api_as_admin.post('/users', data=payload)
+    assert r.ok
 
-adm_user = 'admin@user.com'
-user = 'test@user.com'
+    def teardown_db():
+        data_builder.delete_group(group_id)
+        api_as_admin.delete('/users/' + user_id)
 
-def test_roles():
-    url_get, _ = _build_url_and_payload('GET', user, None, adm_user)
-    r = requests.get(url_get, verify=False)
+    request.addfinalizer(teardown_db)
+
+    fixture_data = bunch.create()
+    fixture_data.user_id = user_id
+    fixture_data.group_id = group_id
+    return fixture_data
+
+
+def create_role_payload(user, site, access):
+    return json.dumps({
+        '_id': user,
+        'site': site,
+        'access': access
+    })
+
+
+def test_roles(api_as_admin, with_a_group_and_a_user, api_accessor):
+    data = with_a_group_and_a_user
+    api_as_other_user = api_accessor(data.user_id)
+
+    roles_path = '/groups/' + data.group_id + '/roles'
+    local_user_roles_path = roles_path + '/local/' + data.user_id
+    admin_user_roles_path = roles_path + '/local/' + 'admin@user.com'
+
+    # Cannot retrieve roles that don't exist
+    r = api_as_admin.get(local_user_roles_path)
     assert r.status_code == 404
 
-    url_post, payload = _build_url_and_payload('POST', user, 'rw', adm_user)
-    r = requests.post(url_post, data=payload, verify=False)
+    # Create role for user
+    payload = create_role_payload(data.user_id, 'local', 'rw')
+    r = api_as_admin.post(roles_path, data=payload)
     assert r.ok
-    r = requests.get(url_get, verify=False)
+
+    # Verify new user role
+    r = api_as_admin.get(local_user_roles_path)
     assert r.ok
     content = json.loads(r.content)
     assert content['access'] == 'rw'
-    assert content['_id'] == user
+    assert content['_id'] == data.user_id
 
-    url_get_not_auth, _ = _build_url_and_payload('GET', adm_user, None, user)
-    r = requests.get(url_get_not_auth, verify=False)
+    # 'rw' users cannot access other user roles
+    r = api_as_other_user.get(admin_user_roles_path)
     assert r.status_code == 403
 
-    payload = json.dumps({'access':'admin'})
-    r = requests.put(url_get, data=payload, verify=False)
+    # Upgrade user to admin
+    payload = json.dumps({'access': 'admin'})
+    r = api_as_admin.put(local_user_roles_path, data=payload)
     assert r.ok
 
-    r = requests.get(url_get_not_auth, verify=False)
+    # User should now be able to access other roles
+    r = api_as_other_user.get(admin_user_roles_path)
     assert r.ok
 
-    payload = json.dumps({'access':'rw'})
-    r = requests.put(url_get, data=payload, verify=False)
+    # Change user back to 'rw' access
+    payload = json.dumps({'access': 'rw'})
+    r = api_as_admin.put(local_user_roles_path, data=payload)
     assert r.ok
 
-    r = requests.get(url_get_not_auth, verify=False)
+    # User is now forbidden again
+    r = api_as_other_user.get(admin_user_roles_path)
     assert r.status_code == 403
 
-    r = requests.delete(url_get, verify=False)
+    # Delete role
+    r = api_as_admin.delete(local_user_roles_path)
     assert r.ok
-    r = requests.get(url_get, verify=False)
+
+    # Verify delete
+    r = api_as_admin.get(local_user_roles_path)
     assert r.status_code == 404

@@ -1,31 +1,29 @@
 import requests
 import json
+import time
 import logging
+
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
 
-requests.packages.urllib3.disable_warnings()
 
-base_url = 'https://localhost:8443/api'
+def test_groups(api_as_admin, data_builder):
+    group_id = 'test_group_' + str(int(time.time() * 1000))
 
-def test_groups():
-    _id = 'test'
-    r = requests.get(base_url + '/groups/' + _id + '?user=admin@user.com&root=true', verify=False)
+    # Cannot find a non-existant group
+    r = api_as_admin.get('/groups/' + group_id)
     assert r.status_code == 404
-    payload = {
-        '_id': _id
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/groups?user=admin@user.com&root=true', data=payload, verify=False)
+
+    data_builder.create_group(group_id)
+
+    # Able to find new group
+    r = api_as_admin.get('/groups/' + group_id)
     assert r.ok
-    r = requests.get(base_url + '/groups/' + _id + '?user=admin@user.com&root=true', verify=False)
+
+    # Able to change group name
+    payload = json.dumps({'name': 'Test group'})
+    r = api_as_admin.put('/groups/' + group_id, data=payload)
     assert r.ok
-    payload = {
-        'name': 'Test group',
-    }
-    payload = json.dumps(payload)
-    r = requests.put(base_url + '/groups/' + _id + '?user=admin@user.com&root=true', data=payload, verify=False)
-    assert r.ok
-    r = requests.delete(base_url + '/groups/' + _id + '?user=admin@user.com&root=true', verify=False)
-    assert r.ok
+
+    data_builder.delete_group(group_id)

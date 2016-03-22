@@ -1,6 +1,8 @@
 #!/bin/bash
+set -e
 
 unit_test_path=test/unit_tests/
+integration_test_path=test/integration_tests/
 code_path=api/
 
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
@@ -16,8 +18,17 @@ case "$1-$2" in
   unit---watch)
     PYTHONPATH=. ptw $unit_test_path $code_path --poll -- $unit_test_path
     ;;
-  integration-|integration---ci|integration---watch)
-    echo "Not implemented yet"
+  integration---ci|integration-)
+      docker-compose \
+        -f test/docker-compose.yml \
+        run \
+        --rm \
+        bootstrap  && \
+      docker-compose -f test/docker-compose.yml run --rm integration-test
+    docker-compose -f test/docker-compose.yml down
+    ;;
+  integration---watch)
+    echo "Not implemented"
     ;;
   *)
     echo "Usage: $0 unit|integration [--ci|--watch]"

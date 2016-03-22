@@ -1,106 +1,92 @@
-import requests
 import json
 import logging
+import pytest
 
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 log.addHandler(sh)
-log.setLevel(logging.INFO)
-
-import warnings
-
-warnings.filterwarnings('ignore')
-
-from nose.tools import with_setup
-import pymongo
-from bson.objectid import ObjectId
-
-db = pymongo.MongoClient('mongodb://localhost/scitran').get_default_database()
-
-base_url = 'https://localhost:8443/api'
-test_data = type('',(object,),{})()
-
-def setup_db():
-    payload = {
-        'group': 'unknown',
-        'label': 'SciTran/Testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/projects?user=admin@user.com&root=true', data=payload, verify=False)
-    test_data.pid = json.loads(r.content)['_id']
-    assert r.ok
-    log.debug('pid = \'{}\''.format(test_data.pid))
-
-    payload = {
-        'project': test_data.pid,
-        'label': 'session_testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/sessions?user=admin@user.com&root=true', data=payload, verify=False)
-    assert r.ok
-    test_data.sid = json.loads(r.content)['_id']
-    log.debug('sid = \'{}\''.format(test_data.sid))
-
-    payload = {
-        'session': test_data.sid,
-        'label': 'acq_testing',
-        'public': False
-    }
-    payload = json.dumps(payload)
-    r = requests.post(base_url + '/acquisitions?user=admin@user.com&root=true', data=payload, verify=False)
-    assert r.ok
-    test_data.aid = json.loads(r.content)['_id']
-    log.debug('aid = \'{}\''.format(test_data.aid))
-
-def teardown_db():
-    r = requests.delete(base_url + '/acquisitions/' + test_data.aid + '?user=admin@user.com&root=true', verify=False)
-    assert r.ok
-    r = requests.delete(base_url + '/sessions/' + test_data.sid + '?user=admin@user.com&root=true', verify=False)
-    assert r.ok
-    r = requests.delete(base_url + '/projects/' + test_data.pid + '?user=admin@user.com&root=true', verify=False)
-    assert r.ok
 
 
-@with_setup(setup_db, teardown_db)
-def test_collections():
-    payload = {
+def test_collections(api_as_user, single_project_session_acquisition_tree):
+    data = single_project_session_acquisition_tree
+
+    my_collection_id = create_collection(api_as_user)
+    get_collection(api_as_user, my_collection_id)
+    add_session_to_collection(api_as_user, data.sid, my_collection_id)
+
+    r = api_as_user.get('/acquisitions/' + data.aid)
+    collections = json.loads(r.content)['collections']
+    assert my_collection_id in collections
+
+    delete_collection(api_as_user, my_collection_id)
+
+    r = api_as_user.get('/collections/' + my_collection_id)
+    assert r.status_code == 404
+
+    r = api_as_user.get('/acquisitions/' + data.aid)
+    collections = json.loads(r.content)['collections']
+    assert my_collection_id not in collections
+
+
+# This fixture sets up a single project->session->acquisition hierarchy in the db
+@pytest.fixture(scope="module")
+def single_project_session_acquisition_tree(api_as_admin, request, bunch, data_builder):
+
+    pid = data_builder.create_project('scitran')
+    sid = data_builder.create_session(pid)
+    aid = data_builder.create_acquisition(sid)
+
+    def teardown_db():
+        data_builder.delete_acquisition(aid)
+        data_builder.delete_session(sid)
+        data_builder.delete_project(pid)
+
+    # Setup teardown handler
+    request.addfinalizer(teardown_db)
+
+    # This sets up a poor man's dot-notation dict
+    fixture_data = bunch.create()
+    fixture_data.sid = sid
+    fixture_data.aid = aid
+    return fixture_data
+
+
+# Return collection id created
+def create_collection(api):
+    # POST - Create a collection
+    NEW_COLLECTION_JSON = json.dumps({
         'curator': 'admin@user.com',
         'label': 'SciTran/Testing',
         'public': True
-    }
-    r = requests.post(base_url + '/collections?user=admin@user.com', data=json.dumps(payload), verify=False)
+    })
+    r = api.post('/collections', data=NEW_COLLECTION_JSON)
     assert r.ok
-    _id = json.loads(r.content)['_id']
-    log.debug('_id = \'{}\''.format(_id))
-    r = requests.get(base_url + '/collections/' + _id + '?user=admin@user.com', verify=False)
+    return json.loads(r.content)['_id']
+
+
+def get_collection(api, collection_id):
+    # GET - Retrieve a collection
+    r = api.get('/collections/' + collection_id)
     assert r.ok
-    payload = {
-        'contents':{
+
+
+def add_session_to_collection(api, session_id, collection_id):
+    # PUT - Add session to collection
+    ADD_SESSION_TO_COLLECTION_JSON = json.dumps({
+        'contents': {
             'nodes':
             [{
                 'level': 'session',
-                '_id': test_data.sid
+                '_id': session_id,
             }],
             'operation': 'add'
         }
-    }
-    r = requests.put(base_url + '/collections/' + _id + '?user=admin@user.com', data=json.dumps(payload), verify=False)
+    })
+    r = api.put('/collections/' + collection_id, data=ADD_SESSION_TO_COLLECTION_JSON)
     assert r.ok
-    r = requests.get(base_url + '/collections/' + _id + '/acquisitions?session=' + test_data.sid + '&user=admin@user.com', verify=False)
+
+
+def delete_collection(api, collection_id):
+    # DELETE - Delete the collection
+    r = api.delete('/collections/' + collection_id)
     assert r.ok
-    coll_acq_id= json.loads(r.content)[0]['_id']
-    assert coll_acq_id  == test_data.aid
-    acq_ids = [ObjectId(test_data.aid)]
-    acs = db.acquisitions.find({'_id': {'$in': acq_ids}})
-    for ac in acs:
-        assert len(ac['collections']) == 1
-        assert ac['collections'][0] == ObjectId(_id)
-    r = requests.delete(base_url + '/collections/' + _id + '?user=admin@user.com', verify=False)
-    assert r.ok
-    r = requests.get(base_url + '/collections/' + _id + '?user=admin@user.com', verify=False)
-    assert r.status_code == 404
-    acs = db.acquisitions.find({'_id': {'$in': acq_ids}})
-    for ac in acs:
-        assert len(ac['collections']) == 0
