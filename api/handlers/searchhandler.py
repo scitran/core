@@ -128,4 +128,3 @@ class SearchHandler(base.RequestHandler):
         except elasticsearch.exceptions.ConnectionError as e:
             self.abort(503, 'elasticsearch is not available')
         return results
-
