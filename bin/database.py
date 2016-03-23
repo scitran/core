@@ -8,7 +8,7 @@ CURRENT_DATABASE_VERSION = 1 # An int that is bumped when a new schema change is
 
 def get_db_version():
 
-    version = config.db.version.find_one({"_id": "version"})
+    version = config.get_version()
     if version is None or version.get('database', None) is None:
         return 0
     else:

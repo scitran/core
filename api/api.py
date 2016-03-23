@@ -32,6 +32,11 @@ class Config(base.RequestHandler):
             ';'
         )
 
+class Version(base.RequestHandler):
+
+    def get(self):
+        return config.get_version()
+
 #regexes used in routing table:
 routing_regexes = {
     # group id regex
@@ -77,7 +82,8 @@ routes = [
         webapp2.Route(r'/sites',            centralclient.CentralClient, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/register',         centralclient.CentralClient, handler_method='register', methods=['POST']),
         webapp2.Route(r'/config',           Config, methods=['GET']),
-        webapp2.Route(r'/config.js',        Config, handler_method='get_js', methods=['GET'])
+        webapp2.Route(r'/config.js',        Config, handler_method='get_js', methods=['GET']),
+        webapp2.Route(r'/version',          Version, methods=['GET']),
     ]),
     webapp2.Route(r'/api/users',            userhandler.UserHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/users',            userhandler.UserHandler, methods=['POST']),
