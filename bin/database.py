@@ -47,13 +47,13 @@ def upgrade_schema():
     try:
         if db_version < 1:
             # scitran/core issue #206
-            config.db.version.insert_one({"_id": "version", "database": CURRENT_DATABASE_VERSION})
+            config.db.version.insert_one({'_id': 'version', 'database': CURRENT_DATABASE_VERSION})
     except Exception as e:
         print 'Incremental upgrade of db failed'
         print e
         sys.exit(1)
     else:
-        config.db.version.update_one({"_id": "version"}, {"$set": {"database": CURRENT_DATABASE_VERSION}})
+        config.db.version.update_one({'_id': 'version'}, {'$set': {'database': CURRENT_DATABASE_VERSION}})
         sys.exit(0)
 try:
     if len(sys.argv) > 1:

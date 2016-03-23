@@ -134,7 +134,7 @@ def get_public_config():
     }
 
 def get_version():
-    return db.version.find_one({"_id": "version"}, {"_id":0})
+    return db.version.find_one({'_id': 'version'})
 
 def get_item(outer, inner):
     return get_config()[outer][inner]
