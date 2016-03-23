@@ -1,9 +1,19 @@
 #!/usr/bin/env python
 
 import json
+import sys
 from api import config
 
 CURRENT_DATABASE_VERSION = 1 # An int that is bumped when a new schema change is made
+
+def get_db_version():
+
+    version = config.db.version.find_one({"_id": "version"})
+    if version is None or version.get('database', None) is None:
+        return 0
+    else:
+        return version.get('database')
+
 
 def confirm_schema_match():
     """
@@ -18,17 +28,13 @@ def confirm_schema_match():
                  than the DB schema version.
     """
 
-    version = config.db.version.find_one({"_id": "version"})
-    if version is None or version.get('database', None) is None:
-        return 42 # At version 0
-
-    db_version = version.get('database', 0)
+    db_version = get_db_version()
     if not isinstance(db_version, int) or db_version > CURRENT_DATABASE_VERSION:
-        return 43 
+        sys.exit(43) 
     elif db_version < CURRENT_DATABASE_VERSION:
-        return 42
+        sys.exit(42)
     else:
-        return 0
+        sys.exit(0)
 
 def upgrade_schema():
     """
@@ -37,12 +43,30 @@ def upgrade_schema():
     Returns (0) if upgrade is successful
     """
 
-    # In progress
-    # db_version = version.get('database',0)
-    
-    # if db_version < 1:
-    #   # rename the metadata fields
-    #   config.db.container.update_many({}, {"$rename": {"metadata": "info"}})
-
-    # config.db.version.update_one({"_id": "version"}, {"$set": {"database": CURRENT_DATABASE_VERSION}})
-    return 0
+    db_version = get_db_version()
+    try:
+        if db_version < 1:
+            # scitran/core issue #206
+            config.db.version.insert_one({"_id": "version", "database": CURRENT_DATABASE_VERSION})
+    except Exception as e:
+        print 'Incremental upgrade of db failed'
+        print e
+        sys.exit(1)
+    else:
+        config.db.version.update_one({"_id": "version"}, {"$set": {"database": CURRENT_DATABASE_VERSION}})
+        sys.exit(0)
+try:
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'confirm_schema_match':
+            confirm_schema_match()
+        elif sys.argv[1] == 'upgrade_schema':
+            upgrade_schema()
+        else:
+            print 'Unknown method name given as argv to database.py'
+            sys.exit(1)
+    else:
+        print 'No method name given as argv to database.py'
+        sys.exit(1)
+except Exception as e:
+    print e
+    sys.exit(1)
