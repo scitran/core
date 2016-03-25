@@ -192,5 +192,8 @@ def get_public_config():
         'auth': __config.get('auth'),
     }
 
+def get_version():
+    return db.version.find_one({'_id': 'version'})
+
 def get_item(outer, inner):
     return get_config()[outer][inner]
