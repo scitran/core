@@ -19,7 +19,7 @@
         "uid":          {"type": "string"},
         "instrument":   {"type": "string"},
         "measurement":  {"type": "string"},
-        "timestamp":    {"type": "string"},
+        "timestamp":    {},
         "timezone":     {"type": "string"}
     },
     "additionalProperties": false
