@@ -51,7 +51,7 @@ class Placer(object):
         """
         raise NotImplementedError()
 
-    def process_file_field(self, field, info):
+    def process_file_field(self, field, file_attrs):
         """"
         Process a single file field.
         """
@@ -77,7 +77,7 @@ class Placer(object):
         if self.metadata == None:
             raise Exception('Metadata required')
 
-    def save_file(self, field=None, info=None):
+    def save_file(self, field=None, file_attrs=None):
         """
         Helper function that moves a file saved via a form field into our CAS.
         May trigger jobs, if applicable, so this should only be called once we're ready for that.
@@ -90,11 +90,11 @@ class Placer(object):
             files.move_form_file_field_into_cas(field)
 
         # Update the DB
-        if info is not None:
-            self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, info)
+        if file_attrs is not None:
+            self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, file_attrs)
 
             # Queue any jobs as a result of this upload
-            rules.create_jobs(config.db, self.container, self.container_type, info)
+            rules.create_jobs(config.db, self.container, self.container_type, file_attrs)
 
     def recalc_session_compliance(self):
         if self.container_type in ['session', 'acquisition'] and self.id_:
@@ -117,11 +117,11 @@ class TargetedPlacer(Placer):
         self.requireTarget()
         validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
 
-    def process_file_field(self, field, info):
+    def process_file_field(self, field, file_attrs):
         if self.metadata:
-            info.update(self.metadata)
-        self.save_file(field, info)
-        self.saved.append(info)
+            file_attrs.update(self.metadata)
+        self.save_file(field, file_attrs)
+        self.saved.append(file_attrs)
 
     def finalize(self):
         self.recalc_session_compliance()
@@ -164,35 +164,35 @@ class UIDPlacer(Placer):
                     'metadata': target[1][name]
                 }
 
-    def process_file_field(self, field, info):
+
+    def process_file_field(self, field, file_attrs):
 
         # For the file, given self.targets, choose a target
-
         name        = field.filename
         target      = self.metadata_for_file.get(name)
+
         # if the file was not included in the metadata skip it
         if not target:
             return
         container   = target['container']
         r_metadata  = target['metadata']
-
-        info.update(r_metadata)
+        file_attrs.update(r_metadata)
 
         if container.level != 'subject':
             self.container_type = container.level
             self.id_            = container.id_
             self.container      = container.container
-            self.save_file(field, info)
+            self.save_file(field, file_attrs)
         else:
             if field is not None:
                 files.move_form_file_field_into_cas(field)
-            if info is not None:
-                container.upsert_file(info)
+            if file_attrs is not None:
+                container.upsert_file(file_attrs)
 
                 # # Queue any jobs as a result of this upload
                 # rules.create_jobs(config.db, self.container, self.container_type, info)
 
-        self.saved.append(info)
+        self.saved.append(file_attrs)
 
     def finalize(self):
         if self.session_id:
@@ -235,17 +235,20 @@ class EnginePlacer(Placer):
         if self.metadata is not None:
             validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
 
-    def process_file_field(self, field, info):
+
+    def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
             file_mds = self.metadata.get(self.container_type, {}).get('files', [])
 
             for file_md in file_mds:
-                if file_md['name'] == info['name']:
-                    info.update(file_md)
+                if file_md['name'] == file_attrs['name']:
+                    file_attrs.update(file_md)
                     break
+            else:
+                file_md = {}
 
-        self.save_file(field, info)
-        self.saved.append(info)
+        self.save_file(field, file_attrs)
+        self.saved.append(file_attrs)
 
     def finalize(self):
         if self.metadata is not None:
@@ -294,8 +297,8 @@ class TokenPlacer(Placer):
 
         util.mkdir_p(self.folder)
 
-    def process_file_field(self, field, info):
-        self.saved.append(info)
+    def process_file_field(self, field, file_attrs):
+        self.saved.append(file_attrs)
         self.paths.append(field.path)
 
     def finalize(self):
@@ -403,7 +406,7 @@ class PackfilePlacer(Placer):
         # This way, when you expand a zip, you'll get folder/things instead of a thousand dicoms splattered everywhere.
         self.zip_.write(self.tempdir.name, self.dir_)
 
-    def process_file_field(self, field, info):
+    def process_file_field(self, field, file_attrs):
         # Should not be called with any files
         raise Exception('Files must already be uploaded')
 
@@ -455,10 +458,10 @@ class PackfilePlacer(Placer):
             'modified': self.timestamp
         })
 
-        # Similarly, create the info map that is consumed by helper funcs. Clear duplication :(
+        # Similarly, create the attributes map that is consumed by helper funcs. Clear duplication :(
         # This could be coalesced into a single map thrown on file fields, for example.
         # Used in the API return.
-        cgi_info = {
+        cgi_attrs = {
             'name':	 cgi_field.filename,
             'modified': cgi_field.modified,
             'size':	 cgi_field.size,
@@ -467,10 +470,10 @@ class PackfilePlacer(Placer):
             'type': self.metadata['packfile']['type'],
 
             # OPPORTUNITY: packfile endpoint could be extended someday to take additional metadata.
-            'instrument': None,
+            'modality': None,
             'measurements': [],
             'tags': [],
-            'metadata': {},
+            'info': {},
 
             # Manually add the file orign to the packfile metadata.
             # This is set by upload.process_upload on each file, but we're not storing those.
@@ -538,7 +541,7 @@ class PackfilePlacer(Placer):
         self.id_            = str(acquisition['_id'])
         self.container	    = acquisition
 
-        self.save_file(cgi_field, cgi_info)
+        self.save_file(cgi_field, cgi_attrs)
 
         # Set target for session recalc
         self.container_type = 'session'
@@ -553,7 +556,7 @@ class PackfilePlacer(Placer):
         result = {
             'acquisition_id': str(acquisition['_id']),
             'session_id':	 str(session['_id']),
-            'info': cgi_info,
+            'info': cgi_attrs
         }
 
         # Report result
@@ -568,9 +571,9 @@ class AnalysisPlacer(Placer):
         self.requireMetadata()
         validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
 
-    def process_file_field(self, field, info):
+    def process_file_field(self, field, file_attrs):
         self.save_file(field)
-        self.saved.append(info)
+        self.saved.append(file_attrs)
 
     def finalize(self):
         # we are going to merge the "hard" infos from the processed upload
@@ -594,18 +597,18 @@ class AnalysisJobPlacer(Placer):
         if self.id_ is None:
             raise Exception('Must specify a target analysis')
 
-    def process_file_field(self, field, info):
+    def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
             file_mds = self.metadata.get('acquisition', {}).get('files', [])
 
             for file_md in file_mds:
-                if file_md['name'] == info['name']:
-                    info.update(file_md)
+                if file_md['name'] == file_attrs['name']:
+                    file_attrs.update(file_md)
                     break
 
-        info['output'] = True
+        file_attrs['output'] = True
         self.save_file(field)
-        self.saved.append(info)
+        self.saved.append(file_attrs)
 
     def finalize(self):
         # Search the sessions table for analysis, replace file field

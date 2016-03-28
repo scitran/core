@@ -12,7 +12,7 @@
         "public": {},
         "label": {},
         "tags": {},
-        "metadata": {},
+        "info": {},
 
         "curator": {"type": "string"}
     },

@@ -15,11 +15,11 @@
 
     "code":             { "type": "string" },
     "tags":             { "type": "array", "items": {"type": "string"} },
-    "metadata":         { "type": "object" },
     "files":            {
                           "type": ["array", "null"],
                           "items": {"$ref": "file.json"}
-    }
+    },
+    "info":             { "type": "object" }
   },
   "additionalProperties": false
 }

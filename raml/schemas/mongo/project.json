@@ -14,7 +14,7 @@
         "label": {},
         "template": {"$ref": "../definitions/project-template.json"},
         "tags": {},
-        "metadata": {},
+        "info": {},
 
         "group": {"type": "string"}
     },

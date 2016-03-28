@@ -12,13 +12,11 @@
         "archived": {},
         "label": {},
         "tags": {},
-        "metadata": {},
+        "info": {},
 
         "session":      {},
         "collections":  {"type": "array", "items": {"type": "string" }},
         "uid":          {"type": "string"},
-        "instrument":   {"type": "string"},
-        "measurement":  {"type": "string"},
         "timestamp":    {},
         "timezone":     {"type": "string"}
     },

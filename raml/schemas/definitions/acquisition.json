@@ -1,19 +1,15 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
-        "instrument":   {"type": "string"},
-        "measurement":  {"type": "string"},
         "acquisition-input":{
             "type": "object",
             "properties": {
-                "public": {"$ref": "../definitions/container.json#/definitions/public"},
-                "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+                "public":       {"$ref": "../definitions/container.json#/definitions/public"},
+                "label":        {"$ref": "../definitions/container.json#/definitions/label"},
+                "info":         {"$ref": "../definitions/container.json#/definitions/info"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "session":      {"$ref":"../definitions/objectid.json#"},
                 "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
-                "instrument":   {"$ref": "#/definitions/instrument"},
-                "measurement":  {"$ref": "#/definitions/measurement"},
                 "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
                 "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"}
             },
@@ -22,10 +18,10 @@
         "acquisition-output":{
             "type":"object",
             "properties": {
-              "_id":{"$ref":"../definitions/objectid.json#"},
-              "public": {"$ref": "../definitions/container.json#/definitions/public"},
-              "label": {"$ref": "../definitions/container.json#/definitions/label"},
-              "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+              "_id":          {"$ref":"../definitions/objectid.json#"},
+              "public":       {"$ref": "../definitions/container.json#/definitions/public"},
+              "label":        {"$ref": "../definitions/container.json#/definitions/label"},
+              "info":         {"$ref": "../definitions/container.json#/definitions/info"},
               "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
               "session":      {"$ref":"../definitions/objectid.json#"},
               "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
@@ -37,8 +33,6 @@
                   "type":"array",
                   "items":{"$ref":"../definitions/file.json#/definitions/file-output"}
               },
-              "instrument":   {"$ref": "#/definitions/instrument"},
-              "measurement":  {"$ref": "#/definitions/measurement"},
               "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
               "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
               "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},

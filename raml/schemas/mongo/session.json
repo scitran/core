@@ -15,7 +15,7 @@
         "satisfies_template": {"type": "boolean"},
         "project_has_template": {"type": "boolean"},
         "tags": {},
-        "metadata": {},
+        "info": {},
 
         "group":        {"type": "string"},
         "project":      {},

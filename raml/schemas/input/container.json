@@ -6,6 +6,6 @@
         "public":       {"$ref":"../definitions/container.json#/definitions/public"},
         "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
         "label":        {"$ref":"../definitions/container.json#/definitions/label"},
-        "metadata":     {"$ref":"../definitions/container.json#/definitions/metadata"}
+        "info":         {"$ref":"../definitions/container.json#/definitions/info"}
     }
 }

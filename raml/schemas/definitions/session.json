@@ -9,7 +9,7 @@
             "properties": {
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+                "info": {"$ref": "../definitions/container.json#/definitions/info"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "project":      {"$ref":"#/definitions/project"},
                 "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
@@ -27,7 +27,7 @@
                 "_id": {"$ref":"../definitions/objectid.json#"},
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+                "info": {"$ref": "../definitions/container.json#/definitions/info"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "project":      {"$ref":"#/definitions/project"},
                 "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},

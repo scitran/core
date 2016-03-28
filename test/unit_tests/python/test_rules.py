@@ -82,17 +82,6 @@ def test_eval_match_file_measurements():
     result = rules.eval_match(*args)
     assert result == False
 
-def test_eval_match_container_measurement():
-    part = rulePart(match_type='container.measurement', container={'measurement': 'diffusion'})
-
-    args = part.gen(match_param='diffusion')
-    result = rules.eval_match(*args)
-    assert result == True
-
-    args = part.gen(match_param='c')
-    result = rules.eval_match(*args)
-    assert result == False
-
 def test_eval_match_container_has_type():
     part = rulePart(match_type='container.has-type', container={'files': [
             {'type': 'diffusion'},
