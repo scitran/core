@@ -74,5 +74,5 @@ try:
         logging.error('No method name given as argv to database.py')
         sys.exit(1)
 except Exception as e:
-    logging.exception()
+    logging.exception('Unexpected error in database.py')
     sys.exit(1)
