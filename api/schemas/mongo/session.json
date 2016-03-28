@@ -18,7 +18,7 @@
         "group":        {"type": "string"},
         "project":      {},
         "uid":          {"type": "string"},
-        "timestamp":    {"type": "string"},
+        "timestamp":    {},
         "timezone":     {"type": "string"},
         "subject":      {"$ref": "subject.json"}
     },
