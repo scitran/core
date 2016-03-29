@@ -2,6 +2,7 @@ import bson.errors
 import bson.objectid
 
 from .. import config
+from . import consistencychecker
 from . import APIStorageException
 
 log = config.log
@@ -46,6 +47,8 @@ class ListStorage(object):
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
         """
+        check = consistencychecker.get_list_storage_checker(action, self.list_name)
+        check(payload)
         if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)

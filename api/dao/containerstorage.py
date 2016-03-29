@@ -3,6 +3,7 @@ import bson.objectid
 
 from .. import util
 from .. import config
+from . import consistencychecker
 from . import APIStorageException
 
 log = config.log
@@ -23,13 +24,15 @@ class ContainerStorage(object):
     def get_container(self, _id):
         return self._get_el(_id)
 
-    def exec_op(self, action, _id=None, payload=None, query=None, user=None, 
+    def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False):
         """
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
         """
-
+        check = consistencychecker.get_container_storage_checker(action, self.cont_name)
+        data_op = payload or {'_id': _id}
+        check(data_op)
         if action == 'GET' and _id:
             return self._get_el(_id, projection)
         if action == 'GET':
