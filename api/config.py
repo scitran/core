@@ -5,7 +5,6 @@ import logging
 import pymongo
 import datetime
 import elasticsearch
-import json
 
 
 logging.basicConfig(
@@ -164,7 +163,6 @@ def create_or_recreate_ttl_index(coll_name, index_name, ttl):
 
 
 def initialize_db():
-
     log.info('Initializing database, creating indexes')
     # TODO jobs indexes
     # TODO review all indexes
