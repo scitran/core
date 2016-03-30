@@ -92,7 +92,7 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
-        self.set_origin(drone_request, drone_name)
+        self.set_origin(drone_request, drone_name.partition(' ')[2])
 
     def authenticate_user(self, access_token):
         """
