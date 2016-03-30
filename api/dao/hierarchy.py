@@ -97,7 +97,8 @@ def add_fileinfo(cont_name, _id, fileinfo):
 
 def _group_name_fuzzy_match(group_name, project_label):
     existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]
-    log.error(str(existing_group_ids))
+    if group_name in existing_group_ids:
+        return group_name, project_label
     group_id_matches = difflib.get_close_matches(group_name, existing_group_ids, cutoff=0.8)
     if len(group_id_matches) == 1:
         group_name = group_id_matches[0]
@@ -110,9 +111,12 @@ def _find_or_create_destination_project(group_name, project_label, timestamp):
     group_name, project_label = _group_name_fuzzy_match(group_name, project_label)
     group = config.db.groups.find_one({'_id': group_name})
     project = config.db.projects.find_one_and_update(
-        {'group': group['_id'], 'label': project_label},
+        {'group': group['_id'],
+         'label': {'$regex': project_label, '$options': 'i'}
+        },
         {
             '$setOnInsert': {
+                'label': project_label,
                 'permissions': group['roles'], 'public': False,
                 'created': timestamp, 'modified': timestamp
             }
