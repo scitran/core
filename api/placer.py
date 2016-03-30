@@ -103,20 +103,23 @@ class TargetedPlacer(Placer):
 
 class UIDPlacer(Placer):
     """
-    A placer that can accept files sent to it from a reaper.
-    Currently a stub.
+    A placer that can accept multiple files.
+    It uses the method upsert_bottom_up_hierarchy to create its project/session/acquisition hierarchy
+    Sessions and acquisitions are identified by UID.
     """
+    metadata_schema = 'uidupload.json'
+    create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
 
     def check(self):
         self.requireMetadata()
 
-        payload_schema_uri = util.schema_uri('input', 'reaper.json')
+        payload_schema_uri = util.schema_uri('input', self.metadata_schema)
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 
         # Hack: pass an empty array of files.
         # Intention is to let it create the hierarcy without merging fileinfos.
-        targets = hierarchy.upsert_bottom_up_hierarchy(self.metadata)
+        targets = self.create_hierarchy(self.metadata)
 
 
         self.metadata_for_file = { }
@@ -153,55 +156,16 @@ class UIDPlacer(Placer):
         return self.saved
 
 
-class LabelPlacer(Placer):
+class LabelPlacer(UIDPlacer):
     """
-    A placer that can accept files sent to it from a reaper.
-    Currently a stub.
+    A placer that create a hierarchy based on labels.
+
+    It uses the method upsert_top_down_hierarchy to create its project/session/acquisition hierarchy
+    Sessions and acquisitions are identified by label.
     """
 
-    def check(self):
-        self.requireMetadata()
-
-        payload_schema_uri = util.schema_uri('input', 'uploader.json')
-        metadata_validator = validators.from_schema_path(payload_schema_uri)
-        metadata_validator(self.metadata, 'POST')
-
-        # Hack: pass an empty array of files.
-        # Intention is to let it create the hierarcy without merging fileinfos.
-        targets = hierarchy.upsert_top_down_hierarchy(self.metadata)
-
-
-        self.metadata_for_file = { }
-
-        for target in targets:
-            for name in target[1]:
-                self.metadata_for_file[name] = {
-                    'container': target[0],
-                    'metadata': target[1][name]
-                }
-        self.saved = []
-
-    def process_file_field(self, field, info):
-
-        # For the file, given self.targets, choose a target
-
-        name        = field.filename
-        target      = self.metadata_for_file[name]
-        container   = target['container']
-        r_metadata  = target['metadata']
-
-        self.container_type = container.level
-        self.id             = container._id
-        self.container      = container.container
-
-        for x in ('type', 'instrument', 'measurements', 'tags', 'metadata'):
-            info[x] = r_metadata.get(x) or info[x]
-
-        self.save_file(field, info)
-        self.saved.append(info)
-
-    def finalize(self):
-        return self.saved
+    metadata_schema = 'labelupload.json'
+    create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
 
 
 class EnginePlacer(Placer):

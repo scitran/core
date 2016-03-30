@@ -124,8 +124,8 @@ expected_input_schemas = set([
     'download.json',
     'tag.json',
     'enginemetadata.json',
-    'uploader.json',
-    'reaper.json'
+    'labelupload.json',
+    'uidupload.json'
 ])
 mongo_schemas = set()
 input_schemas = set()
