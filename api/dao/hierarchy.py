@@ -5,6 +5,7 @@ import pymongo
 import datetime
 import dateutil.parser
 
+from .. import files
 from .. import util
 from .. import config
 from . import APIStorageException
@@ -321,3 +322,20 @@ def _update_container(query, update, cont_name):
         },
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
+
+def merge_fileinfos(parsed_files, infos):
+    """it takes a dictionary of "hard_infos" (file size, hash)
+    merging them with infos derived from a list of infos on the same or on other files
+    """
+    merged_files = {}
+    for info in infos:
+        parsed = parsed_files.get(info['name'])
+        if parsed:
+            path = parsed.path
+            new_infos = copy.deepcopy(parsed.info)
+        else:
+            path = None
+            new_infos = {}
+        new_infos.update(info)
+        merged_files[info['name']] = files.ParsedFile(new_infos, path)
+    return merged_files
