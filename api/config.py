@@ -5,6 +5,7 @@ import logging
 import pymongo
 import datetime
 import elasticsearch
+import json
 
 
 logging.basicConfig(
@@ -147,7 +148,23 @@ for schema_filepath in glob.glob(schema_path + '/input/*.json'):
 
 assert input_schemas == expected_input_schemas, '{} is different from {}'.format(input_schemas, expected_input_schemas)
 
+def create_or_recreate_ttl_index(coll_name, index_name, ttl):
+    index_list = db[coll_name].index_information()
+    if index_list:
+        for index in index_list:
+            if index_list[index]['key'][0][0] == index_name:
+                if index_list[index].get('expireAfterSeconds', None) != ttl:
+                    # drop existing, recreate below
+                    db[coll_name].drop_index(index)
+                    break
+                else:
+                    # index exists with proper ttl, bail
+                    return
+    db[coll_name].create_index(index_name, expireAfterSeconds=ttl)
+
+
 def initialize_db():
+
     log.info('Initializing database, creating indexes')
     # TODO jobs indexes
     # TODO review all indexes
@@ -157,9 +174,9 @@ def initialize_db():
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
-    db.authtokens.create_index('timestamp', expireAfterSeconds=604800)
-    db.uploads.create_index('timestamp', expireAfterSeconds=60)
-    db.downloads.create_index('timestamp', expireAfterSeconds=60)
+    create_or_recreate_ttl_index('authtokens', 'timestamp', 604800)
+    create_or_recreate_ttl_index('uploads', 'timestamp', 60)
+    create_or_recreate_ttl_index('downloads', 'timestamp', 60)
 
     now = datetime.datetime.utcnow()
     db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
