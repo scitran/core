@@ -67,7 +67,14 @@ def initialize_list_configurations():
                 'get_full_container': True,
                 'storage_schema_file': 'permission.json',
                 'input_schema_file': 'permission.json'
-            }
+            },
+            'tags': {
+                'storage': liststorage.StringListStorage,
+                'permchecker': listauth.group_tags_sublist,
+                'use_object_id': False,
+                'storage_schema_file': 'tag.json',
+                'input_schema_file': 'tag.json'
+            },
         },
         'projects': copy.deepcopy(container_default_configurations),
         'sessions': copy.deepcopy(container_default_configurations),

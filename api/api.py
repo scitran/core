@@ -126,6 +126,10 @@ routes = [
     webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:roles>'),                                        listhandler.ListHandler, name='group_roles_post'),
     webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:roles>/<site:{site_id_re}>/<_id:{user_id_re}>'),    listhandler.ListHandler, name='group_roles', methods=['GET', 'PUT', 'DELETE']),
 
+
+    webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:tags>'),                                      listhandler.ListHandler, methods=['POST'], name='tags_post'),
+    webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.ListHandler, name='tags'),
+
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>'),                                      listhandler.ListHandler, methods=['POST'], name='tags_post'),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.ListHandler, name='tags'),
 
