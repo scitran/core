@@ -117,10 +117,7 @@ class UIDPlacer(Placer):
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 
-        # Hack: pass an empty array of files.
-        # Intention is to let it create the hierarcy without merging fileinfos.
         targets = self.create_hierarchy(self.metadata)
-
 
         self.metadata_for_file = { }
 
@@ -138,7 +135,10 @@ class UIDPlacer(Placer):
         # For the file, given self.targets, choose a target
 
         name        = field.filename
-        target      = self.metadata_for_file[name]
+        target      = self.metadata_for_file.get(name)
+        # if the file was not included in the metadata skip it
+        if not target:
+            return
         container   = target['container']
         r_metadata  = target['metadata']
 
@@ -146,8 +146,7 @@ class UIDPlacer(Placer):
         self.id             = container._id
         self.container      = container.container
 
-        for x in ('type', 'instrument', 'measurements', 'tags', 'metadata'):
-            info[x] = r_metadata.get(x) or info[x]
+        info.update(r_metadata)
 
         self.save_file(field, info)
         self.saved.append(info)
