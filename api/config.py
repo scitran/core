@@ -175,7 +175,7 @@ def initialize_db():
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
-    create_or_recreate_ttl_index('authtokens', 'timestamp', 60)
+    create_or_recreate_ttl_index('authtokens', 'timestamp', 604800)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
     create_or_recreate_ttl_index('downloads', 'timestamp', 60)
 
