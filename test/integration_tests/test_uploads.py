@@ -120,4 +120,8 @@ def test_label_upload(with_group_and_file_data, api_as_admin):
     r = api_as_admin.post('/upload/label', files=data.files)
     assert r.ok
 
+    data.files['metadata'] = metadata
+    r = api_as_admin.post('/upload/label', files=data.files)
+    assert r.status_code == 400
+
 

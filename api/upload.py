@@ -74,7 +74,12 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None)
     metadata = None
     if 'metadata' in form:
         # Slight misnomer: the metadata field, if present, is sent as a normal form field, NOT a file form field.
-        metadata = json.loads(form['metadata'].file.getvalue())
+        metadata_file = form['metadata'].file
+        try:
+            metadata = json.loads(metadata_file.getvalue())
+        except AttributeError:
+            raise files.FileStoreException('wrong format for field "metadata"')
+
 
     placer_class = strategy.value
     placer = placer_class(container_type, container, id, metadata, timestamp, origin)
@@ -133,7 +138,7 @@ class Upload(base.RequestHandler):
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
             try:
                 file_store = files.FileStore(self.request, tempdir_path)
-            except FileStoreException as e:
+            except files.FileStoreException as e:
                 self.abort(400, str(e))
             now = datetime.datetime.utcnow()
             fileinfo = dict(
@@ -199,7 +204,7 @@ class Upload(base.RequestHandler):
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
             try:
                 file_store = files.MultiFileStore(self.request, tempdir_path)
-            except FileStoreException as e:
+            except files.FileStoreException as e:
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
