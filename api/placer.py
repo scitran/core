@@ -13,8 +13,9 @@ from . import rules
 from . import tempdir as tempfile
 from . import util
 from . import validators
-from .dao import reaperutil, APIStorageException
+from .dao import hierarchy, APIStorageException
 
+log = config.log
 
 class Placer(object):
     """
@@ -73,7 +74,7 @@ class Placer(object):
         files.move_form_file_field_into_cas(field)
 
         # Update the DB
-        reaperutil.upsert_fileinfo(self.container_type, self.id, info)
+        hierarchy.upsert_fileinfo(self.container_type, self.id, info)
 
         # Queue any jobs as a result of this upload
         rules.create_jobs(config.db, self.container, self.container_type, info)
@@ -100,20 +101,70 @@ class TargetedPlacer(Placer):
         return self.saved
 
 
-class ReaperPlacer(Placer):
+class UIDPlacer(Placer):
     """
-    A placer that can accept files sent to it from a reaper.
-    Currently a stub.
+    A placer that can accept multiple files.
+    It uses the method upsert_bottom_up_hierarchy to create its project/session/acquisition hierarchy
+    Sessions and acquisitions are identified by UID.
+    """
+    metadata_schema = 'uidupload.json'
+    create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
+
+    def check(self):
+        self.requireMetadata()
+
+        payload_schema_uri = util.schema_uri('input', self.metadata_schema)
+        metadata_validator = validators.from_schema_path(payload_schema_uri)
+        metadata_validator(self.metadata, 'POST')
+
+        targets = self.create_hierarchy(self.metadata)
+
+        self.metadata_for_file = { }
+
+        for target in targets:
+            for name in target[1]:
+                self.metadata_for_file[name] = {
+                    'container': target[0],
+                    'metadata': target[1][name]
+                }
+
+        self.saved = []
+
+    def process_file_field(self, field, info):
+
+        # For the file, given self.targets, choose a target
+
+        name        = field.filename
+        target      = self.metadata_for_file.get(name)
+        # if the file was not included in the metadata skip it
+        if not target:
+            return
+        container   = target['container']
+        r_metadata  = target['metadata']
+
+        self.container_type = container.level
+        self.id             = container._id
+        self.container      = container.container
+
+        info.update(r_metadata)
+
+        self.save_file(field, info)
+        self.saved.append(info)
+
+    def finalize(self):
+        return self.saved
+
+
+class LabelPlacer(UIDPlacer):
+    """
+    A placer that create a hierarchy based on labels.
+
+    It uses the method upsert_top_down_hierarchy to create its project/session/acquisition hierarchy
+    Sessions and acquisitions are identified by label.
     """
 
-    # def check(self):
-    # 	self.requireMetadata()
-
-    # def process_file_field(self, field, info):
-    # 	pass
-
-    # def finalize(self):
-    # 	pass
+    metadata_schema = 'labelupload.json'
+    create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
 
 
 class EnginePlacer(Placer):
@@ -125,6 +176,9 @@ class EnginePlacer(Placer):
     def check(self):
         self.requireTarget()
         validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
+        self.saved = []
+
+        # Could avoid loops in process_file_field by setting up the
 
     def process_file_field(self, field, info):
         if self.metadata is not None:
@@ -137,20 +191,21 @@ class EnginePlacer(Placer):
                 if file_md['name'] == info['name']:
                     break
             else:
-                file_md = None
+                file_md = {}
 
             for x in ('type', 'instrument', 'measurements', 'tags', 'metadata'):
                 info[x] = file_md.get(x) or info[x]
 
         self.save_file(field, info)
+        self.saved.append(info)
 
     def finalize(self):
         # Updating various properties of the hierarchy; currently assumes acquisitions; might need fixing for other levels.
         # NOTE: only called in EnginePlacer
         bid = bson.ObjectId(self.id)
-        self.obj = reaperutil.update_container_hierarchy(self.metadata, bid, '')
+        self.obj = hierarchy.update_container_hierarchy(self.metadata, bid, '')
 
-        return {}
+        return self.saved
 
 
 class PackfilePlacer(Placer):

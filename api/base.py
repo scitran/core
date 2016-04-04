@@ -10,6 +10,7 @@ import urlparse
 import webapp2
 
 from . import util
+from . import files
 from . import config
 from .types import Origin
 from . import validators
@@ -236,6 +237,8 @@ class RequestHandler(webapp2.RequestHandler):
         elif isinstance(exception, validators.InputValidationException):
             code = 400
         elif isinstance(exception, APIConsistencyException):
+            code = 400
+        elif isinstance(exception, files.FileStoreException):
             code = 400
         else:
             code = 500

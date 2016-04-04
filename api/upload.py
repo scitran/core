@@ -11,15 +11,16 @@ from . import tempdir as tempfile
 from . import placer as pl
 from . import util
 from . import validators
-from .dao import reaperutil, APIStorageException
+from .dao import hierarchy, APIStorageException
 
 log = config.log
 
 Strategy = util.Enum('Strategy', {
-    'targeted' : pl.TargetedPlacer,   # Upload N files to a container.
-    'reaper':    pl.ReaperPlacer,     # Upload N files from a scientific data source.
-    'engine'   : pl.EnginePlacer,	  # Upload N files from the result of a successful job.
-    'packfile' : pl.PackfilePlacer	  # Upload N files as a new packfile to a container.
+    'targeted'   : pl.TargetedPlacer,   # Upload N files to a container.
+    'engine'     : pl.EnginePlacer,	  # Upload N files from the result of a successful job.
+    'packfile'   : pl.PackfilePlacer,	  # Upload N files as a new packfile to a container.
+    'labelupload': pl.LabelPlacer,
+    'uidupload'  : pl.UIDPlacer,
 })
 
 def process_upload(request, strategy, container_type=None, id=None, origin=None):
@@ -64,7 +65,7 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None)
 
     container = None
     if container_type and id:
-        container = reaperutil.get_container(container_type, id)
+        container = hierarchy.get_container(container_type, id)
 
     # The vast majority of this function's wall-clock time is spent here.
     # Tempdir is deleted off disk once out of scope, so let's hold onto this reference.
@@ -73,7 +74,12 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None)
     metadata = None
     if 'metadata' in form:
         # Slight misnomer: the metadata field, if present, is sent as a normal form field, NOT a file form field.
-        metadata = json.loads(form['metadata'].file.getvalue())
+        metadata_file = form['metadata'].file
+        try:
+            metadata = json.loads(metadata_file.getvalue())
+        except AttributeError:
+            raise files.FileStoreException('wrong format for field "metadata"')
+
 
     placer_class = strategy.value
     placer = placer_class(container_type, container, id, metadata, timestamp, origin)
@@ -132,7 +138,7 @@ class Upload(base.RequestHandler):
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
             try:
                 file_store = files.FileStore(self.request, tempdir_path)
-            except FileStoreException as e:
+            except files.FileStoreException as e:
                 self.abort(400, str(e))
             now = datetime.datetime.utcnow()
             fileinfo = dict(
@@ -147,7 +153,7 @@ class Upload(base.RequestHandler):
                 origin=self.origin
             )
 
-            target, file_metadata = reaperutil.create_container_hierarchy(file_store.metadata)
+            target, file_metadata = hierarchy.create_container_hierarchy(file_store.metadata)
             fileinfo.update(file_metadata)
             f = target.find(file_store.filename)
             target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
@@ -162,38 +168,19 @@ class Upload(base.RequestHandler):
             throughput = file_store.size / file_store.duration.total_seconds()
             log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
-    def uploader(self):
+    def upload(self, strategy):
         """Receive a sortable reaper upload."""
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
-            try:
-                file_store = files.MultiFileStore(self.request, tempdir_path)
-            except FileStoreException as e:
-                self.abort(400, str(e))
-            if not file_store.metadata:
-                self.abort(400, 'metadata is missing')
-            payload_schema_uri = util.schema_uri('input', 'uploader.json')
-            metadata_validator = validators.from_schema_path(payload_schema_uri)
-            metadata_validator(file_store.metadata, 'POST')
-            try:
-                target_containers = reaperutil.create_root_to_leaf_hierarchy(file_store.metadata, file_store.files)
-            except APIStorageException as e:
-                self.abort(400, str(e))
-            for target, file_dict in target_containers:
-                for filename, parsed_file in file_dict.items():
-                    fileinfo = parsed_file.info
-                    fileinfo['origin'] = self.origin
-                    f = target.find(filename)
-                    target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
-                    if not f:
-                        files.move_file(parsed_file.path, target_path)
-                        target.add_file(fileinfo)
-                        rules.create_jobs(config.db, target.container, target.level[:-1], fileinfo)
-                    elif not files.identical(fileinfo['hash'], parsed_file.path, f['hash'], util.path_from_hash(f['hash'])):
-                        files.move_file(parsed_file.path, target_path)
-                        target.update_file(fileinfo)
-                        rules.create_jobs(config.db, target.container, target.level[:-1], fileinfo)
+
+        # TODO: what enum
+        if strategy == 'label':
+            strategy = Strategy.labelupload
+        elif strategy == 'uid':
+            strategy = Strategy.uidupload
+        else:
+            self.abort(500, 'stragegy {} not implemented'.format(strategy))
+        return process_upload(self.request, strategy, origin=self.origin)
 
     def engine(self):
         """
@@ -217,7 +204,7 @@ class Upload(base.RequestHandler):
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
             try:
                 file_store = files.MultiFileStore(self.request, tempdir_path)
-            except FileStoreException as e:
+            except files.FileStoreException as e:
                 self.abort(400, str(e))
             if not file_store.metadata:
                 self.abort(400, 'metadata is missing')
@@ -227,7 +214,7 @@ class Upload(base.RequestHandler):
             file_infos = file_store.metadata['acquisition'].pop('files', [])
             now = datetime.datetime.utcnow()
             try:
-                acquisition_obj = reaperutil.update_container_hierarchy(file_store.metadata, acquisition_id, level)
+                acquisition_obj = hierarchy.update_container_hierarchy(file_store.metadata, acquisition_id, level)
             except APIStorageException as e:
                 self.abort(400, e.message)
             # move the files before updating the database
@@ -236,14 +223,14 @@ class Upload(base.RequestHandler):
                 target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
                 files.move_file(parsed_file.path, target_path)
             # merge infos from the actual file and from the metadata
-            merged_files = reaperutil.merge_fileinfos(file_store.files, file_infos)
+            merged_files = hierarchy.merge_fileinfos(file_store.files, file_infos)
             # update the fileinfo in mongo if a file already exists
             for f in acquisition_obj['files']:
                 merged_file = merged_files.get(f['name'])
                 if merged_file:
                     fileinfo = merged_file.info
                     fileinfo['modified'] = now
-                    acquisition_obj = reaperutil.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
+                    acquisition_obj = hierarchy.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
                     fileinfo['existing'] = True
             # create the missing fileinfo in mongo
             for name, merged_file in merged_files.items():
@@ -255,7 +242,7 @@ class Upload(base.RequestHandler):
                     fileinfo['created'] = now
                     fileinfo['modified'] = now
                     fileinfo['origin'] = self.origin
-                    acquisition_obj = reaperutil.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
+                    acquisition_obj = hierarchy.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
 
             for f in acquisition_obj['files']:
                 if f['name'] in file_store.files:
@@ -268,4 +255,3 @@ class Upload(base.RequestHandler):
                     }
                     rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
             return [{'name': k, 'hash': v.info.get('hash'), 'size': v.info.get('size')} for k, v in merged_files.items()]
-
