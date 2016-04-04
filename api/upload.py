@@ -17,13 +17,14 @@ log = config.log
 
 Strategy = util.Enum('Strategy', {
     'targeted'   : pl.TargetedPlacer,   # Upload N files to a container.
-    'engine'     : pl.EnginePlacer,	  # Upload N files from the result of a successful job.
-    'packfile'   : pl.PackfilePlacer,	  # Upload N files as a new packfile to a container.
+    'engine'     : pl.EnginePlacer,     # Upload N files from the result of a successful job.
+    'token'      : pl.TokenPlacer,      # Upload N files to a saved folder based on a token.
+    'packfile'   : pl.PackfilePlacer,   # Upload N files as a new packfile to a container.
     'labelupload': pl.LabelPlacer,
     'uidupload'  : pl.UIDPlacer,
 })
 
-def process_upload(request, strategy, container_type=None, id=None, origin=None):
+def process_upload(request, strategy, container_type=None, id=None, origin=None, context=None):
     """
     Universal file upload entrypoint.
 
@@ -73,16 +74,10 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None)
 
     metadata = None
     if 'metadata' in form:
-        # Slight misnomer: the metadata field, if present, is sent as a normal form field, NOT a file form field.
-        metadata_file = form['metadata'].file
-        try:
-            metadata = json.loads(metadata_file.getvalue())
-        except AttributeError:
-            raise files.FileStoreException('wrong format for field "metadata"')
-
+        metadata = json.loads(form['metadata'].value)
 
     placer_class = strategy.value
-    placer = placer_class(container_type, container, id, metadata, timestamp, origin)
+    placer = placer_class(container_type, container, id, metadata, timestamp, origin, context)
     placer.check()
 
     # Browsers, when sending a multipart upload, will send files with field name "file" (if sinuglar)
@@ -184,16 +179,19 @@ class Upload(base.RequestHandler):
 
     def engine(self):
         """
-        URL format: api/engine?level=<container_type>&id=<container_id>
-
-        It expects a multipart/form-data request with a "metadata" field (json valid against api/schemas/input/enginemetadata)
-        and 0 or more file fields with a non null filename property (filename is null for the "metadata").
+        URL format: api/engine?level=<container_type>&id=<container_id>&job=<job_id>
         """
+
+        if not self.superuser_request:
+            self.abort(402, 'uploads must be from an authorized drone')
+
         level = self.get_param('level')
         if level is None:
             self.abort(404, 'container level is required')
+
         if level != 'acquisition':
             self.abort(404, 'engine uploads are supported only at the acquisition level')
+
         acquisition_id = self.get_param('id')
         if not acquisition_id:
             self.abort(404, 'container id is required')

@@ -4,6 +4,7 @@ import datetime
 import dateutil
 import os
 import pymongo
+import shutil
 import zipfile
 
 from . import base
@@ -22,13 +23,14 @@ class Placer(object):
     Interface for a placer, which knows how to process files and place them where they belong - on disk and database.
     """
 
-    def __init__(self, container_type, container, id, metadata, timestamp, origin):
+    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
         self.container_type = container_type
         self.container      = container
         self.id             = id
         self.metadata       = metadata
         self.timestamp      = timestamp
         self.origin         = origin
+        self.context        = context
 
     def check(self):
         """
@@ -208,12 +210,61 @@ class EnginePlacer(Placer):
         return self.saved
 
 
-class PackfilePlacer(Placer):
+class TokenPlacer(Placer):
     """
-    A place that can accept N files, save them into a zip archive, and place the result on an acquisition.
+    A placer that can accept N files and save them to a persistent directory across multiple requests.
+    Intended for use with a token that tracks where the files will be stored.
     """
 
     def check(self):
+        token = self.context['token']
+
+        if token is None:
+            raise Exception('TokenPlacer requires a token')
+
+        base = config.get_item('persistent', 'data_path')
+        self.folder = os.path.join(base, 'tokens', token)
+
+        util.mkdir_p(self.folder)
+
+        self.saved = []
+        self.paths = []
+
+    def process_file_field(self, field, info):
+        self.saved.append(info)
+        self.paths.append(field.path)
+
+    def finalize(self):
+        print os.listdir(self.folder)
+
+        for path in self.paths:
+            dest = os.path.join(self.folder, os.path.basename(path))
+
+            print 'FROM ' + path
+            print 'TO   ' + dest
+            shutil.move(path, dest)
+            print '----'
+
+        return self.saved
+
+
+class PackfilePlacer(Placer):
+    """
+    A placer that can accept N files, save them into a zip archive, and place the result on an acquisition.
+    """
+
+    def check(self):
+        token = self.context['token']
+
+        if token is None:
+            raise Exception('PackfilePlacer requires a token')
+
+        base = config.get_item('persistent', 'data_path')
+        self.folder = os.path.join(base, 'tokens', token)
+
+        if not os.path.isdir(self.folder):
+            raise Exception('Packfile directory does not exist or has been deleted')
+
         self.requireMetadata()
         validators.validate_data(self.metadata, 'packfile.json', 'input', 'POST')
 
@@ -255,14 +306,26 @@ class PackfilePlacer(Placer):
         self.zip.write(self.tempdir.name, self.dir)
 
     def process_file_field(self, field, info):
-        # Set the file's mtime & atime.
-        os.utime(field.path, (self.ziptime, self.ziptime))
-
-        # Place file into the zip folder we created before
-        self.zip.write(field.path, os.path.join(self.dir, field.filename))
+        # Should not be called with any files
+        raise Exception('Files must already be uploaded')
 
     def finalize(self):
+
+        # Write all files to zip
+        for path in os.listdir(self.folder):
+            p = os.path.join(self.folder, path)
+
+            # Set the file's mtime & atime.
+            os.utime(p, (self.ziptime, self.ziptime))
+
+            # Place file into the zip folder we created before
+            self.zip.write(p, os.path.join(self.dir, os.path.basename(path)))
+
         self.zip.close()
+
+        print self.folder
+        print 'SAFETY'
+        # shutil.rmtree(self.folder)
 
         # Create an anyonmous object in the style of our augmented file fields.
         # Not a great practice. See process_upload() for details.
@@ -303,8 +366,6 @@ class PackfilePlacer(Placer):
             'label': self.s_label,
             'group': self.g_id
         }
-
-        # self.permissions
 
         # Add the subject if one was provided
         new_s = copy.deepcopy(s)

@@ -1,12 +1,13 @@
-import os
-import json
-import pytz
-import uuid
-import datetime
-import mimetypes
 import bson.objectid
-import tempdir as tempfile
+import datetime
 import enum as baseEnum
+import errno
+import json
+import mimetypes
+import os
+import pytz
+import tempdir as tempfile
+import uuid
 
 from . import config
 MIMETYPES = [
@@ -163,3 +164,12 @@ class Enum(baseEnum.Enum):
             return self.name == other
         else:
             return super.__eq__(other)
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
