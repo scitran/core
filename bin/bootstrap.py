@@ -55,7 +55,8 @@ if args.insecure:
     requests.packages.urllib3.disable_warnings()
 
 http_headers = {
-    'User-Agent': 'SciTran Drone Bootstrapper',
+    'X-SciTran-Method': 'bootstrapper',
+    'X-SciTran-Name': 'Bootstrapper',
 }
 if args.secret:
     http_headers['X-SciTran-Auth'] = args.secret
