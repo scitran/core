@@ -235,15 +235,9 @@ class TokenPlacer(Placer):
         self.paths.append(field.path)
 
     def finalize(self):
-        print os.listdir(self.folder)
-
         for path in self.paths:
             dest = os.path.join(self.folder, os.path.basename(path))
-
-            print 'FROM ' + path
-            print 'TO   ' + dest
             shutil.move(path, dest)
-            print '----'
 
         return self.saved
 
@@ -323,9 +317,8 @@ class PackfilePlacer(Placer):
 
         self.zip.close()
 
-        print self.folder
-        print 'SAFETY'
-        # shutil.rmtree(self.folder)
+        # Remove the folder created by TokenPlacer
+        shutil.rmtree(self.folder)
 
         # Create an anyonmous object in the style of our augmented file fields.
         # Not a great practice. See process_upload() for details.
