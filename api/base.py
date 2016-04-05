@@ -18,9 +18,6 @@ from .dao import APIConsistencyException
 
 log = config.log
 
-# When authenticating as a drone, the user agent must start with this prefix.
-DRONE_PREFIX = 'SciTran Drone '
-
 class RequestHandler(webapp2.RequestHandler):
 
     json_schema = None
@@ -34,11 +31,12 @@ class RequestHandler(webapp2.RequestHandler):
         self.uid = None
         self.source_site = None
         drone_request = False
-        drone_name = ''
 
         user_agent = self.request.headers.get('User-Agent', '')
         access_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
+        drone_method = self.request.headers.get('X-SciTran-Method', None)
+        drone_name = self.request.headers.get('X-SciTran-Name', None)
 
         site_id = config.get_item('site', 'id')
         if site_id is None:
@@ -53,14 +51,14 @@ class RequestHandler(webapp2.RequestHandler):
             self.uid = self.get_param('user')
 
         # Drone shared secret authentication
-        elif drone_secret is not None and user_agent.startswith(DRONE_PREFIX):
+        elif drone_secret is not None:
+            if drone_method is None or drone_name is None:
+                self.abort(400, 'X-SciTran-Method or X-SciTran-Name header missing')
             if config.get_item('core', 'drone_secret') is None:
                 self.abort(401, 'drone secret not configured')
             if drone_secret != config.get_item('core', 'drone_secret'):
                 self.abort(401, 'invalid drone secret')
             drone_request = True
-            drone_name = user_agent.replace(DRONE_PREFIX, '')
-            log.info('drone "' + drone_name + '" request accepted')
 
         # Cross-site authentication
         elif user_agent.startswith('SciTran Instance '):
@@ -92,7 +90,7 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
-        self.set_origin(drone_request, drone_name)
+        self.set_origin(drone_request)
 
     def authenticate_user(self, access_token):
         """
@@ -167,7 +165,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         return uid
 
-    def set_origin(self, drone_request, drone_name):
+    def set_origin(self, drone_request):
         """
         Add an origin to the request object. Used later in request handler logic.
 
@@ -176,18 +174,21 @@ class RequestHandler(webapp2.RequestHandler):
         Might be a good future project to remove one or the other.
         """
 
-        if drone_name.startswith('Reaper') or drone_name.startswith('Importer'):
-            drone_type, _, drone_name = drone_name.partition(' ')
-
         if self.uid is not None:
             self.origin = {
                 'type': str(Origin.user),
                 'id': self.uid
             }
         elif drone_request:
+
+            method = self.request.headers.get('X-SciTran-Method')
+            name = self.request.headers.get('X-SciTran-Name')
+
             self.origin = {
+                'id': method + '_' + name,
                 'type': str(Origin.device),
-                'id': drone_name
+                'method': method,
+                'name': name
             }
 
             # Upsert device record, with last-contacted time.
@@ -197,7 +198,9 @@ class RequestHandler(webapp2.RequestHandler):
                 }, {
                     '$set': {
                         '_id': self.origin['id'],
-                        'last-seen': datetime.datetime.utcnow()
+                        'last-seen': datetime.datetime.utcnow(),
+                        'method': self.origin['method'],
+                        'name': self.origin['name']
                     }
                 },
                 upsert=True,
