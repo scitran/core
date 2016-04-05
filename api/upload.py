@@ -74,7 +74,10 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
 
     metadata = None
     if 'metadata' in form:
-        metadata = json.loads(form['metadata'].value)
+        try:
+            metadata = json.loads(form['metadata'].value)
+        except AttributeError:
+            raise files.FileStoreException('wrong format for field "metadata"')
 
     placer_class = strategy.value
     placer = placer_class(container_type, container, id, metadata, timestamp, origin, context)
