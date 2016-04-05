@@ -354,48 +354,50 @@ class PackfilePlacer(Placer):
         }
 
         # Get or create a session based on the hierarchy and provided labels.
-        s = {
+        query = {
             'project': bson.ObjectId(self.p_id),
             'label': self.s_label,
             'group': self.g_id
         }
 
-        # Add the subject if one was provided
-        new_s = copy.deepcopy(s)
-        subject = self.metadata['session'].get('subject')
-        if subject is not None:
-            new_s['subject'] = subject
-        new_s['modified']    = self.timestamp
-        new_s = util.mongo_dict(new_s)
+        # Updates if existing
+        updates = {}
+        updates['permissions'] = self.permissions
+        updates['modified']    = self.timestamp
+        updates = util.mongo_dict(updates)
 
-        # Permissions should always be an exact copy
-        new_s['permissions'] = self.permissions
+        # Extra properties on insert
+        insert_map = copy.deepcopy(query)
+        insert_map['created'] = self.timestamp
+        insert_map.update(self.metadata['session'])
 
-        session = config.db['session' + 's'].find_one_and_update(s, {
-                '$set': new_s,
-                '$setOnInsert': {
-                    'created': self.timestamp
-                }
+        session = config.db['session' + 's'].find_one_and_update(
+            query, {
+                '$set': updates,
+                '$setOnInsert': insert_map
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
         # Get or create an acquisition based on the hierarchy and provided labels.
-        fields = {
-            'session': session['_id'],
-            'label': self.a_label
-        }
+        query = { 'session': session['_id'] }
 
-        new_a = copy.deepcopy(fields)
-        new_a['permissions'] = self.permissions
-        new_a['modified']    = self.timestamp
+        # Updates if existing
+        updates = {}
+        updates['permissions'] = self.permissions
+        updates['modified']    = self.timestamp
+        updates = util.mongo_dict(updates)
 
-        acquisition = config.db['acquisition' + 's'].find_one_and_update(fields, {
-                '$set': new_a,
-                '$setOnInsert': {
-                    'created': self.timestamp
-                }
+        # Extra properties on insert
+        insert_map = copy.deepcopy(query)
+        insert_map['created'] = self.timestamp
+        insert_map.update(self.metadata['acquisition'])
+
+        acquisition = config.db['acquisition' + 's'].find_one_and_update(
+            query, {
+                '$set': updates,
+                '$setOnInsert': insert_map
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER
