@@ -25,7 +25,7 @@ bootstrap_data_label=7d5c3608ff360d6ae28aab0ef262e6781c4ae8d6
 
 
 # Same as bootstrap_data_label above, except for scitran/reaper.
-bootstrap_reaper_label=c67502a73e5a297c45aa170f163d0884fb1d3f35
+bootstrap_reaper_label=1453440fc4139a614e60c5b634ddaa20cd22addd
 
 
 # Move to API folder for relative path assumptions later on

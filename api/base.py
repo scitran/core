@@ -92,7 +92,7 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
-        self.set_origin(drone_request, drone_name.partition(' ')[2])
+        self.set_origin(drone_request, drone_name)
 
     def authenticate_user(self, access_token):
         """
@@ -175,6 +175,9 @@ class RequestHandler(webapp2.RequestHandler):
         this map serves a different purpose, and specifically matches the desired file-origin map.
         Might be a good future project to remove one or the other.
         """
+
+        if drone_name.startswith('Reaper') or drone_name.startswith('Importer'):
+            drone_type, _, drone_name = drone_name.partition(' ')
 
         if self.uid is not None:
             self.origin = {
