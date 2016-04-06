@@ -55,7 +55,7 @@ class CollectionsHandler(ContainerHandler):
         contents = payload.pop('contents', None)
         payload_validator(payload, 'PUT')
         permchecker = self._get_permchecker(container)
-        payload['modified'] = str(datetime.datetime.utcnow())
+        payload['modified'] = datetime.datetime.utcnow()
         try:
             result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         except APIStorageException as e:
