@@ -185,7 +185,7 @@ class RequestHandler(webapp2.RequestHandler):
             name = self.request.headers.get('X-SciTran-Name')
 
             self.origin = {
-                'id': method + '_' + name,
+                'id': (method + '_' + name).replace(' ', '_'),
                 'type': str(Origin.device),
                 'method': method,
                 'name': name
