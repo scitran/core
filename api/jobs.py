@@ -50,9 +50,9 @@ Category = util.Enum('Category', {
 Gear = namedtuple('gear', ['name', 'category', 'input'])
 
 Gears = [
-    Gear('dicom_mr_classifier', Category.classifier, {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dicom_mr_classifier-0.0.1.c.tar'}),
-    Gear('dcm_convert',         Category.converter,  {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dcm_convert-0.3.0.c.tar'      }),
-    Gear('qa-report-fmri',      Category.qa,         {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/qa-report-fmri-0.1.0.c.tar'     })
+    Gear('dicom_mr_classifier', Category.classifier, {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dicom_mr_classifier-bali.3.0-rc.2.tar'}),
+    Gear('dcm_convert',         Category.converter,  {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dcm_convert-bali.3.0-rc.2.tar'        }),
+    Gear('qa-report-fmri',      Category.qa,         {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/qa-report-fmri-bali.3.0-rc.2.tar'     })
 ]
 
 def get_gear_by_name(name):
