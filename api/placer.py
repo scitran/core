@@ -392,7 +392,10 @@ class PackfilePlacer(Placer):
         )
 
         # Get or create an acquisition based on the hierarchy and provided labels.
-        query = { 'session': session['_id'] }
+        query = {
+            'session': session['_id'],
+            'label': self.a_label,
+        }
 
         # Updates if existing
         updates = {}
