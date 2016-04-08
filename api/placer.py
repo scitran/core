@@ -277,6 +277,17 @@ class PackfilePlacer(Placer):
         # Then, given the ISO string, convert it to an epoch integer.
         minimum = datetime.datetime(1980, 1, 1).isoformat()
         stamp   = self.metadata['acquisition'].get('timestamp', minimum)
+
+        # If there was metadata sent back that predates the zip minimum, don't use it.
+        #
+        # Dateutil has overloaded the comparison operators, except it's totally useless:
+        # > TypeError: can't compare offset-naive and offset-aware datetimes
+        #
+        # So instead, epoch-integer both and compare that way.
+        if int(dateutil.parser.parse(stamp).strftime('%s')) < int(dateutil.parser.parse(minimum).strftime('%s')):
+            stamp = minimum
+
+        # Remember the timestamp integer for later use with os.utime.
         self.ziptime = int(dateutil.parser.parse(stamp).strftime('%s'))
 
         # The zipfile is a santizied acquisition label
