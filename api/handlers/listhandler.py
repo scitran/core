@@ -305,8 +305,7 @@ class TagsListHandler(ListHandler):
         _id = kwargs.get('cid')
         result = super(TagsListHandler, self).delete(cont_name, list_name, **kwargs)
         if cont_name == 'groups':
-            payload = self.request.json_body
-            deleted_tag = payload.get('value')
+            deleted_tag = kwargs.get('value')
             query = {}
             update = {'$pull': {'tags': deleted_tag}}
             self._propagate_group_tags(_id, query, update)
