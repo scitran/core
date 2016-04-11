@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import json
+import bson
 import sys
 import logging
 from api import config
 
-CURRENT_DATABASE_VERSION = 1 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 2 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -40,8 +41,44 @@ def confirm_schema_match():
         sys.exit(0)
 
 def upgrade_to_1():
-    # scitran/core issue #206
+    """
+    scitran/core issue #206
+
+    Initialize db version to 1
+    """
     config.db.version.insert_one({'_id': 'version', 'database': CURRENT_DATABASE_VERSION})
+
+def upgrade_to_2():
+    """
+    Scitran/core PR #236
+
+    Set file.origin.name to id if does not exist
+    Set file.origin.method to '' if does not exist
+    """
+
+    def update_file_origins(cont_list, cont_name):
+        for container in cont_list:
+            updated_files = []
+            for file in container.get('files', []):
+                origin = file.get('origin')
+                if origin is not None:
+                    if origin.get('name', None) is None:
+                        file['origin']['name'] = origin['id']
+                    if origin.get('method', None) is None:
+                        file['origin']['method'] = ''
+                updated_files.append(file)
+
+            query = {'_id': container['_id']}
+            update = {'$set': {'files': updated_files}}
+            result = config.db[cont_name].update_one(query, update)
+
+    query = {'$and':[{'files.origin.name': { '$exists': False}}, {'files.origin.id': { '$exists': True}}]}
+
+    update_file_origins(config.db.collections.find(query), 'collections')
+    update_file_origins(config.db.projects.find(query), 'projects')
+    update_file_origins(config.db.sessions.find(query), 'sessions')
+    update_file_origins(config.db.acquisitions.find(query), 'acquisitions')
+
 
 def upgrade_schema():
     """
@@ -54,6 +91,8 @@ def upgrade_schema():
     try:
         if db_version < 1:
             upgrade_to_1()
+        if db_version < 2:
+            upgrade_to_2()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
