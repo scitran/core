@@ -212,6 +212,7 @@ class PermissionsListHandler(ListHandler):
 
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
+
         result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
         if cont_name == 'projects':
             self._propagate_project_permissions(_id)
@@ -281,6 +282,56 @@ class NotesListHandler(ListHandler):
         else:
             return {'modified':result.modified_count}
 
+
+class TagsListHandler(ListHandler):
+    """
+    TagsListHandler overrides put, delete methods of ListHandler to propagate changes to group tags
+    If a tag is renamed or deleted at the group level, project, session and acquisition tags will also be renamed/deleted
+    """
+
+    def put(self, cont_name, list_name, **kwargs):
+        _id = kwargs.get('cid')
+        result = super(TagsListHandler, self).put(cont_name, list_name, **kwargs)
+        if cont_name == 'groups':
+            payload = self.request.json_body
+            current_value = kwargs.get('value')
+            new_value = payload.get('value')
+            query = {'$and':[{'tags': current_value}, {'tags': {'$ne': new_value}}]}
+            update = {'$set': {'tags.$': new_value}}
+            self._propagate_group_tags(_id, query, update)
+        return result
+
+    def delete(self, cont_name, list_name, **kwargs):
+        _id = kwargs.get('cid')
+        result = super(TagsListHandler, self).delete(cont_name, list_name, **kwargs)
+        if cont_name == 'groups':
+            payload = self.request.json_body
+            deleted_tag = payload.get('value')
+            query = {}
+            update = {'$pull': {'tags': deleted_tag}}
+            self._propagate_group_tags(_id, query, update)
+
+    def _propagate_group_tags(self, _id, query, update):
+        """
+        method to propagate tag changes from a group to its projects, sessions and acquisitions
+        """
+        try:
+            project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
+            session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
+
+            project_q = query.copy()
+            project_q['_id'] = {'$in': project_ids}
+            session_q = query.copy()
+            session_q['_id'] = {'$in': session_ids}
+            acquisition_q = query.copy()
+            acquisition_q['session'] = {'$in': session_ids}
+
+            config.db.projects.update_many(project_q, update)
+            config.db.sessions.update_many(session_q, update)
+            config.db.acquisitions.update_many(acquisition_q, update)
+        except:
+            log.debug(e)
+            self.abort(500, 'tag change not propagated down heirarchy from group {}'.format(_id))
 
 
 class FileListHandler(ListHandler):
