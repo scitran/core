@@ -31,6 +31,7 @@ SCITRAN_PERSISTENT_DATA_PATH=${SCITRAN_PERSISTENT_DATA_PATH:-"$SCITRAN_PERSISTEN
 SCITRAN_PERSISTENT_DB_PATH=${SCITRAN_PERSISTENT_DB_PATH:-"$SCITRAN_PERSISTENT_PATH/db"}
 SCITRAN_PERSISTENT_DB_PORT=${SCITRAN_PERSISTENT_DB_PORT:-"9001"}
 SCITRAN_PERSISTENT_DB_URI=${SCITRAN_PERSISTENT_DB_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"}
+SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-"change-me"}
 
 [ -z "$SCITRAN_RUNTIME_SSL_PEM" ] && SCITRAN_SITE_API_URL="http" || SCITRAN_SITE_API_URL="https"
 SCITRAN_SITE_API_URL="$SCITRAN_SITE_API_URL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
@@ -154,10 +155,7 @@ trap "{
 
 
 # Wait for everything to come up
-sleep 1
-
-
-
+sleep 2
 
 
 # Boostrap users and groups
@@ -184,7 +182,7 @@ if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
     echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
 else
     echo "Bootstrapping testdata"
-    folder_reaper --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
+    folder_uploader --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
     echo "Bootstrapped testdata"
     touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
 fi

@@ -25,7 +25,7 @@ bootstrap_data_label=7d5c3608ff360d6ae28aab0ef262e6781c4ae8d6
 
 
 # Same as bootstrap_data_label above, except for scitran/reaper.
-bootstrap_reaper_label=30215c66a33b18685e1608dbe952e78c370d8765
+bootstrap_reaper_label=0778a6e8294134db060e230b5bd5af4e09e53b56
 
 
 # Move to API folder for relative path assumptions later on
@@ -75,6 +75,6 @@ pip install "git+https://github.com/scitran/reaper.git@${bootstrap_reaper_label}
 API_URL="$SCITRAN_RUNTIME_PROTOCOL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
 
 ## load the test data in
-folder_reaper --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${API_URL}" "$TESTDATA_DIR/download"
+folder_uploader --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${API_URL}" "$TESTDATA_DIR/download"
 
 )
