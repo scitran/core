@@ -52,6 +52,22 @@ def group_roles_sublist(handler, container):
         return f
     return g
 
+def group_tags_sublist(handler, container):
+    """
+    This is the customized permissions checker for tags operations.
+    """
+    access = _get_access(handler.uid, handler.user_site, container)
+    def g(exec_op):
+        def f(method, _id, query_params = None, payload = None, exclude_params=None):
+            if method == 'GET'  and access >= INTEGER_ROLES['ro']:
+                return exec_op(method, _id, query_params, payload, exclude_params)
+            elif access >= INTEGER_ROLES['admin']:
+                return exec_op(method, _id, query_params, payload, exclude_params)
+            else:
+                handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
+        return f
+    return g
+
 def permissions_sublist(handler, container):
     """
     the customized permissions checker for permissions operations.
