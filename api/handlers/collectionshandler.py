@@ -193,6 +193,8 @@ class CollectionsHandler(ContainerHandler):
                 acq['debug'] = {}
                 aid = str(acq['_id'])
                 acq['debug']['details'] = self.uri_for('cont_details', cont_name='acquisitions', cid=aid, _full=True) + '?user=' + self.get_param('user', '')
+        for acquisition in acquisitions:
+            acquisition = self.handle_origin(acquisition)
         return acquisitions
 
 
