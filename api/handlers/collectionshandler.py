@@ -158,8 +158,9 @@ class CollectionsHandler(ContainerHandler):
         self._filter_all_permissions(sessions, self.uid, self.user_site)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
-        if self.debug:
-            for sess in sessions:
+        for sess in sessions:
+            sess = self.handle_origin(sess)
+            if self.debug:
                 sess['debug'] = {}
                 sid = str(sess['_id'])
                 sess['debug']['details'] = self.uri_for('cont_details', cont_name='sessions', cid=sid, _full=True) + '?user=' + self.get_param('user', '')
