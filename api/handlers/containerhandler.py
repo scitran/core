@@ -83,6 +83,30 @@ class ContainerHandler(base.RequestHandler):
         self.storage = None
         self.config = None
 
+    def _fill_required_fields(self, cont, cont_name):
+        """
+        Fills in any missing container fields required for GET requests
+        """
+
+        base_cont = {
+            '_id':          None,
+            'created':      None,
+            'modified':     None,
+            'views':        None,
+            'downloads':    None,
+            'notes':        [],
+            'files':        [],
+            'analyses':     [],
+            'permissions':  [],
+            'tags':         [],
+            'info':         {}
+        }
+        base_cont.update(cont)
+        if cont_name == 'sessions':
+            if base_cont.get('subject', None) is None:
+                base_cont['subject'] = {}
+        return base_cont
+
     def get(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
@@ -106,8 +130,7 @@ class ContainerHandler(base.RequestHandler):
 
         if cont_name == 'sessions':
             result = self.handle_analyses(result)
-
-        return self.handle_origin(result)
+        return self._fill_required_fields(self.handle_origin(result), cont_name)
 
     def handle_origin(self, result):
         """
@@ -261,19 +284,24 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
         # return only permissions of the current user
         if not self.superuser_request:
-            self._filter_permissions(result, self.uid, self.user_site)
+            self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
         if self.is_true('counts'):
             self._add_results_counts(results, cont_name)
 
+        modified_results = []
         for result in results:
-            result = self.handle_origin(result)
             if cont_name == 'sessions':
                 result = self.handle_analyses(result)
+<<<<<<< HEAD
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, cont_name)
+=======
+            result = self._fill_required_fields(self.handle_origin(result), cont_name)
+            modified_results.append(result)
+>>>>>>> c89d5a1... Ensure containers return all defaults
 
-        return results
+        return modified_results
 
     def _filter_all_permissions(self, results, uid, site):
         for result in results:
