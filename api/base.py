@@ -81,7 +81,7 @@ class RequestHandler(webapp2.RequestHandler):
         else:
             user = config.db.users.find_one({'_id': self.uid}, ['root'])
             if not user:
-                self.abort(403, 'user ' + self.uid + ' does not exist')
+                self.abort(402, 'user ' + self.uid + ' does not exist')
             if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
