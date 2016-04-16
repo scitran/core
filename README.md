@@ -4,6 +4,10 @@
 
 # SciTran – Scientific Data Management
 
+### Overview
+
+See the [scitran core wiki page](https://github.com/scitran/core/wiki) for an overview.
+
 
 ### Usage
 ```
