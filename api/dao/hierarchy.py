@@ -95,21 +95,21 @@ def add_fileinfo(cont_name, _id, fileinfo):
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
 
-def _group_name_fuzzy_match(group_name, project_label):
+def _group_id_fuzzy_match(group_id, project_label):
     existing_group_ids = [g['_id'] for g in config.db.groups.find(None, ['_id'])]
-    if group_name in existing_group_ids:
-        return group_name, project_label
-    group_id_matches = difflib.get_close_matches(group_name, existing_group_ids, cutoff=0.8)
+    if group_id.lower() in existing_group_ids:
+        return group_id.lower(), project_label
+    group_id_matches = difflib.get_close_matches(group_id, existing_group_ids, cutoff=0.8)
     if len(group_id_matches) == 1:
-        group_name = group_id_matches[0]
+        group_id = group_id_matches[0]
     else:
-        project_label = group_name + '_' + project_label
-        group_name = 'unknown'
-    return group_name, project_label
+        project_label = group_id + '_' + project_label
+        group_id = 'unknown'
+    return group_id, project_label
 
-def _find_or_create_destination_project(group_name, project_label, timestamp):
-    group_name, project_label = _group_name_fuzzy_match(group_name, project_label)
-    group = config.db.groups.find_one({'_id': group_name})
+def _find_or_create_destination_project(group_id, project_label, timestamp):
+    group_id, project_label = _group_id_fuzzy_match(group_id, project_label)
+    group = config.db.groups.find_one({'_id': group_id})
     project = config.db.projects.find_one_and_update(
         {'group': group['_id'],
          'label': {'$regex': project_label, '$options': 'i'}
@@ -262,10 +262,8 @@ def upsert_top_down_hierarchy(metadata, type_='label'):
     acquisition = metadata.get('acquisition')
 
     now = datetime.datetime.utcnow()
-    group_id = group['_id']
-
     project_files = dict_fileinfos(project.pop('files', []))
-    project_obj = _find_or_create_destination_project(group_id, project['label'], now)
+    project_obj = _find_or_create_destination_project(group['_id'], project['label'], now)
     target_containers = _get_targets(project_obj, session, acquisition, type_, now)
     target_containers.append(
         (TargetContainer(project_obj, 'project'), project_files)
