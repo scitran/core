@@ -23,6 +23,8 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('GET', _id)
+        if not self.superuser_request:
+            self._filter_roles([result], self.uid, self.user_site)
         return result
 
     def delete(self, _id):
@@ -43,11 +45,13 @@ class GroupHandler(base.RequestHandler):
     def get_all(self, uid=None):
         self._init_storage()
         query = None
-        projection = {'name': 1, 'created': 1, 'modified': 1}
+        projection = {'name': 1, 'created': 1, 'modified': 1, 'roles': [], 'tags': []}
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
         if results is None:
             self.abort(404, 'Not found')
+        if not self.superuser_request:
+            self._filter_roles(results, self.uid, self.user_site)
         if self.debug:
             debuginfo.add_debuginfo(self, 'groups', results)
         return results
@@ -100,3 +104,12 @@ class GroupHandler(base.RequestHandler):
             return group
         else:
             self.abort(404, 'Group {} not found'.format(_id))
+
+    def _filter_roles(self, results, uid, site):
+        """
+        if the user is not admin only her role is returned.
+        """
+        for result in results:
+            user_perm = util.user_perm(result.get('roles', []), uid, site)
+            result['roles'] = [user_perm] if user_perm else []
+        return results

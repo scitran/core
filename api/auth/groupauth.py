@@ -15,6 +15,8 @@ def default(handler, group=None):
                 handler.abort(403, 'not allowed to perform operation')
             elif _get_access(handler.uid, handler.user_site, group) >= INTEGER_ROLES['admin']:
                 pass
+            elif method == 'GET' and _get_access(handler.uid, handler.user_site, group) >= INTEGER_ROLES['ro']:
+                pass
             else:
                 handler.abort(403, 'not allowed to perform operation')
             return exec_op(method, _id=_id, query=query, payload=payload, projection=projection)
