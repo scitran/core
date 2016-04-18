@@ -111,5 +111,6 @@ class GroupHandler(base.RequestHandler):
         """
         for result in results:
             user_perm = util.user_perm(result.get('roles', []), uid, site)
-            result['roles'] = [user_perm] if user_perm else []
+            if user_perm.get('access') != 'admin':
+                result['roles'] = [user_perm] if user_perm else []
         return results
