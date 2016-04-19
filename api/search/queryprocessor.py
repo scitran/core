@@ -144,6 +144,19 @@ class TargetProperty(object):
         )['hits']['hits']
         return {r['_id']: r for r in results}
 
+
+class TargetInAnalysis(TargetProperty):
+
+    def __init__(self, name, query, analyses_query):
+        self.target_analysys = TargetProperty('analyses', analyses_query)
+        self.name = name
+        self.query = query
+
+    def get_results(self, parent_name, parent_results):
+        analysis_list = self.target_analysys.get_results(parent_name, parent_results)
+        return self._get_results('analyses', analysis_list)
+
+
 class PreparedSearch(object):
 
     containers = ['groups', 'projects', 'sessions', 'collections', 'acquisitions']
@@ -163,14 +176,20 @@ class PreparedSearch(object):
     def _get_targets(self, path):
         path_parts = path.split('/')
         query = self.queries.get(path_parts[-1])
-        if path_parts[-1] in ['files', 'notes']:
-            target = TargetProperty(path_parts[-1], query)
-            if len(path_parts) == 1:
+        if path_parts[-1] in ['files', 'notes', 'analyses']:
+            if len(path_parts) >= 2 and path_parts[-2] == 'analyses':
+                min_length = 2
+                analyses_query = self.queries.get('analyses')
+                target = TargetInAnalysis(path_parts[-1], query, analyses_query)
+            else:
+                min_length = 1
+                target = TargetProperty(path_parts[-1], query)
+            if len(path_parts) == min_length:
                 return {
                     c: [copy.deepcopy(target)] for c in self.containers
                 }
             else:
-                return {path_parts[-2]: [target]}
+                return {path_parts[-min_length-1]: [target]}
         else:
             return {path_parts[-1]: [path_parts[-1]]}
 
