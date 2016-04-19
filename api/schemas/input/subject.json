@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
+    "_id":              {"type": "string"},
     "firstname":        { "type": "string", "maxLength": 64 },
     "lastname":         { "type": "string", "maxLength": 64 },
     "firstname_hash":   { "type": ["string", "null"] },
