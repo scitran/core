@@ -4,6 +4,7 @@ import datetime
 import dateutil
 import os
 import pymongo
+import shutil
 import zipfile
 
 from . import base
@@ -22,13 +23,22 @@ class Placer(object):
     Interface for a placer, which knows how to process files and place them where they belong - on disk and database.
     """
 
-    def __init__(self, container_type, container, id, metadata, timestamp, origin):
+    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
         self.container_type = container_type
         self.container      = container
         self.id             = id
         self.metadata       = metadata
         self.timestamp      = timestamp
+
+        # An origin map for the caller
         self.origin         = origin
+
+        # A placer-defined map for breaking the Placer abstraction layer.
+        self.context        = context
+
+        # Should the caller expect a normal map return, or a generator that gets mapped to Server-Sent Events?
+        self.sse            = False
+
 
     def check(self):
         """
@@ -208,12 +218,70 @@ class EnginePlacer(Placer):
         return self.saved
 
 
-class PackfilePlacer(Placer):
+class TokenPlacer(Placer):
     """
-    A place that can accept N files, save them into a zip archive, and place the result on an acquisition.
+    A placer that can accept N files and save them to a persistent directory across multiple requests.
+    Intended for use with a token that tracks where the files will be stored.
     """
 
     def check(self):
+        token = self.context['token']
+
+        if token is None:
+            raise Exception('TokenPlacer requires a token')
+
+        # This logic is used by:
+        #   TokenPlacer.check
+        #   PackfilePlacer.check
+        #   upload.clean_packfile_tokens
+        #
+        # It must be kept in sync between each instance.
+        base = config.get_item('persistent', 'data_path')
+        self.folder = os.path.join(base, 'tokens', 'packfile', token)
+
+        util.mkdir_p(self.folder)
+
+        self.saved = []
+        self.paths = []
+
+    def process_file_field(self, field, info):
+        self.saved.append(info)
+        self.paths.append(field.path)
+
+    def finalize(self):
+        for path in self.paths:
+            dest = os.path.join(self.folder, os.path.basename(path))
+            shutil.move(path, dest)
+
+        return self.saved
+
+
+class PackfilePlacer(Placer):
+    """
+    A placer that can accept N files, save them into a zip archive, and place the result on an acquisition.
+    """
+
+    def check(self):
+        # This endpoint is an SSE endpoint
+        self.sse            = True
+
+        token = self.context['token']
+
+        if token is None:
+            raise Exception('PackfilePlacer requires a token')
+
+        # This logic is used by:
+        #   TokenPlacer.check
+        #   PackfilePlacer.check
+        #   upload.clean_packfile_tokens
+        #
+        # It must be kept in sync between each instance.
+        base = config.get_item('persistent', 'data_path')
+        self.folder = os.path.join(base, 'tokens', 'packfile', token)
+
+        if not os.path.isdir(self.folder):
+            raise Exception('Packfile directory does not exist or has been deleted')
+
         self.requireMetadata()
         validators.validate_data(self.metadata, 'packfile.json', 'input', 'POST')
 
@@ -232,6 +300,17 @@ class PackfilePlacer(Placer):
         # Then, given the ISO string, convert it to an epoch integer.
         minimum = datetime.datetime(1980, 1, 1).isoformat()
         stamp   = self.metadata['acquisition'].get('timestamp', minimum)
+
+        # If there was metadata sent back that predates the zip minimum, don't use it.
+        #
+        # Dateutil has overloaded the comparison operators, except it's totally useless:
+        # > TypeError: can't compare offset-naive and offset-aware datetimes
+        #
+        # So instead, epoch-integer both and compare that way.
+        if int(dateutil.parser.parse(stamp).strftime('%s')) < int(dateutil.parser.parse(minimum).strftime('%s')):
+            stamp = minimum
+
+        # Remember the timestamp integer for later use with os.utime.
         self.ziptime = int(dateutil.parser.parse(stamp).strftime('%s'))
 
         # The zipfile is a santizied acquisition label
@@ -255,14 +334,36 @@ class PackfilePlacer(Placer):
         self.zip.write(self.tempdir.name, self.dir)
 
     def process_file_field(self, field, info):
-        # Set the file's mtime & atime.
-        os.utime(field.path, (self.ziptime, self.ziptime))
-
-        # Place file into the zip folder we created before
-        self.zip.write(field.path, os.path.join(self.dir, field.filename))
+        # Should not be called with any files
+        raise Exception('Files must already be uploaded')
 
     def finalize(self):
+
+        paths = os.listdir(self.folder)
+        max = len(paths)
+
+        # Write all files to zip
+        complete = 0
+        for path in paths:
+            p = os.path.join(self.folder, path)
+
+            # Set the file's mtime & atime.
+            os.utime(p, (self.ziptime, self.ziptime))
+
+            # Place file into the zip folder we created before
+            self.zip.write(p, os.path.join(self.dir, os.path.basename(path)))
+
+            # Report progress
+            complete += 1
+            yield util.json_sse_pack({
+                'event': 'progress',
+                'data': { 'done': complete, 'total': max, 'percent': (complete / float(max)) * 100 },
+            })
+
         self.zip.close()
+
+        # Remove the folder created by TokenPlacer
+        shutil.rmtree(self.folder)
 
         # Create an anyonmous object in the style of our augmented file fields.
         # Not a great practice. See process_upload() for details.
@@ -298,50 +399,53 @@ class PackfilePlacer(Placer):
         }
 
         # Get or create a session based on the hierarchy and provided labels.
-        s = {
+        query = {
             'project': bson.ObjectId(self.p_id),
             'label': self.s_label,
             'group': self.g_id
         }
 
-        # self.permissions
+        # Updates if existing
+        updates = {}
+        updates['permissions'] = self.permissions
+        updates['modified']    = self.timestamp
+        updates = util.mongo_dict(updates)
 
-        # Add the subject if one was provided
-        new_s = copy.deepcopy(s)
-        subject = self.metadata['session'].get('subject')
-        if subject is not None:
-            new_s['subject'] = subject
-        new_s['modified']    = self.timestamp
-        new_s = util.mongo_dict(new_s)
+        # Extra properties on insert
+        insert_map = copy.deepcopy(query)
+        insert_map['created'] = self.timestamp
+        insert_map.update(self.metadata['session'])
 
-        # Permissions should always be an exact copy
-        new_s['permissions'] = self.permissions
-
-        session = config.db['session' + 's'].find_one_and_update(s, {
-                '$set': new_s,
-                '$setOnInsert': {
-                    'created': self.timestamp
-                }
+        session = config.db['session' + 's'].find_one_and_update(
+            query, {
+                '$set': updates,
+                '$setOnInsert': insert_map
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
         # Get or create an acquisition based on the hierarchy and provided labels.
-        fields = {
+        query = {
             'session': session['_id'],
-            'label': self.a_label
+            'label': self.a_label,
         }
 
-        new_a = copy.deepcopy(fields)
-        new_a['permissions'] = self.permissions
-        new_a['modified']    = self.timestamp
+        # Updates if existing
+        updates = {}
+        updates['permissions'] = self.permissions
+        updates['modified']    = self.timestamp
+        updates = util.mongo_dict(updates)
 
-        acquisition = config.db['acquisition' + 's'].find_one_and_update(fields, {
-                '$set': new_a,
-                '$setOnInsert': {
-                    'created': self.timestamp
-                }
+        # Extra properties on insert
+        insert_map = copy.deepcopy(query)
+        insert_map['created'] = self.timestamp
+        insert_map.update(self.metadata['acquisition'])
+
+        acquisition = config.db['acquisition' + 's'].find_one_and_update(
+            query, {
+                '$set': updates,
+                '$setOnInsert': insert_map
             },
             upsert=True,
             return_document=pymongo.collection.ReturnDocument.AFTER
@@ -354,8 +458,18 @@ class PackfilePlacer(Placer):
 
         self.save_file(cgi_field, cgi_info)
 
-        return {
+        # Delete token
+        token  = self.context['token']
+        config.db['tokens'].delete_one({ '_id': token })
+
+        result = {
             'acquisition_id': str(acquisition['_id']),
             'session_id':	 str(session['_id']),
-            'info': cgi_info
+            'info': cgi_info,
         }
+
+        # Report result
+        yield util.json_sse_pack({
+            'event': 'result',
+            'data': result,
+        })

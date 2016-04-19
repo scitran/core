@@ -3,6 +3,8 @@ import bson
 import copy
 import datetime
 import dateutil
+import json
+import uuid
 
 from .. import base
 from .. import config
@@ -430,7 +432,46 @@ class FileListHandler(ListHandler):
 
         return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id=_id, origin=self.origin)
 
-    def packfile(self, cont_name, **kwargs):
+    def _check_packfile_token(self, project_id, token_id, check_user=True):
+        """
+        Check and update a packfile token assertion.
+        """
+
+        if token_id is None:
+            raise Exception('Upload token is required')
+
+        query = {
+            'type': 'packfile',
+            'project': project_id,
+            '_id': token_id,
+        }
+
+        # Server-Sent Events are fired in the browser in such a way that one cannot dictate their headers.
+        # For these endpoints, authentication must be disabled because the normal Authorization header will not be present.
+        # In this case, the document id will serve instead.
+        if check_user:
+            query['user'] = self.uid
+
+        # Check for correct token
+        result = config.db['tokens'].find_one(query)
+
+        if result is None:
+            raise Exception('Invalid or expired upload token')
+
+        # Update token timestamp
+        config.db['tokens'].update_one({
+            '_id': token_id,
+        }, {
+            '$set': {
+                'modified': datetime.datetime.utcnow()
+            }
+        })
+
+    def packfile_start(self, cont_name, **kwargs):
+        """
+        Declare intent to upload a packfile to a project, and recieve an upload token identifier.
+        """
+
         _id = kwargs.pop('cid')
 
         if cont_name != 'projects':
@@ -452,4 +493,43 @@ class FileListHandler(ListHandler):
             else:
                 raise Exception('Not authorized')
 
-        return upload.process_upload(self.request, upload.Strategy.packfile, origin=self.origin)
+        timestamp = datetime.datetime.utcnow()
+
+        # Save token for stateful uploads
+        result = config.db['tokens'].insert_one({
+            '_id': str(uuid.uuid4()),
+            'type': 'packfile',
+            'user': self.uid,
+            'project': _id,
+            'created': timestamp,
+            'modified': timestamp,
+        })
+
+        return {
+            'token': str(result.inserted_id)
+        }
+
+    def packfile(self, cont_name, **kwargs):
+        """
+        Add files to an in-progress packfile.
+        """
+
+        project_id = kwargs.pop('cid')
+        token_id = self.request.GET.get('token')
+        self._check_packfile_token(project_id, token_id)
+
+        return upload.process_upload(self.request, upload.Strategy.token, origin=self.origin, context={'token': token_id})
+
+    def packfile_end(self, cont_name, **kwargs):
+        """
+        Complete and save an uploaded packfile.
+        """
+
+        project_id = kwargs.pop('cid')
+        token_id = self.request.GET.get('token')
+        self._check_packfile_token(project_id, token_id, check_user=False)
+
+        # Because this is an SSE endpoint, there is no form-post. Instead, read JSON data from request param
+        metadata = json.loads(self.request.GET.get('metadata'))
+
+        return upload.process_upload(self.request, upload.Strategy.packfile, origin=self.origin, context={'token': token_id}, response=self.response, metadata=metadata)

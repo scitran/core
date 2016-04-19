@@ -141,7 +141,7 @@ class ContainerHandler(base.RequestHandler):
                     j_id_b = bson.ObjectId(j_id)
 
                 # Join from database if we haven't for this origin before
-                if result['join-origin'][j_type].get(j_id, None) is None:
+                if j_type != 'unknown' and result['join-origin'][j_type].get(j_id, None) is None:
                     result['join-origin'][j_type][j_id] = config.db[j_type + 's'].find_one({'_id': j_id_b})
 
         return result
