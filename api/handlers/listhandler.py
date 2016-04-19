@@ -448,11 +448,7 @@ class FileListHandler(ListHandler):
 
         # Server-Sent Events are fired in the browser in such a way that one cannot dictate their headers.
         # For these endpoints, authentication must be disabled because the normal Authorization header will not be present.
-        # There are several valid ways to fix this, including switching to cookies, or allowing the inclusion of the Authorization token as a request parameter.
-        #
-        # In lieu of solutions, this workaround allows users to merely provide their token id for these endpoints.
-        # This is not ideal because mongo ObjectIds are very predictable and not exactly nonces...
-        # Because the current scope of SSE endpoints are merely completing an in-flight packfile, this limitation seems acceptable for now.
+        # In this case, the document id will serve instead.
         if check_user:
             query['user'] = self.uid
 
