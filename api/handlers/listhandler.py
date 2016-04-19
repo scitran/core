@@ -4,6 +4,7 @@ import copy
 import datetime
 import dateutil
 import json
+import uuid
 
 from .. import base
 from .. import config
@@ -442,7 +443,7 @@ class FileListHandler(ListHandler):
         query = {
             'type': 'packfile',
             'project': project_id,
-            '_id': bson.ObjectId(token_id),
+            '_id': token_id,
         }
 
         # Server-Sent Events are fired in the browser in such a way that one cannot dictate their headers.
@@ -463,7 +464,7 @@ class FileListHandler(ListHandler):
 
         # Update token timestamp
         config.db['tokens'].update_one({
-            '_id': bson.ObjectId(token_id)
+            '_id': token_id,
         }, {
             '$set': {
                 'modified': datetime.datetime.utcnow()
@@ -500,6 +501,7 @@ class FileListHandler(ListHandler):
 
         # Save token for stateful uploads
         result = config.db['tokens'].insert_one({
+            '_id': str(uuid.uuid4()),
             'type': 'packfile',
             'user': self.uid,
             'project': _id,

@@ -460,7 +460,7 @@ class PackfilePlacer(Placer):
 
         # Delete token
         token  = self.context['token']
-        config.db['tokens'].delete_one({ '_id': bson.ObjectId(token) })
+        config.db['tokens'].delete_one({ '_id': token })
 
         result = {
             'acquisition_id': str(acquisition['_id']),
