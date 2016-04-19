@@ -27,6 +27,7 @@
                           "type": "string"
                         },
     "root":             { "type": "boolean"},
+    "disabled":         { "type": "boolean"},
     "preferences":      {
                           "title": "Preferences",
                           "type": "object"

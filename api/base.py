@@ -79,9 +79,11 @@ class RequestHandler(webapp2.RequestHandler):
         elif drone_request:
             self.superuser_request = True
         else:
-            user = config.db.users.find_one({'_id': self.uid}, ['root'])
+            user = config.db.users.find_one({'_id': self.uid}, ['root', 'disabled'])
             if not user:
                 self.abort(402, 'user ' + self.uid + ' does not exist')
+            if user.get('disabled', False) is True:
+                self.abort(402, 'user account ' + self.uid + ' is disabled')
             if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
