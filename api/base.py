@@ -156,17 +156,15 @@ class RequestHandler(webapp2.RequestHandler):
             query.pop('sz', None)
             u = u._replace(query=urllib.urlencode(query, True))
             provider_avatar = urlparse.urlunparse(u)
-            default = provider_avatar
-
-            gravatar = util.resolve_gravatar(uid)
-            if gravatar is not None:
-                default = gravatar
-
-            # If the user has no avatar set, mark this default as their chosen avatar.
-            config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': default, 'modified': timestamp}})
-
             # Update the user's provider avatar if it has changed.
             config.db.users.update_one({'_id': uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': timestamp}})
+
+            # If the user has no avatar set, mark their provider_avatar as their chosen avatar.
+            config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': provider_avatar, 'modified': timestamp}})
+
+        # Look to see if user has a Gravatar
+        gravatar = util.resolve_gravatar(uid)
+        if gravatar is not None:
             # Update the user's gravatar if it has changed.
             config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
 
