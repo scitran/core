@@ -8,6 +8,8 @@ import os
 import pytz
 import tempdir as tempfile
 import uuid
+import requests
+import hashlib
 
 from . import config
 MIMETYPES = [
@@ -53,6 +55,18 @@ def user_perm(permissions, _id, site=None):
             return perm
     else:
         return {}
+
+def resolve_gravatar(email):
+    """
+    Given an email, returns a URL if that email has a gravatar set.
+    Otherwise returns None.
+    """
+
+    gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(email).hexdigest() + '?s=512'
+    if requests.head(gravatar, params={'d': '404'}):
+        return gravatar
+    else:
+        return None
 
 
 def container_fileinfo(container, filename):
