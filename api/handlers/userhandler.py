@@ -1,7 +1,5 @@
 import datetime
-import hashlib
 import pymongo
-import requests
 
 from .. import base
 from .. import util
@@ -127,7 +125,7 @@ class UserHandler(base.RequestHandler):
 
         # If the user exists but has no set avatar, try to get one
         if user and avatar is None:
-            gravatar = self._resolve_gravatar(email)
+            gravatar = util.resolve_gravatar(email)
 
             if gravatar is not None:
                 user = config.db['users'].find_one_and_update({
@@ -148,19 +146,6 @@ class UserHandler(base.RequestHandler):
             self.redirect(str(default), code=307)
         else:
             self.abort(404, 'no avatar')
-
-    def _resolve_gravatar(self, email):
-        """
-        Given an email, returns a URL if that email has a gravatar set.
-        Otherwise returns None.
-        """
-
-        gravatar = 'https://gravatar.com/avatar/' + hashlib.md5(email).hexdigest() + '?s=512'
-
-        if requests.head(gravatar, params={'d': '404'}):
-            return gravatar
-        else:
-            return None
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)
