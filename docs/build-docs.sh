@@ -10,4 +10,4 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 sphinx-apidoc -o docs/source -f -d 3 api
 
 # Transform those rst files into html docs
-sphinx-build -a  -b html ./docs/source ./docs/build
+sphinx-build -a -Q -b html docs/source docs/build

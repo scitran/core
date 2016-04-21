@@ -51,9 +51,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'api'
-copyright = u'2016, Author'
-author = u'Author'
+project = u'SciTran'
+copyright = u'2016, Project on Scientific Transparency'
+author = u'Project on Scientific Transparency'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
