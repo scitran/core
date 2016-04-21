@@ -154,6 +154,24 @@ class Download(base.RequestHandler):
 
     def download(self):
         """
+        .. http:get::  /api/download
+
+            Download GET Description...
+
+            :statuscode 400: describe me
+            :statuscode 404: describe me
+
+
+        .. http:post:: /api/download
+
+            Download POST Description...
+
+            :statuscode 400: describe me
+            :statuscode 404: describe me
+        """
+
+
+        """
         In downloads we use filters in the payload to exclude/include files.
         To pass a single filter, each of its conditions should be satisfied.
         If a file pass at least one filter, it is included in the targets.

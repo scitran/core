@@ -89,7 +89,34 @@ def clean_remotes(db, site_id):
 class CentralClient(base.RequestHandler):
 
     def sites(self):
-        """Return local and remote sites."""
+        """
+        .. http:get:: /api/sites
+
+            Return local and remote sites.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/sites HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                [{"onload": true, "_id": "local", "name": "BaliDemo"}]
+
+
+        """
+
         projection = ['name', 'onload']
         # TODO onload for local is true
         site_id = config.get_item('site', 'id')
@@ -107,6 +134,14 @@ class CentralClient(base.RequestHandler):
         return sites
 
     def register(self):
+        """
+        .. http:post:: /api/register
+
+            NOT IMPLEMENTED -- Return local and remote sites.
+
+            :statuscode 404: Not Implemented
+        """
+
         self.abort(404, 'register endpoint is not implemented')
         # FIXME the code below should be properly ported using the new config
         # every request to this route is aborted at the moment

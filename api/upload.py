@@ -176,7 +176,15 @@ class Upload(base.RequestHandler):
             log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
 
     def upload(self, strategy):
-        """Receive a sortable reaper upload."""
+        """
+        .. http:post:: /api/upload/<strategy:label|uid>
+
+            Receive a sortable reaper upload.
+
+            :statuscode 402: no error
+            :statuscode 500: no error
+        """
+
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
 
@@ -191,7 +199,17 @@ class Upload(base.RequestHandler):
 
     def engine(self):
         """
-        URL format: api/engine?level=<container_type>&id=<container_id>&job=<job_id>
+        .. http:post:: /api/engine
+
+            Confirm endpoint is ready for requests
+
+            :query level: container_type
+            :query id: container_id
+            :query job: job_id
+
+            :statuscode 400: describe me
+            :statuscode 402: describe me
+            :statuscode 404: describe me
         """
 
         if not self.superuser_request:
@@ -268,8 +286,14 @@ class Upload(base.RequestHandler):
 
     def clean_packfile_tokens(self):
         """
-        Clean up expired upload tokens and invalid token directories.
+        .. http:post:: /api/clean-packfiles
 
+            Clean up expired upload tokens and invalid token directories.
+
+            :statuscode 402: describe me
+        """
+
+        """
         Ref placer.TokenPlacer and FileListHandler.packfile_start for context.
         """
 

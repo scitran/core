@@ -352,6 +352,45 @@ class FileListHandler(ListHandler):
         return ticket
 
     def get(self, cont_name, list_name, **kwargs):
+        """
+        .. http:get:: /api/(cont_name)/(cid)/files/(file_name)
+
+            Gets the ticket used to download the file when the ticket is not provided.
+
+            Downloads the file when the ticket is provided.
+
+            :query ticket: should be empty
+
+            :param cont_name: one of ``projects``, ``sessions``, ``acquisitions``, ``collections``
+            :type cont_name: string
+
+            :param cid: Container ID
+            :type cid: string
+
+            :statuscode 200: no error
+            :statuscode 400: explain...
+            :statuscode 409: explain...
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/acquisitions/57081d06b386a6dc79ca383c/files/fMRI%20Loc%20Word%20Face%20Obj.zip?ticket= HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {"ticket": "1e975e3d-21e9-41f4-bb97-261f03d35ba1"}
+
+        """
+
         log.error('{} {} {}'.format(cont_name, list_name, kwargs))
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
