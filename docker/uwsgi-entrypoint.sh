@@ -38,6 +38,8 @@ if [ ! -z "${PRE_RUNAS_CMD}" ]; then
 fi
 
 if [ "$1" = 'uwsgi' ]; then
+
+	gosu ${RUNAS_USER} /var/scitran/code/api/docs/build-docs.sh
 	exec gosu ${RUNAS_USER} "$@"
 fi
 
