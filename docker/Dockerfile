@@ -18,6 +18,8 @@ RUN apt-get update \
 		python-pip \
 		libffi-dev \
 		libssl-dev \
+		libpcre3 \
+		libpcre3-dev \
 		git \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& pip install -U pip
