@@ -129,7 +129,7 @@ class StringListStorage(ListStorage):
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         query = {'_id': _id}
-        projection = {self.list_name : 1, 'permissions': 1, 'public': 1}
+        projection = {self.list_name : 1, 'permissions': 1, 'public': 1, 'roles': 1}
         return self.dbc.find_one(query, projection)
 
     def exec_op(self, action, _id=None, query_params=None, payload=None, exclude_params=None):

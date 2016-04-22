@@ -61,7 +61,7 @@ def group_tags_sublist(handler, container):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method == 'GET'  and access >= INTEGER_ROLES['ro']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
-            elif access >= INTEGER_ROLES['admin']:
+            elif access >= INTEGER_ROLES['rw']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
