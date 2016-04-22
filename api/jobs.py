@@ -49,14 +49,23 @@ Category = util.Enum('Category', {
 
 Gear = namedtuple('gear', ['name', 'category', 'input'])
 
-Gears = [
-    Gear('dicom_mr_classifier', Category.classifier, {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dicom_mr_classifier-bali.3.0-rc.2.tar'}),
-    Gear('dcm_convert',         Category.converter,  {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dcm_convert-bali.3.0-rc.2.tar'        }),
-    Gear('qa-report-fmri',      Category.qa,         {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/qa-report-fmri-bali.3.0-rc.2.tar'     })
-]
+def get_gears():
+    """
+    Fetch the install-global gears from the database
+    """
+
+    gear_doc  = config.db.static.find_one({'_id': 'gears'})
+    gears_map = gear_doc['gear_list']
+    gears = []
+
+    for g in gears_map:
+        cat_string = g['category']
+        gears.append(Gear(g['name'], Category[cat_string], g['input']))
+
+    return gears
 
 def get_gear_by_name(name):
-    for gear in Gears:
+    for gear in get_gears():
         if gear.name == name:
             return gear
     raise Exception("Unknown gear " + name)
