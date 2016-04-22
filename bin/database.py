@@ -32,9 +32,9 @@ def confirm_schema_match():
 
     db_version = get_db_version()
     if not isinstance(db_version, int) or db_version > CURRENT_DATABASE_VERSION:
-        logging.error('The stored db schema version of %s is incompatible with required version %s', 
+        logging.error('The stored db schema version of %s is incompatible with required version %s',
                        str(db_version), CURRENT_DATABASE_VERSION)
-        sys.exit(43) 
+        sys.exit(43)
     elif db_version < CURRENT_DATABASE_VERSION:
         sys.exit(42)
     else:
@@ -46,7 +46,7 @@ def upgrade_to_1():
 
     Initialize db version to 1
     """
-    config.db.version.insert_one({'_id': 'version', 'database': CURRENT_DATABASE_VERSION})
+    config.db.version.insert_one({'_id': 'version', 'database': 1})
 
 def upgrade_to_2():
     """
@@ -83,7 +83,7 @@ def upgrade_to_2():
 def upgrade_schema():
     """
     Upgrades db to the current schema version
-    
+
     Returns (0) if upgrade is successful
     """
 
