@@ -85,8 +85,9 @@ def upgrade_to_3():
 
     Set first user with admin permissions found as curator if one does not exist
     """
-
-    collections = config.db.collections.find({'curator': {'$exists': False}, 'permissions.access': 'admin'})
+    query = {'curator': {'$exists': False}, 'permissions.access': 'admin'}
+    projection = {'permissions.$':1}
+    collections = config.db.collections.find(query, projection)
     for coll in collections:
         admin = coll['permissions'][0]['_id']
         query = {'_id': coll['_id']}
