@@ -36,6 +36,7 @@ class CollectionsHandler(ContainerHandler):
             'site': self.user_site,
             'access': 'admin'
         }]
+        payload['curator'] = self.uid
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
         result = mongo_validator(self.storage.exec_op)('POST', payload=payload)
 

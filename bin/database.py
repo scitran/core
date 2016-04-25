@@ -6,7 +6,7 @@ import sys
 import logging
 from api import config
 
-CURRENT_DATABASE_VERSION = 2 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 3 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -50,7 +50,7 @@ def upgrade_to_1():
 
 def upgrade_to_2():
     """
-    Scitran/core PR #236
+    scitran/core PR #236
 
     Set file.origin.name to id if does not exist
     Set file.origin.method to '' if does not exist
@@ -79,6 +79,20 @@ def upgrade_to_2():
     update_file_origins(config.db.sessions.find(query), 'sessions')
     update_file_origins(config.db.acquisitions.find(query), 'acquisitions')
 
+def upgrade_to_3():
+    """
+    scitran/core PR #263
+
+    Set first user with admin permissions found as curator if one does not exist
+    """
+    query = {'curator': {'$exists': False}, 'permissions.access': 'admin'}
+    projection = {'permissions.$':1}
+    collections = config.db.collections.find(query, projection)
+    for coll in collections:
+        admin = coll['permissions'][0]['_id']
+        query = {'_id': coll['_id']}
+        update = {'$set': {'curator': admin}}
+        config.db.collections.update_one(query, update)
 
 def upgrade_schema():
     """
@@ -93,6 +107,8 @@ def upgrade_schema():
             upgrade_to_1()
         if db_version < 2:
             upgrade_to_2()
+        if db_version < 3:
+            upgrade_to_3()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
