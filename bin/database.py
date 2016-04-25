@@ -83,25 +83,15 @@ def upgrade_to_3():
     """
     scitran/core PR #263
 
-    Set User as curator of collection if:
-      - collection has no curator
-      - User is the only user with admin perms for the collection
+    Set first user with admin permissions found as curator if one does not exist
     """
 
-    pipeline = [
-        {'$match': {'curator': {'$exists': False}, 'permissions.access': 'admin'}},
-        {'$unwind': '$permissions'},
-        {'$project': {'cid': '$_id', 'access': '$permissions.access', 'site': '$permissions.site',  'user': '$permissions._id'}},
-        {'$group' : { '_id' : {'cid': '$cid', 'access': '$access'}, 'users': {'$push': '$user' }}},
-        {'$match': {'_id.access': 'admin', 'users': {'$size': 1}}}
-    ]
-
-    collections = config.db.command('aggregate', 'collections', pipeline=pipeline)
-    for collection in collections['result']:
-        cid = collection['_id']['cid']
-        uid = collection['users'][0]
-        config.db.collections.update_one({'_id': cid}, {'$set': {'curator': uid}})
-    logging.warn(collections)
+    collections = config.db.collections.find({'curator': {'$exists': False}, 'permissions.access': 'admin'})
+    for coll in collections:
+        admin = coll['permissions'][0]['_id']
+        query = {'_id': coll['_id']}
+        update = {'$set': {'curator': admin}}
+        config.db.collections.update_one(query, update)
 
 def upgrade_schema():
     """
