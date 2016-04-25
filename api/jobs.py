@@ -51,7 +51,10 @@ Gear = namedtuple('gear', ['name', 'category', 'input'])
 
 Gears = [
     Gear('dicom_mr_classifier', Category.classifier, {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dicom_mr_classifier-bali.3.0-rc.2.tar'}),
-    Gear('dcm_convert',         Category.converter,  {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dcm_convert-bali.3.0-rc.2.tar'        }),
+
+    # Modified for jefferson
+    Gear('dcm_convert',         Category.converter,  {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/dcm2nii_0.0.4.tar'        }),
+
     Gear('qa-report-fmri',      Category.qa,         {'type': 'file', 'location': '/', 'uri': '/opt/flywheel-temp/qa-report-fmri-bali.3.0-rc.2.tar'     })
 ]
 
