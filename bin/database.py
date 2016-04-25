@@ -6,7 +6,7 @@ import sys
 import logging
 from api import config
 
-CURRENT_DATABASE_VERSION = 2 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 3 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -50,7 +50,7 @@ def upgrade_to_1():
 
 def upgrade_to_2():
     """
-    Scitran/core PR #236
+    scitran/core PR #236
 
     Set file.origin.name to id if does not exist
     Set file.origin.method to '' if does not exist
@@ -79,6 +79,29 @@ def upgrade_to_2():
     update_file_origins(config.db.sessions.find(query), 'sessions')
     update_file_origins(config.db.acquisitions.find(query), 'acquisitions')
 
+def upgrade_to_3():
+    """
+    scitran/core PR #263
+
+    Set User as curator of collection if:
+      - collection has no curator
+      - User is the only user with admin perms for the collection
+    """
+
+    pipeline = [
+        {'$match': {'curator': {'$exists': False}, 'permissions.access': 'admin'}},
+        {'$unwind': '$permissions'},
+        {'$project': {'cid': '$_id', 'access': '$permissions.access', 'site': '$permissions.site',  'user': '$permissions._id'}},
+        {'$group' : { '_id' : {'cid': '$cid', 'access': '$access'}, 'users': {'$push': '$user' }}},
+        {'$match': {'_id.access': 'admin', 'users': {'$size': 1}}}
+    ]
+
+    collections = config.db.command('aggregate', 'collections', pipeline=pipeline)
+    for collection in collections['result']:
+        cid = collection['_id']['cid']
+        uid = collection['users'][0]
+        config.db.collections.update_one({'_id': cid}, {'$set': {'curator': uid}})
+    logging.warn(collections)
 
 def upgrade_schema():
     """
@@ -93,6 +116,8 @@ def upgrade_schema():
             upgrade_to_1()
         if db_version < 2:
             upgrade_to_2()
+        if db_version < 3:
+            upgrade_to_3()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
