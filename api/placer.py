@@ -14,7 +14,7 @@ from . import rules
 from . import tempdir as tempfile
 from . import util
 from . import validators
-from .dao import hierarchy, APIStorageException
+from .dao import hierarchy, APIStorageException, containerutil
 
 log = config.log
 
@@ -415,6 +415,7 @@ class PackfilePlacer(Placer):
         insert_map = copy.deepcopy(query)
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['session'])
+        insert_map['subject'] = containerutil.add_id_to_session(insert_map.get('subject'))
 
         session = config.db['session' + 's'].find_one_and_update(
             query, {

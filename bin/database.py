@@ -103,14 +103,15 @@ def upgrade_to_4():
     """
 
     pipeline = [
-        {'$match': {'subject': {'$exists': True}, 'subject._id': {'$exists': False}}},
+        {'$match': { 'subject._id': {'$exists': False}}},
         {'$group' : { '_id' : {'pid': '$project', 'code': '$subject.code'}, 'sids': {'$push': '$_id' }}}
     ]
 
     subjects = config.db.command('aggregate', 'sessions', pipeline=pipeline)
     for subject in subjects['result']:
 
-        # Subjects without a code will be returned grouped together, but need unique IDs
+        # Subjects without a code and sessions without a subject
+        # will be returned grouped together, but all need unique IDs
         if subject['_id'].get('code') is None:
             for session_id in subject['sids']:
                 subject_id = bson.ObjectId()

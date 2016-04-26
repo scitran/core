@@ -9,7 +9,7 @@ from .. import config
 from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage
+from ..dao import APIStorageException, containerstorage, containerutil
 from ..types import Origin
 
 log = config.log
@@ -273,16 +273,7 @@ class ContainerHandler(base.RequestHandler):
         # If the new container is a session add the group of the parent project in the payload
         if cont_name == 'sessions':
             payload['group'] = parent_container['group']
-            # We create sessions more than just here, this logic needs to be in a static method somewhere
-            if payload.get('subject') is not None and payload['subject'].get('code') is not None:
-                query = {'subject.code': payload['subject']['code'],
-                         'project': payload['project'],
-                         'subject._id': {'$exists': True}}
-                result = config.db.sessions.find_one(query)
-                if result is not None:
-                    payload['subject']['_id'] = str(result['subject']['_id'])
-                else:
-                    payload['subject']['_id'] = str(bson.ObjectId())
+            payload['subject'] = containerutil.add_id_to_subject(payload.get('subject'), payload.get('project'))
         # Optionally inherit permissions of a project from the parent group. The default behaviour
         # for projects is to give admin permissions to the requestor.
         # The default for other containers is to inherit.

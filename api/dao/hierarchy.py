@@ -8,7 +8,7 @@ import dateutil.parser
 from .. import files
 from .. import util
 from .. import config
-from . import APIStorageException
+from . import APIStorageException, containerutil
 
 log = config.log
 
@@ -166,7 +166,8 @@ def _upsert_session(session, project_obj, type_, timestamp):
             project=project_obj['_id'],
             permissions=project_obj['permissions'],
             public=project_obj['public'],
-            created=timestamp
+            created=timestamp,
+            subject=containerutil.add_id_to_subject(session.get('subject'))
         ),
         '$set': session
     }
