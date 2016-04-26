@@ -1,4 +1,5 @@
 import fnmatch
+import json
 
 from . import jobs
 from . import config
@@ -34,27 +35,12 @@ MATCH_TYPES = [
     'container.has-type'
 ]
 
-# TODO: replace with default rules, which get persisted, maintained, upgraded, and reasoned intelligently
-HARDCODED_RULES = [
-    {
-        'alg': 'dicom_mr_classifier',
-        'all': [
-            ['file.type', 'dicom']
-        ]
-    },
-    {
-        'alg': 'dcm_convert',
-        'all': [
-            ['file.type', 'dicom']
-        ]
-    },
-    {
-        'alg': 'qa-report-fmri',
-        'all': [
-            ['file.type', 'nifti']
-        ]
-    }
-]
+def get_base_rules():
+    """
+    Fetch the install-global gear rules from the database
+    """
+    rule_doc = config.db.static.find_one({'_id': 'rules'})
+    return rule_doc['rule_list']
 
 def _log_file_key_error(file_, container, error):
     log.warning('file ' + file_.get('name', '?') + ' in container ' + str(container.get('_id', '?')) + ' ' + error)
@@ -137,7 +123,7 @@ def create_jobs(db, container, container_type, file_):
     rules = get_rules_for_container(db, container)
 
     # Add hardcoded rules that cannot be removed or changed
-    for hardcoded_rule in HARDCODED_RULES:
+    for hardcoded_rule in get_base_rules():
         rules.append(hardcoded_rule)
 
     for rule in rules:
