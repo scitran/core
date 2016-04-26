@@ -160,14 +160,14 @@ def _upsert_session(session, project_obj, type_, timestamp):
     session['modified'] = timestamp
     if session.get('timestamp'):
         session['timestamp'] = dateutil.parser.parse(session['timestamp'])
+    session['subject'] = containerutil.add_id_to_subject(session.get('subject'), project_obj['_id'])
     session_operations = {
         '$setOnInsert': dict(
             group=project_obj['group'],
             project=project_obj['_id'],
             permissions=project_obj['permissions'],
             public=project_obj['public'],
-            created=timestamp,
-            subject=containerutil.add_id_to_subject(session.get('subject'))
+            created=timestamp
         ),
         '$set': session
     }

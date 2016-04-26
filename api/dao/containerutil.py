@@ -15,14 +15,20 @@ def add_id_to_subject(subject, pid):
     if subject is None:
         subject = {}
     if subject.get('_id') is not None:
+        # Ensure _id is bson ObjectId
+        subject['_id'] = bson.ObjectId(str(subject['_id']))
         return subject
-    if subject.get('code') is not None:
+
+    # Attempt to match with another session in the project
+    if subject.get('code') is not None and pid is not None:
         query = {'subject.code': subject['code'],
                  'project': pid,
                  'subject._id': {'$exists': True}}
         result = config.db.sessions.find_one(query)
+
     if result is not None:
-        subject['_id'] = str(result['subject']['_id'])
+        subject['_id'] = result['subject']['_id']
     else:
-        subject['_id'] = str(bson.ObjectId())
+        subject['_id'] = bson.ObjectId()
     return subject
+

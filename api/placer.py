@@ -415,7 +415,7 @@ class PackfilePlacer(Placer):
         insert_map = copy.deepcopy(query)
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['session'])
-        insert_map['subject'] = containerutil.add_id_to_session(insert_map.get('subject'))
+        insert_map['subject'] = containerutil.add_id_to_subject(insert_map.get('subject'), self.p_id)
 
         session = config.db['session' + 's'].find_one_and_update(
             query, {

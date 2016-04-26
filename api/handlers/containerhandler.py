@@ -326,7 +326,10 @@ class ContainerHandler(base.RequestHandler):
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
-
+        if cont_name == 'sessions':
+            if payload.get('subject') is not None and payload['subject'].get('_id') is not None:
+                # Ensure subject id is a bson object
+                payload['subject']['_id'] = bson.ObjectId(str(payload['subject']['_id']))
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
             # This line exec the actual request validating the payload that will update the container
