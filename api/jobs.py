@@ -243,6 +243,15 @@ class Jobs(base.RequestHandler):
 
         return results
 
+    def add_raw(self):
+        """
+        Add a blob of JSON to the jobs table. Absolutely no validation.
+        """
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        return { "_id": config.db.jobs.insert_one(self.request.json).inserted_id }
+
     def count(self):
         """Return the total number of jobs. Not used by engine."""
         if not self.superuser_request:
