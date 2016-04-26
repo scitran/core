@@ -268,11 +268,21 @@ class ContainerHandler(base.RequestHandler):
         # Load the parent container in which the new container will be created
         # to check permissions.
         parent_container, parent_id_property = self._get_parent_container(payload)
+        # Always add the id of the parent to the container
+        payload[parent_id_property] = parent_container['_id']
         # If the new container is a session add the group of the parent project in the payload
         if cont_name == 'sessions':
             payload['group'] = parent_container['group']
-        # Always add the id of the parent to the container
-        payload[parent_id_property] = parent_container['_id']
+            # We create sessions more than just here, this logic needs to be in a static method somewhere
+            if payload.get('subject') is not None and payload['subject'].get('code') is not None:
+                query = {'subject.code': payload['subject']['code'],
+                         'project': payload['project'],
+                         'subject._id': {'$exists': True}}
+                result = config.db.sessions.find_one(query)
+                if result is not None:
+                    payload['subject']['_id'] = str(result['subject']['_id'])
+                else:
+                    payload['subject']['_id'] = str(bson.ObjectId())
         # Optionally inherit permissions of a project from the parent group. The default behaviour
         # for projects is to give admin permissions to the requestor.
         # The default for other containers is to inherit.
