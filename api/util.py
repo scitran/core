@@ -48,6 +48,26 @@ def mongo_dict(d):
         )
     return dict(_mongo_list(d))
 
+def mongo_sanitize_fields(d):
+    """
+    Sanitize keys of arbitrarily structured map without flattening into dot notation
+
+    Adapted from http://stackoverflow.com/questions/8429318/how-to-use-dot-in-field-name
+    """
+
+    if isinstance(d, dict):
+        return {mongo_sanitize_fields(str(key)): value if isinstance(value, str) else mongo_sanitize_fields(value) for key,value in d.iteritems()}
+    elif isinstance(d, list):
+        return [mongo_sanitize_fields(element) for element in i]
+    elif isinstance(d, str):
+        # not allowing dots nor dollar signs in fieldnames
+        d = d.replace('.','_')
+        d = d.replace('$', '-')
+        return d
+    else:
+        return d
+
+
 
 def user_perm(permissions, _id, site=None):
     for perm in permissions:
