@@ -35,7 +35,7 @@ class Root(base.RequestHandler):
                 Host: demo.flywheel.io
                 Accept: text/html
 
-            **Example response**:
+            **Example response (excerpt)**:
 
             .. sourcecode:: http
 
@@ -84,114 +84,10 @@ class Root(base.RequestHandler):
                 <td align="left"><a href="/api/users">/users</a></td>
                 <td align="left">list of users</td>
                 </tr>
-                <tr>
-                <td align="left"><a href="/api/users/self">/users/self</a></td>
-                <td align="left">user identity</td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/users/roles">/users/roles</a></td>
-                <td align="left">user roles</td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/users/*&amp;lt;uid&amp;gt;*">/users/<em>&lt;uid&gt;</em></a></td>
-                <td align="left">details for user <em>&lt;uid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/users/*&amp;lt;uid&amp;gt;*/groups">/users/<em>&lt;uid&gt;</em>/groups</a></td>
-                <td align="left">groups for user <em>&lt;uid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/users/*&amp;lt;uid&amp;gt;*/projects">/users/<em>&lt;uid&gt;</em>/projects</a></td>
-                <td align="left">projects for user <em>&lt;uid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/groups">/groups</a></td>
-                <td align="left">list of groups</td>
-                </tr>
-                <tr>
-                <td align="left">/groups/<em>&lt;gid&gt;</em></td>
-                <td align="left">details for group <em>&lt;gid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left">/groups/<em>&lt;gid&gt;</em>/projects</td>
-                <td align="left">list of projects for group <em>&lt;gid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left">/groups/<em>&lt;gid&gt;</em>/sessions</td>
-                <td align="left">list of sessions for group <em>&lt;gid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/projects">/projects</a></td>
-                <td align="left">list of projects</td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/projects/groups">/projects/groups</a></td>
-                <td align="left">groups for projects</td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/projects/schema">/projects/schema</a></td>
-                <td align="left">schema for single project</td>
-                </tr>
-                <tr>
-                <td align="left">/projects/<em>&lt;pid&gt;</em></td>
-                <td align="left">details for project <em>&lt;pid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left">/projects/<em>&lt;pid&gt;</em>/sessions</td>
-                <td align="left">list sessions for project <em>&lt;pid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/sessions">/sessions</a></td>
-                <td align="left">list of sessions</td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/sessions/schema">/sessions/schema</a></td>
-                <td align="left">schema for single session</td>
-                </tr>
-                <tr>
-                <td align="left">/sessions/<em>&lt;sid&gt;</em></td>
-                <td align="left">details for session <em>&lt;sid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left">/sessions/<em>&lt;sid&gt;</em>/move</td>
-                <td align="left">move session <em>&lt;sid&gt;</em> to a different project</td>
-                </tr>
-                <tr>
-                <td align="left">/sessions/<em>&lt;sid&gt;</em>/acquisitions</td>
-                <td align="left">list acquisitions for session <em>&lt;sid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/acquisitions/schema">/acquisitions/schema</a></td>
-                <td align="left">schema for single acquisition</td>
-                </tr>
-                <tr>
-                <td align="left">/acquisitions/<em>&lt;aid&gt;</em></td>
-                <td align="left">details for acquisition <em>&lt;aid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/collections">/collections</a></td>
-                <td align="left">list of collections</td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/collections/schema">/collections/schema</a></td>
-                <td align="left">schema for single collection</td>
-                </tr>
-                <tr>
-                <td align="left">/collections/<em>&lt;cid&gt;</em></td>
-                <td align="left">details for collection <em>&lt;cid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left">/collections/<em>&lt;cid&gt;</em>/sessions</td>
-                <td align="left">list of sessions for collection <em>&lt;cid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left">/collections/<em>&lt;cid&gt;</em>/acquisitions</td>
-                <td align="left">list of acquisitions for collection <em>&lt;cid&gt;</em></td>
-                </tr>
-                <tr>
-                <td align="left"><a href="/api/schema/group">/schema/group</a></td>
-                <td align="left">group schema</td>
-                </tr>
+
+                ...
+
+
                 <tr>
                 <td align="left"><a href="/api/schema/user">/schema/user</a></td>
                 <td align="left">user schema</td>
