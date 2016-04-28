@@ -19,6 +19,7 @@ from handlers import containerhandler
 from handlers import collectionshandler
 from handlers import searchhandler
 from handlers import schemahandler
+from handlers import reporthandler
 
 log = config.log
 
@@ -252,6 +253,7 @@ routes = [
     webapp2.Route(_format(r'/api/search/files'),                                      searchhandler.SearchHandler, handler_method='get_datatree', name='es_data', methods=['GET']),
     webapp2.Route(_format(r'/api/search/<cont_name:{cont_name_re}>'),                 searchhandler.SearchHandler, name='es_proxy', methods=['GET']),
     webapp2.Route(_format(r'/api/schemas/<schema:{schema_re}>'),                      schemahandler.SchemaHandler, name='schemas', methods=['GET']),
+    webapp2.Route(r'/api/report/<report_type:site|project>',                          reporthandler.ReportHandler, methods=['GET']),
 ]
 
 
