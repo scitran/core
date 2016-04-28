@@ -7,6 +7,7 @@ from .. import config
 from .. import validators
 from ..auth import userauth, always_ok, ROLES
 from ..dao import containerstorage
+from ..dao import noop
 
 log = config.log
 
@@ -52,7 +53,11 @@ class UserHandler(base.RequestHandler):
         self._init_storage()
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
-        result = permchecker(self.storage.exec_op)('DELETE', _id)
+        # Check for authZ before cleaning up user permissions
+        permchecker(noop)('DELETE', _id)
+        self._cleanup_user_permissions(user.get('_id'))
+        log.debug('2')
+        result = self.storage.exec_op('DELETE', _id)
         if result.deleted_count == 1:
             return {'deleted': result.deleted_count}
         else:
@@ -97,6 +102,19 @@ class UserHandler(base.RequestHandler):
 
     def _init_storage(self):
         self.storage = containerstorage.ContainerStorage('users', use_object_id=False)
+
+    def _cleanup_user_permissions(self, uid):
+        try:
+            config.db.collections.delete_many({'curator': uid})
+            config.db.groups.update_many({'roles._id': uid}, {'$pull': {'roles' : {'_id': uid}}})
+
+            query = {'permissions._id': uid}
+            update = {'$pull': {'permissions' : {'_id': uid}}}
+            config.db.projects.update_many(query, update)
+            config.db.sessions.update_many(query, update)
+            config.db.acquisitions.update_many(query, update)
+        except:
+            self.abort(500, 'Site-wide user permissions for {} were unabled to be removed'.format(uid))
 
     def avatar(self, uid):
         self._init_storage()
