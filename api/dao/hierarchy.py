@@ -8,7 +8,7 @@ import dateutil.parser
 from .. import files
 from .. import util
 from .. import config
-from . import APIStorageException
+from . import APIStorageException, containerutil
 
 log = config.log
 
@@ -160,6 +160,7 @@ def _upsert_session(session, project_obj, type_, timestamp):
     session['modified'] = timestamp
     if session.get('timestamp'):
         session['timestamp'] = dateutil.parser.parse(session['timestamp'])
+    session['subject'] = containerutil.add_id_to_subject(session.get('subject'), project_obj['_id'])
     session_operations = {
         '$setOnInsert': dict(
             group=project_obj['group'],

@@ -9,7 +9,7 @@ from .. import config
 from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage
+from ..dao import APIStorageException, containerstorage, containerutil
 from ..types import Origin
 
 log = config.log
@@ -268,11 +268,12 @@ class ContainerHandler(base.RequestHandler):
         # Load the parent container in which the new container will be created
         # to check permissions.
         parent_container, parent_id_property = self._get_parent_container(payload)
+        # Always add the id of the parent to the container
+        payload[parent_id_property] = parent_container['_id']
         # If the new container is a session add the group of the parent project in the payload
         if cont_name == 'sessions':
             payload['group'] = parent_container['group']
-        # Always add the id of the parent to the container
-        payload[parent_id_property] = parent_container['_id']
+            payload['subject'] = containerutil.add_id_to_subject(payload.get('subject'), payload.get('project'))
         # Optionally inherit permissions of a project from the parent group. The default behaviour
         # for projects is to give admin permissions to the requestor.
         # The default for other containers is to inherit.
@@ -325,7 +326,10 @@ class ContainerHandler(base.RequestHandler):
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
             payload['timestamp'] = dateutil.parser.parse(payload['timestamp'])
-
+        if cont_name == 'sessions':
+            if payload.get('subject') is not None and payload['subject'].get('_id') is not None:
+                # Ensure subject id is a bson object
+                payload['subject']['_id'] = bson.ObjectId(str(payload['subject']['_id']))
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
             # This line exec the actual request validating the payload that will update the container

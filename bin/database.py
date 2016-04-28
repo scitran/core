@@ -6,7 +6,7 @@ import sys
 import logging
 from api import config
 
-CURRENT_DATABASE_VERSION = 3 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 4 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -81,7 +81,7 @@ def upgrade_to_2():
 
 def upgrade_to_3():
     """
-    scitran/core PR #263
+    scitran/core issue #253
 
     Set first user with admin permissions found as curator if one does not exist
     """
@@ -93,6 +93,34 @@ def upgrade_to_3():
         query = {'_id': coll['_id']}
         update = {'$set': {'curator': admin}}
         config.db.collections.update_one(query, update)
+
+def upgrade_to_4():
+    """
+    scitran/core issue #263
+
+    Add '_id' field to session.subject
+    Give subjects with the same code and project the same _id
+    """
+
+    pipeline = [
+        {'$match': { 'subject._id': {'$exists': False}}},
+        {'$group' : { '_id' : {'pid': '$project', 'code': '$subject.code'}, 'sids': {'$push': '$_id' }}}
+    ]
+
+    subjects = config.db.command('aggregate', 'sessions', pipeline=pipeline)
+    for subject in subjects['result']:
+
+        # Subjects without a code and sessions without a subject
+        # will be returned grouped together, but all need unique IDs
+        if subject['_id'].get('code') is None:
+            for session_id in subject['sids']:
+                subject_id = bson.ObjectId()
+                config.db.sessions.update_one({'_id': session_id},{'$set': {'subject._id': subject_id}})
+        else:
+            subject_id = bson.ObjectId()
+            query = {'_id': {'$in': subject['sids']}}
+            update = {'$set': {'subject._id': subject_id}}
+            config.db.sessions.update_many(query, update)
 
 def upgrade_schema():
     """
@@ -109,6 +137,8 @@ def upgrade_schema():
             upgrade_to_2()
         if db_version < 3:
             upgrade_to_3()
+        if db_version < 4:
+            upgrade_to_4()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
