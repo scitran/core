@@ -8,7 +8,9 @@ from __future__ import absolute_import
 import bson
 import pymongo
 import datetime
+
 from collections import namedtuple
+from .dao.containerutil import FileReference, create_filereference_from_dictionary
 
 from . import base
 from . import config
@@ -40,80 +42,58 @@ JOB_TRANSITIONS = [
 def valid_transition(from_state, to_state):
     return (from_state + ' --> ' + to_state) in JOB_TRANSITIONS or from_state == to_state
 
-Category = util.Enum('Category', {
-    'classifier': 'classifier', # discover metadata
-    'converter':  'converter',  # translate between formats
-    'qa':         'qa',         # quality assurance
-    'analytical': 'analytical', # general purpose
-})
-
-Gear = namedtuple('gear', ['name', 'category', 'input'])
-
 def get_gears():
     """
     Fetch the install-global gears from the database
     """
 
     gear_doc  = config.db.static.find_one({'_id': 'gears'})
-    gears_map = gear_doc['gear_list']
-    gears = []
-
-    for g in gears_map:
-        cat_string = g['category']
-        gears.append(Gear(g['name'], Category[cat_string], g['input']))
-
-    return gears
+    return gear_doc['gear_list']
 
 def get_gear_by_name(name):
-    for gear in get_gears():
-        if gear.name == name:
-            return gear
-    raise Exception("Unknown gear " + name)
 
-# A FileInput tuple holds all the details of a scitran file that needed to use that as an input a formula.
-FileInput = namedtuple('input', ['container_type', 'container_id', 'filename', 'filehash'])
+    # Find a gear from the list by name
+    gear_doc = config.db.static.find_one({
+        "_id": "gears",
+        "gear_list": {
+            "$elemMatch": {
+                "name": name
+            }
+        }
+    }, {
+        "gear_list.$": 1
+    })
 
-# Convert a dictionary to a FileInput
-def convert_to_fileinput(d):
-    if d['container_type'].endswith('s'):
-        raise Exception('Container type cannot be plural :|')
+    if gear_doc is None:
+        raise Exception("Unknown gear " + name)
 
-    return FileInput(
-        container_type= d['container_type'],
-        container_id  = d['container_id'],
-        filename      = d['filename'],
-        filehash      = d['filehash']
-    )
+    # Mongo returns the full document: { "_id" : "gears", "gear_list" : [ { .. } ] }, so strip that out
+    return gear_doc['gear_list'][0]
 
-def create_fileinput_from_reference(container, container_type, file_):
+
+def queue_job_legacy(db, algorithm_id, input, tags=None, attempt_n=1, previous_job_id=None):
     """
-    Spawn a job to process a file.
-
-    Parameters
-    ----------
-    container: scitran.Container
-        A container object that the file is held by
-    container_type: string
-        The type of container (eg, 'session')
-    file: scitran.File
-        File object that is used to spawn 0 or more jobs.
+    Tie together logic used from the no-manifest, single-file era.
+    Takes a single FileReference instead of a map.
     """
 
-    # File information
-    filename = file_['name']
-    filehash = file_['hash']
-    # File container information
-    container_id = str(container['_id'])
+    if tags is None:
+        tags = []
 
-    log.info('File ' + filename + ' is in a ' + container_type + ' with id ' + container_id + ' and hash ' + filehash)
+    gear = get_gear_by_name(algorithm_id)
 
-    # Spawn rules currently do not look at container hierarchy, and only care about a single file.
-    # Further, one algorithm is unconditionally triggered for each dirty file.
+    if len(gear['manifest']['inputs']) != 1:
+        raise Exception("Legacy gear enqueue attempt of " + algorithm_id + " failed: must have exactly 1 input in manifest")
 
-    return FileInput(container_type=container_type, container_id=container_id, filename=filename, filehash=filehash)
+    input_name = gear['manifest']['inputs'].keys()[0]
 
+    inputs = {
+        input_name: input
+    }
 
-def queue_job(db, algorithm_id, input, tags=[], attempt_n=1, previous_job_id=None):
+    return queue_job(db, algorithm_id, inputs, tags, attempt_n, previous_job_id)
+
+def queue_job(db, name, inputs, tags=None, attempt_n=1, previous_job_id=None):
     """
     Enqueues a job for execution.
 
@@ -121,30 +101,31 @@ def queue_job(db, algorithm_id, input, tags=[], attempt_n=1, previous_job_id=Non
     ----------
     db: pymongo.database.Database
         Reference to the database instance
-    algorithm_id: string
-        Human-friendly unique name of the algorithm
-    input: FileInput
-        The input to be used by this job
+    name: string
+        Unique name of the algorithm
+    inputs: string -> FileReference map
+        The inputs to be used by this job
     tags: string array (optional)
         Tags that this job should be marked with.
     attempt_n: integer (optional)
         If an equivalent job has tried & failed before, pass which attempt number we're at. Defaults to 1 (no previous attempts).
+    previous_job_id: string (optional)
+        If an equivalent job has tried & failed before, pass the last job attempt. Defaults to None (no previous attempts).
     """
 
-    gear = get_gear_by_name(algorithm_id)
-
-    if input.container_type.endswith('s'):
-        raise Exception('Container type cannot be plural :|')
-
-    # TODO validate container exists
+    if tags is None:
+        tags = []
 
     now = datetime.datetime.utcnow()
+    gear = get_gear_by_name(name)
 
-    # Job tags allow consumers to filter on job attributes.
-    # The algorithm name and category are always tagged; callee can provide others.
-    hardcoded_tags = [ gear.name, str(gear.category) ]
-    # Union of two arrays
-    tags = list(set(hardcoded_tags) | set(tags))
+    if len(tags) != 0:
+        raise Exception('wat ' + ''.join(tags) + ' * ' + name)
+
+    # A job is always tagged with the name of the gear, and if present, any gear-configured tags
+    tags.append(name)
+    if gear.get('tags', None):
+        tags.extend(gear['tags'])
 
     job = {
         'state': 'pending',
@@ -152,12 +133,16 @@ def queue_job(db, algorithm_id, input, tags=[], attempt_n=1, previous_job_id=Non
         'created':  now,
         'modified': now,
 
-        'algorithm_id': gear.name,
-        'input': input._asdict(),
+        'algorithm_id': name,
+        'inputs': {},
 
         'attempt': attempt_n,
         'tags': tags
     }
+
+    # Save input FileReferences
+    for i in inputs.keys():
+        job['inputs'][i] = inputs[i]._asdict()
 
     if previous_job_id is not None:
         job['previous_job_id'] = previous_job_id
@@ -165,7 +150,6 @@ def queue_job(db, algorithm_id, input, tags=[], attempt_n=1, previous_job_id=Non
     result = db.jobs.insert_one(job)
     _id = result.inserted_id
 
-    log.info('Enqueuing %s as job %s to process %s %s' % (gear.name, str(_id), input.container_type, input.container_id))
     return _id
 
 def retry_job(db, j, force=False):
@@ -175,13 +159,17 @@ def retry_job(db, j, force=False):
     """
 
     if j['attempt'] < MAX_ATTEMPTS or force:
-        job_id = queue_job(db, j['algorithm_id'], convert_to_fileinput(j['input']), attempt_n=j['attempt']+1, previous_job_id=j['_id'])
+        # Translate job out from db to type
+        for x in j['inputs'].keys():
+            j['inputs'][x] = create_filereference_from_dictionary(j['inputs'][x])
+
+        job_id = queue_job(db, j['algorithm_id'], j['inputs'], attempt_n=j['attempt']+1, previous_job_id=j['_id'])
         log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
     else:
         log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
 
 
-def generate_formula(algorithm_id, i, job_id=None):
+def generate_formula(algorithm_id, inputs, job_id=None):
     """
     Given an intent, generates a formula to execute a job.
 
@@ -189,25 +177,16 @@ def generate_formula(algorithm_id, i, job_id=None):
     ----------
     algorithm_id: string
         Human-friendly unique name of the algorithm
-    i: FileInput
-        The input to be used by this job
+    inputs: string -> FileReference map
+        The inputs to be used by this job
     job_id: string
         The job ID this will be placed on. Enhances the file origin by adding the job ID to the upload URL.
     """
 
-    gear = get_gear_by_name(algorithm_id)
-
     f = {
-        'inputs': [
-            gear.input,
-            {
-                'type': 'scitran',
-                'uri': '/' + i['container_type'] + 's/' + i['container_id'] + '/files/' + i['filename'],
-                'location': '/flywheel/v0/input',
-            }
-        ],
+        'inputs': [ ],
         'target': {
-            'command': ['bash', '-c', 'rm -rf output; mkdir -p output; sed -i \'s/_dicom//\' run; ./run; echo "Exit was $?"'],
+            'command': ['bash', '-c', 'rm -rf output; mkdir -p output; ./run; echo "Exit was $?"'],
             'env': {
                 'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
             },
@@ -216,11 +195,30 @@ def generate_formula(algorithm_id, i, job_id=None):
         'outputs': [
             {
                 'type': 'scitran',
-                'uri': '/engine?level=' + i['container_type'] + '&id=' + i['container_id'],
+                'uri': '',
                 'location': '/flywheel/v0/output',
             },
         ],
     }
+
+    gear = get_gear_by_name(algorithm_id)
+
+    # Add the gear
+    f['inputs'].append(gear['input'])
+
+    # Add the files
+    for input_name in inputs.keys():
+        i = inputs[input_name]
+
+        f['inputs'].append({
+            'type': 'scitran',
+            'uri': '/' + i['container_type'] + 's/' + i['container_id'] + '/files/' + i['filename'],
+            'location': '/flywheel/v0/input/' + input_name,
+        })
+
+        # Set the output uri to the first-discovered input file's container.
+        if f['outputs'][0]['uri'] == '':
+            f['outputs'][0]['uri'] = '/engine?level=' + i['container_type'] + '&id=' + i['container_id']
 
     if job_id:
         f['outputs'][0]['uri'] += '&job=' + job_id
@@ -317,7 +315,7 @@ class Jobs(base.RequestHandler):
                 '_id': result['_id']
             },
             { '$set': {
-                'request': generate_formula(result['algorithm_id'], result['input'], str_id)}
+                'request': generate_formula(result['algorithm_id'], result['inputs'], str_id)}
             },
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
