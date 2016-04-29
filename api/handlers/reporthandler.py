@@ -1,4 +1,5 @@
 import json
+import bson
 
 from .. import base
 from .. import config
@@ -23,13 +24,13 @@ class ReportHandler(base.RequestHandler):
             report = SiteReport()
 
         elif report_type == 'project':
-            project_list = kwargs.get('projects', [])
+            project_list = self.request.GET.getall('projects')
             if len(project_list) < 1:
                 self.abort(400, 'List of projects requried for Project Report')
 
-            report = ProjectReport(kwargs.get('projects'),
-                                   start_date=kwargs.get('start_date'),
-                                   end_date=kwargs.get('end_date'))
+            report = ProjectReport(project_list,
+                                   start_date=self.get_param('start_date'),
+                                   end_date=self.get_param('start_date'))
 
         else:
             # They should never even get this far because of filtering in api.py
@@ -72,7 +73,7 @@ class SiteReport(Report):
 
         for g in groups:
             group = {}
-            group['name'] = g.get('name', '')
+            group['name'] = g.get('name')
 
             project_ids = [p['_id'] for p in config.db.projects.find({'group': group['name']}, [])]
             group['project_count'] = len(project_ids)
@@ -107,4 +108,25 @@ class ProjectReport(Report):
         self.end_date = end_date
 
     def build(self):
-        return {}
+        report = {}
+        report['projects'] = []
+
+        projects = config.db.projects.find({'_id': {'$in': map(bson.ObjectId, self.projects)}})
+        for p in projects:
+            project = {}
+            project['name'] = p.get('label')
+            project['group_name'] = p.get('group')
+
+            admins = []
+            for perm in p.get('permissions', []):
+                if perm.get('access') == 'admin':
+                    admins.append(perm.get('_id'))
+            admin_objs = config.db.users.find({'_id': {'$in': admins}})
+            # This could also be a mongo project aggregation
+            project['admins'] = map(lambda x: x.get('firstname','')+' '+x.get('lastname',''), admin_objs)
+
+            project['session_count'] = config.db.sessions.count({'project': p['_id']})
+
+            report['projects'].append(project)
+
+        return report
