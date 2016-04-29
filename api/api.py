@@ -25,9 +25,79 @@ log = config.log
 class Config(base.RequestHandler):
 
     def get(self):
+        """
+        .. http:get:: /api/config
+
+            Return public Scitran configuration information.
+
+            :statuscode 200: no error
+
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/config HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {"site": {"central_url": "https://sdmc.scitran.io/api", "ssl_cert": null, "api_url": "https://10.240.0.2:443/api", "registered": false, "id": "local", "name": "BaliDemo"}, "modified": "2016-03-31T16:30:00.852000+00:00", "auth": {"id_endpoint": "https://www.googleapis.com/plus/v1/people/me/openIdConnect", "verify_endpoint": "https://www.googleapis.com/oauth2/v1/tokeninfo", "client_id": "949263322061-6q4fqi0m4ihkp1v5n6v8q9bef4gd0f1k.apps.googleusercontent.com", "auth_endpoint": "https://accounts.google.com/o/oauth2/auth"}, "created": "2016-03-31T16:30:00.852000+00:00"}
+        """
+
         return config.get_public_config()
 
     def get_js(self):
+        """
+        .. http:get:: /api/config.js
+
+            Return public Scitran configuration information in javascript format.
+
+            :statuscode 200: no error
+
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/config.js HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: text/html; charset=utf-8
+                config = {
+                    "auth": {
+                        "auth_endpoint": "https://accounts.google.com/o/oauth2/auth",
+                        "client_id": "949263322061-6q4fqi0m4ihkp1v5n6v8q9bef4gd0f1k.apps.googleusercontent.com",
+                        "id_endpoint": "https://www.googleapis.com/plus/v1/people/me/openIdConnect",
+                        "verify_endpoint": "https://www.googleapis.com/oauth2/v1/tokeninfo"
+                    },
+                    "created": "2016-03-31T16:30:00.852000+00:00",
+                    "modified": "2016-03-31T16:30:00.852000+00:00",
+                    "site": {
+                        "api_url": "https://10.240.0.2:443/api",
+                        "central_url": "https://sdmc.scitran.io/api",
+                        "id": "local",
+                        "name": "BaliDemo",
+                        "registered": false,
+                        "ssl_cert": null
+                    }
+        """
+
         self.response.write(
             'config = ' +
             json.dumps( self.get(), sort_keys=True, indent=4, separators=(',', ': '), default=util.custom_json_serializer,) +
@@ -37,6 +107,33 @@ class Config(base.RequestHandler):
 class Version(base.RequestHandler):
 
     def get(self):
+        """
+        .. http:get:: /api/version
+
+            Return database schema in javascript format.
+
+            :statuscode 200: no error
+
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/version HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {"_id": "version", "database": 2}
+        """
+
         return config.get_version()
 
 #regexes used in routing table:

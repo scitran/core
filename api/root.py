@@ -9,11 +9,104 @@ log = config.log
 class Root(base.RequestHandler):
 
     def head(self):
-        """Return 200 OK."""
+        """
+        .. http:head:: /api
+
+            Confirm endpoint is ready for requests
+
+            :statuscode 200: no error
+        """
+
         pass
 
     def get(self):
-        """Return API documentation"""
+        """
+        .. http:get:: /api
+
+            Return API documentation
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: text/html
+
+            **Example response (excerpt)**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: text/html
+                <html>
+                <head>
+                <title>SciTran API</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+                <style type="text/css">
+                table {width:0%; border-width:1px; padding: 0;border-collapse: collapse;}
+                table tr {border-top: 1px solid #b8b8b8; background-color: white; margin: 0; padding: 0;}
+                table tr:nth-child(2n) {background-color: #f8f8f8;}
+                table thead tr :last-child {width:100%;}
+                table tr th {font-weight: bold; border: 1px solid #b8b8b8; background-color: #cdcdcd; margin: 0; padding: 6px 13px;}
+                table tr th {font-weight: bold; border: 1px solid #b8b8b8; background-color: #cdcdcd; margin: 0; padding: 6px 13px;}
+                table tr td {border: 1px solid #b8b8b8; margin: 0; padding: 6px 13px;}
+                table tr th :first-child, table tr td :first-child {margin-top: 0;}
+                table tr th :last-child, table tr td :last-child {margin-bottom: 0;}
+                </style>
+                </head>
+                <body style="min-width:900px">
+                <form name="username" action="" method="get">
+                Username: <input type="text" name="user">
+                Root: <input type="checkbox" name="root" value="1">
+                <input type="submit" value="Generate Custom Links">
+                </form>
+                <table>
+                <thead>
+                <tr>
+                <th align="left">Resource</th>
+                <th align="left">Description</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                <td align="left"><a href="/api/sites">/sites</a></td>
+                <td align="left">local and remote sites</td>
+                </tr>
+                <tr>
+                <td align="left">/download</td>
+                <td align="left">download</td>
+                </tr>
+                <tr>
+                <td align="left"><a href="/api/users">/users</a></td>
+                <td align="left">list of users</td>
+                </tr>
+
+                ...
+
+
+                <tr>
+                <td align="left"><a href="/api/schema/user">/schema/user</a></td>
+                <td align="left">user schema</td>
+                </tr>
+                </tbody>
+                </table></body>
+                </html>
+
+
+            :query sort: one of ``hit``, ``created-at``
+            :query offset: offset number. default is 0
+            :query limit: limit number. default is 30
+            :reqheader Accept: the response content type depends on
+                              :mailheader:`Accept` header
+            :reqheader Authorization: optional OAuth token to authenticate
+            :resheader Content-Type: this depends on :mailheader:`Accept`
+                                    header of request
+        """
+
         resources = """
             Resource                            | Description
             :-----------------------------------|:-----------------------

@@ -18,6 +18,8 @@ RUN apt-get update \
 		python-pip \
 		libffi-dev \
 		libssl-dev \
+		libpcre3 \
+		libpcre3-dev \
 		git \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& pip install -U pip
@@ -59,11 +61,12 @@ VOLUME /var/scitran/logs
 #
 # Split this out for better cache re-use.
 #
-COPY requirements.txt docker/requirements-docker.txt /var/scitran/code/api/
+COPY requirements.txt docker/requirements-docker.txt docs/requirements-docs.txt /var/scitran/code/api/
 
 RUN pip install --upgrade pip wheel setuptools \
   && pip install -r /var/scitran/code/api/requirements-docker.txt \
-  && pip install -r /var/scitran/code/api/requirements.txt
+  && pip install -r /var/scitran/code/api/requirements.txt \
+  && pip install -r /var/scitran/code/api/requirements-docs.txt
 
 
 # Copy full repo
