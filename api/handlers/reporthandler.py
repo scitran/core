@@ -7,6 +7,8 @@ from .. import util
 
 log = config.log
 
+EIGHTEEN_YEARS_IN_SEC = 568036800
+
 # TODO: use enum
 # ReportType = util.Enum('Report', {
 #     'site'      : SiteReport,
@@ -66,11 +68,6 @@ class SiteReport(Report):
         report['group_count'] = groups.count()
         report['groups'] = []
 
-        # # Group projects by group
-        # g_projects = config.db.projects.aggregate([
-        #     {'$group': {'_id': '$group', 'pids': {'$push': '$_id'}}}
-        # ])
-
         for g in groups:
             group = {}
             group['name'] = g.get('name')
@@ -97,6 +94,7 @@ class ProjectReport(Report):
       - Unique Subjects
       - Male Subjects
       - Female Subjects
+      - Subjects with sex type Other
       - Subjects under 18
       - Subjects over 18
     """
@@ -122,10 +120,42 @@ class ProjectReport(Report):
                 if perm.get('access') == 'admin':
                     admins.append(perm.get('_id'))
             admin_objs = config.db.users.find({'_id': {'$in': admins}})
-            # This could also be a mongo project aggregation
+            # This could also be a mongo projection aggregation
             project['admins'] = map(lambda x: x.get('firstname','')+' '+x.get('lastname',''), admin_objs)
 
             project['session_count'] = config.db.sessions.count({'project': p['_id']})
+
+            match_pid =         {'$match': {'project': p['_id']}}
+            group_by_id =       {'$group': {'_id': '$subject._id'}}
+            group_by_sex =      {'$group': {'_id': '$subject._id', 'sex': { '$first': '$subject.sex' }}}
+            group_by_avg_age =  {'$group': {'_id': '$subject._id', 'age': { '$avg': '$subject.age'}}}
+
+            pipeline = [
+                {'$match': {'project': p['_id'], 'subject._id': { '$exists': True}}},
+                {'$group': {'_id': '$subject._id'}},
+                {'$group': {'_id': 1, 'count': { '$sum': 1 }}}
+            ]
+            project['subjects_count'] = config.db.command('aggregate', 'sessions', pipeline=pipeline)
+
+            pipeline = [
+                {'$match': {'project': p['_id'], 'subject._id': { '$exists': True}, 'subject.sex': { '$exists': True}}},
+                {'$group': {'_id': '$subject._id', 'sex': { '$first': '$subject.sex' }}},
+                {'$group': {'_id': '$sex', 'count': { '$sum': 1 }}}
+            ]
+            result = config.db.command('aggregate', 'sessions', pipeline=pipeline)
+            project['males_count'] = result
+            project['female_count'] = result
+            project['other_count'] = result
+
+            pipeline = [
+                {'$match': {'project': p['_id'], 'subject._id': { '$exists': True}, 'subject.age': { '$exists': True}}},
+                {'$group': {'_id': '$subject._id', 'age': { '$avg': '$subject.age'}}},
+                {'$project': {'_id': 1, 'over_18': { '$gte': [ '$age', 568036800]}}},
+                {'$group': {'_id': 'over_18', 'count': { '$sum': 1 }}}
+            ]
+            result = config.db.command('aggregate', 'sessions', pipeline=pipeline)
+            project['over_18_count'] = result
+            project['under_18_count'] = result
 
             report['projects'].append(project)
 
