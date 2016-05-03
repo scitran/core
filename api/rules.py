@@ -3,7 +3,7 @@ import json
 
 from . import jobs
 from . import config
-from .dao.containerutil import create_filereference_from_file_map
+from .dao.containerutil import FileReference
 
 log = config.log
 
@@ -130,8 +130,8 @@ def create_jobs(db, container, container_type, file_):
     for rule in rules:
         if eval_rule(rule, file_, container):
             alg_name = rule['alg']
-            input = create_filereference_from_file_map(container, container_type, file_)
-            jobs.queue_job_legacy(db, alg_name, input, [])
+            input = FileReference(container_type=container_type, container_id=str(container['_id']), filename=file_['name'])
+            jobs.queue_job_legacy(db, alg_name, input)
             job_list.append(alg_name)
 
     return job_list

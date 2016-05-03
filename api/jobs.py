@@ -10,7 +10,7 @@ import pymongo
 import datetime
 
 from collections import namedtuple
-from .dao.containerutil import FileReference, create_filereference_from_dictionary
+from .dao.containerutil import FileReference, create_filereference_from_dictionary, ContainerReference, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 from . import base
 from . import config
@@ -70,7 +70,6 @@ def get_gear_by_name(name):
     # Mongo returns the full document: { "_id" : "gears", "gear_list" : [ { .. } ] }, so strip that out
     return gear_doc['gear_list'][0]
 
-
 def queue_job_legacy(db, algorithm_id, input, tags=None, attempt_n=1, previous_job_id=None):
     """
     Tie together logic used from the no-manifest, single-file era.
@@ -91,9 +90,9 @@ def queue_job_legacy(db, algorithm_id, input, tags=None, attempt_n=1, previous_j
         input_name: input
     }
 
-    return queue_job(db, algorithm_id, inputs, tags, attempt_n, previous_job_id)
+    return queue_job(db, algorithm_id, inputs, tags=tags, attempt_n=attempt_n, previous_job_id=previous_job_id)
 
-def queue_job(db, name, inputs, tags=None, attempt_n=1, previous_job_id=None):
+def queue_job(db, name, inputs, destination=None, tags=None, attempt_n=1, previous_job_id=None):
     """
     Enqueues a job for execution.
 
@@ -105,6 +104,8 @@ def queue_job(db, name, inputs, tags=None, attempt_n=1, previous_job_id=None):
         Unique name of the algorithm
     inputs: string -> FileReference map
         The inputs to be used by this job
+    destination: ContainerReference (optional)
+        Where to place the gear's output. Defaults to one of the input's containers.
     tags: string array (optional)
         Tags that this job should be marked with.
     attempt_n: integer (optional)
@@ -118,9 +119,6 @@ def queue_job(db, name, inputs, tags=None, attempt_n=1, previous_job_id=None):
 
     now = datetime.datetime.utcnow()
     gear = get_gear_by_name(name)
-
-    if len(tags) != 0:
-        raise Exception('wat ' + ''.join(tags) + ' * ' + name)
 
     # A job is always tagged with the name of the gear, and if present, any gear-configured tags
     tags.append(name)
@@ -141,8 +139,20 @@ def queue_job(db, name, inputs, tags=None, attempt_n=1, previous_job_id=None):
     }
 
     # Save input FileReferences
-    for i in inputs.keys():
+    for i in gear['manifest']['inputs'].keys():
+        if inputs.get(i, None) is None:
+            raise Exception('Gear ' + name + ' requires input ' + i + ' but was not provided')
+
         job['inputs'][i] = inputs[i]._asdict()
+
+    if destination is not None:
+        # Use configured destination container
+        job['destination'] = destination._asdict()
+    else:
+        # Grab an arbitrary input's container
+        key = inputs.keys()[0]
+        cr = create_containerreference_from_filereference(inputs[key])
+        job['destination'] = cr._asdict()
 
     if previous_job_id is not None:
         job['previous_job_id'] = previous_job_id
@@ -163,13 +173,16 @@ def retry_job(db, j, force=False):
         for x in j['inputs'].keys():
             j['inputs'][x] = create_filereference_from_dictionary(j['inputs'][x])
 
-        job_id = queue_job(db, j['algorithm_id'], j['inputs'], attempt_n=j['attempt']+1, previous_job_id=j['_id'])
+        destination = None
+        if j.get('destination', None) is not None:
+            destination = create_containerreference_from_dictionary(j['destination'])
+
+        job_id = queue_job(db, j['algorithm_id'], j['inputs'], attempt_n=j['attempt']+1, previous_job_id=j['_id'], destination=destination)
         log.info('respawned job %s as %s (attempt %d)' % (j['_id'], job_id, j['attempt']+1))
     else:
         log.info('permanently failed job %s (after %d attempts)' % (j['_id'], j['attempt']))
 
-
-def generate_formula(algorithm_id, inputs, job_id=None):
+def generate_formula(algorithm_id, inputs, destination, job_id=None):
     """
     Given an intent, generates a formula to execute a job.
 
@@ -179,7 +192,9 @@ def generate_formula(algorithm_id, inputs, job_id=None):
         Human-friendly unique name of the algorithm
     inputs: string -> FileReference map
         The inputs to be used by this job
-    job_id: string
+    destination: ContainerReference
+        Where to place the gear's output. Defaults to one of the input's containers.
+    job_id: string (optional)
         The job ID this will be placed on. Enhances the file origin by adding the job ID to the upload URL.
     """
 
@@ -206,6 +221,9 @@ def generate_formula(algorithm_id, inputs, job_id=None):
     # Add the gear
     f['inputs'].append(gear['input'])
 
+    # Map destination to upload URI
+    f['outputs'][0]['uri'] = '/engine?level=' + destination['container_type'] + '&id=' + destination['container_id']
+
     # Add the files
     for input_name in inputs.keys():
         i = inputs[input_name]
@@ -216,10 +234,7 @@ def generate_formula(algorithm_id, inputs, job_id=None):
             'location': '/flywheel/v0/input/' + input_name,
         })
 
-        # Set the output uri to the first-discovered input file's container.
-        if f['outputs'][0]['uri'] == '':
-            f['outputs'][0]['uri'] = '/engine?level=' + i['container_type'] + '&id=' + i['container_id']
-
+    # Log job origin if provided
     if job_id:
         f['outputs'][0]['uri'] += '&job=' + job_id
 
@@ -240,6 +255,40 @@ class Jobs(base.RequestHandler):
         results = list(config.db.jobs.find())
 
         return results
+
+    def add(self):
+        """
+        Add a manifest-aware job to the queue.
+        """
+
+        # TODO: Check each input container for R, check dest container for RW
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        # TODO: json schema
+
+        submit = self.request.json
+        gear_name = submit['gear']
+
+        # Translate maps to FileReferences
+        inputs = {}
+        for x in submit['inputs'].keys():
+            input_map = submit['inputs'][x]
+            inputs[x] = create_filereference_from_dictionary(input_map)
+
+        # Add job tags, attempt number, and/or previous job ID, if present
+        tags            = submit.get('tags', None)
+        attempt_n       = submit.get('attempt_n', 1)
+        previous_job_id = submit.get('previous_job_id', None)
+
+        # Add destination container, if present
+        destination = None
+        if submit.get('destination', None) is not None:
+            destination = create_containerreference_from_dictionary(submit['destination'])
+
+        # Return enqueued job ID
+        job_id = queue_job(config.db, gear_name, inputs, destination=destination, tags=tags, attempt_n=attempt_n, previous_job_id=previous_job_id)
+        return { '_id': job_id }
 
     def add_raw(self):
         """
@@ -315,7 +364,7 @@ class Jobs(base.RequestHandler):
                 '_id': result['_id']
             },
             { '$set': {
-                'request': generate_formula(result['algorithm_id'], result['inputs'], str_id)}
+                'request': generate_formula(result['algorithm_id'], result['inputs'], result['destination'], job_id=str_id)}
             },
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
