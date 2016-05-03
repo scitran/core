@@ -48,8 +48,10 @@ def default_container(handler, container=None, target_parent_container=None):
 
             if has_access and projection:
                 return exec_op(method, _id=_id, payload=payload, projection=projection)
+            if has_access and recursive:
+                return exec_op(method, _id=_id, payload=payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
             elif has_access:
-                return exec_op(method, _id=_id, payload=payload)
+                return exec_op(method, _id=_id, payload=payload, replace_metadata=replace_metadata)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the container'.format(method))
         return f
