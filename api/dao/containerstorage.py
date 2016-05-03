@@ -25,11 +25,13 @@ class ContainerStorage(object):
         return self._get_el(_id)
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
-                public=False, projection=None, recursive=False):
+                public=False, projection=None, recursive=False, r_payload=None,
+                replace_metadata=False):
         """
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.
         """
+
         check = consistencychecker.get_container_storage_checker(action, self.cont_name)
         data_op = payload or {'_id': _id}
         check(data_op)
@@ -40,7 +42,7 @@ class ContainerStorage(object):
         if action == 'DELETE':
             return self._delete_el(_id)
         if action == 'PUT':
-            return self._update_el(_id, payload, recursive)
+            return self._update_el(_id, payload, recursive, r_payload, replace_metadata)
         if action == 'POST':
             return self._create_el(payload)
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
@@ -49,17 +51,28 @@ class ContainerStorage(object):
         log.debug(payload)
         return self.dbc.insert_one(payload)
 
-    def _update_el(self, _id, payload, recursive=False):
+    def _update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
+        replace = None
+        if replace_metadata:
+            replace = {}
+            if payload.get('metadata') is not None:
+                replace['metadata'] = util.mongo_sanitize_fields(payload.pop('metadata'))
+            if payload.get('subject') is not None and payload['subject'].get('metadata') is not None:
+                    replace['subject.metadata'] = util.mongo_sanitize_fields(payload['subject'].pop('metadata'))
+
         update = {
             '$set': util.mongo_dict(payload)
         }
+        if replace is not None:
+            update['$set'].update(replace)
+
         if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
-        if recursive:
-            self._propagate_changes(_id, update)
+        if recursive and r_payload is not None:
+            self._propagate_changes(_id, {'$set': util.mongo_dict(r_payload)})
         return self.dbc.update_one({'_id': _id}, update)
 
     def _propagate_changes(self, _id, update):

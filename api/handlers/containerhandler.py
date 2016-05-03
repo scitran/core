@@ -305,13 +305,16 @@ class ContainerHandler(base.RequestHandler):
 
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
-        # Check if any payload keys are a propogated property, ensure they all are
+
+        # Check if any payload keys are any propogated property, add to r_payload
         rec = False
-        if set(payload.keys()).intersection(set(self.config.get('propagated_properties', []))):
-            if not set(payload.keys()).issubset(set(self.config['propagated_properties'])):
-                self.abort(400, 'Cannot update propagated properties together with unpropagated properties')
-            else:
-                rec = True  # Mark PUT request for propogation
+        r_payload = {}
+        prop_keys = set(payload.keys()).intersection(set(self.config.get('propagated_properties', [])))
+        if prop_keys:
+            rec = True
+            for key in prop_keys:
+                r_payload[key] = payload[key]
+
         # Check if we are updating the parent container of the element (ie we are moving the container)
         # In this case, we will check permissions on it.
         target_parent_container, parent_id_property = self._get_parent_container(payload)
@@ -331,10 +334,14 @@ class ContainerHandler(base.RequestHandler):
                 # Ensure subject id is a bson object
                 payload['subject']['_id'] = bson.ObjectId(str(payload['subject']['_id']))
         permchecker = self._get_permchecker(container, target_parent_container)
+
+        # Specifies wether the metadata fields should be replaced or patched with payload value
+        replace_metadata = self.get_param('replace_metadata', default=False)
         try:
             # This line exec the actual request validating the payload that will update the container
             # and checking permissions using respectively the two decorators, mongo_validator and permchecker
-            result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload, recursive=rec)
+            result = mongo_validator(permchecker(self.storage.exec_op))('PUT',
+                        _id=_id, payload=payload, recursive=rec, r_payload=r_payload, replace_metadata=replace_metadata)
         except APIStorageException as e:
             self.abort(400, e.message)
 
