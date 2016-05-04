@@ -39,8 +39,8 @@ def get_base_rules():
     """
     Fetch the install-global gear rules from the database
     """
-    rule_doc = config.db.static.find_one({'_id': 'rules'})
-    return rule_doc['rule_list']
+    rule_doc = config.db.static.find_one({'_id': 'rules'}) or {}
+    return rule_doc.get('rule_list', [])
 
 def _log_file_key_error(file_, container, error):
     log.warning('file ' + file_.get('name', '?') + ' in container ' + str(container.get('_id', '?')) + ' ' + error)
