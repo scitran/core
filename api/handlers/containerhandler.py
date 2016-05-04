@@ -324,7 +324,11 @@ class ContainerHandler(base.RequestHandler):
             if cont_name == 'sessions':
                 payload['group'] = target_parent_container['group']
             if cont_name != 'projects':
-                payload['permissions'] = target_parent_container.get('permissions', [])
+                parent_perms = target_parent_container.get('permissions', [])
+                payload['permissions'] = parent_perms
+                # Propagate permissions down heirarchy
+                rec = True
+                r_payload['permissions'] = parent_perms
 
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
