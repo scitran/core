@@ -1,6 +1,7 @@
 import json
 import bson
 import dateutil
+import copy
 
 from .. import base
 from .. import config
@@ -19,25 +20,34 @@ class ReportHandler(base.RequestHandler):
         super(ReportHandler, self).__init__(request, response)
 
     def get(self, report_type, **kwargs):
-        log.debug('lksdjflkdsjlfkdsjlk')
         report = None
         if report_type == 'site':
             report = SiteReport()
 
         elif report_type == 'project':
             project_list = self.request.GET.getall('projects')
+            start_date = self.get_param('start_date')
+            end_date = self.get_param('end_date')
+
             if len(project_list) < 1:
                 self.abort(400, 'List of projects requried for Project Report')
+            if start_date is not None:
+                start_date = dateutil.parser.parse(self.get_param('start_date'))
+            if end_date is not None:
+                end_date = dateutil.parser.parse(self.get_param('end_date'))
 
             report = ProjectReport(map(bson.ObjectId, project_list),
-                                   start_date=dateutil.parser.parse(self.get_param('start_date')),
-                                   end_date=dateutil.parser.parse(self.get_param('end_date')))
+                                   start_date=start_date,
+                                   end_date=end_date)
 
         else:
             # They should never even get this far because of filtering in api.py
             self.abort(400, 'The report type {} is not supported'.format(report_type))
 
-        return report.build()
+        if self.superuser_request or report.user_can_generate(self.uid):
+            return report.build()
+        else:
+            self.abort(403, 'User {} does not have required permissions to generate report'.format(self.uid))
 
 
 def _get_result(output):
@@ -45,18 +55,23 @@ def _get_result(output):
     Helper function for extracting mongo aggregation results
 
     Given the output of a mongo aggregation call, checks 'ok' field
-    If not 1 or 'result' field does not exist, throws APIReportException
+    If not 1.0 or 'result' field does not exist, throws APIReportException
     """
 
-    if output.get('ok', 0) is 1:
-        output.get('result')
-        if result is not None: return result
+    if output.get('ok', 0) is not 1.0:
+        result = output.get('result')
+        if result is not None:
+            return result[0]
 
     raise APIReportException
 
 class Report(object):
-    def __init__(self):
-        self.placeholder = None
+
+    def user_can_generate(self, uid):
+        """
+        Check if user has required permissions to generate report
+        """
+        raise NotImplementedError()
 
     def build(self):
         """
@@ -75,6 +90,14 @@ class SiteReport(Report):
       - number of sessions per group
     """
 
+    def user_can_generate(self, uid):
+        """
+        User generating report must be superuser
+        """
+        if config.db.users.count({'_id': uid, 'root': True}) > 0:
+            return True
+        return False
+
     def build(self):
         report = {}
 
@@ -86,13 +109,14 @@ class SiteReport(Report):
             group = {}
             group['name'] = g.get('name')
 
-            project_ids = [p['_id'] for p in config.db.projects.find({'group': group['name']}, [])]
+            project_ids = [p['_id'] for p in config.db.projects.find({'group': g['_id']}, [])]
             group['project_count'] = len(project_ids)
 
             group['session_count'] = config.db.sessions.count({'project': {'$in': project_ids}})
             report['groups'].append(group)
 
         return report
+
 
 class ProjectReport(Report):
     """
@@ -128,15 +152,26 @@ class ProjectReport(Report):
         self.start_date = start_date
         self.end_date = end_date
 
+    def user_can_generate(self, uid):
+        """
+        User generating report must be admin on all
+        """
+        perm_count = config.db.projects.count({'_id': {'$in': self.projects},
+                                               'permissions._id': uid,
+                                               'permissions.access': 'admin'})
+        if perm_count == len(self.projects):
+            return True
+        return False
+
     def _base_query(self, pid):
         base_query = {'project': pid}
 
-        if start_date is not None or end_date is not None:
+        if self.start_date is not None or self.end_date is not None:
             base_query['created'] = {}
-        if start_date is not None:
-            base_query['created']['$gte'] = start_date
-        if end_date is not None:
-            base_query['created']['$lte'] = end_date
+        if self.start_date is not None:
+            base_query['created']['$gte'] = self.start_date
+        if self.end_date is not None:
+            base_query['created']['$lte'] = self.end_date
 
         return base_query
 
@@ -158,13 +193,14 @@ class ProjectReport(Report):
             admin_objs = config.db.users.find({'_id': {'$in': admins}})
             project['admins'] = map(lambda x: x.get('firstname','')+' '+x.get('lastname',''), admin_objs)
 
-            base_query = self._base_query(p['id'])
+            base_query = self._base_query(p['_id'])
             project['session_count'] = config.db.sessions.count(base_query)
 
             # Count subjects
             # Any stats on subjects require an aggregation to group by subject._id
-            subject_q = base_query.deepcopy()
-            subject_q['subject._id'] = {'$exists: True'}
+            subject_q = copy.deepcopy(base_query)
+            subject_q['subject._id'] = {'$ne': None}
+            log.debug(subject_q)
 
             pipeline = [
                 {'$match': subject_q},
@@ -177,35 +213,43 @@ class ProjectReport(Report):
 
 
             # Count subjects by sex
-            sex_q = subject_q.deepcopy()
-            sex_q['subject.sex'] = {'$exists: True'}
+            # Use first sex reporting for subjects with multiple entries
+            sex_q = copy.deepcopy(subject_q)
+            sex_q['subject.sex'] = {'$ne': None}
 
             pipeline = [
                 {'$match': sex_q},
                 {'$group': {'_id': '$subject._id', 'sex': {'$first': '$subject.sex'}}},
-                {'$group': {'_id': '$sex', 'count': {'$sum': 1}}}
+                {'$project': {'_id': 1, 'female':  {'$cond': [{'$eq': ['$sex', 'female']}, 1, 0]},
+                                        'male':    {'$cond': [{'$eq': ['$sex', 'male']}, 1, 0]},
+                                        'other':   {'$cond': [{'$eq': ['$sex', 'other']}, 1, 0]}}},
+                {'$group': {'_id': 1, 'female': {'$sum': '$female'},
+                                      'male':   {'$sum': '$male'},
+                                      'other':  {'$sum': '$other'}}}
             ]
             result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
-            # project['males_count'] = result['result']
-            # project['female_count'] = result['result']
-            # project['other_count'] = result['result']
+            project['female_count'] = result.get('female',0)
+            project['males_count'] = result.get('male',0)
+            project['other_count'] = result.get('other',0)
 
 
             # Count subjects by age group
-            age_q = subject_q.deepcopy()
-            age_q['subject.age'] = {'$exists: True'}
+            # Age is taken as an average over all subject entries
+            age_q = copy.deepcopy(subject_q)
+            age_q['subject.age'] = {'$gt': 0}
 
             pipeline = [
                 {'$match': age_q},
                 {'$group': {'_id': '$subject._id', 'age': { '$avg': '$subject.age'}}},
-                {'$project': {'_id': 1, 'over_18': {'$gte': ['$age', 568036800]}}}
-                {'$group': {'_id': 'over_18', 'count': { '$sum': 1 }}}
+                {'$project': {'_id': 1, 'over_18':  {'$cond': [{'$gte': ['$age', 568036800]}, 1, 0]},
+                                        'under_18': {'$cond': [{'$lt': ['$age', 568036800]}, 1, 0]}}},
+                {'$group': {'_id': 1, 'over_18': {'$sum': '$over_18'}, 'under_18': {'$sum': '$under_18'}}}
             ]
             result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
-            # project['over_18_count'] = result
-            # project['under_18_count'] = result
+            project['over_18_count'] = result.get('over_18',0)
+            project['under_18_count'] = result.get('under_18',0)
 
 
             report['projects'].append(project)
