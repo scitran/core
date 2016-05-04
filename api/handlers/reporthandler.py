@@ -242,8 +242,8 @@ class ProjectReport(Report):
             pipeline = [
                 {'$match': age_q},
                 {'$group': {'_id': '$subject._id', 'age': { '$avg': '$subject.age'}}},
-                {'$project': {'_id': 1, 'over_18':  {'$cond': [{'$gte': ['$age', 568036800]}, 1, 0]},
-                                        'under_18': {'$cond': [{'$lt': ['$age', 568036800]}, 1, 0]}}},
+                {'$project': {'_id': 1, 'over_18':  {'$cond': [{'$gte': ['$age', EIGHTEEN_YEARS_IN_SEC]}, 1, 0]},
+                                        'under_18': {'$cond': [{'$lt': ['$age', EIGHTEEN_YEARS_IN_SEC]}, 1, 0]}}},
                 {'$group': {'_id': 1, 'over_18': {'$sum': '$over_18'}, 'under_18': {'$sum': '$under_18'}}}
             ]
             result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
