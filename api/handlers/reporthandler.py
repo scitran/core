@@ -9,7 +9,7 @@ from .. import util
 
 log = config.log
 
-EIGHTEEN_YEARS_IN_SEC = 568036800
+EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 
 class APIReportException(Exception):
     pass
@@ -35,6 +35,8 @@ class ReportHandler(base.RequestHandler):
                 start_date = dateutil.parser.parse(self.get_param('start_date'))
             if end_date is not None:
                 end_date = dateutil.parser.parse(self.get_param('end_date'))
+            if end_date is not None and start_date is not None and end_date < start_date:
+                self.abort(400, 'End date {} is before start date {}'.format(end_date, start_date))
 
             report = ProjectReport(map(bson.ObjectId, project_list),
                                    start_date=start_date,
@@ -61,7 +63,7 @@ def _get_result(output):
     if output.get('ok', 0) is not 1.0:
         result = output.get('result')
         if result is not None:
-            return result[0]
+            return result[0] if len(result) > 0 else {}
 
     raise APIReportException
 
