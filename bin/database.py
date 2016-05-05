@@ -6,7 +6,7 @@ import sys
 import logging
 from api import config
 
-CURRENT_DATABASE_VERSION = 4 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 5 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -122,6 +122,23 @@ def upgrade_to_4():
             update = {'$set': {'subject._id': subject_id}}
             config.db.sessions.update_many(query, update)
 
+def upgrade_to_5():
+    """
+    scitran/core issue #279
+
+    Ensure all sessions and acquisitions have the same perms as their project
+    Bug(#278) discovered where changing a session's project did not update acquisition perms
+    """
+
+    projects = config.db.projects.find({})
+    for p in projects:
+        perms = p.get('permissions', [])
+
+        session_ids = [s['_id'] for s in config.db.sessions.find({'project': p['_id']}, [])]
+
+        config.db.sessions.update_many({'project': p['_id']}, {'$set': {'permissions': perms}})
+        config.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': {'permissions': perms}})
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -139,6 +156,8 @@ def upgrade_schema():
             upgrade_to_3()
         if db_version < 4:
             upgrade_to_4()
+        if db_version < 5:
+            upgrade_to_5()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
