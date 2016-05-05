@@ -166,7 +166,7 @@ def _upsert_session(session, project_obj, type_, timestamp):
             group=project_obj['group'],
             project=project_obj['_id'],
             permissions=project_obj['permissions'],
-            public=project_obj['public'],
+            public=project_obj.get('public', False),
             created=timestamp
         ),
         '$set': session
@@ -192,7 +192,7 @@ def _upsert_acquisition(acquisition, session_obj, type_, timestamp):
         '$setOnInsert': dict(
             session=session_obj['_id'],
             permissions=session_obj['permissions'],
-            public=session_obj['public'],
+            public=session_obj.get('public', False),
             created=timestamp
         ),
         '$set': acquisition
