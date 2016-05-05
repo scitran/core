@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
-import json
 import bson
-import sys
-import logging
+import copy
 import dateutil.parser
+import json
+import logging
+import sys
 
 from api import config
 
-CURRENT_DATABASE_VERSION = 6 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 7 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -154,6 +155,74 @@ def upgrade_to_6():
         fixed_mod = dateutil.parser.parse(c['modified'])
         config.db.collections.update_one({'_id': c['_id']}, {'$set': {'modified': fixed_mod}})
 
+def upgrade_to_7():
+    """
+    scitran/core issue #270
+
+    Add named inputs and specified destinations to jobs.
+
+    Before:
+    {
+        "input" : {
+            "container_type" : "acquisition",
+            "container_id" : "572baf4e23dcb77ebbe06b3f",
+            "filename" : "1_1_dicom.zip",
+            "filehash" : "v0-sha384-422bd115d21585d1811d42cd99f1cf0a8511a4b377dd2deeaa1ab491d70932a051926ed99815a75142ad0815088ed009"
+        }
+    }
+
+    After:
+    {
+        "inputs" : {
+            "dicom" : {
+                "container_type" : "acquisition",
+                "container_id" : "572baf4e23dcb77ebbe06b3f",
+                "filename" : "1_1_dicom.zip"
+            }
+        },
+        "destination" : {
+            "container_type" : "acquisition",
+            "container_id" : "572baf4e23dcb77ebbe06b3f"
+        }
+    }
+    """
+
+    # The infrastructure runs this upgrade script before populating manifests.
+    # For this reason, this one-time script does NOT pull manifests to do the input-name mapping, instead relying on a hard-coded alg name -> input name map.
+    # If you have other gears in your system at the time of upgrade, you must add that mapping here.
+    input_name_for_gear = {
+        'dcm_convert': 'dicom',
+        'qa-report-fmri': 'nifti',
+        'dicom_mr_classifier': 'dicom',
+    }
+
+    jobs = config.db.jobs.find({})
+
+    for job in jobs:
+        gear_name = job['algorithm_id']
+        input_name = input_name_for_gear[gear_name]
+
+        # # Move single input to named input map
+        input = job['input']
+        input.pop('filehash', None)
+        inputs = { input_name: input }
+
+        # # Destination is required, and (for these jobs) is always the same container as the input
+        destination = copy.deepcopy(input)
+        destination.pop('filename', None)
+
+        config.db.jobs.update_one(
+            {'_id': job['_id']},
+            {
+                '$set': {
+                    'inputs': inputs,
+                    'destination': destination
+                },
+                '$unset': {
+                    'input': ''
+                }
+            }
+        )
 
 def upgrade_schema():
     """
@@ -176,6 +245,8 @@ def upgrade_schema():
             upgrade_to_5()
         if db_version < 6:
             upgrade_to_6()
+        if db_version < 7:
+            upgrade_to_7()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
