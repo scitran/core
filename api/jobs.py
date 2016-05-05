@@ -53,21 +53,17 @@ def get_gears():
 def get_gear_by_name(name):
 
     # Find a gear from the list by name
-    gear_doc = config.db.static.find_one({
-        "_id": "gears",
-        "gear_list": {
-            "$elemMatch": {
-                "name": name
-            }
-        }
-    }, {
-        "gear_list.$": 1
+    gear_doc = config.db.static.find_one(
+        {'_id': 'gears'},
+        {'gear_list': { '$elemMatch': {
+            'name': 'dcm_convert'
+        }}
     })
 
     if gear_doc is None:
-        raise Exception("Unknown gear " + name)
+        raise Exception('Unknown gear ' + name)
 
-    # Mongo returns the full document: { "_id" : "gears", "gear_list" : [ { .. } ] }, so strip that out
+    # Mongo returns the full document: { '_id' : 'gears', 'gear_list' : [ { .. } ] }, so strip that out
     return gear_doc['gear_list'][0]
 
 def queue_job_legacy(db, algorithm_id, input, tags=None, attempt_n=1, previous_job_id=None):
