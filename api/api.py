@@ -202,6 +202,7 @@ routes = [
         webapp2.Route(r'/count',            jobs.Jobs, handler_method='count', methods=['GET']),
         webapp2.Route(r'/stats',            jobs.Jobs, handler_method='stats', methods=['GET']),
         webapp2.Route(r'/reap',             jobs.Jobs, handler_method='reap_stale', methods=['POST']),
+        webapp2.Route(r'/add',              jobs.Jobs, handler_method='add', methods=['POST']),
         webapp2.Route(r'/add-raw',          jobs.Jobs, handler_method='add_raw', methods=['POST']),
         webapp2.Route(r'/<:[^/]+>',         jobs.Job,  name='job'),
     ]),
