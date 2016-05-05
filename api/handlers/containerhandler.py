@@ -321,14 +321,15 @@ class ContainerHandler(base.RequestHandler):
         if target_parent_container:
             if cont_name in ['sessions', 'acquisitions']:
                 payload[parent_id_property] = bson.ObjectId(payload[parent_id_property])
-            if cont_name == 'sessions':
-                payload['group'] = target_parent_container['group']
-            if cont_name != 'projects':
                 parent_perms = target_parent_container.get('permissions', [])
                 payload['permissions'] = parent_perms
-                # Propagate permissions down heirarchy
+
+            if cont_name == 'sessions':
+                payload['group'] = target_parent_container['group']
+                # Propagate permissions down to acquisitions
                 rec = True
                 r_payload['permissions'] = parent_perms
+
 
         payload['modified'] = datetime.datetime.utcnow()
         if payload.get('timestamp'):
