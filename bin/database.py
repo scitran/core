@@ -4,9 +4,11 @@ import json
 import bson
 import sys
 import logging
+import dateutil.parser
+
 from api import config
 
-CURRENT_DATABASE_VERSION = 5 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 6 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -139,6 +141,20 @@ def upgrade_to_5():
         config.db.sessions.update_many({'project': p['_id']}, {'$set': {'permissions': perms}})
         config.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': {'permissions': perms}})
 
+def upgrade_to_6():
+    """
+    scitran/core issue #277
+
+    Ensure all collection modified dates are ISO format
+    Bug fixed in 6967f23
+    """
+
+    colls = config.db.collections.find({'modified': {'$type': 2}}) # type string
+    for c in colls:
+        fixed_mod = dateutil.parser.parse(c['modified'])
+        config.db.collections.update_one({'_id': c['_id']}, {'$set': {'modified': fixed_mod}})
+
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -158,6 +174,8 @@ def upgrade_schema():
             upgrade_to_4()
         if db_version < 5:
             upgrade_to_5()
+        if db_version < 6:
+            upgrade_to_6()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
