@@ -164,3 +164,33 @@ class Queue(object):
             'by-tag': by_tag,
             'permafailed': permafailed
         }
+
+    @staticmethod
+    def scan_for_orphans():
+        """
+        Scan the queue for orphaned jobs, mark them as failed, and possibly retry them.
+        Should be called periodically.
+        """
+
+        orphaned = 0
+
+        while True:
+            doc = config.db.jobs.find_one_and_update(
+                {
+                    'state': 'running',
+                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
+                },
+                {
+                    '$set': {
+                        'state': 'failed', },
+                },
+            )
+
+            if doc is None:
+                break
+            else:
+                orphaned += 1
+                j = Job.load(doc)
+                Queue.retry(j)
+
+        return orphaned

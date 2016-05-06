@@ -32,9 +32,7 @@ class JobsHandler(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        results = list(config.db.jobs.find())
-
-        return results
+        return list(config.db.jobs.find())
 
     def add(self):
         """
@@ -88,23 +86,8 @@ class JobsHandler(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        while True:
-            doc = config.db.jobs.find_one_and_update(
-                {
-                    'state': 'running',
-                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
-                },
-                {
-                    '$set': {
-                        'state': 'failed',
-                    },
-                },
-                )
-            if doc is None:
-                break
-            else:
-                j = Job.load(doc)
-                Queue.retry(j)
+        count = Queue.scan_for_orphans()
+        return { 'orphaned': count }
 
 
 class JobHandler(base.RequestHandler):
