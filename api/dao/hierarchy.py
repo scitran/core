@@ -1,9 +1,10 @@
 import bson
 import copy
-import difflib
-import pymongo
 import datetime
 import dateutil.parser
+import difflib
+import pymongo
+import re
 
 from .. import files
 from .. import util
@@ -112,7 +113,7 @@ def _find_or_create_destination_project(group_id, project_label, timestamp):
     group = config.db.groups.find_one({'_id': group_id})
     project = config.db.projects.find_one_and_update(
         {'group': group['_id'],
-         'label': {'$regex': project_label, '$options': 'i'}
+         'label': {'$regex': re.escape(project_label), '$options': 'i'}
         },
         {
             '$setOnInsert': {
