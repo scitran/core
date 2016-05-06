@@ -2,19 +2,12 @@
 Jobs
 """
 
-# We shadow the standard library; this is a workaround.
-from __future__ import absolute_import
-
 import bson
-import pymongo
 import datetime
 
-from collections import namedtuple
-from ..dao.containerutil import FileReference, create_filereference_from_dictionary, ContainerReference, create_containerreference_from_dictionary, create_containerreference_from_filereference
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
-from .. import base
 from .. import config
-from .. import util
 from . import gears
 
 log = config.log

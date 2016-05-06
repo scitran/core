@@ -2,21 +2,13 @@
 API request handlers for the jobs module
 """
 
-# We shadow the standard library; this is a workaround.
-from __future__ import absolute_import
-
-import bson
-import pymongo
-import datetime
-
-from collections import namedtuple
-from ..dao.containerutil import FileReference, create_filereference_from_dictionary, ContainerReference, create_containerreference_from_dictionary, create_containerreference_from_filereference
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary
 
 from .. import base
 from .. import config
-from .. import util
+
 from .jobs import Job
-from .queue import Queue, JOB_STATES, MAX_ATTEMPTS
+from .queue import Queue
 
 log = config.log
 
