@@ -1,6 +1,6 @@
 
 import pytest
-from api import rules
+from api.jobs import rules
 
 # Statefully holds onto some construction args and can return tuples to unroll for calling rules.eval_match.
 # Might indicate a need for a match tuple in rules.py.

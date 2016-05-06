@@ -1,11 +1,9 @@
-import bson.objectid
 import datetime
 import enum as baseEnum
 import errno
 import json
 import mimetypes
 import os
-import pytz
 import tempdir as tempfile
 import uuid
 import requests
@@ -155,13 +153,6 @@ def format_hash(hash_alg, hash_):
     """
     return '-'.join(('v0', hash_alg, hash_))
 
-
-def custom_json_serializer(obj):
-    if isinstance(obj, bson.objectid.ObjectId):
-        return str(obj)
-    elif isinstance(obj, datetime.datetime):
-        return pytz.timezone('UTC').localize(obj).isoformat()
-    raise TypeError(repr(obj) + " is not JSON serializable")
 
 def send_json_http_exception(response, message, code):
     response.set_status(code)
