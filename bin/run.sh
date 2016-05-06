@@ -8,7 +8,25 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 echo() { builtin echo -e "\033[1;34m\033[47mSCITRAN\033[0;0m\033[47m $@\033[0;0m"; }
 
 
+USAGE="Usage: $0 [-T] [config file]"
+
+BOOTSTRAP_TESTDATA=1
+
+while getopts ":T" opt; do
+    case $opt in
+        T)
+            BOOTSTRAP_TESTDATA=0;
+            shift $((OPTIND-1));;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo $USAGE >&2
+            exit 1
+            ;;
+    esac
+done
+
 set -o allexport
+
 
 if [ "$#" -eq 1 ]; then
     EXISTING_ENV=$(env | grep "SCITRAN_" | cat)
@@ -16,7 +34,8 @@ if [ "$#" -eq 1 ]; then
     eval "$EXISTING_ENV"
 fi
 if [ "$#" -gt 1 ]; then
-    echo "Usage: $0 [config file]"
+    echo "Too many positional arguments"
+    echo $USAGE >&2
     exit 1
 fi
 
@@ -170,21 +189,25 @@ fi
 
 # Boostrap test data
 TESTDATA_REPO="https://github.com/scitran/testdata.git"
-if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
-    echo "Cloning testdata to $SCITRAN_PERSISTENT_PATH/testdata"
-    git clone --single-branch $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
-else
-    echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
-    git -C $SCITRAN_PERSISTENT_PATH/testdata pull
-fi
+if [ $BOOTSTRAP_TESTDATA -eq 1 ]; then
+    if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
+        echo "Cloning testdata to $SCITRAN_PERSISTENT_PATH/testdata"
+        git clone --single-branch $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
+    else
+        echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
+        git -C $SCITRAN_PERSISTENT_PATH/testdata pull
+    fi
 
-if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
-    echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
+    if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
+        echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
+    else
+        echo "Bootstrapping testdata"
+        folder_uploader --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
+        echo "Bootstrapped testdata"
+        touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
+    fi
 else
-    echo "Bootstrapping testdata"
-    folder_uploader --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
-    echo "Bootstrapped testdata"
-    touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
+    echo "NOT bootstrapping testdata"
 fi
 
 
