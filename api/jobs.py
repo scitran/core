@@ -56,7 +56,7 @@ def get_gear_by_name(name):
     gear_doc = config.db.static.find_one(
         {'_id': 'gears'},
         {'gear_list': { '$elemMatch': {
-            'name': 'dcm_convert'
+            'name': name
         }}
     })
 
