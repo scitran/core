@@ -39,8 +39,15 @@ class Job(object):
             If an equivalent job has tried & failed before, pass which attempt number we're at. Defaults to 1 (no previous attempts).
         previous_job_id: string (optional)
             If an equivalent job has tried & failed before, pass the last job attempt. Defaults to None (no previous attempts).
-        ...
-        ...
+        created: datetime (optional)
+        modified: datetime (optional)
+            Timestamps
+        state: string (optional)
+            The state of this job. Defaults to 'pending'.
+        request: map (optional)
+            The request that is used for the engine. Generated when job is started.
+        _id: string (optional)
+            The database identifier for this job.
         """
 
         # TODO: validate inputs against the manifest
