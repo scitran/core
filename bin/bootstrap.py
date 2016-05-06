@@ -29,17 +29,26 @@ def users(filepath, api_url, http_headers, insecure):
         rs.verify = not insecure
         rs.headers = http_headers
         for u in input_data.get('users', []):
-            log.info('    ' + u['_id'])
-            rs.post(api_url + '/users', json=u)
+            r = rs.post(api_url + '/users', json=u)
+            if r.ok:
+                log.info('S     ' + u['_id'])
+            else:
+                log.error('F     ' + u['_id'])
+
         log.info('bootstrapping groups...')
         site_id = rs.get(api_url + '/config').json()['site']['id']
         for g in input_data.get('groups', []):
-            log.info('    ' + g['_id'])
             roles = g.pop('roles')
-            rs.post(api_url + '/groups' , json=g)
-            for r in roles:
-                r.setdefault('site', site_id)
-                rs.post(api_url + '/groups/' + g['_id'] + '/roles' , json=r)
+            r = rs.post(api_url + '/groups' , json=g)
+            if r.ok:
+                log.info('S     ' + g['_id'])
+            else:
+                log.error('F     ' + g['_id'])
+            for role in roles:
+                role.setdefault('site', site_id)
+                r = rs.post(api_url + '/groups/' + g['_id'] + '/roles' , json=role)
+                if not r.ok:
+                    log.error('F     ' + str(role) + ' -> ' + g['_id'])
     log.info('bootstrapping complete')
 
 
