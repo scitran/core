@@ -5,6 +5,7 @@ import datetime
 import dateutil
 import json
 import uuid
+import zipfile
 
 from .. import base
 from .. import config
@@ -351,6 +352,25 @@ class FileListHandler(ListHandler):
             self.abort(400, 'ticket not for this resource or source IP')
         return ticket
 
+    def _build_zip_info(self, filepath):
+        """
+        Builds a json response containing member and comment info for a zipfile
+        """
+        with zipfile.ZipFile(filepath) as zf:
+            info = {}
+            info['comment'] = zf.comment
+            info['members'] = []
+            for zi in zf.infolist():
+                m = {}
+                m['path']      = zi.filename
+                m['size']      = zi.file_size
+                m['timestamp'] = datetime.datetime(*zi.date_time)
+                m['comment']   = zi.comment
+
+                info['members'].append(m)
+
+            return info
+
     def get(self, cont_name, list_name, **kwargs):
         """
         .. http:get:: /api/(cont_name)/(cid)/files/(file_name)
@@ -390,64 +410,64 @@ class FileListHandler(ListHandler):
                 {"ticket": "1e975e3d-21e9-41f4-bb97-261f03d35ba1"}
 
         """
-
-        log.error('{} {} {}'.format(cont_name, list_name, kwargs))
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         list_name = storage.list_name
         filename = kwargs.get('name')
+
+        # Check ticket id and skip permissions check if it clears
         ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
-            try:
-                fileinfo = keycheck(storage.exec_op)('GET', _id, query_params=kwargs)
-            except APIStorageException as e:
-                self.abort(400, e.message)
-        else:
-            try:
-                fileinfo = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
-            except APIStorageException as e:
-                self.abort(400, e.message)
+            permchecker = always_ok
+
+        # Grab fileinfo from db
+        try:
+            fileinfo = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
         if not fileinfo:
             self.abort(404, 'no such file')
+
         hash_ = self.get_param('hash')
         if hash_ and hash_ != fileinfo['hash']:
             self.abort(409, 'file exists, hash mismatch')
         filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
-        if self.get_param('ticket') == '':    # request for download ticket
+
+        # Request for download ticket
+        if self.get_param('ticket') == '':
             ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'])
             return {'ticket': config.db.downloads.insert_one(ticket).inserted_id}
-        else:                                       # authenticated or ticketed (unauthenticated) download
+
+        # Request for info about zipfile
+        elif self.is_true('info'):
+            try:
+                info = self._build_zip_info(filepath)
+            except zipfile.BadZipfile:
+                self.abort(400, 'not a zip file')
+            return info
+
+        # Request to download zipfile member
+        elif self.get_param('member') is not None:
             zip_member = self.get_param('member')
-            if self.is_true('info'):
-                try:
-                    with zipfile.ZipFile(filepath) as zf:
-                        return [(zi.filename, zi.file_size, datetime.datetime(*zi.date_time)) for zi in zf.infolist()]
-                except zipfile.BadZipfile:
-                    self.abort(400, 'not a zip file')
-            elif self.is_true('comment'):
-                try:
-                    with zipfile.ZipFile(filepath) as zf:
-                        self.response.write(zf.comment)
-                except zipfile.BadZipfile:
-                    self.abort(400, 'not a zip file')
-            elif zip_member:
-                try:
-                    with zipfile.ZipFile(filepath) as zf:
-                        self.response.headers['Content-Type'] = util.guess_mimetype(zip_member)
-                        self.response.write(zf.open(zip_member).read())
-                except zipfile.BadZipfile:
-                    self.abort(400, 'not a zip file')
-                except KeyError:
-                    self.abort(400, 'zip file contains no such member')
+            try:
+                with zipfile.ZipFile(filepath) as zf:
+                    self.response.headers['Content-Type'] = util.guess_mimetype(zip_member)
+                    self.response.write(zf.open(zip_member).read())
+            except zipfile.BadZipfile:
+                self.abort(400, 'not a zip file')
+            except KeyError:
+                self.abort(400, 'zip file contains no such member')
+
+        # Authenticated or ticketed download request
+        else:
+            self.response.app_iter = open(filepath, 'rb')
+            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
+            if self.is_true('view'):
+                self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
             else:
-                self.response.app_iter = open(filepath, 'rb')
-                self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-                if self.is_true('view'):
-                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
-                else:
-                    self.response.headers['Content-Type'] = 'application/octet-stream'
-                    self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+                self.response.headers['Content-Type'] = 'application/octet-stream'
+                self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
     def delete(self, cont_name, list_name, **kwargs):
         filename = kwargs.get('name')
