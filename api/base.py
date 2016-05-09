@@ -239,12 +239,12 @@ class RequestHandler(webapp2.RequestHandler):
         return self.request.GET.get(param, default)
 
     def handle_exception(self, exception, debug):
-        # Log the error.
-        tb = traceback.format_exc()
-        log.error(tb)
+        """
+        Send JSON response for exception
 
-        # If the exception is a HTTPException, use its error code.
-        # Otherwise use a generic 500 error code.
+        For HTTP and other known exceptions, use its error code
+        For all others use a generic 500 error code and log the stack trace
+        """
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
         elif isinstance(exception, validators.InputValidationException):
@@ -255,6 +255,11 @@ class RequestHandler(webapp2.RequestHandler):
             code = 400
         else:
             code = 500
+
+        if code == 500:
+            tb = traceback.format_exc()
+            log.error(tb)
+
         util.send_json_http_exception(self.response, str(exception), code)
 
     def dispatch(self):
