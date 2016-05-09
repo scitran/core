@@ -555,15 +555,15 @@ def upgrade_to_21():
                 update['$unset'] = {'instrument': '', 'measurements': ''}
 
             # From mongo docs: '$rename does not work if these fields are in array elements.'
-            files = container.get('files', None)
+            files = container.get('files')
             if files is not None:
                 updated_files = []
-                for file in files:
-                    if file.get('metadata', None) is not None:
-                        file['info'] = file.pop('metadata')
-                    if file.get('instrument', None) is not None:
-                        file['modality'] = file.pop('instrument')
-                    updated_files.append(file)
+                for file_ in files:
+                    if file_.get('metadata') is not None:
+                        file_['info'] = file_.pop('metadata')
+                    if file_.get('instrument') is not None:
+                        file_['modality'] = file_.pop('instrument')
+                    updated_files.append(file_)
                 update['$set'] = {'files': updated_files}
 
             result = config.db[cont_name].update_one(query, update)
