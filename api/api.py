@@ -1,11 +1,16 @@
-import sys
+import bson.objectid
+import datetime
 import json
-import webapp2
+import pytz
+import sys
 import traceback
+import webapp2
 import webapp2_extras.routes
 
 from . import base
-from . import jobs
+from .jobs.jobs import Job
+from .jobs.handlers import JobsHandler, JobHandler
+from .dao.containerutil import FileReference, ContainerReference
 from . import root
 from . import util
 from . import config
@@ -196,15 +201,13 @@ routes = [
         webapp2.Route(_format(r'/<uid:{user_id_re}>/groups'),   grouphandler.GroupHandler, handler_method='get_all', methods=['GET'], name='groups'),
         webapp2.Route(_format(r'/<uid:{user_id_re}>/avatar'),   userhandler.UserHandler, handler_method='avatar', methods=['GET'], name='avatar'),
     ]),
-    webapp2.Route(r'/api/jobs',             jobs.Jobs),
+    webapp2.Route(r'/api/jobs',             JobsHandler),
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
-        webapp2.Route(r'/next',             jobs.Jobs, handler_method='next', methods=['GET']),
-        webapp2.Route(r'/count',            jobs.Jobs, handler_method='count', methods=['GET']),
-        webapp2.Route(r'/stats',            jobs.Jobs, handler_method='stats', methods=['GET']),
-        webapp2.Route(r'/reap',             jobs.Jobs, handler_method='reap_stale', methods=['POST']),
-        webapp2.Route(r'/add',              jobs.Jobs, handler_method='add', methods=['POST']),
-        webapp2.Route(r'/add-raw',          jobs.Jobs, handler_method='add_raw', methods=['POST']),
-        webapp2.Route(r'/<:[^/]+>',         jobs.Job,  name='job'),
+        webapp2.Route(r'/next',             JobsHandler, handler_method='next', methods=['GET']),
+        webapp2.Route(r'/stats',            JobsHandler, handler_method='stats', methods=['GET']),
+        webapp2.Route(r'/reap',             JobsHandler, handler_method='reap_stale', methods=['POST']),
+        webapp2.Route(r'/add',              JobsHandler, handler_method='add', methods=['POST']),
+        webapp2.Route(r'/<:[^/]+>',         JobHandler,  name='job'),
     ]),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, methods=['POST']),
@@ -258,11 +261,20 @@ routes = [
 ]
 
 
+def custom_json_serializer(obj):
+    if isinstance(obj, bson.objectid.ObjectId):
+        return str(obj)
+    elif isinstance(obj, datetime.datetime):
+        return pytz.timezone('UTC').localize(obj).isoformat()
+    elif isinstance(obj, Job):
+        return obj.map()
+    raise TypeError(repr(obj) + " is not JSON serializable")
+
 def dispatcher(router, request, response):
     try:
         rv = router.default_dispatcher(request, response)
         if rv is not None:
-            response.write(json.dumps(rv, default=util.custom_json_serializer))
+            response.write(json.dumps(rv, default=custom_json_serializer))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
     except webapp2.exc.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)

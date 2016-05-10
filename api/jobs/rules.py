@@ -1,9 +1,11 @@
 import fnmatch
 import json
 
-from . import jobs
-from . import config
-from .dao.containerutil import FileReference
+from .. import config
+from ..dao.containerutil import FileReference
+
+from . import gears
+from .jobs import Job
 
 log = config.log
 
@@ -85,7 +87,6 @@ def eval_match(match_type, match_param, file_, container):
 
     raise Exception('Unimplemented match type ' + match_type)
 
-
 def eval_rule(rule, file_, container):
     """
     Decide if a rule should spawn a job.
@@ -111,6 +112,25 @@ def eval_rule(rule, file_, container):
 
     return True
 
+def queue_job_legacy(db, algorithm_id, input):
+    """
+    Tie together logic used from the no-manifest, single-file era.
+    Takes a single FileReference instead of a map.
+    """
+
+    gear = gears.get_gear_by_name(algorithm_id)
+
+    if len(gear['manifest']['inputs']) != 1:
+        raise Exception("Legacy gear enqueue attempt of " + algorithm_id + " failed: must have exactly 1 input in manifest")
+
+    input_name = gear['manifest']['inputs'].keys()[0]
+
+    inputs = {
+        input_name: input
+    }
+
+    job = Job(algorithm_id, inputs)
+    return job.insert()
 
 def create_jobs(db, container, container_type, file_):
     """
@@ -131,7 +151,8 @@ def create_jobs(db, container, container_type, file_):
         if eval_rule(rule, file_, container):
             alg_name = rule['alg']
             input = FileReference(container_type=container_type, container_id=str(container['_id']), filename=file_['name'])
-            jobs.queue_job_legacy(db, alg_name, input)
+
+            queue_job_legacy(db, alg_name, input)
             job_list.append(alg_name)
 
     return job_list

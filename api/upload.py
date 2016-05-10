@@ -7,7 +7,7 @@ import shutil
 from . import base
 from . import config
 from . import files
-from . import rules
+from .jobs import rules
 from . import tempdir as tempfile
 from . import placer as pl
 from . import util

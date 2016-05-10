@@ -10,7 +10,7 @@ import zipfile
 from . import base
 from . import config
 from . import files
-from . import rules
+from .jobs import rules
 from . import tempdir as tempfile
 from . import util
 from . import validators
