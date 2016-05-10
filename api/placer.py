@@ -9,6 +9,7 @@ import zipfile
 
 from . import base
 from . import config
+from . import encoder
 from . import files
 from .jobs import rules
 from . import tempdir as tempfile
@@ -355,7 +356,7 @@ class PackfilePlacer(Placer):
 
             # Report progress
             complete += 1
-            yield util.json_sse_pack({
+            yield encoder.json_sse_pack({
                 'event': 'progress',
                 'data': { 'done': complete, 'total': max, 'percent': (complete / float(max)) * 100 },
             })
@@ -470,7 +471,7 @@ class PackfilePlacer(Placer):
         }
 
         # Report result
-        yield util.json_sse_pack({
+        yield encoder.json_sse_pack({
             'event': 'result',
             'data': result,
         })

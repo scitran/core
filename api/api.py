@@ -11,6 +11,7 @@ from . import base
 from .jobs.jobs import Job
 from .jobs.handlers import JobsHandler, JobHandler
 from .dao.containerutil import FileReference, ContainerReference
+from . import encoder
 from . import root
 from . import util
 from . import config
@@ -106,7 +107,7 @@ class Config(base.RequestHandler):
 
         self.response.write(
             'config = ' +
-            json.dumps( self.get(), sort_keys=True, indent=4, separators=(',', ': '), default=util.custom_json_serializer,) +
+            json.dumps( self.get(), sort_keys=True, indent=4, separators=(',', ': '), default=encoder.custom_json_serializer,) +
             ';'
         )
 
@@ -261,20 +262,11 @@ routes = [
 ]
 
 
-def custom_json_serializer(obj):
-    if isinstance(obj, bson.objectid.ObjectId):
-        return str(obj)
-    elif isinstance(obj, datetime.datetime):
-        return pytz.timezone('UTC').localize(obj).isoformat()
-    elif isinstance(obj, Job):
-        return obj.map()
-    raise TypeError(repr(obj) + " is not JSON serializable")
-
 def dispatcher(router, request, response):
     try:
         rv = router.default_dispatcher(request, response)
         if rv is not None:
-            response.write(json.dumps(rv, default=custom_json_serializer))
+            response.write(json.dumps(rv, default=encoder.custom_json_serializer))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
     except webapp2.exc.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)
