@@ -9,15 +9,17 @@ import sys
 
 from api import config
 
-CURRENT_DATABASE_VERSION = 7 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 8 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
     version = config.get_version()
-    if version is None or version.get('database', None) is None:
+    if version is None:
+        # Attempt to find db version at old location
+        version = config.db.version.find_one({'_id': 'version'})
+    if version is None or version.get('database') is None:
         return 0
-    else:
-        return version.get('database')
+    return version.get('database')
 
 
 def confirm_schema_match():
@@ -49,7 +51,7 @@ def upgrade_to_1():
 
     Initialize db version to 1
     """
-    config.db.version.insert_one({'_id': 'version', 'database': 1})
+    config.db.singletons.insert_one({'_id': 'version', 'database': 1})
 
 def upgrade_to_2():
     """
@@ -196,19 +198,19 @@ def upgrade_to_7():
         'dicom_mr_classifier': 'dicom',
     }
 
-    jobs = config.db.jobs.find({})
+    jobs = config.db.jobs.find({'input': {'$exists': True}})
 
     for job in jobs:
         gear_name = job['algorithm_id']
         input_name = input_name_for_gear[gear_name]
 
         # # Move single input to named input map
-        input = job['input']
-        input.pop('filehash', None)
-        inputs = { input_name: input }
+        input_ = job['input']
+        input_.pop('filehash', None)
+        inputs = { input_name: input_ }
 
         # # Destination is required, and (for these jobs) is always the same container as the input
-        destination = copy.deepcopy(input)
+        destination = copy.deepcopy(input_)
         destination.pop('filename', None)
 
         config.db.jobs.update_one(
@@ -223,6 +225,22 @@ def upgrade_to_7():
                 }
             }
         )
+
+def upgrade_to_8():
+    """
+    scitran/core issue #291
+
+    Migrate config, version, gears and rules to singletons collection
+    """
+
+    if 'singletons' not in config.db.collection_names():
+        config.db.singletons.insert_many(config.db.static.find({}))
+        config.db.singletons.insert(config.db.version.find({}))
+        config.db.singletons.insert(config.db.config.find({'latest': True},{'latest':0}))
+
+        config.db.static.drop()
+        config.db.version.drop()
+        config.db.config.drop()
 
 def upgrade_schema():
     """
@@ -247,11 +265,13 @@ def upgrade_schema():
             upgrade_to_6()
         if db_version < 7:
             upgrade_to_7()
+        if db_version < 8:
+            upgrade_to_8()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
     else:
-        config.db.version.update_one({'_id': 'version'}, {'$set': {'database': CURRENT_DATABASE_VERSION}})
+        config.db.singletons.update_one({'_id': 'version'}, {'$set': {'database': CURRENT_DATABASE_VERSION}})
         sys.exit(0)
 
 try:

@@ -52,26 +52,27 @@ DEFAULT_CONFIG = {
     },
 }
 
-__config = copy.deepcopy(DEFAULT_CONFIG)
+def apply_env_variables(config):
+    # Overwrite default config values with SCITRAN env variables if available
+    for outer_key, scoped_config in config.iteritems():
+        if outer_key in ['core', 'site', 'auth', 'persistent']
+            for inner_key in scoped_config:
+                key = 'SCITRAN_' + outer_key.upper() + '_' + inner_key.upper()
+                if key in os.environ:
+                    value = os.environ[key]
+                    if value.lower() == 'true':
+                        value = True
+                    elif value.lower() == 'false':
+                        value = False
+                    elif value.lower() == 'none':
+                        value = None
+                    config[outer_key][inner_key] = value
+    return config
+
+# Create config for startup, will be merged with db config when db is available
+__config = apply_env_variables(copy.deepcopy(DEFAULT_CONFIG))
 __config_persisted = False
 __last_update = datetime.datetime.utcfromtimestamp(0)
-
-#FIXME What is this?
-#os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
-#os.umask(0o022)
-
-for outer_key, scoped_config in __config.iteritems():
-    for inner_key in scoped_config:
-        key = 'SCITRAN_' + outer_key.upper() + '_' + inner_key.upper()
-        if key in os.environ:
-            value = os.environ[key]
-            if value.lower() == 'true':
-                value = True
-            elif value.lower() == 'false':
-                value = False
-            elif value.lower() == 'none':
-                value = None
-            __config[outer_key][inner_key] = value
 
 if not os.path.exists(__config['persistent']['data_path']):
     os.makedirs(__config['persistent']['data_path'])
@@ -152,7 +153,7 @@ def create_or_recreate_ttl_index(coll_name, index_name, ttl):
         index_list = db[coll_name].index_information()
         if index_list:
             for index in index_list:
-                # search for index by given name 
+                # search for index by given name
                 # example: "timestamp_1": {"key": [["timestamp", 1]], ...}
                 if index_list[index]['key'][0][0] == index_name:
                     if index_list[index].get('expireAfterSeconds', None) != ttl:
@@ -183,21 +184,29 @@ def initialize_db():
     db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
     db.sites.replace_one({'_id': __config['site']['id']}, {'name': __config['site']['name'], 'site_url': __config['site']['api_url']}, upsert=True)
 
-
 def get_config():
     global __last_update, __config, __config_persisted
     now = datetime.datetime.utcnow()
     if not __config_persisted:
         initialize_db()
         log.info('Persisting configuration')
-        __config['created'] = __config['modified'] = now
-        __config['latest'] = True
-        r = db.config.replace_one({'latest': True}, __config, upsert=True)
+
+        db_config = db.singletons.find_one({'_id': 'config'})
+        if db_config is not None:
+            startup_config = copy.deepcopy(__config)
+            startup_config.update(db_config)
+            # Precedence order for config is env vars -> db values -> default
+            __config = apply_env_variables(startup_config)
+        else:
+            __config['created'] = now
+        __config['modified'] = now
+
+        r = db.singletons.replace_one({'_id': 'config'}, __config, upsert=True)
         __config_persisted = bool(r.modified_count)
         __last_update = now
     elif now - __last_update > datetime.timedelta(seconds=120):
         log.debug('Refreshing configuration from database')
-        __config = db.config.find_one({'latest': True})
+        __config = db.singletons.find_one({'_id': 'config'})
         __last_update = now
         log.setLevel(getattr(logging, __config['core']['log_level'].upper()))
     return __config
@@ -211,7 +220,7 @@ def get_public_config():
     }
 
 def get_version():
-    return db.version.find_one({'_id': 'version'})
+    return db.singletons.find_one({'_id': 'version'})
 
 def get_item(outer, inner):
     return get_config()[outer][inner]
