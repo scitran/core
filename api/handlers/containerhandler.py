@@ -9,8 +9,9 @@ from .. import config
 from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage, containerutil
+from ..dao import APIStorageException, containerstorage, containerutil, noop
 from ..types import Origin
+from ..jobs.queue import Queue
 
 log = config.log
 
@@ -153,6 +154,21 @@ class ContainerHandler(base.RequestHandler):
         user_perm = util.user_perm(result.get('permissions', []), uid, site)
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
+
+    def get_jobs(self, cont_name, cid):
+        try:
+            self.config = self.container_handler_configurations[cont_name]
+            self.storage = self.config['storage']
+            c = self._get_container(cid)
+            permchecker = self._get_permchecker(c)
+            result = permchecker(noop)('GET', cid)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+
+        cr     = containerutil.ContainerReference(cont_name[:-1], cid)
+        states = self.request.GET.getall('states')
+        tags   = self.request.GET.getall('tags')
+        return Queue.search(cr, states=states, tags=tags)
 
     def get_all(self, cont_name, par_cont_name=None, par_id=None):
         self.config = self.container_handler_configurations[cont_name]
