@@ -58,6 +58,44 @@ def get_container(cont_name, _id):
         '_id': _id,
     })
 
+def propagate_changes(cont_name, _id, query, update):
+    """
+    Propagates changes down the heirarchy tree.
+
+    cont_name and _id refer to top level container (which will not be modified here)
+    """
+    if cont_name == 'groups':
+        project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
+        session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
+
+        project_q = query.copy()
+        project_q['_id'] = {'$in': project_ids}
+        session_q = query.copy()
+        session_q['_id'] = {'$in': session_ids}
+        acquisition_q = query.copy()
+        acquisition_q['session'] = {'$in': session_ids}
+
+        config.db.projects.update_many(project_q, update)
+        config.db.sessions.update_many(session_q, update)
+        config.db.acquisitions.update_many(acquisition_q, update)
+
+    if cont_name == 'projects':
+        session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
+
+        session_q = query.copy()
+        session_q['project'] = _id
+        acquisition_q = query.copy()
+        acquisition_q['session'] = {'$in': session_ids}
+
+        config.db.sessions.update_many(session_q, update)
+        config.db.acquisitions.update_many(acquisition_q, update)
+
+    elif cont_name == 'sessions':
+        query['sessions'] = _id
+        config.db.acquisitions.update_many(query, update)
+    else:
+        raise ValueError('changes can only be propagated from group, project or session level')
+
 def upsert_fileinfo(cont_name, _id, fileinfo):
     # TODO: make all functions take singular noun
     cont_name += 's'

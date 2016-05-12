@@ -209,8 +209,7 @@ class PermissionsListHandler(ListHandler):
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
-        if cont_name == 'projects':
-            self._propagate_project_permissions(_id)
+        self._propagate_project_permissions(_id)
         return result
 
     def put(self, cont_name, list_name, **kwargs):
@@ -218,31 +217,28 @@ class PermissionsListHandler(ListHandler):
 
         result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
         if cont_name == 'projects':
-            self._propagate_project_permissions(_id)
+            self._propagate_project_permissions(cont_name, _id)
         return result
 
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).delete(cont_name, list_name, **kwargs)
-        if cont_name == 'projects':
-            self._propagate_project_permissions(_id)
+        self._propagate_project_permissions(cont_name, _id)
         return result
 
-    def _propagate_project_permissions(self, _id):
+    def _propagate_project_permissions(self, cont_name, _id):
         """
         method to propagate permissions from a project to its sessions and acquisitions
         """
-        try:
-            log.debug(_id)
-            oid = bson.ObjectId(_id)
-            update = {
-                'permissions': config.db.projects.find_one(oid)['permissions']
-            }
-            session_ids = [s['_id'] for s in config.db.sessions.find({'project': oid}, [])]
-            config.db.sessions.update_many({'project': oid}, {'$set': update})
-            config.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': update})
-        except:
-            self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+        if cont_name == 'projects':
+            try:
+                oid = bson.ObjectId(_id)
+                update = {
+                    'permissions': config.db.projects.find_one({oid},{'permissions': 1})['permissions']
+                }
+                propagate_changes(cont_name, _id, {}, update)
+            except:
+                self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
 
 class NotesListHandler(ListHandler):
@@ -301,7 +297,7 @@ class TagsListHandler(ListHandler):
             new_value = payload.get('value')
             query = {'$and':[{'tags': current_value}, {'tags': {'$ne': new_value}}]}
             update = {'$set': {'tags.$': new_value}}
-            self._propagate_group_tags(_id, query, update)
+            self._propagate_group_tags(cont_name, _id, query, update)
         return result
 
     def delete(self, cont_name, list_name, **kwargs):
@@ -311,29 +307,16 @@ class TagsListHandler(ListHandler):
             deleted_tag = kwargs.get('value')
             query = {}
             update = {'$pull': {'tags': deleted_tag}}
-            self._propagate_group_tags(_id, query, update)
+            self._propagate_group_tags(cont_name, _id, query, update)
 
-    def _propagate_group_tags(self, _id, query, update):
+    def _propagate_group_tags(self, cont_name, _id, query, update):
         """
         method to propagate tag changes from a group to its projects, sessions and acquisitions
         """
         try:
-            project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
-            session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
-
-            project_q = query.copy()
-            project_q['_id'] = {'$in': project_ids}
-            session_q = query.copy()
-            session_q['_id'] = {'$in': session_ids}
-            acquisition_q = query.copy()
-            acquisition_q['session'] = {'$in': session_ids}
-
-            config.db.projects.update_many(project_q, update)
-            config.db.sessions.update_many(session_q, update)
-            config.db.acquisitions.update_many(acquisition_q, update)
+            propagate_changes(cont_name, _id, query, update)
         except:
-            log.debug(e)
-            self.abort(500, 'tag change not propagated down heirarchy from group {}'.format(_id))
+            self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
 
 class FileListHandler(ListHandler):
