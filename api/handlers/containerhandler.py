@@ -9,8 +9,9 @@ from .. import config
 from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage, containerutil
+from ..dao import APIStorageException, containerstorage, containerutil, noop
 from ..types import Origin
+from ..jobs.queue import Queue
 
 log = config.log
 
@@ -153,6 +154,69 @@ class ContainerHandler(base.RequestHandler):
         user_perm = util.user_perm(result.get('permissions', []), uid, site)
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
+
+    def get_jobs(self, cont_name, cid):
+        """
+        .. http:get:: /api/(cont_name)/(cid)/jobs
+
+            Return any jobs that mention this container as an input.
+
+            :query states: filter results by job state
+            :type states: string
+
+            :query tags: filter results by job tags
+            :type cid: string
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/acquisitions/3/jobs?states=pending&states=failed&tags=a&tags=b HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                [
+                    {
+                        "_id": "57336257ea360500272c2f11",
+                        "algorithm_id": "dicom_mr_classifier",
+                        "state": "pending",
+                        "tags": [
+                            "a"
+                        ]
+                        //...
+                    },
+                    {
+                        "_id": "57336257ea360500272c2f12",
+                        "algorithm_id": "dcm_convert",
+                        "state": "failed",
+                        "tags": [
+                            "b"
+                        ]
+                       // ...
+                    }
+                ]
+        """
+
+        self.config = self.container_handler_configurations[cont_name]
+        self.storage = self.config['storage']
+        c = self._get_container(cid)
+        permchecker = self._get_permchecker(c)
+        result = permchecker(noop)('GET', cid)
+
+        cr	 = containerutil.ContainerReference(cont_name[:-1], cid)
+        states = self.request.GET.getall('states')
+        tags   = self.request.GET.getall('tags')
+        return Queue.search(cr, states=states, tags=tags)
 
     def get_all(self, cont_name, par_cont_name=None, par_id=None):
         self.config = self.container_handler_configurations[cont_name]

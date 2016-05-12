@@ -131,6 +131,30 @@ class Queue(object):
         return result
 
     @staticmethod
+    def search(container, states=None, tags=None):
+        """
+        Search the queue for jobs that mention a specific container and (optionally) match some set of states or tags.
+        """
+
+        filter = """
+            for (var key in this['inputs']) {
+                var ct = this['inputs'][key]['container_type']
+                var ci = this['inputs'][key]['container_id']
+                if (ct === '$cT$' && ci == '$cI$') { return true }
+            }
+        """.replace('$cT$', container.container_type).replace('$cI$', container.container_id)
+
+        query = { "$where": filter }
+
+        if states is not None and len(states) > 0:
+            query['state'] = {"$in": states}
+
+        if tags is not None and len(tags) > 0:
+            query['tags'] = {"$in": tags}
+
+        return config.db.jobs.find(query)
+
+    @staticmethod
     def get_statistics():
         """
         Return a variety of interesting information about the job queue.

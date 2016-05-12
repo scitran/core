@@ -1,3 +1,4 @@
+from pymongo.cursor import Cursor
 import bson.objectid
 import datetime
 import json
@@ -12,6 +13,8 @@ def custom_json_serializer(obj):
         return pytz.timezone('UTC').localize(obj).isoformat()
     elif isinstance(obj, Job):
         return obj.map()
+    elif isinstance(obj, Cursor):
+        return list(obj)
     raise TypeError(repr(obj) + " is not JSON serializable")
 
 
