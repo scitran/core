@@ -236,11 +236,16 @@ def upgrade_to_8():
     if 'singletons' not in config.db.collection_names():
         config.db.singletons.insert_many(config.db.static.find({}))
         config.db.singletons.insert(config.db.version.find({}))
-        config.db.singletons.insert(config.db.config.find({'latest': True},{'latest':0}))
 
-        config.db.static.drop()
-        config.db.version.drop()
-        config.db.config.drop()
+        configs = config.db.config.find({'latest': True},{'latest':0})
+        if configs.count() == 1:
+            c = configs[0]
+            c['_id'] = 'config'
+            config.db.singletons.insert_one(c)
+
+        config.db.drop_collection('static')
+        config.db.drop_collection('version')
+        config.db.drop_collection('config')
 
 def upgrade_schema():
     """
