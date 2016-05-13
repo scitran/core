@@ -137,7 +137,7 @@ class Job(object):
         Parameters
         ----------
         gear: map (optional)
-            A gear_list map from the static.gears table. Will be loaded by the job's algorithm_id otherwise.
+            A gear_list map from the singletons.gears table. Will be loaded by the job's algorithm_id otherwise.
         """
 
         r = {

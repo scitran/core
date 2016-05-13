@@ -12,13 +12,13 @@ def get_gears():
     Fetch the install-global gears from the database
     """
 
-    gear_doc  = config.db.static.find_one({'_id': 'gears'})
+    gear_doc  = config.db.singletons.find_one({'_id': 'gears'})
     return gear_doc['gear_list']
 
 def get_gear_by_name(name):
 
     # Find a gear from the list by name
-    gear_doc = config.db.static.find_one(
+    gear_doc = config.db.singletons.find_one(
         {'_id': 'gears'},
         {'gear_list': { '$elemMatch': {
             'name': name
