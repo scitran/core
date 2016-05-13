@@ -332,7 +332,7 @@ class Upload(base.RequestHandler):
             result = None
             try:
                 result = config.db['tokens'].find_one({
-                    '_id': bson.ObjectId(token)
+                    '_id': token
                 })
             except bson.errors.InvalidId:
                 # Folders could be an invalid mongo ID, in which case they're definitely expired :)
