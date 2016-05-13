@@ -55,7 +55,7 @@ DEFAULT_CONFIG = {
 def apply_env_variables(config):
     # Overwrite default config values with SCITRAN env variables if available
     for outer_key, scoped_config in config.iteritems():
-        if outer_key in ['core', 'site', 'auth', 'persistent']:
+        try:
             for inner_key in scoped_config:
                 key = 'SCITRAN_' + outer_key.upper() + '_' + inner_key.upper()
                 if key in os.environ:
@@ -67,6 +67,9 @@ def apply_env_variables(config):
                     elif value.lower() == 'none':
                         value = None
                     config[outer_key][inner_key] = value
+        except:
+            # ignore uniterable keys like `created` and `modified`
+            pass
     return config
 
 # Create config for startup, will be merged with db config when db is available
