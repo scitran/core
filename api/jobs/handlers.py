@@ -7,10 +7,119 @@ from ..dao.containerutil import create_filereference_from_dictionary, create_con
 from .. import base
 from .. import config
 
+from .gears import get_gears, get_gear_by_name
 from .jobs import Job
 from .queue import Queue
 
 log = config.log
+
+
+
+class GearsHandler(base.RequestHandler):
+
+    """Provide /gears API routes."""
+
+    def get(self):
+        """
+        .. http:get:: /api/gears
+
+            List all gears.
+
+            :query fields: filter fields returned. Defaults to ['name']. Pass 'all' for everything.
+            :type fields: string
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/gears HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                [
+                    {
+                        "name": "dicom_mr_classifier"
+                    },
+                    {
+                        "name": "dcm_convert"
+                    },
+                    {
+                        "name": "qa-report-fmri"
+                    }
+                ]
+        """
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        fields = self.request.GET.getall('fields')
+        if 'all' in fields:
+            fields = None
+
+        return get_gears(fields)
+
+
+class GearHandler(base.RequestHandler):
+
+    """Provide /gears/x API routes."""
+
+    def get(self, _id):
+        """
+        .. http:get:: /api/gears/(gid)
+
+            Detail a gear.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/gears/dcm_convert HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "name": "dcm_convert"
+                    "manifest": {
+                        "config": {},
+                        "inputs": {
+                            "dicom": {
+                                "base": "file",
+                                "type": {
+                                    "enum": [
+                                        "dicom"
+                                    ]
+                                }
+                            }
+                        },
+                    },
+                }
+
+        """
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        return get_gear_by_name(_id)
 
 
 class JobsHandler(base.RequestHandler):
