@@ -193,14 +193,12 @@ class EnginePlacer(Placer):
         validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
         self.saved = []
 
-        # Could avoid loops in process_file_field by setting up the
-
     def process_file_field(self, field, info):
         if self.metadata is not None:
             # OPPORTUNITY: hard-coded container levels will need to go away soon
             # Engine shouldn't know about container names; maybe parent contexts?
             # How will this play with upload unification? Unify schemas as well?
-            file_mds = self.metadata.get('acquisition', {}).get('files', [])
+            file_mds = self.metadata.get(container_type, {}).get('files', [])
 
             for file_md in file_mds:
                 if file_md['name'] == info['name']:
@@ -218,7 +216,7 @@ class EnginePlacer(Placer):
         # Updating various properties of the hierarchy; currently assumes acquisitions; might need fixing for other levels.
         # NOTE: only called in EnginePlacer
         bid = bson.ObjectId(self.id)
-        self.obj = hierarchy.update_container_hierarchy(self.metadata, bid, '')
+        self.obj = hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
 
         return self.saved
 
