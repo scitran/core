@@ -224,7 +224,6 @@ class ContainerHandler(base.RequestHandler):
 
         projection = self.config['list_projection']
         if self.is_true('metadata'):
-            log.debug('ksljkfldsj')
             projection.pop('metadata')
             if not projection:
                 projection = None
