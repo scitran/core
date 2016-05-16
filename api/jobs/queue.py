@@ -89,17 +89,23 @@ class Queue(object):
         log.info('respawned job %s as %s (attempt %d)' % (job._id, new_id, new_job.attempt))
 
     @staticmethod
-    def start_job():
+    def start_job(tags=None):
         """
         Atomically change a 'pending' job to 'running' and returns it. Updates timestamp.
         Will return None if there are no jobs to offer.
+
+        Potential jobs must match at least one tag, if provided.
         """
+
+        query = { 'state': 'pending' }
+
+        if tags is not None:
+            query['tags'] = {'$in': tags }
 
         # First, atomically mark document as running.
         result = config.db.jobs.find_one_and_update(
-            {
-                'state': 'pending'
-            },
+            query,
+
             { '$set': {
                 'state': 'running',
                 'modified': datetime.datetime.utcnow()}

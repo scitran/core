@@ -176,7 +176,11 @@ class JobsHandler(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        job = Queue.start_job()
+        tags = self.request.GET.getall('tags')
+        if len(tags) <= 0:
+            tags = None
+
+        job = Queue.start_job(tags=tags)
 
         if job is None:
             self.abort(400, 'No jobs to process')
