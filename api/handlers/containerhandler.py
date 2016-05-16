@@ -221,7 +221,14 @@ class ContainerHandler(base.RequestHandler):
     def get_all(self, cont_name, par_cont_name=None, par_id=None):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
+
         projection = self.config['list_projection']
+        if self.is_true('metadata'):
+            log.debug('ksljkfldsj')
+            projection.pop('metadata')
+            if not projection:
+                projection = None
+
         # select which permission filter will be applied to the list of results.
         if self.superuser_request:
             permchecker = always_ok
