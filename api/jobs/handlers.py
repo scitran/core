@@ -141,8 +141,8 @@ class JobsHandler(base.RequestHandler):
         """
 
         # TODO: Check each input container for R, check dest container for RW
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+        # if not self.superuser_request:
+        # 	self.abort(403, 'Request requires superuser')
 
         submit = self.request.json
         gear_name = submit['gear']
