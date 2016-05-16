@@ -19,6 +19,7 @@ from ..auth import listauth, always_ok
 from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
+from ..dao import hierarchy
 
 log = config.log
 
@@ -209,15 +210,14 @@ class PermissionsListHandler(ListHandler):
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(_id)
+        self._propagate_project_permissions(cont_name, _id)
         return result
 
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
 
         result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
-        if cont_name == 'projects':
-            self._propagate_project_permissions(cont_name, _id)
+        self._propagate_project_permissions(cont_name, _id)
         return result
 
     def delete(self, cont_name, list_name, **kwargs):
@@ -231,14 +231,14 @@ class PermissionsListHandler(ListHandler):
         method to propagate permissions from a project to its sessions and acquisitions
         """
         if cont_name == 'projects':
-            try:
-                oid = bson.ObjectId(_id)
-                update = {
-                    'permissions': config.db.projects.find_one({oid},{'permissions': 1})['permissions']
-                }
-                propagate_changes(cont_name, _id, {}, update)
-            except:
-                self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+            # try:
+            oid = bson.ObjectId(_id)
+            update = {'$set': {
+                'permissions': config.db.projects.find_one({'_id': oid},{'permissions': 1})['permissions']
+            }}
+            hierarchy.propagate_changes(cont_name, _id, {}, update)
+            # except:
+            #     self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
 
 class NotesListHandler(ListHandler):
@@ -314,7 +314,7 @@ class TagsListHandler(ListHandler):
         method to propagate tag changes from a group to its projects, sessions and acquisitions
         """
         try:
-            propagate_changes(cont_name, _id, query, update)
+            hierarchy.propagate_changes(cont_name, _id, query, update)
         except:
             self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
