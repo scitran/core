@@ -138,11 +138,11 @@ class Queue(object):
 
         filter = """
             for (var key in this['inputs']) {
-                var ct = this['inputs'][key]['container_type']
-                var ci = this['inputs'][key]['container_id']
+                var ct = this['inputs'][key]['type']
+                var ci = this['inputs'][key]['id']
                 if (ct === '$cT$' && ci == '$cI$') { return true }
             }
-        """.replace('$cT$', container.container_type).replace('$cI$', container.container_id)
+        """.replace('$cT$', container.type).replace('$cI$', container.id)
 
         query = { "$where": filter }
 

@@ -9,7 +9,7 @@ import sys
 
 from api import config
 
-CURRENT_DATABASE_VERSION = 9 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 10 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -204,12 +204,12 @@ def upgrade_to_7():
         gear_name = job['algorithm_id']
         input_name = input_name_for_gear[gear_name]
 
-        # # Move single input to named input map
+        # Move single input to named input map
         input_ = job['input']
         input_.pop('filehash', None)
         inputs = { input_name: input_ }
 
-        # # Destination is required, and (for these jobs) is always the same container as the input
+        # Destination is required, and (for these jobs) is always the same container as the input
         destination = copy.deepcopy(input_)
         destination.pop('filename', None)
 
@@ -257,6 +257,50 @@ def upgrade_to_9():
     config.db.acquisitions.update_many({'timestamp':''}, {'$unset': {'timestamp': ''}})
     config.db.sessions.update_many({'timestamp':''}, {'$unset': {'timestamp': ''}})
 
+def upgrade_to_10():
+    """
+    scitran/core issue #301
+
+    Makes the following key renames, all in the jobs table.
+    FR is a FileReference, CR is a ContainerReference:
+
+    job.algorithm_id  --> job.name
+
+    FR.container_type --> type
+    FR.container_id   --> id
+    FR.filename       --> name
+
+    CR.container_type --> type
+    CR.container_id   --> id
+    """
+
+    def switch_keys(doc, x, y):
+        doc[y] = doc[x]
+        doc.pop(x, None)
+
+
+    jobs = config.db.jobs.find({'destination.container_type': {'$exists': True}})
+
+    for job in jobs:
+        switch_keys(job, 'algorithm_id', 'name')
+
+        for key in job['inputs'].keys():
+            inp = job['inputs'][key]
+
+            switch_keys(inp, 'container_type', 'type')
+            switch_keys(inp, 'container_id',   'id')
+            switch_keys(inp, 'filename',       'name')
+
+
+        dest = job['destination']
+        switch_keys(dest, 'container_type', 'type')
+        switch_keys(dest, 'container_id',   'id')
+
+        config.db.jobs.update(
+            {'_id': job['_id']},
+            job
+        )
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -284,6 +328,8 @@ def upgrade_schema():
             upgrade_to_8()
         if db_version < 9:
             upgrade_to_9()
+        if db_version < 10:
+            upgrade_to_10()
 
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')

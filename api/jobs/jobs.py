@@ -14,13 +14,13 @@ log = config.log
 
 
 class Job(object):
-    def __init__(self, algorithm_id, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, _id=None):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, _id=None):
         """
         Creates a job.
 
         Parameters
         ----------
-        algorithm_id: string
+        name: string
             Unique name of the algorithm
         inputs: string -> FileReference map
             The inputs to be used by this job
@@ -60,12 +60,12 @@ class Job(object):
             destination = create_containerreference_from_filereference(inputs[key])
 
         # A job is always tagged with the name of the gear
-        tags.append(algorithm_id)
+        tags.append(name)
 
         # Trim tags array to unique members...
         tags = list(set(tags))
 
-        self.algorithm_id    = algorithm_id
+        self.name    = name
         self.inputs          = inputs
         self.destination     = destination
         self.tags            = tags
@@ -89,7 +89,7 @@ class Job(object):
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['algorithm_id'], d['inputs'], destination=d['destination'], tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), _id=d['_id'])
+        return cls(d['name'], d['inputs'], destination=d['destination'], tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), _id=d['_id'])
 
     @classmethod
     def get(cls, _id):
@@ -137,7 +137,7 @@ class Job(object):
         Parameters
         ----------
         gear: map (optional)
-            A gear_list map from the singletons.gears table. Will be loaded by the job's algorithm_id otherwise.
+            A gear_list map from the singletons.gears table. Will be loaded by the job's name otherwise.
         """
 
         r = {
@@ -159,13 +159,13 @@ class Job(object):
         }
 
         if gear is None:
-            gear = gears.get_gear_by_name(self.algorithm_id)
+            gear = gears.get_gear_by_name(self.name)
 
         # Add the gear
         r['inputs'].append(gear['input'])
 
         # Map destination to upload URI
-        r['outputs'][0]['uri'] = '/engine?level=' + self.destination.container_type + '&id=' + self.destination.container_id
+        r['outputs'][0]['uri'] = '/engine?level=' + self.destination.type + '&id=' + self.destination.id
 
         # Add the files
         for input_name in self.inputs.keys():
@@ -173,7 +173,7 @@ class Job(object):
 
             r['inputs'].append({
                 'type': 'scitran',
-                'uri': '/' + i.container_type + 's/' + i.container_id + '/files/' + i.filename,
+                'uri': '/' + i.type + 's/' + i.id + '/files/' + i.name,
                 'location': '/flywheel/v0/input/' + input_name,
             })
 
