@@ -11,7 +11,7 @@
 
         "project":      {"type": "string"},
         "uid":          {"type": "string"},
-        "timestamp":    {"type": "string"},
+        "timestamp":    {"type": "string", "format": "date-time"},
         "timezone":     {"type": "string"},
         "subject":      {"$ref": "subject.json"}
     },

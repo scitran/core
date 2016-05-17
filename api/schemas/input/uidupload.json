@@ -33,7 +33,7 @@
                 "metadata":     {"type": ["object", "null"]},
                 "operator":     {"type": ["string", "null"]},
                 "uid":          {"type": "string"},
-                "timestamp":    {"type": ["string", "null"]},
+                "timestamp":    {"type": "string", "format": "date-time"},
                 "timezone":     {"type": ["string", "null"]},
                 "subject":      {"$ref": "subject.json"},
                 "files":        {
@@ -53,7 +53,7 @@
                 "uid":          {"type": "string"},
                 "instrument":   {"type": ["string", "null"]},
                 "measurement":  {"type": ["string", "null"]},
-                "timestamp":    {"type": ["string", "null"]},
+                "timestamp":    {"type": "string", "format": "date-time"},
                 "timezone":     {"type": ["string", "null"]},
                 "files":        {
                     "type": ["array", "null"],
