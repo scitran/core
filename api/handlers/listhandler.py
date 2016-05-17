@@ -308,6 +308,7 @@ class TagsListHandler(ListHandler):
             query = {}
             update = {'$pull': {'tags': deleted_tag}}
             self._propagate_group_tags(cont_name, _id, query, update)
+        return result
 
     def _propagate_group_tags(self, cont_name, _id, query, update):
         """
@@ -316,7 +317,7 @@ class TagsListHandler(ListHandler):
         try:
             hierarchy.propagate_changes(cont_name, _id, query, update)
         except:
-            self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+            self.abort(500, 'tag change not propagated from group {}'.format(_id))
 
 
 class FileListHandler(ListHandler):

@@ -78,7 +78,7 @@ class ContainerStorage(object):
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         if recursive and r_payload is not None:
-            hierarchy.propagate_changes(self.cont_name, _id, {'$set': util.mongo_dict(r_payload)})
+            hierarchy.propagate_changes(self.cont_name, _id, {}, {'$set': util.mongo_dict(r_payload)})
         return self.dbc.update_one({'_id': _id}, update)
 
     def _delete_el(self, _id):

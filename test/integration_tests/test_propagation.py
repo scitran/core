@@ -8,18 +8,19 @@ sh = logging.StreamHandler()
 log.addHandler(sh)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def with_hierarchy(api_as_admin, bunch, request, data_builder):
-    group =         data_builder.create_group('test_prop_group')
+    group =         data_builder.create_group('test_prop_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)
     acquisition =   data_builder.create_acquisition(session)
 
     def teardown_db():
-        data_builder.delete_group(group)
-        data_builder.delete_project(project)
-        data_builder.delete_session(session)
         data_builder.delete_acquisition(acquisition)
+        data_builder.delete_session(session)
+        data_builder.delete_project(project)
+        data_builder.delete_group(group)
+
 
     request.addfinalizer(teardown_db)
 
@@ -142,7 +143,7 @@ def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builde
         return None
 
     data = with_hierarchy
-    user_id = 'new@user.com'
+    user_id = 'propagation@user.com'
 
     # Add user
     payload = json.dumps({'_id': user_id, 'access': 'admin', 'site': 'local'})
@@ -151,15 +152,18 @@ def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builde
 
     r = api_as_admin.get('/projects/' + data.project)
     perms = json.loads(r.content)['permissions']
-    assert r.ok and get_user_in_perms(perms, user_id)
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user
 
     r = api_as_admin.get('/sessions/' + data.session)
     perms = json.loads(r.content)['permissions']
-    assert r.ok and get_user_in_perms(perms, user_id)
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
     perms = json.loads(r.content)['permissions']
-    assert r.ok and get_user_in_perms(perms, user_id)
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user
 
     # Modify user perms
     payload = json.dumps({'access': 'rw'})
@@ -187,19 +191,22 @@ def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builde
 
     r = api_as_admin.get('/projects/' + data.project)
     perms = json.loads(r.content)['permissions']
-    assert r.ok and get_user_in_perms(perms, user_id) is None
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user is None
 
     r = api_as_admin.get('/sessions/' + data.session)
     perms = json.loads(r.content)['permissions']
-    assert r.ok and get_user_in_perms(perms, user_id) is None
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user is None
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
     perms = json.loads(r.content)['permissions']
-    assert r.ok and get_user_in_perms(perms, user_id) is None
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user is None
 
 
 # Test tag pool renaming and deletion
-def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builder, api_as_admin):
+def test_add_rename_remove_group_tag(with_hierarchy, data_builder, api_as_admin):
     """
     Tests:
       - propagation from the group level
