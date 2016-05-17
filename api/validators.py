@@ -32,7 +32,7 @@ def validate_data(data, schema_json, schema_type, verb, optional=False):
     validator(data, verb)
 
 def _validate_json(json_data, schema, resolver):
-    jsonschema.validate(json_data, schema, resolver=resolver)
+    jsonschema.validate(json_data, schema, resolver=resolver, format_checker=jsonschema.FormatChecker())
 
 class RefResolver(jsonschema.RefResolver):
 

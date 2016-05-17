@@ -9,7 +9,7 @@ import sys
 
 from api import config
 
-CURRENT_DATABASE_VERSION = 8 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 9 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -247,6 +247,16 @@ def upgrade_to_8():
         config.db.drop_collection('version')
         config.db.drop_collection('config')
 
+def upgrade_to_9():
+    """
+    scitran/core issue #292
+
+    Remove all session and acquisition timestamps that are empty strings
+    """
+
+    config.db.acquisitions.update_many({'timestamp':''}, {'$unset': {'timestamp': ''}})
+    config.db.sessions.update_many({'timestamp':''}, {'$unset': {'timestamp': ''}})
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -272,6 +282,9 @@ def upgrade_schema():
             upgrade_to_7()
         if db_version < 8:
             upgrade_to_8()
+        if db_version < 9:
+            upgrade_to_9()
+
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
