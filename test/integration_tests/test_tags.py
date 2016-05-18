@@ -37,7 +37,7 @@ def test_tags(with_a_group_and_a_project, api_as_admin):
     # Add a duplicate tag, returns 404
     payload = json.dumps({'value': new_tag})
     r = api_as_admin.post(tags_path, data=payload)
-    assert r.status_code == 404
+    assert r.status_code == 409
     r = api_as_admin.get(new_tag_path)
     assert r.ok
     assert json.loads(r.content) == new_tag

@@ -69,11 +69,11 @@ def propagate_changes(cont_name, _id, query, update):
         project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
         session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
 
-        project_q = query.copy()
+        project_q = copy.deepcopy(query)
         project_q['_id'] = {'$in': project_ids}
-        session_q = query.copy()
+        session_q = copy.deepcopy(query)
         session_q['_id'] = {'$in': session_ids}
-        acquisition_q = query.copy()
+        acquisition_q = copy.deepcopy(query)
         acquisition_q['session'] = {'$in': session_ids}
 
         config.db.projects.update_many(project_q, update)
@@ -83,9 +83,9 @@ def propagate_changes(cont_name, _id, query, update):
     elif cont_name == 'projects':
         session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
 
-        session_q = query.copy()
+        session_q = copy.deepcopy(query)
         session_q['project'] = _id
-        acquisition_q = query.copy()
+        acquisition_q = copy.deepcopy(query)
         acquisition_q['session'] = {'$in': session_ids}
 
         config.db.sessions.update_many(session_q, update)
