@@ -71,10 +71,7 @@ builtin echo "$TESTDATA_VERSION" > "$TESTDATA_DIR/.testdata_version"
 pip install "git+https://github.com/scitran/reaper.git@${bootstrap_reaper_label}"
 
 
-# Set API URL
-API_URL="$SCITRAN_RUNTIME_PROTOCOL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
-
 ## load the test data in
-folder_uploader --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${API_URL}" "$TESTDATA_DIR/download"
+folder_uploader --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${SCITRAN_SITE_API_URL}" "$TESTDATA_DIR/download"
 
 )

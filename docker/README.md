@@ -38,9 +38,7 @@ preserving their contents across container instances.
 
 # Bootstrap Account Example:
    docker run \
-     -e "SCITRAN_RUNTIME_HOST=scitran-core" \
-     -e "SCITRAN_RUNTIME_PORT=8080" \
-     -e "SCITRAN_RUNTIME_PROTOCOL=http" \
+     -e "SCITRAN_SITE_API_URL=http://scitran-core:8080/api" \
      -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
      --link scitran-core \
      --rm \
@@ -52,9 +50,7 @@ preserving their contents across container instances.
 
 # Bootstrap Data Example:
    docker run \
-     -e "SCITRAN_RUNTIME_HOST=scitran-core" \
-     -e "SCITRAN_RUNTIME_PORT=8080" \
-     -e "SCITRAN_RUNTIME_PROTOCOL=http" \
+     -e "SCITRAN_SITE_API_URL=http://scitran-core:8080/api" \
      -e "SCITRAN_CORE_DRONE_SECRET=change-me" \
      -e "PRE_RUNAS_CMD=/var/scitran/code/api/docker/bootstrap-data.sh" \
      --link scitran-core \

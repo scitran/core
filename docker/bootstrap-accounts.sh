@@ -21,11 +21,8 @@ cd /var/scitran/code/api
 export PYTHONPATH=.
 
 
-# Set API URL
-API_URL="$SCITRAN_RUNTIME_PROTOCOL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
-
 # Bootstrap Users
-./bin/bootstrap.py --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${API_URL}" "${bootstrap_user_file}"
+./bin/bootstrap.py --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${SCITRAN_SITE_API_URL}" "${bootstrap_user_file}"
 
 
 )
