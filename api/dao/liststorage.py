@@ -3,7 +3,7 @@ import bson.objectid
 
 from .. import config
 from . import consistencychecker
-from . import APIStorageException
+from . import APIStorageException, APIConflictException
 
 log = config.log
 
@@ -72,7 +72,10 @@ class ListStorage(object):
         update = {'$push': {self.list_name: payload} }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
-        return self.dbc.update_one(query, update)
+        result = self.dbc.update_one(query, update)
+        if result.matched_count < 1:
+            raise APIConflictException('List item already exists.')
+        return result
 
     def _update_el(self, _id, query_params, payload, exclude_params):
         log.debug('query_params {}'.format(query_params))
