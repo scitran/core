@@ -74,7 +74,7 @@ class ListStorage(object):
         log.debug('update {}'.format(update))
         result = self.dbc.update_one(query, update)
         if result.matched_count < 1:
-            raise APIConflictException('List item already exists.')
+            raise APIConflictException('Item already exists in list.')
         return result
 
     def _update_el(self, _id, query_params, payload, exclude_params):
@@ -153,7 +153,10 @@ class StringListStorage(ListStorage):
         update = {'$push': {self.list_name: payload}}
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
-        return self.dbc.update_one(query, update)
+        result = self.dbc.update_one(query, update)
+        if result.matched_count < 1:
+            raise APIConflictException('Item already exists in list.')
+        return result
 
     def _update_el(self, _id, query_params, payload, exclude_params):
         log.debug('query_params {}'.format(payload))
