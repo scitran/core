@@ -6,6 +6,7 @@ from .. import util
 from .. import config
 from . import consistencychecker
 from . import APIStorageException, APIConflictException
+from . import hierarchy
 
 log = config.log
 
@@ -77,25 +78,8 @@ class ContainerStorage(object):
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         if recursive and r_payload is not None:
-            self._propagate_changes(_id, {'$set': util.mongo_dict(r_payload)})
+            hierarchy.propagate_changes(self.cont_name, _id, {}, {'$set': util.mongo_dict(r_payload)})
         return self.dbc.update_one({'_id': _id}, update)
-
-    def _propagate_changes(self, _id, update):
-        """
-        Propagates changes down the heirarchy tree when a PUT is marked as recursive.
-        """
-
-        if self.cont_name == "projects":
-            session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
-            config.db.sessions.update_many(
-                {'project': _id}, update)
-            config.db.acquisitions.update_many(
-                {'session': {'$in': session_ids}}, update)
-        elif self.cont_name == "sessions":
-            config.db.acquisitions.update_many(
-                {'session': _id}, update)
-        else:
-            raise ValueError('changes can only be propagated from project or session level')
 
     def _delete_el(self, _id):
         if self.use_object_id:
