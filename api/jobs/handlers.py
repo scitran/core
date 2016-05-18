@@ -4,7 +4,7 @@ API request handlers for the jobs module
 import bson.objectid
 
 from ..auth.containerauth import list_permission_checker, default_container
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 from ..dao.containerstorage import ContainerStorage
 from .. import base
 from .. import config
@@ -139,38 +139,50 @@ class JobsHandler(base.RequestHandler):
 
     def add(self):
         """
-        Add a job to the queue.
-        """
-        # Add destination container, if present
-        destination = None
-        if submit.get('destination', None) is not None:
-            destination = create_containerreference_from_dictionary(submit['destination'])
+        .. http:post:: /api/jobs/add
 
-        if not self.superuser_request:
-            # check permissions on destination
-            if destination:
-                storage = ContainerStorage(destination.type + 's', use_object_id=True)
-                destination_container = self.storage.get_container(_id)
-                for p in destination_container['permissions']:
-                    if handler.uid == p['user'] and handler.site == p['site'] and handler.access != 'ro':
-                        break
-                else:
-                    self.abort(403, 'the user has no access on the destination')
-            # group inputs by container type
-            container_ids = {}
-            for k, v in submit['inputs'].iteritems():
-                container_ids[v['type']] = container_ids.get(v['type'], []) + [bson.objectid.ObjectId(v['id'])]
-            # check read permissions by sending a query for a list of objects
-            for k, v in container_ids.iteritems():
-                storage = ContainerStorage(k + 's', use_object_id=True)
-                query = {
-                    '_id': {'$in': v}
+            Add a job to the queue.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/jobs/add HTTP/1.1
+
+                {
+                    "gear": "dcm_convert",
+
+                    "inputs": {
+                        "dicom": {
+                            "type": "acquisition",
+                            "id": "573c9e6a844eac7fc01747cd",
+                            "name" : "1_1_dicom.zip"
+                        }
+                    },
+
+                    "destination": {
+                        "type": "acquisition",
+                        "id": "573c9e6a844eac7fc01747cd"
+                    },
+
+                    "tags": [
+                        "ad-hoc"
+                    ]
                 }
-                allowed_inputs = list_permission_checker(self)(storage.exec_op)(
-                    'GET', query=query, public=True, projection={'_id': 1}
-                )
-                if len(allowed_inputs) != len(set(v)):
-                    self.abort(403, ' the user has no access on some of the inputs')
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "_id": "573cb66b135d87002660597c"
+                }
+        """
 
         submit = self.request.json
         gear_name = submit['gear']
@@ -186,8 +198,24 @@ class JobsHandler(base.RequestHandler):
         attempt_n       = submit.get('attempt_n', 1)
         previous_job_id = submit.get('previous_job_id', None)
 
+        # Add destination container, or select one
+        destination = None
+        if submit.get('destination', None) is not None:
+            destination = create_containerreference_from_dictionary(submit['destination'])
+        else:
+            key = inputs.keys()[0]
+            destination = create_containerreference_from_filereference(inputs[key])
+
+        # Permission check
+        if not self.superuser_request:
+            for x in inputs:
+                inputs[x].check_access(self.uid, 'ro')
+            destination.check_access(self.uid, 'rw')
+
         job = Job(gear_name, inputs, destination=destination, tags=tags, attempt=attempt_n, previous_job_id=previous_job_id)
-        return job.insert()
+        result = job.insert()
+
+        return { "_id": result }
 
     def stats(self):
         if not self.superuser_request:
