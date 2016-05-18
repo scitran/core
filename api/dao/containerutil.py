@@ -1,10 +1,7 @@
 import bson.objectid
-from collections import namedtuple
 
 from .. import config
-
-log = config.log
-
+from ..auth import INTEGER_ROLES
 
 def add_id_to_subject(subject, pid):
     """
@@ -35,33 +32,67 @@ def add_id_to_subject(subject, pid):
     return subject
 
 
-# A FileReference tuple holds all the details of a scitran file needed to uniquely identify it.
-FileReference = namedtuple('FileReference', ['container_type', 'container_id', 'filename'])
+def getPerm(name):
+    return INTEGER_ROLES[name]
+
+class ContainerReference(object):
+    def __init__(self, type, id):
+        if type.endswith('s'):
+            raise Exception('Container type cannot be plural :|')
+
+        self.type = type
+        self.id   = id
+
+    @classmethod
+    def from_dictionary(cls, d):
+        return cls(
+            type = d['type'],
+            id   = d['id']
+        )
+
+    @classmethod
+    def from_filereference(cls, fr):
+        return cls(
+            type = fr.type,
+            id   = fr.id
+        )
+
+    def get(self):
+        result = config.db[self.type + 's'].find_one({'_id': bson.ObjectId(self.id)})
+        if result is None:
+            raise Exception("No such " + self.type + " " + self.id + " in database")
+        return result
+
+    def check_access(self, userID, perm_name):
+        perm = getPerm(perm_name)
+        for p in self.get()['permissions']:
+            if p['_id'] == userID and getPerm(p['access']) > perm:
+                return
+
+        raise Exception("User " + userID + " does not have " + perm_name + " access to " + self.type + " " + self.id)
+
+class FileReference(ContainerReference):
+    def __init__(self, type, id, name):
+        if type.endswith('s'):
+            raise Exception('Container type cannot be plural :|')
+
+        self.type = type
+        self.id   = id
+        self.name = name
+
+    @classmethod
+    def from_dictionary(cls, d):
+        return cls(
+            type = d['type'],
+            id   = d['id'],
+            name = d['name']
+        )
 
 def create_filereference_from_dictionary(d):
-    if d['container_type'].endswith('s'):
-        raise Exception('Container type cannot be plural :|')
-
-    return FileReference(
-        container_type= d['container_type'],
-        container_id  = d['container_id'],
-        filename      = d['filename']
-    )
-
-# A ContainerReference tuple holds all the details of a scitran container needed to uniquely identify it.
-ContainerReference = namedtuple('ContainerReference', ['container_type', 'container_id'])
+    return FileReference.from_dictionary(d)
 
 def create_containerreference_from_dictionary(d):
-    if d['container_type'].endswith('s'):
-        raise Exception('Container type cannot be plural :|')
-
-    return ContainerReference(
-        container_type= d['container_type'],
-        container_id  = d['container_id']
-    )
+    return ContainerReference.from_dictionary(d)
 
 def create_containerreference_from_filereference(fr):
-    return ContainerReference(
-        container_type= fr.container_type,
-        container_id  = fr.container_id
-    )
+    return ContainerReference.from_filereference(fr)

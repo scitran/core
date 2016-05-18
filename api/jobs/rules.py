@@ -150,7 +150,7 @@ def create_jobs(db, container, container_type, file_):
     for rule in rules:
         if eval_rule(rule, file_, container):
             alg_name = rule['alg']
-            input = FileReference(container_type=container_type, container_id=str(container['_id']), filename=file_['name'])
+            input = FileReference(type=container_type, id=str(container['_id']), name=file_['name'])
 
             queue_job_legacy(db, alg_name, input)
             job_list.append(alg_name)

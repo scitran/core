@@ -1,16 +1,127 @@
 """
 API request handlers for the jobs module
 """
+import bson.objectid
 
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary
-
+from ..auth.containerauth import list_permission_checker, default_container
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
+from ..dao.containerstorage import ContainerStorage
 from .. import base
 from .. import config
 
+from .gears import get_gears, get_gear_by_name
 from .jobs import Job
 from .queue import Queue
 
 log = config.log
+
+
+
+class GearsHandler(base.RequestHandler):
+
+    """Provide /gears API routes."""
+
+    def get(self):
+        """
+        .. http:get:: /api/gears
+
+            List all gears.
+
+            :query fields: filter fields returned. Defaults to ['name']. Pass 'all' for everything.
+            :type fields: string
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/gears HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                [
+                    {
+                        "name": "dicom_mr_classifier"
+                    },
+                    {
+                        "name": "dcm_convert"
+                    },
+                    {
+                        "name": "qa-report-fmri"
+                    }
+                ]
+        """
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        fields = self.request.GET.getall('fields')
+        if 'all' in fields:
+            fields = None
+
+        return get_gears(fields)
+
+
+class GearHandler(base.RequestHandler):
+
+    """Provide /gears/x API routes."""
+
+    def get(self, _id):
+        """
+        .. http:get:: /api/gears/(gid)
+
+            Detail a gear.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/gears/dcm_convert HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "name": "dcm_convert"
+                    "manifest": {
+                        "config": {},
+                        "inputs": {
+                            "dicom": {
+                                "base": "file",
+                                "type": {
+                                    "enum": [
+                                        "dicom"
+                                    ]
+                                }
+                            }
+                        },
+                    },
+                }
+
+        """
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        return get_gear_by_name(_id)
 
 
 class JobsHandler(base.RequestHandler):
@@ -28,12 +139,50 @@ class JobsHandler(base.RequestHandler):
 
     def add(self):
         """
-        Add a job to the queue.
-        """
+        .. http:post:: /api/jobs/add
 
-        # TODO: Check each input container for R, check dest container for RW
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+            Add a job to the queue.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/jobs/add HTTP/1.1
+
+                {
+                    "gear": "dcm_convert",
+
+                    "inputs": {
+                        "dicom": {
+                            "type": "acquisition",
+                            "id": "573c9e6a844eac7fc01747cd",
+                            "name" : "1_1_dicom.zip"
+                        }
+                    },
+
+                    "destination": {
+                        "type": "acquisition",
+                        "id": "573c9e6a844eac7fc01747cd"
+                    },
+
+                    "tags": [
+                        "ad-hoc"
+                    ]
+                }
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "_id": "573cb66b135d87002660597c"
+                }
+        """
 
         submit = self.request.json
         gear_name = submit['gear']
@@ -49,13 +198,24 @@ class JobsHandler(base.RequestHandler):
         attempt_n       = submit.get('attempt_n', 1)
         previous_job_id = submit.get('previous_job_id', None)
 
-        # Add destination container, if present
+        # Add destination container, or select one
         destination = None
         if submit.get('destination', None) is not None:
             destination = create_containerreference_from_dictionary(submit['destination'])
+        else:
+            key = inputs.keys()[0]
+            destination = create_containerreference_from_filereference(inputs[key])
+
+        # Permission check
+        if not self.superuser_request:
+            for x in inputs:
+                inputs[x].check_access(self.uid, 'ro')
+            destination.check_access(self.uid, 'rw')
 
         job = Job(gear_name, inputs, destination=destination, tags=tags, attempt=attempt_n, previous_job_id=previous_job_id)
-        return job.insert()
+        result = job.insert()
+
+        return { "_id": result }
 
     def stats(self):
         if not self.superuser_request:
@@ -67,7 +227,11 @@ class JobsHandler(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        job = Queue.start_job()
+        tags = self.request.GET.getall('tags')
+        if len(tags) <= 0:
+            tags = None
+
+        job = Queue.start_job(tags=tags)
 
         if job is None:
             self.abort(400, 'No jobs to process')

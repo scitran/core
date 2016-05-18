@@ -9,7 +9,7 @@ import webapp2_extras.routes
 
 from . import base
 from .jobs.jobs import Job
-from .jobs.handlers import JobsHandler, JobHandler
+from .jobs.handlers import JobsHandler, JobHandler, GearsHandler, GearHandler
 from .dao.containerutil import FileReference, ContainerReference
 from . import encoder
 from . import root
@@ -209,6 +209,10 @@ routes = [
         webapp2.Route(r'/reap',             JobsHandler, handler_method='reap_stale', methods=['POST']),
         webapp2.Route(r'/add',              JobsHandler, handler_method='add', methods=['POST']),
         webapp2.Route(r'/<:[^/]+>',         JobHandler,  name='job'),
+    ]),
+    webapp2.Route(r'/api/gears',             GearsHandler),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/gears', [
+        webapp2.Route(r'/<:[^/]+>',         GearHandler,  name='job'),
     ]),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, methods=['POST']),
