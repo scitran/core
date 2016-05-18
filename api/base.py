@@ -316,9 +316,3 @@ class RequestHandler(webapp2.RequestHandler):
             }
         log.warning(str(self.uid) + ' ' + str(code) + ' ' + str(detail))
         webapp2.abort(code, detail=detail, **kwargs)
-
-    def schema(self, updates={}):
-        json_schema = copy.deepcopy(self.json_schema)
-        json_schema['properties'].update(updates)
-        return json_schema
-
