@@ -6,7 +6,7 @@ from .. import util
 from .. import config
 from . import consistencychecker
 from . import APIStorageException, APIConflictException
-from . import hierarchyic
+from . import hierarchy
 
 log = config.log
 

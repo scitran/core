@@ -231,14 +231,14 @@ class PermissionsListHandler(ListHandler):
         method to propagate permissions from a project to its sessions and acquisitions
         """
         if cont_name == 'projects':
-            # try:
-            oid = bson.ObjectId(_id)
-            update = {'$set': {
-                'permissions': config.db.projects.find_one({'_id': oid},{'permissions': 1})['permissions']
-            }}
-            hierarchy.propagate_changes(cont_name, _id, {}, update)
-            # except:
-            #     self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+            try:
+                oid = bson.ObjectId(_id)
+                update = {'$set': {
+                    'permissions': config.db.projects.find_one({'_id': oid},{'permissions': 1})['permissions']
+                }}
+                hierarchy.propagate_changes(cont_name, oid, {}, update)
+            except:
+                self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
 
 class NotesListHandler(ListHandler):

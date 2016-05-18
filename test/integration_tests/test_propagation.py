@@ -144,7 +144,7 @@ def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builde
     data = with_hierarchy
     user_id = 'propagation@user.com'
 
-    # Add user
+    # Add user to project permissions
     payload = json.dumps({'_id': user_id, 'access': 'admin', 'site': 'local'})
     r = api_as_admin.post('/projects/' + data.project + '/permissions', data=payload)
     assert r.ok
@@ -164,9 +164,9 @@ def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builde
     user = get_user_in_perms(perms, user_id)
     assert r.ok and user
 
-    # Modify user perms
-    payload = json.dumps({'access': 'rw'})
-    r = api_as_admin.put('/projects/' + data.project + '/permissions/' + user_id, data=payload)
+    # Modify user permissions
+    payload = json.dumps({'access': 'rw', '_id': user_id})
+    r = api_as_admin.put('/projects/' + data.project + '/permissions/local/' + user_id, data=payload)
     assert r.ok
 
     r = api_as_admin.get('/projects/' + data.project)
@@ -184,8 +184,8 @@ def test_add_and_remove_user_for_project_permissions(with_hierarchy, data_builde
     user = get_user_in_perms(perms, user_id)
     assert r.ok and user is not None and user['access'] == 'rw'
 
-    # Add user
-    r = api_as_admin.delete('/projects/' + data.project + '/permissions/' + user_id, data=payload)
+    # Remove user from project permissions
+    r = api_as_admin.delete('/projects/' + data.project + '/permissions/local/' + user_id, data=payload)
     assert r.ok
 
     r = api_as_admin.get('/projects/' + data.project)
