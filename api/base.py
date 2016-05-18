@@ -14,7 +14,7 @@ from . import files
 from . import config
 from .types import Origin
 from . import validators
-from .dao import APIConsistencyException
+from .dao import APIConsistencyException, APIConflictException
 
 log = config.log
 
@@ -251,6 +251,8 @@ class RequestHandler(webapp2.RequestHandler):
             code = 400
         elif isinstance(exception, APIConsistencyException):
             code = 400
+        elif isinstance(exception, APIConflictException):
+            code = 409
         elif isinstance(exception, files.FileStoreException):
             code = 400
         else:
