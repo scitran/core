@@ -1,10 +1,11 @@
 import bson.errors
 import bson.objectid
+import pymongo.errors
 
 from .. import util
 from .. import config
 from . import consistencychecker
-from . import APIStorageException
+from . import APIStorageException, APIConflictException
 
 log = config.log
 
@@ -49,7 +50,11 @@ class ContainerStorage(object):
 
     def _create_el(self, payload):
         log.debug(payload)
-        return self.dbc.insert_one(payload)
+        try:
+            result = self.dbc.insert_one(payload)
+        except pymongo.errors.DuplicateKeyError:
+            raise APIConflictException('Object with id {} already exists.'.format(payload['_id']))
+        return result
 
     def _update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
         replace = None
