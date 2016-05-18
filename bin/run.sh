@@ -8,7 +8,13 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 echo() { builtin echo -e "\033[1;34m\033[47mSCITRAN\033[0;0m\033[47m $@\033[0;0m"; }
 
 
-USAGE="Usage: $0 [-T] [-U] [config file]"
+USAGE="
+    Usage:\n
+    $0 [-T] [-U] [config file]\n
+    \n
+    -T: do not bootstrap testdata\n
+    -U: do not users and groups
+"
 
 BOOTSTRAP_USERS=1
 BOOTSTRAP_TESTDATA=1
