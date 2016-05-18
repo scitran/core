@@ -21,7 +21,6 @@ def with_hierarchy(api_as_admin, bunch, request, data_builder):
         data_builder.delete_project(project)
         data_builder.delete_group(group)
 
-
     request.addfinalizer(teardown_db)
 
     fixture_data = bunch.create()
@@ -254,7 +253,7 @@ def test_add_rename_remove_group_tag(with_hierarchy, data_builder, api_as_admin)
     assert r.ok and tag_renamed in json.loads(r.content)['tags']
 
     # Delete tag
-    r = api_as_admin.put('/groups/' + data.group + '/tags/' + tag_renamed, data=payload)
+    r = api_as_admin.delete('/groups/' + data.group + '/tags/' + tag_renamed)
     assert r.ok
 
     r = api_as_admin.get('/groups/' + data.group)
