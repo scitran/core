@@ -23,6 +23,7 @@ Strategy = util.Enum('Strategy', {
     'packfile'   : pl.PackfilePlacer,   # Upload N files as a new packfile to a container.
     'labelupload': pl.LabelPlacer,
     'uidupload'  : pl.UIDPlacer,
+    'analysis' : pl.AnalysisPlacer    # Upload N files for an analysys (no db updates)
 })
 
 def process_upload(request, strategy, container_type=None, id=None, origin=None, context=None, response=None, metadata=None):
