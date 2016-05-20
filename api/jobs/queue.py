@@ -158,7 +158,10 @@ class Queue(object):
         if tags is not None and len(tags) > 0:
             query['tags'] = {"$in": tags}
 
-        return config.db.jobs.find(query)
+        # For now, mandate reverse-crono sort
+        return config.db.jobs.find(query).sort([
+            ('modified', pymongo.DESCENDING)
+        ])
 
     @staticmethod
     def get_statistics():
