@@ -94,6 +94,9 @@ class Job(object):
     @classmethod
     def get(cls, _id):
         doc = config.db.jobs.find_one({'_id': bson.ObjectId(_id)})
+        if doc is None:
+            raise Exception('Job not found')
+
         return cls.load(doc)
 
     def map(self):

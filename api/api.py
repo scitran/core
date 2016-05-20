@@ -209,6 +209,7 @@ routes = [
         webapp2.Route(r'/reap',             JobsHandler, handler_method='reap_stale', methods=['POST']),
         webapp2.Route(r'/add',              JobsHandler, handler_method='add', methods=['POST']),
         webapp2.Route(r'/<:[^/]+>',         JobHandler,  name='job'),
+        webapp2.Route(r'/<:[^/]+>/retry',   JobHandler,  name='job', handler_method='retry', methods=['POST']),
     ]),
     webapp2.Route(r'/api/gears',             GearsHandler),
     webapp2_extras.routes.PathPrefixRoute(r'/api/gears', [

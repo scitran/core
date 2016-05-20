@@ -66,6 +66,7 @@ class Queue(object):
 
         # If the job did not succeed, check to see if job should be retried.
         if 'state' in mutation and mutation['state'] == 'failed':
+            job.state = 'failed'
             Queue.retry(job)
 
     @staticmethod
@@ -79,6 +80,16 @@ class Queue(object):
             log.info('Permanently failed job %s (after %d attempts)' % (job._id, job.attempt))
             return
 
+        if job.state != 'failed':
+            raise Exception('Can only retry a job that is failed')
+
+        # Race condition: jobs should only be marked as failed once a new job has been spawned for it (if any).
+        # No transactions in our database, so we can't do that.
+        # Instead, make a best-hope attempt.
+        check = config.db.jobs.find_one({'previous_job_id': job._id })
+        if check is not None:
+            found = Job.load(check)
+            raise Exception('Job ' + job._id + ' has already been retried as ' + str(found._id))
 
         new_job = copy.deepcopy(job)
         new_job._id = None
@@ -93,6 +104,8 @@ class Queue(object):
 
         new_id = new_job.insert()
         log.info('respawned job %s as %s (attempt %d)' % (job._id, new_id, new_job.attempt))
+
+        return new_id
 
     @staticmethod
     def start_job(tags=None):
