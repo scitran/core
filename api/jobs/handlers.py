@@ -267,3 +267,43 @@ class JobHandler(base.RequestHandler):
 
         j = Job.get(_id)
         Queue.mutate(j, self.request.json)
+
+    def retry(self, _id):
+        """
+        .. http:post:: /api/jobs/(jid)/retry
+
+            Retry a job.
+
+            The job must have a state of 'failed', and must not have already been retried.
+            Returns the id of the new, generated job.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/jobs/3/retry HTTP/1.1
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "_id": "573cb66b135d87002660597c"
+                }
+        """
+
+        j = Job.get(_id)
+
+        # Permission check
+        if not self.superuser_request:
+            for x in j.inputs:
+                j.inputs[x].check_access(self.uid, 'ro')
+            j.destination.check_access(self.uid, 'rw')
+
+        new_id = Queue.retry(j, force=True)
+        return { "_id": new_id }
