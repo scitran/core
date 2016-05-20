@@ -249,6 +249,7 @@ class RequestHandler(webapp2.RequestHandler):
             code = exception.code
         elif isinstance(exception, validators.InputValidationException):
             code = 400
+            log.warn(str(exception))
         elif isinstance(exception, APIConsistencyException):
             code = 400
         elif isinstance(exception, APIConflictException):
