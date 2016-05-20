@@ -5,7 +5,7 @@ class APIConsistencyException(Exception):
     pass
 
 class APIConflictException(Exception):
-	pass
+    pass
 
 def noop(*args, **kwargs):
     pass
