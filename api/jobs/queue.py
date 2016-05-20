@@ -79,11 +79,17 @@ class Queue(object):
             log.info('Permanently failed job %s (after %d attempts)' % (job._id, job.attempt))
             return
 
+
         new_job = copy.deepcopy(job)
         new_job._id = None
+        new_job.previous_job_id = job._id
+
         new_job.state = 'pending'
         new_job.attempt += 1
-        new_job.previous_job_id = job._id
+
+        now = datetime.datetime.utcnow()
+        new_job.created = now
+        new_job.modified = now
 
         new_id = new_job.insert()
         log.info('respawned job %s as %s (attempt %d)' % (job._id, new_id, new_job.attempt))
