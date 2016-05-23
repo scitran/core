@@ -47,3 +47,19 @@ def get_gear_by_name(name):
 
     # Mongo returns the full document: { '_id' : 'gears', 'gear_list' : [ { .. } ] }, so strip that out
     return gear_doc[SINGLETON_KEY][0]
+
+def insert_gear(doc):
+    config.db.singletons.update(
+        {"_id" : "gears"},
+        {'$push': {'gear_list': doc} }
+    )
+
+def remove_gear(name):
+    config.db.singletons.update(
+        {"_id" : "gears"},
+        {'$pull': {'gear_list':{ 'name': name }} }
+    )
+
+def upsert_gear(doc):
+    remove_gear(doc['name'])
+    insert_gear(doc)
