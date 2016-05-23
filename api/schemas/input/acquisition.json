@@ -16,6 +16,6 @@
         "timestamp":    {"type": "string", "format": "date-time"},
         "timezone":     {"type": "string"}
     },
-    "required": ["label"],
+    "required": ["label", "session"],
     "additionalProperties": false
 }
