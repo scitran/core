@@ -42,6 +42,33 @@ def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
     fixture_data.files = files
     return fixture_data
 
+@pytest.fixture()
+def with_hierarchyand_file_data(api_as_admin, bunch, request, data_builder):
+    group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
+    project =       data_builder.create_project(group)
+    session =       data_builder.create_session(project)
+    acquisition =   data_builder.create_acquisition(session)
+
+    file_names = ['one.csv', 'two.csv']
+    files = {}
+    for i, name in enumerate(file_names):
+        files['file' + str(i+1)] = (name, 'some,data,to,send\nanother,row,to,send\n')
+
+    def teardown_db():
+        data_builder.delete_acquisition(acquisition)
+        data_builder.delete_session(session)
+        data_builder.delete_project(project)
+        data_builder.delete_group(group)
+
+    request.addfinalizer(teardown_db)
+
+    fixture_data = bunch.create()
+    fixture_data.group = group
+    fixture_data.project = project
+    fixture_data.session = session
+    fixture_data.acquisition = acquisition
+    return fixture_data
+
 
 def test_uid_upload(with_group_and_file_data, api_as_admin):
     data = with_group_and_file_data
@@ -124,4 +151,29 @@ def test_label_upload(with_group_and_file_data, api_as_admin):
     r = api_as_admin.post('/upload/label', files=data.files)
     assert r.status_code == 400
 
+def test_acquisition_engine_upload(with_hierarchyand_file_data, api_as_admin):
+    data = with_group_and_file_data
+    metadata = {
+        'session':{
+            'label':'test_session',
+            'files':[
+                {
+                    'name':data.files.keys()[1]
+                }
+            ],
+            'subject': {'code': 'test_subject'}
+        },
+        'acquisition':{
+            'label':'test_acquisition',
+            'files':[
+                {
+                    'name':data.files.keys()[2]
+                }
+            ]
+        }
+    }
+    metadata = json.dumps(metadata)
+
+    r = api_as_admin.post('/upload/label', files=data.files)
+    assert r.ok
 
