@@ -460,20 +460,17 @@ class ContainerHandler(base.RequestHandler):
     def _get_parent_container(self, payload):
         if not self.config.get('parent_storage'):
             return None, None
-        log.debug(payload)
         parent_storage = self.config['parent_storage']
         parent_id_property = parent_storage.cont_name[:-1]
-        log.debug(parent_id_property)
         parent_id = payload.get(parent_id_property)
-        log.debug(parent_id)
         if parent_id:
             parent_storage.dbc = config.db[parent_storage.cont_name]
             parent_container = parent_storage.get_container(parent_id)
             if parent_container is None:
                 self.abort(404, 'Element {} not found in container {}'.format(parent_id, parent_storage.cont_name))
         else:
-            parent_container = None
-        log.debug(parent_container)
+            # Proper input schema check will prevent this route
+            self.abort(400, 'Parent {} id is required.'.format(parent_storage.cont_name))
         return parent_container, parent_id_property
 
     def _get_container(self, _id):
