@@ -228,6 +228,7 @@ class Queue(object):
                     '$set': {
                         'state': 'failed', },
                 },
+                return_document=pymongo.collection.ReturnDocument.AFTER
             )
 
             if doc is None:
