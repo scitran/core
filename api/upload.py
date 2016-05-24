@@ -122,6 +122,10 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
             'metadata': {}
         }
 
+        # Guess upload type by extension on request
+        if request.GET.get('guess-type', '').lower() in ('1', 'true'):
+            info['type'] = files.guess_type_from_filename(info['name'])
+
         placer.process_file_field(field, info)
 
     # Respond either with Server-Sent Events or a standard json map
