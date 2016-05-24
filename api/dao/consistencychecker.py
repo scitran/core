@@ -40,7 +40,6 @@ def user_on_permission(data_op, **kwargs):
         if not config.db.users.find_one({'_id': data_op['_id']}):
             raise APIConsistencyException('user does not exist')
 
-def field_on_container(parent_field, parent_container_name):
     """Checks that if we are moving or creating a container,
     the new parent container already exists.
 
@@ -55,6 +54,16 @@ def check_children(foreign_key_field, container_name):
     """Check that a container has no children.
 
     Used before DELETE operations.
+
+    Args:
+        foreign_key_field (str): key field name in container_name collection
+        container_name (str): db collection to search
+
+    Returns:
+        None:
+
+    Raises:
+        APIConsistencyException: Child document found
     """
     def f(data_op, **kwargs):
         if config.db[container_name].find_one({foreign_key_field: data_op['_id']}):
