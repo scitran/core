@@ -40,6 +40,7 @@ def user_on_permission(data_op, **kwargs):
         if not config.db.users.find_one({'_id': data_op['_id']}):
             raise APIConsistencyException('user does not exist')
 
+def field_on_container(parent_field, parent_container_name):		
     """Checks that if we are moving or creating a container,
     the new parent container already exists.
 
