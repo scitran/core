@@ -238,3 +238,37 @@ class MultiFileStore(object):
                         'size': os.path.getsize(os.path.join(dest_path, filename)),
                         'mimetype': util.guess_mimetype(filename)
                     }, os.path.join(dest_path, filename))
+
+
+# File extension --> scitran file type detection hueristics.
+# Listed in precendence order.
+FILE_EXTENSIONS = [
+    # Scientific file types
+    {'bval':         [ '.bval' ]},
+    {'bvec':         [ '.bvec' ]},
+    {'dicom':        [ '.dcm' ]},
+    {'gephysio':     [ '.gephysio.zip' ]},
+    {'nifti':        [ '.nii.gz', '.nii' ]},
+    {'pfile':        [ '.7.gz', '.7' ]},
+    {'qa':           [ '.qa.png', '.qa.json' ]},
+
+    # Basic file types
+    {'archive':      [ '.zip', '.tbz2', '.tar.gz', '.tbz', '.tar.bz2', '.tgz', '.tar', '.txz', '.tar.xz' ]},
+    {'document':     [ '.docx', '.doc' ]},
+    {'image':        [ '.jpg', '.tif', '.jpeg', '.gif', '.bmp', '.png', '.tiff' ]},
+    {'pdf':          [ '.pdf' ]},
+    {'presentation': [ '.ppt', '.pptx' ]},
+    {'source code':  [ '.c', '.py', '.cpp', '.js', '.m', '.json', '.java' ]},
+    {'spredsheet':   [ '.xls', '.xlsx' ]},
+    {'tabular data': [ '.csv.gz', '.csv' ]},
+    {'text':         [ '.txt' ]},
+    {'video':        [ '.mpeg', '.mpg', '.mov', '.mp4']},
+]
+
+def guess_type_from_filename(filename):
+    for x in FILE_EXTENSIONS:
+        key = x.keys()[0]
+        for extension in x[key]:
+            if filename.endswith(extension):
+                return key
+    return None
