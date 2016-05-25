@@ -40,7 +40,6 @@ class SearchContainer(object):
                 self.is_target = True
             else:
                 self.child_targets.add(t)
-        log.error(self.child_targets)
         self.results = None
 
     def get_results(self):
@@ -101,10 +100,8 @@ class SearchContainer(object):
         else:
             final_results = {}
         for t in self.child_targets:
-            log.error(self.cont_name)
             results = t.get_results(self.cont_name, self.results)
             final_results[t.name] = final_results.get(t.name, []) + results.values()
-        log.error(final_results)
         return final_results
 
 
@@ -147,7 +144,6 @@ class PreparedSearch(object):
             targets = self._get_targets(path)
             self._merge_into(targets, self.target_lists)
         self.search_containers = {}
-        log.error(self.target_lists)
         for cont_name in self.containers:
             query = self.queries.get(cont_name)
             targets = self.target_lists.get(cont_name, [])
@@ -183,8 +179,6 @@ class PreparedSearch(object):
         for cont_name in self.containers[::-1]:
             container = self.search_containers[cont_name]
             new_results = container.collect()
-            if new_results:
-                log.error(cont_name + str(new_results))
             self._merge_into(new_results, results)
             for parent_name in querygraph[cont_name].get('parents', []):
                 self.search_containers[parent_name].receive(

@@ -67,32 +67,16 @@ class SearchHandler(base.RequestHandler):
     def __init__(self, request=None, response=None):
         super(SearchHandler, self).__init__(request, response)
 
-    def get(self, cont_name, **kwargs):
+    def advanced_search(self, **kwargs):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
-        size = self.get_param('size')
-        min_score = self.get_param('min_score', 0.5)
-        body = self.request.json_body
-        query = es_query(body, cont_name, min_score)
-        try:
-            results = config.es.search(index='scitran', body=query, _source=['_id'], size=size or 10)
-        except elasticsearch.exceptions.ConnectionError as e:
-            self.abort(503, 'elasticsearch is not available')
-        return results['hits']['hits']
-
-    def advanced_search(self, **kwargs):
         queries = self.request.json_body
         path = queries.pop('path')
-        log.error(path)
-        log.error(queries)
         min_score = self.get_param('min_score', 0.5)
-        # for cont_name in queries:
-        #    queries[cont_name] = es_query(queries[cont_name], cont_name, min_score)
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
             queries['collections'] = queries.get('collections', {"match_all": {}})
         target_paths = pathparser.PathParser(path).paths
-        log.error(target_paths)
         search = queryprocessor.PreparedSearch(target_paths, queries)
         return search.process_search()
 
