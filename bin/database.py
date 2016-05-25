@@ -234,7 +234,9 @@ def upgrade_to_8():
     """
 
     if 'singletons' not in config.db.collection_names():
-        config.db.singletons.insert_many(config.db.static.find({}))
+        static = config.db.static.find({})
+        if static.count() > 0:
+            config.db.singletons.insert_many(static)
         config.db.singletons.insert(config.db.version.find({}))
 
         configs = config.db.config.find({'latest': True},{'latest':0})
@@ -243,9 +245,12 @@ def upgrade_to_8():
             c['_id'] = 'config'
             config.db.singletons.insert_one(c)
 
-        config.db.drop_collection('static')
-        config.db.drop_collection('version')
-        config.db.drop_collection('config')
+        if 'version' in config.db.collection_names():
+            config.db.drop_collection('version')
+        if 'config' in config.db.collection_names():
+            config.db.drop_collection('config')
+        if 'static' in config.db.collection_names():
+            config.db.drop_collection('static')
 
 def upgrade_to_9():
     """
