@@ -61,6 +61,7 @@ def _upsert_role(request_session, api_url, role_doc, group_id):
     full_role_url = "{0}/{1}/{2}".format(base_role_url, role_doc['site'], role_doc['_id'])
     return request_session.put(full_role_url, json=role_doc)
 
+
 def users(filepath, api_url, http_headers, insecure):
     """
     Upserts the users/groups/roles defined in filepath parameter.
@@ -117,9 +118,9 @@ if args.secret:
 
 try:
     users(args.json, args.url, http_headers, args.insecure)
-except requests.HTTPError as http_ex:
-    log.error(http_ex)
-    log.error("request_body={0}".format(http_ex.response.request.body))
+except requests.HTTPError as ex:
+    log.error(ex)
+    log.error("request_body={0}".format(ex.response.request.body))
     sys.exit(1)
 except Exception as ex:
     log.error('Unexpected error:')
