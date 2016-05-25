@@ -55,6 +55,16 @@ def check_children(foreign_key_field, container_name):
     """Check that a container has no children.
 
     Used before DELETE operations.
+
+    Args:
+        foreign_key_field (str): key field name in container_name collection
+        container_name (str): db collection to search
+
+    Returns:
+        None:
+
+    Raises:
+        APIConsistencyException: Child document found
     """
     def f(data_op, **kwargs):
         if config.db[container_name].find_one({foreign_key_field: data_op['_id']}):
