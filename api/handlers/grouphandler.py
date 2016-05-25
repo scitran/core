@@ -93,7 +93,7 @@ class GroupHandler(base.RequestHandler):
                 self.response.status_int = 201
                 return {'_id': payload['_id']}
         else:
-            self.abort(404, 'User {} not updated'.format(_id))
+            self.abort(404, 'Group {} not updated'.format(payload['_id']))
 
     def _init_storage(self):
         self.storage = containerstorage.GroupStorage('groups', use_object_id=False)

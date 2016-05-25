@@ -56,7 +56,7 @@ def mongo_sanitize_fields(d):
     if isinstance(d, dict):
         return {mongo_sanitize_fields(str(key)): value if isinstance(value, str) else mongo_sanitize_fields(value) for key,value in d.iteritems()}
     elif isinstance(d, list):
-        return [mongo_sanitize_fields(element) for element in i]
+        return [mongo_sanitize_fields(element) for element in d]
     elif isinstance(d, str):
         # not allowing dots nor dollar signs in fieldnames
         d = d.replace('.','_')

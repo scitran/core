@@ -43,7 +43,7 @@ class CollectionsHandler(ContainerHandler):
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
-            self.abort(404, 'Element not added in collection {}'.format(_id))
+            self.abort(404, 'Element not added in collection {}'.format(self.uid))
 
     def put(self, **kwargs):
         _id = kwargs.pop('cid')
@@ -66,7 +66,7 @@ class CollectionsHandler(ContainerHandler):
             self._add_contents(contents, _id)
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'Element not updated in collection {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not updated in collection {} {}'.format(self.storage.cont_name, _id))
 
     def _add_contents(self, contents, _id):
         if not contents:
@@ -108,7 +108,7 @@ class CollectionsHandler(ContainerHandler):
         query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
-            self.abort(404, 'Element not found in collection {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not found in collection {}'.format(self.storage.cont_name))
         self._filter_all_permissions(results, self.uid, self.user_site)
         if self.is_true('counts'):
             self._add_results_counts(results)
@@ -198,5 +198,3 @@ class CollectionsHandler(ContainerHandler):
         for acquisition in acquisitions:
             acquisition = self.handle_origin(acquisition)
         return acquisitions
-
-

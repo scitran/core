@@ -238,6 +238,7 @@ class PermissionsListHandler(ListHandler):
         """
         method to propagate permissions from a project to its sessions and acquisitions
         """
+<<<<<<< 75b71f5b10aaa1fba79830084d057fb2aea50ab8
         if cont_name == 'projects':
             try:
                 oid = bson.ObjectId(_id)
@@ -247,6 +248,19 @@ class PermissionsListHandler(ListHandler):
                 hierarchy.propagate_changes(cont_name, oid, {}, update)
             except:
                 self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+=======
+        try:
+            log.debug(_id)
+            oid = bson.ObjectId(_id)
+            update = {
+                'permissions': config.db.projects.find_one(oid)['permissions']
+            }
+            session_ids = [s['_id'] for s in config.db.sessions.find({'project': oid}, [])]
+            config.db.sessions.update_many({'project': oid}, {'$set': update})
+            config.db.acquisitions.update_many({'session': {'$in': session_ids}}, {'$set': update})
+        except Exception as e:
+            self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+>>>>>>> Resolve most pylint ERROR class issues
 
 
 class NotesListHandler(ListHandler):

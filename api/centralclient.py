@@ -151,10 +151,15 @@ class CentralClient(base.RequestHandler):
             self.abort(400, 'SSL cert not configured')
         if not config.get_item('site', 'central_url'):
             self.abort(400, 'Central URL not configured')
-        if not update(config.db, config.get_item('site', 'ssl_cert'), config.get_item('site', 'central_url')):
+        if not update(db=config.db,
+                      api_uri=config.get_item('site', 'api_url'),
+                      site_name=config.get_item('site', 'name'),
+                      site_id=config.get_item('site', 'id'),
+                      ssl_cert=config.get_item('site', 'ssl_cert'),
+                      central_url=config.get_item('site', 'central_url'),):
             fail_count += 1
         else:
-            centralclient.fail_count = 0
-        if centralclient.fail_count == 3:
+            fail_count = 0
+        if fail_count == 3:
             log.warning('scitran central unreachable, purging all remotes info')
-            clean_remotes(config.db)
+            clean_remotes(db=config.db, site_id=config.get_item('site', 'id'))
