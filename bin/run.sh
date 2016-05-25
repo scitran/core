@@ -8,7 +8,35 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 echo() { builtin echo -e "\033[1;34m\033[47mSCITRAN\033[0;0m\033[47m $@\033[0;0m"; }
 
 
+USAGE="
+    Usage:\n
+    $0 [-T] [-U] [config file]\n
+    \n
+    -T: do not bootstrap testdata\n
+    -U: do not users and groups
+"
+
+BOOTSTRAP_USERS=1
+BOOTSTRAP_TESTDATA=1
+
+while getopts ":TU" opt; do
+    case $opt in
+        T)
+            BOOTSTRAP_TESTDATA=0;
+            shift $((OPTIND-1));;
+        U)
+            BOOTSTRAP_USERS=0;
+            shift $((OPTIND-1));;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo $USAGE >&2
+            exit 1
+            ;;
+    esac
+done
+
 set -o allexport
+
 
 if [ "$#" -eq 1 ]; then
     EXISTING_ENV=$(env | grep "SCITRAN_" | cat)
@@ -16,7 +44,8 @@ if [ "$#" -eq 1 ]; then
     eval "$EXISTING_ENV"
 fi
 if [ "$#" -gt 1 ]; then
-    echo "Usage: $0 [config file]"
+    echo "Too many positional arguments"
+    echo $USAGE >&2
     exit 1
 fi
 
@@ -39,16 +68,9 @@ SCITRAN_SITE_API_URL="$SCITRAN_SITE_API_URL://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUN
 set +o allexport
 
 
-if [ -f "$SCITRAN_PERSISTENT_DB_PATH/mongod.lock" ]; then
-    BOOTSTRAP_USERS=0
-else
-    echo "Creating database location at $SCITRAN_PERSISTENT_DB_PATH"
-    mkdir -p $SCITRAN_PERSISTENT_DB_PATH
-    if ! [ -f "$SCITRAN_RUNTIME_BOOTSTRAP" ]; then
-        echo "Aborting. Please create $SCITRAN_RUNTIME_BOOTSTRAP from bootstrap.json.sample."
-        exit 1
-    fi
-    BOOTSTRAP_USERS=1
+if [ ! -f "$SCITRAN_RUNTIME_BOOTSTRAP" ]; then
+    echo "Aborting. Please create $SCITRAN_RUNTIME_BOOTSTRAP from bootstrap.json.sample."
+    exit 1
 fi
 
 
@@ -106,6 +128,11 @@ install_mongo() {
     echo "MongoDB version $MONGODB_VERSION installed"
 }
 
+if [ ! -f "$SCITRAN_PERSISTENT_DB_PATH/mongod.lock" ]; then
+    echo "Creating database location at $SCITRAN_PERSISTENT_DB_PATH"
+    mkdir -p $SCITRAN_PERSISTENT_DB_PATH
+fi
+
 MONGODB_VERSION=$(cat mongodb_version.txt)
 MONGODB_URL="https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-$MONGODB_VERSION.tgz"
 if [ -x "$VIRTUAL_ENV/bin/mongod" ]; then
@@ -141,6 +168,7 @@ ssl_pem=$SCITRAN_RUNTIME_SSL_PEM
 paste.app_factory = api.api:app_factory
 EOF
 
+echo "Launching Paster application server"
 paster serve --reload $TEMP_INI_FILE &
 PASTER_PID=$!
 
@@ -160,31 +188,39 @@ sleep 2
 
 # Boostrap users and groups
 if [ $BOOTSTRAP_USERS -eq 1 ]; then
-    echo "Bootstrapping users"
-    bin/bootstrap.py --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_RUNTIME_BOOTSTRAP"
-    echo "Bootstrapped users"
+    if [ -f "$SCITRAN_PERSISTENT_DB_PATH/.bootstrapped" ]; then
+        echo "Users previously bootstrapped. Remove $SCITRAN_PERSISTENT_DB_PATH to re-bootstrap."
+    else
+        echo "Bootstrapping users"
+        bin/bootstrap.py --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_RUNTIME_BOOTSTRAP"
+        echo "Bootstrapped users"
+        touch "$SCITRAN_PERSISTENT_DB_PATH/.bootstrapped"
+    fi
 else
-    echo "Database exists at $SCITRAN_PERSISTENT_PATH/db. Not bootstrapping users."
+    echo "NOT bootstrapping users"
 fi
 
 
 # Boostrap test data
 TESTDATA_REPO="https://github.com/scitran/testdata.git"
-if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
-    echo "Cloning testdata to $SCITRAN_PERSISTENT_PATH/testdata"
-    git clone --single-branch $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
+if [ $BOOTSTRAP_TESTDATA -eq 1 ]; then
+    if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
+        echo "Data previously bootstrapped. Remove $SCITRAN_PERSISTENT_DATA_PATH to re-bootstrap."
+    else
+        if [ ! -d "$SCITRAN_PERSISTENT_PATH/testdata" ]; then
+            echo "Cloning testdata to $SCITRAN_PERSISTENT_PATH/testdata"
+            git clone --single-branch $TESTDATA_REPO $SCITRAN_PERSISTENT_PATH/testdata
+        else
+            echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
+            git -C $SCITRAN_PERSISTENT_PATH/testdata pull
+        fi
+        echo "Bootstrapping testdata"
+        folder_uploader --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
+        echo "Bootstrapped testdata"
+        touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
+    fi
 else
-    echo "Updating testdata in $SCITRAN_PERSISTENT_PATH/testdata"
-    git -C $SCITRAN_PERSISTENT_PATH/testdata pull
-fi
-
-if [ -f "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped" ]; then
-    echo "Persistence store exists at $SCITRAN_PERSISTENT_PATH/data. Not bootstrapping data. Remove to re-bootstrap."
-else
-    echo "Bootstrapping testdata"
-    folder_uploader --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
-    echo "Bootstrapped testdata"
-    touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
+    echo "NOT bootstrapping testdata"
 fi
 
 

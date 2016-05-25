@@ -20,7 +20,55 @@ log = logging.getLogger('scitran.bootstrap')
 logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library
 
 
+def _upsert_user(request_session, api_url, user_doc):
+    """
+    Insert user, or update if insert fails due to user already existing.
+
+    Returns:
+        requests.Response: API response.
+
+    Args:
+        request_session (requests.Session): Session to use for the request.
+        api_url (str): Base url for the API eg. 'https://localhost:8443/api'
+        user_doc (dict): Valid user doc defined in user input schema.
+    """
+    new_user_resp = request_session.post(api_url + '/users', json=user_doc)
+    if new_user_resp.status_code != 409:
+        return new_user_resp
+
+    # Already exists, update instead
+    return request_session.put(api_url + '/users/' + user_doc['_id'], json=user_doc)
+
+
+def _upsert_role(request_session, api_url, role_doc, group_id):
+    """
+    Insert group role, or update if insert fails due to group role already existing.
+
+    Returns:
+        requests.Response: API response.
+
+    Args:
+        request_session (requests.Session): Session to use for the request.
+        api_url -- (str): Base url for the API eg. 'https://localhost:8443/api'
+        role_doc -- (dict) Valid permission doc defined in permission input schema.
+    """
+    base_role_url = "{0}/groups/{1}/roles".format(api_url, group_id)
+    new_role_resp = request_session.post(base_role_url , json=role_doc)
+    if new_role_resp.status_code != 409:
+        return new_role_resp
+
+    # Already exists, update instead
+    full_role_url = "{0}/{1}/{2}".format(base_role_url, role_doc['site'], role_doc['_id'])
+    return request_session.put(full_role_url, json=role_doc)
+
+
 def users(filepath, api_url, http_headers, insecure):
+    """
+    Upserts the users/groups/roles defined in filepath parameter.
+
+    Raises:
+        requests.HTTPError: Upsert failed.
+    """
     now = datetime.datetime.utcnow()
     with open(filepath) as fd:
         input_data = json.load(fd)
@@ -29,17 +77,23 @@ def users(filepath, api_url, http_headers, insecure):
         rs.verify = not insecure
         rs.headers = http_headers
         for u in input_data.get('users', []):
-            log.info('    ' + u['_id'])
-            rs.post(api_url + '/users', json=u)
+            log.info('    {0}'.format(u['_id']))
+            r = _upsert_user(request_session=rs, api_url=api_url, user_doc=u)
+            r.raise_for_status()
+
         log.info('bootstrapping groups...')
-        site_id = rs.get(api_url + '/config').json()['site']['id']
+        r = rs.get(api_url + '/config')
+        r.raise_for_status()
+        site_id = r.json()['site']['id']
         for g in input_data.get('groups', []):
-            log.info('    ' + g['_id'])
             roles = g.pop('roles')
-            rs.post(api_url + '/groups' , json=g)
-            for r in roles:
-                r.setdefault('site', site_id)
-                rs.post(api_url + '/groups/' + g['_id'] + '/roles' , json=r)
+            log.info('    {0}'.format(g['_id']))
+            r = rs.post(api_url + '/groups' , json=g)
+            r.raise_for_status()
+            for role in roles:
+                role.setdefault('site', site_id)
+                r = _upsert_role(request_session=rs, api_url=api_url, role_doc=role, group_id=g['_id'])
+                r.raise_for_status()
     log.info('bootstrapping complete')
 
 
@@ -62,4 +116,13 @@ if args.secret:
     http_headers['X-SciTran-Auth'] = args.secret
 # TODO: extend this to support oauth tokens
 
-users(args.json, args.url, http_headers, args.insecure)
+try:
+    users(args.json, args.url, http_headers, args.insecure)
+except requests.HTTPError as ex:
+    log.error(ex)
+    log.error("request_body={0}".format(ex.response.request.body))
+    sys.exit(1)
+except Exception as ex:
+    log.error('Unexpected error:')
+    log.error(ex)
+    sys.exit(1)
