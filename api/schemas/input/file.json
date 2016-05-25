@@ -3,7 +3,7 @@
   "type": "object",
   "properties": {
     "name":           { "type": "string" },
-    "type":           { "type": ["string", "null"] },
+    "type":           { "type": "string" },
     "mimetype":       { "type": "string" },
     "instrument":     { "type": "string" },
     "measurements": {
