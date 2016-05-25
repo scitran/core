@@ -12,10 +12,6 @@ from .jobs import Job
 
 log = config.log
 
-
-# How many times a job should be retried
-MAX_ATTEMPTS = 3
-
 JOB_STATES = [
     'pending',  # Job is queued
     'running',  # Job has been handed to an engine and is being processed
@@ -33,6 +29,15 @@ JOB_TRANSITIONS = [
     'running --> failed',
     'running --> complete',
 ]
+
+# How many times a job should be retried
+def max_attempts():
+    return config.get_item('queue', 'max_retries')
+
+# Should a job be retried when explicitly failed.
+# Does not affect orphaned jobs.
+def retry_on_explicit_fail():
+    return config.get_item('queue', 'retry_on_fail')
 
 def valid_transition(from_state, to_state):
     return (from_state + ' --> ' + to_state) in JOB_TRANSITIONS or from_state == to_state
@@ -65,7 +70,7 @@ class Queue(object):
             raise Exception('Job modification not saved')
 
         # If the job did not succeed, check to see if job should be retried.
-        if 'state' in mutation and mutation['state'] == 'failed':
+        if 'state' in mutation and mutation['state'] == 'failed' and retry_on_explicit_fail():
             job.state = 'failed'
             Queue.retry(job)
 
@@ -76,7 +81,7 @@ class Queue(object):
         Can override the attempt limit by passing force=True.
         """
 
-        if job.attempt >= MAX_ATTEMPTS and not force:
+        if job.attempt >= max_attempts() and not force:
             log.info('Permanently failed job %s (after %d attempts)' % (job._id, job.attempt))
             return
 
@@ -201,7 +206,7 @@ class Queue(object):
             by_tag.append({'tags': r['_id'], 'count': r['count']})
 
         # Count jobs that will not be retried
-        permafailed = config.db.jobs.count({"attempt": {"$gte": MAX_ATTEMPTS}, "state":"failed"})
+        permafailed = config.db.jobs.count({"attempt": {"$gte": max_attempts()}, "state":"failed"})
 
         return {
             'by-state': by_state,
