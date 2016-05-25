@@ -9,7 +9,7 @@ from ..dao.containerstorage import ContainerStorage
 from .. import base
 from .. import config
 
-from .gears import get_gears, get_gear_by_name
+from .gears import get_gears, get_gear_by_name, remove_gear, upsert_gear
 from .jobs import Job
 from .queue import Queue
 
@@ -70,7 +70,6 @@ class GearsHandler(base.RequestHandler):
 
         return get_gears(fields)
 
-
 class GearHandler(base.RequestHandler):
 
     """Provide /gears/x API routes."""
@@ -88,16 +87,12 @@ class GearHandler(base.RequestHandler):
             .. sourcecode:: http
 
                 GET /api/gears/dcm_convert HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
 
             **Example response**:
 
             .. sourcecode:: http
 
                 HTTP/1.1 200 OK
-                Vary: Accept-Encoding
                 Content-Type: application/json; charset=utf-8
                 {
                     "name": "dcm_convert"
@@ -122,6 +117,76 @@ class GearHandler(base.RequestHandler):
             self.abort(403, 'Request requires login')
 
         return get_gear_by_name(_id)
+
+    def post(self, _id):
+        """
+        .. http:post:: /api/gears/(gid)
+
+            Upsert an entire gear document.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/gears/dicom_mr_classifier HTTP/1.1
+                {
+                    "name": "dicom_mr_classifier",
+                    "category": "classifier",
+                    "input": {
+                        // ...
+                    },
+                    "manifest": {
+                        // ..
+                    }
+                }
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Content-Type: application/json; charset=utf-8
+                { "name": "dicom_mr_classifier" }
+        """
+
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        doc = self.request.json
+
+        if _id != doc.get('name', ''):
+            self.abort(400, 'Name key must be present and match URL')
+
+        upsert_gear(self.request.json)
+        return { 'name': _id }
+
+    def delete(self, _id):
+        """
+        .. http:delete:: /api/gears/(gid)
+
+            Delete a gear. Generally not recommended.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                DELETE /api/gears/dicom_mr_classifier HTTP/1.1
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+        """
+
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        return remove_gear(_id)
 
 
 class JobsHandler(base.RequestHandler):
