@@ -189,6 +189,87 @@ class GearHandler(base.RequestHandler):
         return remove_gear(_id)
 
 
+class RulesHandler(base.RequestHandler):
+
+    """Provide /rules API routes."""
+
+    def get(self):
+        """
+        .. http:get:: /api/rules
+
+            List gear rules.
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                GET /api/rules HTTP/1.1
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Content-Type: application/json; charset=utf-8
+                [
+                    {
+                        "alg" : "dicom_mr_classifier",
+                        "all" : [
+                            [
+                                "file.type",
+                                "dicom"
+                            ]
+                        ]
+                    },
+                ]
+        """
+
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        return config.db.singletons.find_one({"_id" : "rules"})['rule_list']
+
+    def post(self):
+        """
+        .. http:post:: /api/rules
+
+            Upsert all rules
+
+            :statuscode 200: no error
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/rules HTTP/1.1
+                [
+                    {
+                        "alg" : "dicom_mr_classifier",
+                        "all" : [
+                            [
+                                "file.type",
+                                "dicom"
+                            ]
+                        ]
+                    },
+                ]
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+        """
+
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        doc = self.request.json
+        config.db.singletons.replace_one({"_id" : "rules"}, {'rule_list': doc}, upsert=True)
+
+
 class JobsHandler(base.RequestHandler):
 
     """Provide /jobs API routes."""

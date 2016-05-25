@@ -9,7 +9,7 @@ import webapp2_extras.routes
 
 from . import base
 from .jobs.jobs import Job
-from .jobs.handlers import JobsHandler, JobHandler, GearsHandler, GearHandler
+from .jobs.handlers import JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
 from .dao.containerutil import FileReference, ContainerReference
 from . import encoder
 from . import root
@@ -215,6 +215,7 @@ routes = [
     webapp2_extras.routes.PathPrefixRoute(r'/api/gears', [
         webapp2.Route(r'/<:[^/]+>',         GearHandler,  name='job'),
     ]),
+    webapp2.Route(r'/api/rules',             RulesHandler),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, methods=['POST']),
     webapp2.Route(_format(r'/api/groups/<_id:{group_id_re}>'),      grouphandler.GroupHandler, name='group_details'),
