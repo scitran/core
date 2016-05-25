@@ -233,8 +233,17 @@ def upgrade_to_8():
     Migrate config, version, gears and rules to singletons collection
     """
 
+    colls = config.db.collection_names()
+    to_be_removed = ['version', 'config', 'static']
+    # If we are in a bad state (singletons exists but so do any of the colls in to be removed)
+    # remove singletons to try again
+    if 'singletons' in colls and set(to_be_removed).intersection(set(colls)):
+        config.db.drop_collection('singletons')
+
     if 'singletons' not in config.db.collection_names():
-        config.db.singletons.insert_many(config.db.static.find({}))
+        static = config.db.static.find({})
+        if static.count() > 0:
+            config.db.singletons.insert_many(static)
         config.db.singletons.insert(config.db.version.find({}))
 
         configs = config.db.config.find({'latest': True},{'latest':0})
@@ -243,9 +252,10 @@ def upgrade_to_8():
             c['_id'] = 'config'
             config.db.singletons.insert_one(c)
 
-        config.db.drop_collection('static')
-        config.db.drop_collection('version')
-        config.db.drop_collection('config')
+        for c in to_be_removed:
+            if c in config.db.collection_names():
+                config.db.drop_collection(c)
+
 
 def upgrade_to_9():
     """
