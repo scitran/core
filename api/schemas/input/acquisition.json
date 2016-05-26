@@ -13,7 +13,7 @@
         "uid":          {"type": "string"},
         "instrument":   {"type": "string"},
         "measurement":  {"type": "string"},
-        "timestamp":    {"type": "string", "format": "date-time"},
+        "timestamp":    {"type": ["string", "null"], "format": "date-time"},
         "timezone":     {"type": "string"}
     },
     "required": ["label", "session"],
