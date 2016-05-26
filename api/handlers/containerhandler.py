@@ -469,8 +469,7 @@ class ContainerHandler(base.RequestHandler):
             if parent_container is None:
                 self.abort(404, 'Element {} not found in container {}'.format(parent_id, parent_storage.cont_name))
         else:
-            # Proper input schema check will prevent this route
-            self.abort(400, 'Parent {} id is required.'.format(parent_storage.cont_name))
+            parent_container = None
         return parent_container, parent_id_property
 
     def _get_container(self, _id):
