@@ -16,7 +16,6 @@ from .queue import Queue
 log = config.log
 
 
-
 class GearsHandler(base.RequestHandler):
 
     """Provide /gears API routes."""

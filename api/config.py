@@ -184,6 +184,24 @@ def initialize_db():
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
+
+    # Must be kept in sync with jobs/gears.py
+    db.singletons.update({"_id" : "gears"}, {
+            '$setOnInsert': {
+                'gear_list': []
+            }
+        },
+        upsert=True
+    )
+    # Must be kept in sync with jobs/rules.py
+    db.singletons.update({"_id" : "rules"}, {
+            '$setOnInsert': {
+                'rule_list': []
+            }
+        },
+        upsert=True
+    )
+
     create_or_recreate_ttl_index('authtokens', 'timestamp', 604800)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
     create_or_recreate_ttl_index('downloads', 'timestamp', 60)
