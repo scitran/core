@@ -50,6 +50,8 @@ class SearchContainer(object):
             return self.results
 
     def _exec_query(self, query):
+        # pylint: disable=unexpected-keyword-arg
+        # pylint disable can be removed after PyCQA/pylint#258 is fixed
         q = es_query(query, self.cont_name, _min_score)
         results = config.es.search(
             index='scitran',
@@ -124,6 +126,8 @@ class TargetProperty(object):
         return self._get_results(parent_name, parent_results)
 
     def _exec_query(self, query):
+        # pylint: disable=unexpected-keyword-arg
+        # pylint disable can be removed after PyCQA/pylint#258 is fixed
         q = es_query(query, self.name, _min_score)
         results = config.es.search(
             index='scitran',

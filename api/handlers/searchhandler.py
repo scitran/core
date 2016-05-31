@@ -102,7 +102,8 @@ class SearchHandler(base.RequestHandler):
             }
         query = es_query(body, 'files', min_score, additional_filter)
         try:
-            es_results = config.es.search(index='scitran', body=query, size=size or 10)
+            # pylint disable can be removed after PyCQA/pylint#258 is fixed
+            es_results = config.es.search(index='scitran', body=query, size=size or 10) # pylint: disable=unexpected-keyword-arg
             ## elastic search results are wrapped in subkey ['hits']['hits']
             es_results = es_results['hits']['hits']
             results = []
