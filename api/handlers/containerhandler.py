@@ -254,7 +254,7 @@ class ContainerHandler(base.RequestHandler):
         # this request executes the actual reqeust filtering containers based on the user permissions
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
-            self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, _id))
+            self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
         # return only permissions of the current user
         self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
@@ -364,7 +364,7 @@ class ContainerHandler(base.RequestHandler):
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
-            self.abort(404, 'Element not added in container {} {}'.format(self.storage.cont_name, _id))
+            self.abort(404, 'Element not added in container {}'.format(self.storage.cont_name))
 
     def put(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
