@@ -674,7 +674,6 @@ class AnalysesHandler(ListHandler):
         data_path = config.get_item('persistent', 'data_path')
         for f in fileinfo:
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
-            log.error(filepath)
             if os.path.exists(filepath): # silently skip missing files
                 targets.append((filepath, 'analyses/' + f['name'], f['size']))
                 total_size += f['size']

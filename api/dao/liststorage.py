@@ -198,7 +198,6 @@ class AnalysesStorage(ListStorage):
             query.append(
                 {'$match': {self.list_name + '.files.name' : filename}}
             )
-        log.error(query)
         return [cont['analyses'] for cont in self.dbc.aggregate(query)]
 
     def add_note(self, _id, analysis_id, payload):
