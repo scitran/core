@@ -159,7 +159,7 @@ class PreparedSearch(object):
                     c: [copy.deepcopy(target)] for c in self.containers
                 }
             else:
-                return {path_parts[-min_length-1]: [target]}
+                return {path_parts[-2]: [target]}
         else:
             return {path_parts[-1]: [path_parts[-1]]}
 
