@@ -144,7 +144,7 @@ class StringListStorage(ListStorage):
         if payload is not None:
             payload = payload.get('value')
             if payload is None:
-                self.abort(400, 'Key "value" should be defined')
+                raise ValueError('payload Key "value" should be defined')
         return super(StringListStorage, self).exec_op(action, _id, query_params, payload, exclude_params)
 
     def _create_el(self, _id, payload, exclude_params):

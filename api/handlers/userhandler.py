@@ -160,7 +160,7 @@ class UserHandler(base.RequestHandler):
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
-            self.abort(404, 'User {} not updated'.format(_id))
+            self.abort(404, 'User {} not updated'.format(payload['_id']))
 
     def _init_storage(self):
         self.storage = containerstorage.ContainerStorage('users', use_object_id=False)

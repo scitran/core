@@ -292,7 +292,7 @@ def dispatcher(router, request, response):
         if rv is not None:
             response.write(json.dumps(rv, default=encoder.custom_json_serializer))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
-    except webapp2.exc.HTTPException as e:
+    except webapp2.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)
     except Exception as e:
         if config.get_item('core', 'debug'):

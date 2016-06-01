@@ -94,7 +94,7 @@ class ContainerHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result is None:
-            self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, _id))
         if not self.superuser_request:
             self._filter_permissions(result, self.uid, self.user_site)
         # build and insert file paths if they are requested
@@ -254,7 +254,7 @@ class ContainerHandler(base.RequestHandler):
         # this request executes the actual reqeust filtering containers based on the user permissions
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
-            self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
         # return only permissions of the current user
         self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
@@ -278,12 +278,12 @@ class ContainerHandler(base.RequestHandler):
             result['permissions'] = [user_perm] if user_perm else []
         return results
 
-    def _add_results_counts(self, results):
+    def _add_results_counts(self, results, cont_name):
         dbc_name = self.config.get('children_cont')
         el_cont_name = cont_name[:-1]
         dbc = config.db.get(dbc_name)
         counts =  dbc.aggregate([
-            {'$match': {el_cont_name: {'$in': [res['_id'] for result in results]}}},
+            {'$match': {el_cont_name: {'$in': [res['_id'] for res in results]}}},
             {'$group': {'_id': '$' + el_cont_name, 'count': {"$sum": 1}}}
             ])
         counts = {elem['_id']: elem['count'] for elem in counts}
@@ -320,7 +320,7 @@ class ContainerHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if results is None:
-            self.abort(404, 'Element not found in container {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, uid))
         self._filter_all_permissions(results, uid, user['site'])
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, results)
@@ -364,7 +364,7 @@ class ContainerHandler(base.RequestHandler):
         if result.acknowledged:
             return {'_id': result.inserted_id}
         else:
-            self.abort(404, 'Element not added in container {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not added in container {}'.format(self.storage.cont_name))
 
     def put(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -423,7 +423,7 @@ class ContainerHandler(base.RequestHandler):
         if result.modified_count == 1:
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'Element not updated in container {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
 
     def delete(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -441,7 +441,7 @@ class ContainerHandler(base.RequestHandler):
         if result.deleted_count == 1:
             return {'deleted': result.deleted_count}
         else:
-            self.abort(404, 'Element not removed from container {} {}'.format(storage.cont_name, _id))
+            self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 
     def get_groups_with_project(self):
         """
