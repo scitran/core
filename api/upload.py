@@ -213,86 +213,23 @@ class Upload(base.RequestHandler):
             :query id: container_id
             :query job: job_id
 
-            :statuscode 400: describe me
-            :statuscode 402: describe me
-            :statuscode 404: describe me
+            :statuscode 400: improper or missing params
+            :statuscode 402: engine uploads must be fron authorized drone
         """
 
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
-
         level = self.get_param('level')
         if level is None:
-            self.abort(404, 'container level is required')
-
-        cont_id = self.get_param('id')
-        if not cont_id:
-            self.abort(404, 'container id is required')
+            self.abort(400, 'container level is required')
+        if level not in ['acquisition', 'session', 'project']:
+            self.abort(400, 'container level must be acquisition, session or project.')
+        cid = self.get_param('id')
+        if not cid:
+            self.abort(400, 'container id is required')
         else:
-            cont_id = bson.ObjectId(cont_id)
-        if level not in ['acquisition', 'analysis']:
-            self.abort(404, 'engine uploads are supported only at the acquisition or analysis level')
-
-        if level == 'analysis':
-            context = {'job_id': self.get_param('job')}
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cont_id, context=context)
-
-        if not self.superuser_request:
-            self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
-            try:
-                file_store = files.MultiFileStore(self.request, tempdir_path)
-            except files.FileStoreException as e:
-                self.abort(400, str(e))
-            if not file_store.metadata:
-                self.abort(400, 'metadata is missing')
-            payload_schema_uri = util.schema_uri('input', 'enginemetadata.json')
-            metadata_validator = validators.from_schema_path(payload_schema_uri)
-            metadata_validator(file_store.metadata, 'POST')
-            file_infos = file_store.metadata['acquisition'].pop('files', [])
-            now = datetime.datetime.utcnow()
-            try:
-                acquisition_obj = hierarchy.update_container_hierarchy(file_store.metadata, cont_id, level)
-            except APIStorageException as e:
-                self.abort(400, e.message)
-            # move the files before updating the database
-            for name, parsed_file in file_store.files.items():
-                fileinfo = parsed_file.info
-                target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
-                files.move_file(parsed_file.path, target_path)
-            # merge infos from the actual file and from the metadata
-            merged_files = hierarchy.merge_fileinfos(file_store.files, file_infos)
-            # update the fileinfo in mongo if a file already exists
-            for f in acquisition_obj['files']:
-                merged_file = merged_files.get(f['name'])
-                if merged_file:
-                    fileinfo = merged_file.info
-                    fileinfo['modified'] = now
-                    acquisition_obj = hierarchy.update_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
-                    fileinfo['existing'] = True
-            # create the missing fileinfo in mongo
-            for name, merged_file in merged_files.items():
-                fileinfo = merged_file.info
-                # if the file exists we don't need to create it
-                # skip update fileinfo for files that don't have a path
-                if not fileinfo.get('existing') and merged_file.path:
-                    fileinfo['mimetype'] = fileinfo.get('mimetype') or util.guess_mimetype(name)
-                    fileinfo['created'] = now
-                    fileinfo['modified'] = now
-                    fileinfo['origin'] = self.origin
-                    acquisition_obj = hierarchy.add_fileinfo('acquisitions', acquisition_obj['_id'], fileinfo)
-
-            for f in acquisition_obj['files']:
-                if f['name'] in file_store.files:
-                    file_ = {
-                        'name': f['name'],
-                        'hash': f['hash'],
-                        'type': f.get('type'),
-                        'measurements': f.get('measurements', []),
-                        'mimetype': f.get('mimetype')
-                    }
-                    rules.create_jobs(config.db, acquisition_obj, 'acquisition', file_)
-            return [{'name': k, 'hash': v.info.get('hash'), 'size': v.info.get('size')} for k, v in merged_files.items()]
+            cid = bson.ObjectId(acquisition_id)
+        return process_upload(self.request, 'engine', container_type=level, id=cid, origin=self.origin)
 
     def clean_packfile_tokens(self):
         """

@@ -358,6 +358,7 @@ def _update_container(query, update, set_update, cont_name):
 
 def _update_hierarchy(container, container_type, metadata, update_timestamp=False):
     project_id = container['project'] # for sessions
+    now = datetime.datetime.utcnow()
 
     if container_type == 'acquisition':
         update = {}

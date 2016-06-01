@@ -198,7 +198,7 @@ class EnginePlacer(Placer):
             # OPPORTUNITY: hard-coded container levels will need to go away soon
             # Engine shouldn't know about container names; maybe parent contexts?
             # How will this play with upload unification? Unify schemas as well?
-            file_mds = self.metadata.get(container_type, {}).get('files', [])
+            file_mds = self.metadata.get(self.container_type, {}).get('files', [])
 
             for file_md in file_mds:
                 if file_md['name'] == info['name']:
