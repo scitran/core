@@ -17,13 +17,14 @@ from .dao import hierarchy, APIStorageException
 log = config.log
 
 Strategy = util.Enum('Strategy', {
-    'targeted'   : pl.TargetedPlacer,   # Upload N files to a container.
-    'engine'     : pl.EnginePlacer,     # Upload N files from the result of a successful job.
-    'token'      : pl.TokenPlacer,      # Upload N files to a saved folder based on a token.
-    'packfile'   : pl.PackfilePlacer,   # Upload N files as a new packfile to a container.
-    'labelupload': pl.LabelPlacer,
-    'uidupload'  : pl.UIDPlacer,
-    'analysis' : pl.AnalysisPlacer    # Upload N files for an analysys (no db updates)
+    'targeted'    : pl.TargetedPlacer,      # Upload N files to a container.
+    'engine'      : pl.EnginePlacer,        # Upload N files from the result of a successful job.
+    'token'       : pl.TokenPlacer,         # Upload N files to a saved folder based on a token.
+    'packfile'    : pl.PackfilePlacer,      # Upload N files as a new packfile to a container.
+    'labelupload' : pl.LabelPlacer,
+    'uidupload'   : pl.UIDPlacer,
+    'analysis'    : pl.AnalysisPlacer,      # Upload N files to an analysis as input and output (no db updates)
+    'analysis_job': pl.AnalysisJobPlacer   # Upload N files to an analysis as output from job results
 })
 
 def process_upload(request, strategy, container_type=None, id=None, origin=None, context=None, response=None, metadata=None):
@@ -61,7 +62,7 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
     if id is not None and container_type == None:
         raise Exception('Unspecified container type')
 
-    if container_type is not None and container_type not in ('acquisition', 'session', 'project', 'collection'):
+    if container_type is not None and container_type not in ('acquisition', 'session', 'project', 'collection', 'analysis'):
         raise Exception('Unknown container type')
 
     timestamp = datetime.datetime.utcnow()
@@ -77,6 +78,7 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
     if 'metadata' in form:
         try:
             metadata = json.loads(form['metadata'].value)
+            log.debug(metadata)
         except Exception:
             raise files.FileStoreException('wrong format for field "metadata"')
 
@@ -224,14 +226,17 @@ class Upload(base.RequestHandler):
         if level is None:
             self.abort(404, 'container level is required')
 
-        if level != 'acquisition':
-            self.abort(404, 'engine uploads are supported only at the acquisition level')
-
-        acquisition_id = self.get_param('id')
-        if not acquisition_id:
+        cont_id = self.get_param('id')
+        if not cont_id:
             self.abort(404, 'container id is required')
         else:
-            acquisition_id = bson.ObjectId(acquisition_id)
+            cont_id = bson.ObjectId(cont_id)
+        if level not in ['acquisition', 'analysis']:
+            self.abort(404, 'engine uploads are supported only at the acquisition or analysis level')
+
+        if level == 'analysis':
+            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cont_id)
+
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
         with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
@@ -247,7 +252,7 @@ class Upload(base.RequestHandler):
             file_infos = file_store.metadata['acquisition'].pop('files', [])
             now = datetime.datetime.utcnow()
             try:
-                acquisition_obj = hierarchy.update_container_hierarchy(file_store.metadata, acquisition_id, level)
+                acquisition_obj = hierarchy.update_container_hierarchy(file_store.metadata, cont_id, level)
             except APIStorageException as e:
                 self.abort(400, e.message)
             # move the files before updating the database

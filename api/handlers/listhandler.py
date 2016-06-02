@@ -11,6 +11,7 @@ from .. import base
 from .. import config
 from .. import files
 from ..jobs import rules
+from ..jobs.jobs import Job
 from .. import tempdir as tempfile
 from .. import upload
 from .. import download
@@ -21,6 +22,8 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 from ..dao import hierarchy
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary
+
 
 log = config.log
 
@@ -154,6 +157,7 @@ class ListHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
+        log.debug('the kwargs are {}'.format(kwargs))
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
         try:
@@ -607,19 +611,66 @@ class AnalysesHandler(ListHandler):
     def put(self, *args, **kwargs):
         raise NotImplementedError("an analysis can't be modified")
 
+    def _default_analysis(self):
+        analysis_obj = {}
+        analysis_obj['_id'] = str(bson.objectid.ObjectId())
+        analysis_obj['created'] = datetime.datetime.utcnow()
+        analysis_obj['modified'] = datetime.datetime.utcnow()
+        analysis_obj['user'] = self.uid
+        return analysis_obj
+
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
+        log.debug(kwargs)
         container, permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
-
         permchecker(noop)('POST', _id=_id)
+
+        if self.is_true('job'):
+            if cont_name == 'sessions':
+                return self._create_job_and_analysis(cont_name, _id, storage)
+            else:
+                self.abort(400, 'Analysis created via a job must be at the session level')
+
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        payload['created'] = datetime.datetime.utcnow()
-        payload['user'] = payload.get('user', self.uid)
+        default = self._default_analysis()
+        payload.update(default)
         result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=payload)
         if result.modified_count == 1:
             return {'_id': payload['_id']}
         else:
-            self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+            self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
+
+    def _create_job_and_analysis(self, cont_name, cid, storage):
+        log.debug('in here')
+        payload = self.request.json_body
+        analysis = payload.get('analysis')
+        job = payload.get('job')
+        if job is None or analysis is None:
+            self.abort(400, 'POST json body must contain map for "analysis" and "job"')
+
+        default = self._default_analysis()
+        analysis.update(default)
+        result = storage.exec_op('POST', _id=cid, payload=analysis)
+        if result.modified_count != 1:
+            self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, cid))
+
+        gear_name = job['gear']
+        # Translate maps to FileReferences
+        inputs = {}
+        for x in job['inputs'].keys():
+            input_map = job['inputs'][x]
+            inputs[x] = create_filereference_from_dictionary(input_map)
+        tags = job.get('tags', None)
+
+        destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
+        job = Job(gear_name, inputs, destination=destination, tags=tags)
+        job_id = job.insert()
+        if not job_id:
+            self.abort(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
+        result = storage.exec_op('PUT', _id=cid, query_params={'_id': analysis['_id']}, payload={'job': job_id})
+        return { '_id': analysis['_id']}
+
+
 
     def download(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')

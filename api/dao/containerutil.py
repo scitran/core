@@ -3,6 +3,8 @@ import bson.objectid
 from .. import config
 from ..auth import INTEGER_ROLES
 
+CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
+
 def add_id_to_subject(subject, pid):
     """
     Add a mongo id field to given subject object (dict)
@@ -37,8 +39,8 @@ def getPerm(name):
 
 class ContainerReference(object):
     def __init__(self, type, id):
-        if type.endswith('s'):
-            raise Exception('Container type cannot be plural :|')
+        if type not in CONT_TYPES:
+            raise Exception('Container type must be one of {}'.format(CONT_TYPES))
 
         self.type = type
         self.id   = id
@@ -73,8 +75,8 @@ class ContainerReference(object):
 
 class FileReference(ContainerReference):
     def __init__(self, type, id, name):
-        if type.endswith('s'):
-            raise Exception('Container type cannot be plural :|')
+        if type not in CONT_TYPES:
+            raise Exception('Container type must be one of {}'.format(CONT_TYPES))
 
         self.type = type
         self.id   = id

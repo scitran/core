@@ -504,5 +504,21 @@ class AnalysisPlacer(Placer):
             metadata_info = metadata_infos.get(info['name'], {})
             metadata_info.update(info)
             self.metadata['files'].append(metadata_info)
-        self.metadata['_id'] = str(bson.objectid.ObjectId())
         return self.metadata
+
+class AnalysisJobPlacer(AnalysisPlacer):
+    def check(self):
+        self.requireMetadata()
+        self.metadata['outputs'] = self.metadata['acquisition'].pop('files', [])
+        #validators.validate_data(self.metadata, 'analysys.json', 'input', 'POST', optional=True)
+        self.saved = []
+
+    def finalize(self):
+        super(AnalysisJobPlacer, self).finalize()
+        # Search the sessions table for analysis
+        if self.metadata.get('files'):
+            q = {'analyses._id': str(self.id)}
+            u = {'$set': {'analyses.$.files': self.metadata['files']}}
+            log.debug('q is {} and u is {}'.format(q,u))
+            config.db.sessions.update_one(q, u)
+
