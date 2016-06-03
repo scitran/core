@@ -157,7 +157,6 @@ class ListHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
-        log.debug('the kwargs are {}'.format(kwargs))
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
         try:
@@ -621,7 +620,6 @@ class AnalysesHandler(ListHandler):
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        log.debug(kwargs)
         container, permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
@@ -641,7 +639,6 @@ class AnalysesHandler(ListHandler):
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
 
     def _create_job_and_analysis(self, cont_name, cid, storage):
-        log.debug('in here')
         payload = self.request.json_body
         analysis = payload.get('analysis')
         job = payload.get('job')

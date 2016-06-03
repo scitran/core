@@ -59,7 +59,7 @@ def inflate_job_info(analysis):
         job = next_job
     if job['_id'] != analysis['job']:
         # Update analysis if job has changed
-        q = {'analyses._id': str(self.id)}
+        q = {'analyses._id': analysis['_id']}
         u = {'$set': {'analyses.$.job': job['_id']}}
         config.db.sessions.update_one(q, u)
     analysis['job'] = job

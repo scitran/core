@@ -78,7 +78,6 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
     if 'metadata' in form:
         try:
             metadata = json.loads(form['metadata'].value)
-            log.debug(metadata)
         except Exception:
             raise files.FileStoreException('wrong format for field "metadata"')
 

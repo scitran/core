@@ -15,6 +15,40 @@ log = config.log
 
 PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'public']
 
+class TargetContainer(object):
+
+    def __init__(self, container, level):
+        self.container = container
+        self.level = level
+        self.dbc = config.db[level]
+        self._id = container['_id']
+
+    def find(self, filename):
+        for f in self.container.get('files', []):
+            if f['name'] == filename:
+                return f
+        return None
+
+    def update_file(self, fileinfo):
+
+        update_set = {'files.$.modified': datetime.datetime.utcnow()}
+        # in this method, we are overriding an existing file.
+        # update_set allows to update all the fileinfo like size, hash, etc.
+        for k,v in fileinfo.iteritems():
+            update_set['files.$.' + k] = v
+        return self.dbc.find_one_and_update(
+            {'_id': self._id, 'files.name': fileinfo['name']},
+            {'$set': update_set},
+            return_document=pymongo.collection.ReturnDocument.AFTER
+        )
+
+    def add_file(self, fileinfo):
+        return self.dbc.find_one_and_update(
+            {'_id': self._id},
+            {'$push': {'files': fileinfo}},
+            return_document=pymongo.collection.ReturnDocument.AFTER
+        )
+
 # TODO: already in code elsewhere? Location?
 def get_container(cont_name, _id):
     cont_name += 's'
