@@ -680,7 +680,12 @@ class AnalysesHandler(ListHandler):
         if not ticket_id:
             permchecker(noop)('GET', _id=_id)
         analysis_id = kwargs.get('_id')
-        fileinfo = [f['files'] for f in storage.get_fileinfo(_id, analysis_id, filename)]
+        fileinfo = storage.get_fileinfo(_id, analysis_id, filename)
+        if fileinfo is None:
+            error_msg = 'No files on analysis {}'.format(analysis_id)
+            if filename:
+                error_msg = 'Could not find file {} on analysis {}'.format(filename, analysis_id)
+            self.abort(404, error_msg)
         if not ticket_id:
             if filename:
                 total_size = fileinfo[0]['size']

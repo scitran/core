@@ -2,7 +2,7 @@ import bson.errors
 import bson.objectid
 
 from .. import config
-from . import consistencychecker
+from . import consistencychecker, containerutil
 from . import APIStorageException, APIConflictException
 
 log = config.log
@@ -188,17 +188,19 @@ class AnalysesStorage(ListStorage):
 
     def get_fileinfo(self, _id, analysis_id, filename = None):
         _id = bson.ObjectId(_id)
-        query = [
-            {'$match': {'_id' : _id}},
-            {'$unwind': '$' + self.list_name},
-            {'$match': {self.list_name+ '._id' : analysis_id}},
-            {'$unwind': '$' + self.list_name + '.files'}
-        ]
+        analysis = self._get_el(_id, {'_id': analysis_id})
+        if analysis is None:
+            raise APIStorageException('{} {} not found in {} {}.'.format(self.list_name, analysis_id, self.cont_name, _id))
+        analysis = containerutil.inflate_job_info(analysis)
+        files = analysis.get('files')
+        if files is None:
+            return None
         if filename:
-            query.append(
-                {'$match': {self.list_name + '.files.name' : filename}}
-            )
-        return [cont['analyses'] for cont in self.dbc.aggregate(query)]
+            for f in files:
+                if f.get('name') == filename:
+                    return [f]
+        else:
+            return files
 
     def add_note(self, _id, analysis_id, payload):
         _id = bson.ObjectId(_id)
