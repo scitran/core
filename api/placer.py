@@ -508,17 +508,17 @@ class AnalysisPlacer(Placer):
 
 class AnalysisJobPlacer(AnalysisPlacer):
     def check(self):
-        self.requireMetadata()
+        super(AnalysisJobPlacer, self).check()
         self.metadata['outputs'] = self.metadata['acquisition'].pop('files', [])
-        #validators.validate_data(self.metadata, 'analysys.json', 'input', 'POST', optional=True)
-        self.saved = []
 
     def finalize(self):
         super(AnalysisJobPlacer, self).finalize()
-        # Search the sessions table for analysis
+        # Search the sessions table for analysis, replace file field
         if self.metadata.get('files'):
             q = {'analyses._id': str(self.id)}
             u = {'$set': {'analyses.$.files': self.metadata['files']}}
-            log.debug('q is {} and u is {}'.format(q,u))
+            if self.context.get('job_id'):
+                # If the original job failed, update the analysis with the job that succeeded
+                u['$set']['job'] = self.context['job_id']
             config.db.sessions.update_one(q, u)
 

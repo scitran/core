@@ -235,7 +235,8 @@ class Upload(base.RequestHandler):
             self.abort(404, 'engine uploads are supported only at the acquisition or analysis level')
 
         if level == 'analysis':
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cont_id)
+            context = {'job_id': self.get_param('job')}
+            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cont_id, context=context)
 
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
