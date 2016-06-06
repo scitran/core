@@ -619,6 +619,64 @@ class AnalysesHandler(ListHandler):
         return analysis_obj
 
     def post(self, cont_name, list_name, **kwargs):
+        """
+        .. http:post:: /api/(cont_name)/(cid)/analyses
+
+            Default behavior:
+                Creates an analysis object and uploads supplied input
+                and output files.
+            When param ``job`` is true:
+                Creates an analysis object and job object that reference
+                each other via ``job`` and ``destination`` fields. Job based
+                analyses are only allowed at the session level.
+
+            :param cont_name: one of ``projects``, ``sessions``, ``collections``
+            :type cont_name: string
+
+            :param cid: Container ID
+            :type cid: string
+
+            :query boolean job: a flag specifying the type of analysis
+
+            :statuscode 200: no error
+            :statuscode 400: Job-based analyses must be at the session level
+            :statuscode 400: Job-based analyses must have ``job`` and ``analysis`` maps in JSON body
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/sessions/57081d06b386a6dc79ca383c/analyses HTTP/1.1
+
+                {
+                    "analysis": {
+                        "label": "Test Analysis 1"
+                    },
+                    "job" : {
+                        "gear": "dcm_convert",
+                        "inputs": {
+                            "dicom": {
+                                "type": "acquisition",
+                                "id": "57081d06b386a6dc79ca386b",
+                                "name" : "test_acquisition_dicom.zip"
+                            }
+                        },
+                        "tags": ["example"]
+                    }
+                }
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "_id": "573cb66b135d87002660597c"
+                }
+
+        """
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         permchecker(noop)('POST', _id=_id)
@@ -643,7 +701,7 @@ class AnalysesHandler(ListHandler):
         analysis = payload.get('analysis')
         job = payload.get('job')
         if job is None or analysis is None:
-            self.abort(400, 'POST json body must contain map for "analysis" and "job"')
+            self.abort(400, 'JSON body must contain map for "analysis" and "job"')
 
         default = self._default_analysis()
         analysis = default.update(analysis)
@@ -657,7 +715,9 @@ class AnalysesHandler(ListHandler):
         for x in job['inputs'].keys():
             input_map = job['inputs'][x]
             inputs[x] = create_filereference_from_dictionary(input_map)
-        tags = job.get('tags', None)
+        tags = job.get('tags', [])
+        if 'analysis' not in tags:
+            tags.append('analysis')
 
         destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
         job = Job(gear_name, inputs, destination=destination, tags=tags)
@@ -670,6 +730,101 @@ class AnalysesHandler(ListHandler):
 
 
     def download(self, cont_name, list_name, **kwargs):
+        """
+        .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
+
+            Download a file from an analysis or download a tar of all files
+
+            When no filename is provided, a tar of all input and output files is created.
+            The first request to this endpoint without a ticket ID generates a download ticket.
+            A request to this endpoint with a ticket ID downloads the file(s).
+            If the analysis object is tied to a job, the input file(s) are inlfated from
+            the job's ``input`` array.
+
+            :param cont_name: one of ``projects``, ``sessions``, ``collections``
+            :type cont_name: string
+
+            :param cid: Container ID
+            :type cid: string
+
+            :param analysis_id: Analysis ID
+            :type analysis_id: string
+
+            :param filename: (Optional) Filename of specific file to download
+            :type cid: string
+
+            :query string ticket: Download ticket ID
+
+            :statuscode 200: no error
+            :statuscode 404: No files on analysis ``analysis_id``
+            :statuscode 404: Could not find file ``filename`` on analysis ``analysis_id``
+
+            **Example request without ticket ID**:
+
+            .. sourcecode:: http
+
+                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                  "ticket": "57f2af23-a94c-426d-8521-11b2e8782020",
+                  "filename": "analysis_5751cd3781460100a66405c8.tar",
+                  "file_cnt": 3,
+                  "size": 4525137
+                }
+
+            **Example request with ticket ID**:
+
+            .. sourcecode:: http
+
+                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files?ticket=57f2af23-a94c-426d-8521-11b2e8782020 HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/octet-stream
+                Content-Disposition: attachment; filename=analysis_5751cd3781460100a66405c8.tar;
+
+            **Example Request with filename**:
+
+            .. sourcecode:: http
+
+                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files/exampledicom.zip?ticket= HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                  "ticket": "57f2af23-a94c-426d-8521-11b2e8782020",
+                  "filename": "exampledicom.zip",
+                  "file_cnt": 1,
+                  "size": 4525137
+                }
+
+
+        """
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         filename = kwargs.get('name')
