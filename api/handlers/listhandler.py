@@ -630,9 +630,9 @@ class AnalysesHandler(ListHandler):
                 self.abort(400, 'Analysis created via a job must be at the session level')
 
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        default = self._default_analysis()
-        payload.update(default)
-        result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=payload)
+        analysis = self._default_analysis()
+        analysis.update(payload)
+        result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=analysis)
         if result.modified_count == 1:
             return {'_id': payload['_id']}
         else:
@@ -646,7 +646,7 @@ class AnalysesHandler(ListHandler):
             self.abort(400, 'POST json body must contain map for "analysis" and "job"')
 
         default = self._default_analysis()
-        analysis.update(default)
+        analysis = default.update(analysis)
         result = storage.exec_op('POST', _id=cid, payload=analysis)
         if result.modified_count != 1:
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, cid))
