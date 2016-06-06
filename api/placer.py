@@ -504,5 +504,21 @@ class AnalysisPlacer(Placer):
             metadata_info = metadata_infos.get(info['name'], {})
             metadata_info.update(info)
             self.metadata['files'].append(metadata_info)
-        self.metadata['_id'] = str(bson.objectid.ObjectId())
         return self.metadata
+
+class AnalysisJobPlacer(AnalysisPlacer):
+    def check(self):
+        super(AnalysisJobPlacer, self).check()
+        self.metadata['outputs'] = self.metadata['acquisition'].pop('files', [])
+
+    def finalize(self):
+        super(AnalysisJobPlacer, self).finalize()
+        # Search the sessions table for analysis, replace file field
+        if self.metadata.get('files'):
+            q = {'analyses._id': str(self.id)}
+            u = {'$set': {'analyses.$.files': self.metadata['files']}}
+            if self.context.get('job_id'):
+                # If the original job failed, update the analysis with the job that succeeded
+                u['$set']['job'] = self.context['job_id']
+            config.db.sessions.update_one(q, u)
+

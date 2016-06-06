@@ -11,6 +11,7 @@ from .. import base
 from .. import config
 from .. import files
 from ..jobs import rules
+from ..jobs.jobs import Job
 from .. import tempdir as tempfile
 from .. import upload
 from .. import download
@@ -21,6 +22,8 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 from ..dao import hierarchy
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary
+
 
 log = config.log
 
@@ -607,21 +610,221 @@ class AnalysesHandler(ListHandler):
     def put(self, *args, **kwargs):
         raise NotImplementedError("an analysis can't be modified")
 
+    def _default_analysis(self):
+        analysis_obj = {}
+        analysis_obj['_id'] = str(bson.objectid.ObjectId())
+        analysis_obj['created'] = datetime.datetime.utcnow()
+        analysis_obj['modified'] = datetime.datetime.utcnow()
+        analysis_obj['user'] = self.uid
+        return analysis_obj
+
     def post(self, cont_name, list_name, **kwargs):
+        """
+        .. http:post:: /api/(cont_name)/(cid)/analyses
+
+            Default behavior:
+                Creates an analysis object and uploads supplied input
+                and output files.
+            When param ``job`` is true:
+                Creates an analysis object and job object that reference
+                each other via ``job`` and ``destination`` fields. Job based
+                analyses are only allowed at the session level.
+
+            :param cont_name: one of ``projects``, ``sessions``, ``collections``
+            :type cont_name: string
+
+            :param cid: Container ID
+            :type cid: string
+
+            :query boolean job: a flag specifying the type of analysis
+
+            :statuscode 200: no error
+            :statuscode 400: Job-based analyses must be at the session level
+            :statuscode 400: Job-based analyses must have ``job`` and ``analysis`` maps in JSON body
+
+            **Example request**:
+
+            .. sourcecode:: http
+
+                POST /api/sessions/57081d06b386a6dc79ca383c/analyses HTTP/1.1
+
+                {
+                    "analysis": {
+                        "label": "Test Analysis 1"
+                    },
+                    "job" : {
+                        "gear": "dcm_convert",
+                        "inputs": {
+                            "dicom": {
+                                "type": "acquisition",
+                                "id": "57081d06b386a6dc79ca386b",
+                                "name" : "test_acquisition_dicom.zip"
+                            }
+                        },
+                        "tags": ["example"]
+                    }
+                }
+
+            **Example response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                    "_id": "573cb66b135d87002660597c"
+                }
+
+        """
         _id = kwargs.pop('cid')
         container, permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
-
         permchecker(noop)('POST', _id=_id)
+
+        if self.is_true('job'):
+            if cont_name == 'sessions':
+                return self._create_job_and_analysis(cont_name, _id, storage)
+            else:
+                self.abort(400, 'Analysis created via a job must be at the session level')
+
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        payload['created'] = datetime.datetime.utcnow()
-        payload['user'] = payload.get('user', self.uid)
-        result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=payload)
+        analysis = self._default_analysis()
+        analysis.update(payload)
+        result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=analysis)
         if result.modified_count == 1:
             return {'_id': payload['_id']}
         else:
-            self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+            self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
+
+    def _create_job_and_analysis(self, cont_name, cid, storage):
+        payload = self.request.json_body
+        analysis = payload.get('analysis')
+        job = payload.get('job')
+        if job is None or analysis is None:
+            self.abort(400, 'JSON body must contain map for "analysis" and "job"')
+
+        default = self._default_analysis()
+        analysis = default.update(analysis)
+        result = storage.exec_op('POST', _id=cid, payload=analysis)
+        if result.modified_count != 1:
+            self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, cid))
+
+        gear_name = job['gear']
+        # Translate maps to FileReferences
+        inputs = {}
+        for x in job['inputs'].keys():
+            input_map = job['inputs'][x]
+            inputs[x] = create_filereference_from_dictionary(input_map)
+        tags = job.get('tags', [])
+        if 'analysis' not in tags:
+            tags.append('analysis')
+
+        destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
+        job = Job(gear_name, inputs, destination=destination, tags=tags)
+        job_id = job.insert()
+        if not job_id:
+            self.abort(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
+        result = storage.exec_op('PUT', _id=cid, query_params={'_id': analysis['_id']}, payload={'job': job_id})
+        return { '_id': analysis['_id']}
+
+
 
     def download(self, cont_name, list_name, **kwargs):
+        """
+        .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
+
+            Download a file from an analysis or download a tar of all files
+
+            When no filename is provided, a tar of all input and output files is created.
+            The first request to this endpoint without a ticket ID generates a download ticket.
+            A request to this endpoint with a ticket ID downloads the file(s).
+            If the analysis object is tied to a job, the input file(s) are inlfated from
+            the job's ``input`` array.
+
+            :param cont_name: one of ``projects``, ``sessions``, ``collections``
+            :type cont_name: string
+
+            :param cid: Container ID
+            :type cid: string
+
+            :param analysis_id: Analysis ID
+            :type analysis_id: string
+
+            :param filename: (Optional) Filename of specific file to download
+            :type cid: string
+
+            :query string ticket: Download ticket ID
+
+            :statuscode 200: no error
+            :statuscode 404: No files on analysis ``analysis_id``
+            :statuscode 404: Could not find file ``filename`` on analysis ``analysis_id``
+
+            **Example request without ticket ID**:
+
+            .. sourcecode:: http
+
+                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                  "ticket": "57f2af23-a94c-426d-8521-11b2e8782020",
+                  "filename": "analysis_5751cd3781460100a66405c8.tar",
+                  "file_cnt": 3,
+                  "size": 4525137
+                }
+
+            **Example request with ticket ID**:
+
+            .. sourcecode:: http
+
+                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files?ticket=57f2af23-a94c-426d-8521-11b2e8782020 HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/octet-stream
+                Content-Disposition: attachment; filename=analysis_5751cd3781460100a66405c8.tar;
+
+            **Example Request with filename**:
+
+            .. sourcecode:: http
+
+                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files/exampledicom.zip?ticket= HTTP/1.1
+                Host: demo.flywheel.io
+                Accept: */*
+
+
+            **Response**:
+
+            .. sourcecode:: http
+
+                HTTP/1.1 200 OK
+                Vary: Accept-Encoding
+                Content-Type: application/json; charset=utf-8
+                {
+                  "ticket": "57f2af23-a94c-426d-8521-11b2e8782020",
+                  "filename": "exampledicom.zip",
+                  "file_cnt": 1,
+                  "size": 4525137
+                }
+
+
+        """
         _id = kwargs.pop('cid')
         container, permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         filename = kwargs.get('name')
@@ -629,7 +832,12 @@ class AnalysesHandler(ListHandler):
         if not ticket_id:
             permchecker(noop)('GET', _id=_id)
         analysis_id = kwargs.get('_id')
-        fileinfo = [f['files'] for f in storage.get_fileinfo(_id, analysis_id, filename)]
+        fileinfo = storage.get_fileinfo(_id, analysis_id, filename)
+        if fileinfo is None:
+            error_msg = 'No files on analysis {}'.format(analysis_id)
+            if filename:
+                error_msg = 'Could not find file {} on analysis {}'.format(filename, analysis_id)
+            self.abort(404, error_msg)
         if not ticket_id:
             if filename:
                 total_size = fileinfo[0]['size']

@@ -104,6 +104,9 @@ class ContainerHandler(base.RequestHandler):
         if self.debug:
             debuginfo.add_debuginfo(self, cont_name, result)
 
+        if cont_name == 'sessions':
+            result = self.handle_analyses(result)
+
         return self.handle_origin(result)
 
     def handle_origin(self, result):
@@ -145,6 +148,19 @@ class ContainerHandler(base.RequestHandler):
                 if j_type != 'unknown' and result['join-origin'][j_type].get(j_id, None) is None:
                     result['join-origin'][j_type][j_id] = config.db[j_type + 's'].find_one({'_id': j_id_b})
 
+        return result
+
+    def handle_analyses(self, result):
+        """
+        Given an object with an `analyses` array key, inflate job info for job-based analyses
+        """
+        analyses = result.get('analyses')
+        if analyses is None:
+            return result
+        for a in analyses:
+            if a.get('job') is not None:
+                a = containerutil.inflate_job_info(a)
+        result['analyses'] = analyses
         return result
 
     def _filter_permissions(self, result, uid, site):
@@ -269,6 +285,8 @@ class ContainerHandler(base.RequestHandler):
 
         for result in results:
             result = self.handle_origin(result)
+            if cont_name == 'sessions':
+                result = self.handle_analyses(result)
 
         return results
 
