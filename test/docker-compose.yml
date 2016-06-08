@@ -40,3 +40,9 @@ services:
       - mongo
     volumes:
       - ./integration_tests:/usr/src/tests
+  core-check:
+    extends: scitran-base
+    links:
+      - scitran-core
+    entrypoint: ''
+    command: curl -sL -k -w "%{http_code}\\n"  "http://scitran-core:8080/api"  -o /dev/null
