@@ -119,7 +119,7 @@ class TargetProperty(object):
         self.query = add_filter(self.query, 'container_name', parent_name)
         if parent_results is not None:
             parent_ids = parent_results.keys()
-            self.query = add_filter_from_list(self.query, 'container_id', parent_ids)
+            self.query = add_filter_from_list(self.query, 'container._id', parent_ids)
         return self._exec_query(self.query)
 
     def get_results(self, parent_name, parent_results):
