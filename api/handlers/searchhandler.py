@@ -73,11 +73,12 @@ class SearchHandler(base.RequestHandler):
         queries = self.request.json_body
         path = queries.pop('path')
         min_score = self.get_param('min_score', 0.5)
+        all_data = self.is_true('all_data')
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
             queries['collections'] = queries.get('collections', {"match_all": {}})
         target_paths = pathparser.PathParser(path).paths
-        search = queryprocessor.PreparedSearch(target_paths, queries)
+        search = queryprocessor.PreparedSearch(target_paths, queries, all_data, self.uid)
         return search.process_search()
 
 

@@ -8,6 +8,13 @@ CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'sess
 def getPerm(name):
     return INTEGER_ROLES[name]
 
+def get_perm_name(cont_type):
+    if cont_type == 'group':
+        return 'roles'
+    if cont_type in ['projects', 'collections', 'sessions', 'acquisitions']:
+        return 'permissions'
+
+
 def add_id_to_subject(subject, pid):
     """
     Add a mongo id field to given subject object (dict)
