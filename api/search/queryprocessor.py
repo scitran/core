@@ -46,13 +46,8 @@ class SearchContainer(object):
                 self.is_target = True
             else:
                 self.child_targets.add(t)
-        if not all_data and user:
-            self.filter_for_user
-
-    def filter_for_user(self):
-        perm_name = get_perm_name(self.cont_name[:-1])
-        if perm_name is not None:
-            self.query = add_filter(self.query, perm_name+'_id', user)
+        if not all_data and user and cont_name == 'projects':
+            self.query = add_filter(self.query, 'permissions._id', user)
 
     def get_results(self):
         if self.query is None:
