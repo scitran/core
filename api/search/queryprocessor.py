@@ -26,21 +26,27 @@ querygraph = {
         'children': ['acquisitions']
     }
 }
+
 _min_score = 1
 
 class SearchContainer(object):
 
-    def __init__(self, cont_name, query, targets):
+    def __init__(self, cont_name, query, targets, all_data=False, user=None):
         self.cont_name = cont_name
         self.query = query
         self.is_target = False
         self.child_targets = set()
+        self.results = None
+        self.all_data = all_data
+        self.user = user
+
         for t in targets:
             if t == cont_name:
                 self.is_target = True
             else:
                 self.child_targets.add(t)
-        self.results = None
+        if not all_data and user and cont_name == 'projects':
+            self.query = add_filter(self.query, 'permissions._id', user)
 
     def get_results(self):
         if self.query is None:
@@ -141,7 +147,7 @@ class PreparedSearch(object):
 
     containers = ['groups', 'projects', 'sessions', 'collections', 'acquisitions']
 
-    def __init__(self, target_paths, queries):
+    def __init__(self, target_paths, queries, all_data=False, user=None):
         self.queries = queries
         self.target_lists = {}
         for path in target_paths:
@@ -151,7 +157,7 @@ class PreparedSearch(object):
         for cont_name in self.containers:
             query = self.queries.get(cont_name)
             targets = self.target_lists.get(cont_name, [])
-            self.search_containers[cont_name] = SearchContainer(cont_name, query, targets)
+            self.search_containers[cont_name] = SearchContainer(cont_name, query, targets, all_data, user)
 
     def _get_targets(self, path):
         path_parts = path.split('/')
