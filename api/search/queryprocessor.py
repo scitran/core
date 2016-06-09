@@ -4,7 +4,6 @@ from . import (
     es_query, add_filter_from_list, add_filter
 )
 from .. import config
-from ..dao.containerutil import get_perm_name
 
 log = config.log
 
