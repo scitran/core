@@ -8,9 +8,10 @@ from ..search import pathparser, queryprocessor, es_query
 
 log = config.log
 
-parent_container = {
+parent_container_dict = {
     'acquisitions': 'sessions',
-    'sessions': 'projects'
+    'sessions': 'projects',
+    'projects': 'groups',
 }
 
 class SearchHandler(base.RequestHandler):
@@ -79,7 +80,37 @@ class SearchHandler(base.RequestHandler):
             queries['collections'] = queries.get('collections', {"match_all": {}})
         target_paths = pathparser.PathParser(path).paths
         search = queryprocessor.PreparedSearch(target_paths, queries, all_data, self.uid)
-        return search.process_search()
+        results = search.process_search()
+        self.search_containers = search.search_containers
+        for result_type, results_for_type in results.iteritems():
+            for result in results_for_type:
+                self._augment_result(result, result_type)
+        return results
+
+    def _augment_result(self, result, result_type):
+        if result_type in ['files', 'notes']:
+            container = result['_source'].pop('container')
+            container_name = result['_source']['container_name']
+            result['_source'][container_name[:-1]] = container
+        else:
+            container = result['_source']
+            container_name = result_type
+        result['_source'].update(self._get_parents(container, container_name))
+
+
+    def _get_parents(self, container, cont_name):
+        parents = {}
+        if cont_name == 'groups':
+            container.pop('roles', None)
+        else:
+            container.pop('permissions', None)
+        if parent_container_dict.get(cont_name):
+            parent_name = parent_container_dict[cont_name]
+            parent_id = container[parent_name[:-1]]
+            parent_container = self.search_containers[parent_name].results[parent_id]['_source']
+            parents[parent_name[:-1]] = parent_container
+            parents.update(self._get_parents(parent_container, parent_name))
+        return parents
 
 
     def get_datatree(self, **kwargs):
@@ -116,11 +147,16 @@ class SearchHandler(base.RequestHandler):
                 cont_name = result['container_name']
                 container = config.db[cont_name].find_one({'_id': cont_id})
                 result[cont_name[:-1]] = container
-                while parent_container.get(cont_name):
-                    parent_cont_name = parent_container[cont_name]
-                    parent_id = bson.objectid.ObjectId(container[parent_cont_name[:-1]])
+                while parent_container_dict.get(cont_name):
+                    parent_cont_name = parent_container_dict[cont_name]
+                    parent_id = container[parent_cont_name[:-1]]
+                    if parent_cont_name != 'groups':
+                        parent_id = bson.objectid.ObjectId(parent_id)
                     container = config.db[parent_cont_name].find_one({'_id': parent_id})
-                    container.pop('permissions')
+                    if parent_cont_name == 'groups':
+                        container.pop('roles', None)
+                    else:
+                        container.pop('permissions', None)
                     result[parent_cont_name[:-1]] = container
                     cont_name = parent_cont_name
                 if collection:
