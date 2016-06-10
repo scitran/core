@@ -704,7 +704,8 @@ class AnalysesHandler(ListHandler):
             self.abort(400, 'JSON body must contain map for "analysis" and "job"')
 
         default = self._default_analysis()
-        analysis = default.update(analysis)
+        default.update(analysis)
+        analysis = default
         result = storage.exec_op('POST', _id=cid, payload=analysis)
         if result.modified_count != 1:
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, cid))
