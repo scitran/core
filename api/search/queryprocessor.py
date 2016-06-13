@@ -52,7 +52,8 @@ class SearchContainer(object):
         if self.query is None:
             return
         else:
-            self.results = self._exec_query(self.query)
+            if self.results is None:
+                self.results = self._exec_query(self.query)
             return self.results
 
     def _exec_query(self, query):
@@ -82,6 +83,7 @@ class SearchContainer(object):
         else:
             filter_on_field = source[:-1] if source != 'collections' else source
             list_ids = source_results.keys()
+        self.query = add_filter_from_list(self.query, filter_on_field, list_ids)
         if self.results is not None:
             updated_results = {}
             for _id, r in self.results.items():
@@ -89,7 +91,6 @@ class SearchContainer(object):
                     updated_results[_id] = r
             self.results = updated_results
         else:
-            self.query = add_filter_from_list(self.query, filter_on_field, list_ids)
             self.results = self._exec_query(self.query)
 
     def _to_set(self, value_or_list):
