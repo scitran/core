@@ -692,7 +692,7 @@ class AnalysesHandler(ListHandler):
         analysis.update(payload)
         result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=analysis)
         if result.modified_count == 1:
-            return {'_id': payload['_id']}
+            return {'_id': analysis['_id']}
         else:
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
 
