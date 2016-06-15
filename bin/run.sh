@@ -5,7 +5,7 @@ set -e
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
-echo() { builtin echo -e "\033[1;34m\033[47mSCITRAN\033[0;0m\033[47m $@\033[0;0m"; }
+echo() { builtin echo -e "\e[1;7mSCITRAN\e[0;7m $@\e[27m"; }
 
 
 USAGE="
@@ -110,7 +110,7 @@ if [ -d "$SCITRAN_RUNTIME_PATH" ]; then
     echo "Virtualenv exists at $SCITRAN_RUNTIME_PATH"
 else
     echo "Creating 'scitran' Virtualenv at $SCITRAN_RUNTIME_PATH"
-    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran)" $SCITRAN_RUNTIME_PATH
+    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran) " $SCITRAN_RUNTIME_PATH
     echo "Created 'scitran' Virtualenv at $SCITRAN_RUNTIME_PATH"
 fi
 
@@ -147,6 +147,7 @@ else
     install_mongo
 fi
 
+ulimit -n 1024
 mongod --dbpath $SCITRAN_PERSISTENT_DB_PATH --smallfiles --port $SCITRAN_PERSISTENT_DB_PORT &
 MONGOD_PID=$!
 
@@ -215,7 +216,8 @@ if [ $BOOTSTRAP_TESTDATA -eq 1 ]; then
             git -C $SCITRAN_PERSISTENT_PATH/testdata pull
         fi
         echo "Bootstrapping testdata"
-        folder_uploader --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" $SCITRAN_SITE_API_URL "$SCITRAN_PERSISTENT_PATH/testdata"
+        UPLOAD_URI=$SCITRAN_SITE_API_URL/upload/label?secret=$SCITRAN_CORE_DRONE_SECRET
+        folder_uploader --yes --insecure "$SCITRAN_PERSISTENT_PATH/testdata" $UPLOAD_URI
         echo "Bootstrapped testdata"
         touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
     fi
