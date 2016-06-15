@@ -246,7 +246,7 @@ class MultiFileStore(object):
 # Listed in precendence order.
 FILE_EXTENSIONS = [
     # Scientific file types
-    {'bval':         [ '.bval' ]},
+    {'bval':         [ '.bval', '.bvecs', '.bvals' ]},
     {'bvec':         [ '.bvec' ]},
     {'dicom':        [ '.dcm' ]},
     {'gephysio':     [ '.gephysio.zip' ]},
@@ -260,11 +260,11 @@ FILE_EXTENSIONS = [
     {'image':        [ '.jpg', '.tif', '.jpeg', '.gif', '.bmp', '.png', '.tiff' ]},
     {'pdf':          [ '.pdf' ]},
     {'presentation': [ '.ppt', '.pptx' ]},
-    {'source code':  [ '.c', '.py', '.cpp', '.js', '.m', '.json', '.java' ]},
+    {'source code':  [ '.c', '.py', '.cpp', '.js', '.m', '.json', '.java', '.html', '.htm', '.php', '.css'  ]},
     {'spredsheet':   [ '.xls', '.xlsx' ]},
     {'tabular data': [ '.csv.gz', '.csv' ]},
     {'text':         [ '.txt' ]},
-    {'video':        [ '.mpeg', '.mpg', '.mov', '.mp4']},
+    {'video':        [ '.mpeg', '.mpg', '.mov', '.mp4', '.m4v', '.MTS' ]},
 ]
 
 def guess_type_from_filename(filename):
