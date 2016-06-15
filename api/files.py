@@ -246,9 +246,9 @@ class MultiFileStore(object):
 # Listed in precendence order.
 FILE_EXTENSIONS = [
     # Scientific file types
-    {'bval':         [ '.bval', '.bvecs', '.bvals' ]},
-    {'bvec':         [ '.bvec' ]},
-    {'dicom':        [ '.dcm' ]},
+    {'bval':         [ '.bval', '.bvals' ]},
+    {'bvec':         [ '.bvec', '.bvecs' ]},
+    {'dicom':        [ '.dcm', '.dcm.zip', '.dicom.zip' ]},
     {'gephysio':     [ '.gephysio.zip' ]},
     {'nifti':        [ '.nii.gz', '.nii' ]},
     {'pfile':        [ '.7.gz', '.7' ]},
@@ -258,10 +258,11 @@ FILE_EXTENSIONS = [
     {'archive':      [ '.zip', '.tbz2', '.tar.gz', '.tbz', '.tar.bz2', '.tgz', '.tar', '.txz', '.tar.xz' ]},
     {'document':     [ '.docx', '.doc' ]},
     {'image':        [ '.jpg', '.tif', '.jpeg', '.gif', '.bmp', '.png', '.tiff' ]},
+    {'markup':       [ '.html', '.htm' ]},
     {'pdf':          [ '.pdf' ]},
     {'presentation': [ '.ppt', '.pptx' ]},
-    {'source code':  [ '.c', '.py', '.cpp', '.js', '.m', '.json', '.java', '.html', '.htm', '.php', '.css'  ]},
-    {'spredsheet':   [ '.xls', '.xlsx' ]},
+    {'source code':  [ '.c', '.py', '.cpp', '.js', '.m', '.json', '.java', '.php', '.css' ]},
+    {'spreadsheet':  [ '.xls', '.xlsx' ]},
     {'tabular data': [ '.csv.gz', '.csv' ]},
     {'text':         [ '.txt' ]},
     {'video':        [ '.mpeg', '.mpg', '.mov', '.mp4', '.m4v', '.MTS' ]},
