@@ -222,14 +222,19 @@ class Upload(base.RequestHandler):
         level = self.get_param('level')
         if level is None:
             self.abort(400, 'container level is required')
-        if level not in ['acquisition', 'session', 'project']:
-            self.abort(400, 'container level must be acquisition, session or project.')
+        if level not in ['analysis', 'acquisition', 'session', 'project']:
+            self.abort(400, 'container level must be analysis, acquisition, session or project.')
         cid = self.get_param('id')
         if not cid:
             self.abort(400, 'container id is required')
         else:
-            cid = bson.ObjectId(acquisition_id)
-        return process_upload(self.request, 'engine', container_type=level, id=cid, origin=self.origin)
+            cid = bson.ObjectId(cid)
+
+        if level == 'analysis':
+            context = {'job_id': self.get_param('job')}
+            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cont_id, context=context)
+        else:
+            return process_upload(self.request, Strategy.engine, container_type=level, id=cid, origin=self.origin)
 
     def clean_packfile_tokens(self):
         """

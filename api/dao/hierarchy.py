@@ -342,33 +342,37 @@ def update_container_hierarchy(metadata, cid, container_type):
     c_metadata['modified'] = now
     c_obj = _update_container({'_id': cid}, {}, c_metadata, container_type)
     if c_obj is None:
-        raise APIStorageException('container doesn''t exist')
+        raise APIStorageException('container does not exist')
     if container_type in ['session', 'acquisition']:
         update_timestamp = True if c_metadata.get('timestamp') else False
         _update_hierarchy(c_obj, container_type, metadata, update_timestamp)
     return c_obj
 
 
-def _update_container(query, update, set_update, cont_name):
+def _update_container(query, update, set_update, container_type):
+    coll_name = container_type if container_type.endswith('s') else container_type+'s'
     update['$set'] = util.mongo_dict(set_update)
-    return config.db[cont_name].find_one_and_update(query,update,
+    return config.db[coll_name].find_one_and_update(query,update,
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
 
 
 def _update_hierarchy(container, container_type, metadata, update_timestamp=False):
-    project_id = container['project'] # for sessions
+    project_id = container.get('project') # for sessions
     now = datetime.datetime.utcnow()
 
     if container_type == 'acquisition':
         update = {}
         session = metadata.get('session', {})
+        session_obj = None
         if update_timestamp:
             update['$min'] = dict(timestamp=container['timestamp'])
             session['timezone'] = dict(timezone=container.get('timezone'))
-        if session.keys():
+        if update.keys() or session.keys():
             session['modified'] = now
             session_obj = _update_container({'_id': container['session']}, update, session, 'sessions')
+        if session_obj is None:
+            session_obj = get_container('session', container['session'])
         project_id = session_obj['project']
 
     if project_id is None:
