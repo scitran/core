@@ -43,7 +43,7 @@ def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
     return fixture_data
 
 @pytest.fixture()
-def with_hierarchyand_file_data(api_as_admin, bunch, request, data_builder):
+def with_hierarchy_and_file_data(api_as_admin, bunch, request, data_builder):
     group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)
@@ -151,29 +151,71 @@ def test_label_upload(with_group_and_file_data, api_as_admin):
     r = api_as_admin.post('/upload/label', files=data.files)
     assert r.status_code == 400
 
-def test_acquisition_engine_upload(with_hierarchyand_file_data, api_as_admin):
-    data = with_group_and_file_data
+def find_file_in_array(filename, files):
+    for f in files:
+        if f.get('name') == filename:
+            return f
+
+def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+
+    data = with_hierarchy_and_file_data
     metadata = {
+        'project':{
+            'label': 'engine project',
+            'metadata': {'test': 'p'}
+        },
         'session':{
-            'label':'test_session',
-            'files':[
-                {
-                    'name':data.files.keys()[1]
-                }
-            ],
-            'subject': {'code': 'test_subject'}
+            'label': 'engine session',
+            'subject': {'code': 'engine subject'},
+            'metadata': {'test': 's'}
         },
         'acquisition':{
-            'label':'test_acquisition',
+            'label': 'engine acquisition',
+            'timestamp': '2016-06-20T21:57:36.636808+00:00'
+            'metadata': {'test': 'a'}
             'files':[
                 {
-                    'name':data.files.keys()[2]
+                    'name': data.files.keys()[0],
+                    'type': 'engine type 0',
+                    'metadata': {'test': 'f0'}
+                },
+                {
+                    'name': data.files.keys()[1],
+                    'type': 'engine type 1',
+                    'metadata': {'test': 'f1'}
                 }
             ]
         }
     }
-    metadata = json.dumps(metadata)
+    data.files['metadata'] = json.dumps(metadata)
 
-    r = api_as_admin.post('/upload/label', files=data.files)
+    r = api_as_admin.post('/engine?level=acquisition&id=data.acquisition', files=data.files)
     assert r.ok
 
+    r = api_as_admin.get('/projects/' + data.project)
+    assert r.ok
+    p = json.loads(r.content)
+    assert p['label'] == metadata['project']['label']
+    assert p['timestamp'] == metadata['acquisition']['timestamp']
+    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+
+    r = api_as_admin.get('/sessions/' + data.session)
+    assert r.ok
+    s = json.loads(r.content)
+    assert s['label'] == metadata['session']['label']
+    assert s['timestamp'] == metadata['acquisition']['timestamp']
+    assert cmp(s['metadata'], metadata['session']['metadata']) == 0
+    assert cmp(s['subject'], metadata['session']['subject']) == 0
+
+    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    assert r.ok
+    a = json.loads(r.content)
+    assert a['label'] == metadata['session']['label']
+    assert a['timestamp'] == metadata['acquisition']['timestamp']
+    assert cmp(a['metadata'], metadata['session']['metadata']) == 0
+
+    for f in a['files']:
+        mf = find_file_in_array(f['name'], metadata)
+        assert mf is not None
+        assert f['type'] == mf['type']
+        assert cmp(f['metadata'], mf['metadata']) == 0
