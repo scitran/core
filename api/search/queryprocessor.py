@@ -100,14 +100,9 @@ class SearchContainer(object):
             return set([value_or_list])
 
     def collect(self):
-        if self.is_target:
-            if self.results is None:
-                self.results = self._exec_query(query={"match_all": {}})
-            final_results = {
-                self.cont_name: self.results.values()
-            }
-        else:
-            final_results = {}
+        if (self.is_target or self.child_targets) and self.results is None:
+            self.results = self._exec_query(query={"match_all": {}})
+        final_results = {self.cont_name: self.results.values()} if self.is_target else {}
         for t in self.child_targets:
             results = t.get_results(self.cont_name, self.results)
             final_results[t.name] = final_results.get(t.name, []) + results.values()
