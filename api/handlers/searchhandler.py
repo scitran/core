@@ -4,6 +4,7 @@ import elasticsearch
 
 from .. import base
 from .. import config
+from .. import util
 from ..search import pathparser, queryprocessor, es_query
 
 log = config.log
@@ -97,13 +98,15 @@ class SearchHandler(base.RequestHandler):
             container_name = result_type
         result['_source'].update(self._get_parents(container, container_name))
 
+    def _strip_other_permissions(self, container, cont_name):
+        perm_list = container.pop('roles', None) if cont_name == 'groups' else container.pop('permissions', None)
+        if perm_list:
+            p = util.user_perm(perm_list, self.uid, self.user_site)
+            container['user_permissions'] = p.get('access', None) if p else None
 
     def _get_parents(self, container, cont_name):
         parents = {}
-        if cont_name == 'groups':
-            container.pop('roles', None)
-        else:
-            container.pop('permissions', None)
+        self._strip_other_permissions(container, cont_name)
         if parent_container_dict.get(cont_name):
             parent_name = parent_container_dict[cont_name]
             parent_id = container[parent_name[:-1]]
@@ -111,7 +114,6 @@ class SearchHandler(base.RequestHandler):
             parents[parent_name[:-1]] = parent_container
             parents.update(self._get_parents(parent_container, parent_name))
         return parents
-
 
     def get_datatree(self, **kwargs):
         if self.public_request:
@@ -153,10 +155,7 @@ class SearchHandler(base.RequestHandler):
                     if parent_cont_name != 'groups':
                         parent_id = bson.objectid.ObjectId(parent_id)
                     container = config.db[parent_cont_name].find_one({'_id': parent_id})
-                    if parent_cont_name == 'groups':
-                        container.pop('roles', None)
-                    else:
-                        container.pop('permissions', None)
+                    self._strip_other_permissions(container, parent_cont_name)
                     result[parent_cont_name[:-1]] = container
                     cont_name = parent_cont_name
                 if collection:
