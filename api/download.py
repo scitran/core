@@ -94,8 +94,11 @@ class Download(base.RequestHandler):
             try:
                 # Try to find the file reference in the database (filtering on user permissions)
                 bid = bson.ObjectId(cont_id)
+                query = {'_id': bid}
+                if not self.superuser_request:
+                    query['permissions._id'] = self.uid
                 file_obj = config.db[cont_name].find_one(
-                    {'_id': bid, 'permissions._id': self.uid},
+                    query,
                     {'files': { '$elemMatch': {
                         'name': filename
                     }}
@@ -107,7 +110,7 @@ class Download(base.RequestHandler):
 
             filepath = os.path.join(data_path, util.path_from_hash(file_obj['hash']))
             if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, cont_id+'-'+file_obj['name'], file_obj['size']))
+                targets.append((filepath, cont_name+'/'+cont_id+'/'+file_obj['name'], file_obj['size']))
                 total_size += file_obj['size']
                 file_cnt += 1
 
