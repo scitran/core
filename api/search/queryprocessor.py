@@ -86,10 +86,15 @@ class SearchContainer(object):
         self.query = add_filter_from_list(self.query, filter_on_field, list_ids)
         if self.results is not None:
             updated_results = {}
+            log.debug('{} {} {}'.format(self.cont_name, list_ids, filter_on_field))
             for _id, r in self.results.items():
-                if self._to_set(r.get(filter_on_field, [])).intersection(list_ids):
+                # if we are not filtering on the _id we need to get the _source
+                doc = r if filter_on_field == '_id' else r['_source']
+                log.debug('{} {}'.format(self.cont_name, doc.get(filter_on_field, [])))
+                if self._to_set(doc.get(filter_on_field, [])).intersection(list_ids):
                     updated_results[_id] = r
             self.results = updated_results
+            log.debug('{} {}'.format(self.cont_name, self.results))
         else:
             self.results = self._exec_query(self.query)
 
