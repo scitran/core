@@ -8,10 +8,8 @@ import datetime
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 from .. import config
-from . import gears
 
 log = config.log
-
 
 class Job(object):
     def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, _id=None):
@@ -54,7 +52,7 @@ class Job(object):
         if modified is None:
             modified = now
 
-        if destination is None:
+        if destination is None and inputs is not None:
             # Grab an arbitrary input's container
             key = inputs.keys()[0]
             destination = create_containerreference_from_filereference(inputs[key])
@@ -81,15 +79,17 @@ class Job(object):
     def load(cls, d):
         # TODO: validate
 
-        inputs = d['inputs']
-        for x in inputs.keys():
-            inputs[x] = create_filereference_from_dictionary(inputs[x])
+        if d.get('inputs', None):
+            inputs = d['inputs']
+            for x in inputs.keys():
+                inputs[x] = create_filereference_from_dictionary(inputs[x])
 
-        d['destination'] = create_containerreference_from_dictionary(d['destination'])
+        if d.get('destination', None):
+            d['destination'] = create_containerreference_from_dictionary(d['destination'])
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['name'], d['inputs'], destination=d['destination'], tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), _id=d['_id'])
+        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), _id=d['_id'])
 
     @classmethod
     def get(cls, _id):
@@ -105,11 +105,18 @@ class Job(object):
         """
 
         d = self.__dict__
-        d['destination'] = d['destination'].__dict__
 
-        for x in d['inputs'].keys():
-            d['inputs'][x] = d['inputs'][x].__dict__
+        if d.get('inputs', None):
+            for x in d['inputs'].keys():
+                d['inputs'][x] = d['inputs'][x].__dict__
 
+        if d.get('destination', None):
+            d['destination'] = d['destination'].__dict__
+
+        if d['destination'] is None:
+            d.pop('destination')
+        if d['inputs'] is None:
+            d.pop('inputs')
         if d['_id'] is None:
             d.pop('_id')
         if d['previous_job_id'] is None:
@@ -133,14 +140,14 @@ class Job(object):
         result = config.db.jobs.insert_one(self.mongo())
         return result.inserted_id
 
-    def generate_request(self, gear=None):
+    def generate_request(self, gear):
         """
         Generate the job's request, save it to the class, and return it
 
         Parameters
         ----------
-        gear: map (optional)
-            A gear_list map from the singletons.gears table. Will be loaded by the job's name otherwise.
+        gear: map
+            A gear_list map from the singletons.gears table.
         """
 
         r = {
@@ -160,9 +167,6 @@ class Job(object):
                 },
             ],
         }
-
-        if gear is None:
-            gear = gears.get_gear_by_name(self.name)
 
         # Add the gear
         r['inputs'].append(gear['input'])

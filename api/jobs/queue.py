@@ -9,6 +9,7 @@ import datetime
 
 from .. import config
 from .jobs import Job
+from .gears import get_gear_by_name
 
 log = config.log
 
@@ -142,9 +143,14 @@ class Queue(object):
             return None
 
         job = Job.load(result)
-        request = job.generate_request()
 
-        # Second, update document to store formula request.
+        if job.request is not None:
+            log.info('Job ' + job._id + ' already has a request, so not generating')
+            print job.request
+            return result
+
+        # Generate, save, and return a job request.
+        request = job.generate_request(get_gear_by_name(job.name))
         result = config.db.jobs.find_one_and_update(
             {
                 '_id': bson.ObjectId(job._id)

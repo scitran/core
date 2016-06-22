@@ -3,6 +3,7 @@ Gears
 """
 
 from .. import config
+from .jobs import Job
 
 log = config.log
 
@@ -53,6 +54,23 @@ def insert_gear(doc):
         {"_id" : "gears"},
         {'$push': {'gear_list': doc} }
     )
+
+    if config.get_item('queue', 'prefetch'):
+        log.info('Queuing prefetch job for gear ' + doc['name'])
+
+        job = Job(doc['name'], {}, destination={}, tags=['prefetch'], request={
+            'inputs': [
+                doc['input']
+            ],
+            'target': {
+                'command': ['uname', '-a'],
+                'env': {
+                    'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+                },
+            },
+            'outputs': [ ],
+        })
+        return job.insert()
 
 def remove_gear(name):
     config.db.singletons.update(
