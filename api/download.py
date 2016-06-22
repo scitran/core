@@ -76,6 +76,55 @@ def archivestream(ticket):
 
 class Download(base.RequestHandler):
 
+    def _bulk_preflight_archivestream(self, file_refs):
+        data_path = config.get_item('persistent', 'data_path')
+        arc_prefix = 'sdm'
+        file_cnt = 0
+        total_size = 0
+        targets = []
+
+        for fref in file_refs:
+            cont_name   = fref.get('container_name','')+'s'
+            cont_id     = fref.get('container_id', '')
+            filename    = fref.get('filename', '')
+
+            if cont_name not in ['projects', 'sessions', 'acquisitions']:
+                self.abort(400, 'Bulk download only supports files in projects, sessions and acquisitions')
+            file_obj = None
+            try:
+                # Try to find the file reference in the database (filtering on user permissions)
+                bid = bson.ObjectId(cont_id)
+                query = {'_id': bid}
+                if not self.superuser_request:
+                    query['permissions._id'] = self.uid
+                file_obj = config.db[cont_name].find_one(
+                    query,
+                    {'files': { '$elemMatch': {
+                        'name': filename
+                    }}
+                })['files'][0]
+            except:
+                # self.abort(404, 'File {} on Container {} {} not found'.format(filename, cont_name, cont_id))
+                # silently skip missing files/files user does not have access to
+                continue
+
+            filepath = os.path.join(data_path, util.path_from_hash(file_obj['hash']))
+            if os.path.exists(filepath): # silently skip missing files
+                targets.append((filepath, cont_name+'/'+cont_id+'/'+file_obj['name'], file_obj['size']))
+                total_size += file_obj['size']
+                file_cnt += 1
+
+        if len(targets) > 0:
+            filename = arc_prefix + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+            ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
+            config.db.downloads.insert_one(ticket)
+            return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+        else:
+            self.abort(404, 'No files requested could be found')
+
+
+
+
     def _preflight_archivestream(self, req_spec):
         data_path = config.get_item('persistent', 'data_path')
         arc_prefix = 'sdm'
@@ -215,8 +264,11 @@ class Download(base.RequestHandler):
                 config.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
             req_spec = self.request.json_body
-            payload_schema_uri = util.schema_uri('input', 'download.json')
-            validator = validators.from_schema_path(payload_schema_uri)
-            validator(req_spec, 'POST')
-            log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
-            return self._preflight_archivestream(req_spec)
+            if self.is_true('bulk'):
+                return self._bulk_preflight_archivestream(req_spec.get('files', []))
+            else:
+                payload_schema_uri = util.schema_uri('input', 'download.json')
+                validator = validators.from_schema_path(payload_schema_uri)
+                validator(req_spec, 'POST')
+                log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
+                return self._preflight_archivestream(req_spec)
