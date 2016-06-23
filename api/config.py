@@ -39,6 +39,7 @@ DEFAULT_CONFIG = {
     'queue': {
         'max_retries': 3,
         'retry_on_fail': False,
+        'prefetch': False
     },
     'auth': {
         'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
