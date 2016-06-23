@@ -3,6 +3,7 @@ Jobs
 """
 
 import bson
+import copy
 import datetime
 
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
@@ -76,8 +77,11 @@ class Job(object):
         self._id             = _id
 
     @classmethod
-    def load(cls, d):
+    def load(cls, e):
         # TODO: validate
+
+        # Don't modify the map
+        d = copy.deepcopy(e)
 
         if d.get('inputs', None):
             inputs = d['inputs']
