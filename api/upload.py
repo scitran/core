@@ -134,7 +134,6 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
     if placer.sse and not response:
         raise Exception("Programmer error: response required")
     elif placer.sse:
-        log.debug('SSE')
         response.headers['Content-Type'] = 'text/event-stream; charset=utf-8'
         response.headers['Connection']   = 'keep-alive'
         response.app_iter = placer.finalize()
@@ -232,7 +231,7 @@ class Upload(base.RequestHandler):
 
         if level == 'analysis':
             context = {'job_id': self.get_param('job')}
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cont_id, context=context)
+            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cid, context=context)
         else:
             return process_upload(self.request, Strategy.engine, container_type=level, id=cid, origin=self.origin)
 

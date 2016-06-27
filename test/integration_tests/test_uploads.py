@@ -1,3 +1,5 @@
+import datetime
+import dateutil.parser
 import os
 import json
 import time
@@ -67,6 +69,7 @@ def with_hierarchy_and_file_data(api_as_admin, bunch, request, data_builder):
     fixture_data.project = project
     fixture_data.session = session
     fixture_data.acquisition = acquisition
+    fixture_data.files = files
     return fixture_data
 
 
@@ -171,8 +174,8 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
         },
         'acquisition':{
             'label': 'engine acquisition',
-            'timestamp': '2016-06-20T21:57:36.636808+00:00'
-            'metadata': {'test': 'a'}
+            'timestamp': '2016-06-20T21:57:36+00:00',
+            'metadata': {'test': 'a'},
             'files':[
                 {
                     'name': data.files.keys()[0],
@@ -187,35 +190,142 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
             ]
         }
     }
-    data.files['metadata'] = json.dumps(metadata)
+    data.files['metadata'] = ('', json.dumps(metadata))
 
-    r = api_as_admin.post('/engine?level=acquisition&id=data.acquisition', files=data.files)
+    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
     assert r.ok
 
     r = api_as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
     assert p['label'] == metadata['project']['label']
-    assert p['timestamp'] == metadata['acquisition']['timestamp']
     assert cmp(p['metadata'], metadata['project']['metadata']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     assert s['label'] == metadata['session']['label']
-    assert s['timestamp'] == metadata['acquisition']['timestamp']
     assert cmp(s['metadata'], metadata['session']['metadata']) == 0
-    assert cmp(s['subject'], metadata['session']['subject']) == 0
+    assert s['subject']['code'] == metadata['session']['subject']['code']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
-    assert a['label'] == metadata['session']['label']
-    assert a['timestamp'] == metadata['acquisition']['timestamp']
-    assert cmp(a['metadata'], metadata['session']['metadata']) == 0
+    assert a['label'] == metadata['acquisition']['label']
+    a_timestamp = dateutil.parser.parse(a['timestamp'])
+    m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
+    assert a_timestamp == m_timestamp
+    assert cmp(a['metadata'], metadata['acquisition']['metadata']) == 0
 
     for f in a['files']:
-        mf = find_file_in_array(f['name'], metadata)
+        mf = find_file_in_array(f['name'], metadata['acquisition']['files'])
         assert mf is not None
         assert f['type'] == mf['type']
         assert cmp(f['metadata'], mf['metadata']) == 0
+
+def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+
+    data = with_hierarchy_and_file_data
+    metadata = {
+        'project':{
+            'label': 'engine project',
+            'metadata': {'test': 'p'}
+        },
+        'session':{
+            'label': 'engine session',
+            'subject': {'code': 'engine subject'},
+            'timestamp': '2016-06-20T21:57:36+00:00',
+            'metadata': {'test': 's'},
+            'files':[
+                {
+                    'name': data.files.keys()[0],
+                    'type': 'engine type 0',
+                    'metadata': {'test': 'f0'}
+                },
+                {
+                    'name': data.files.keys()[1],
+                    'type': 'engine type 1',
+                    'metadata': {'test': 'f1'}
+                }
+            ]
+        }
+    }
+    data.files['metadata'] = ('', json.dumps(metadata))
+
+    r = api_as_admin.post('/engine?level=session&id='+data.session, files=data.files)
+    assert r.ok
+
+    r = api_as_admin.get('/projects/' + data.project)
+    assert r.ok
+    p = json.loads(r.content)
+    assert p['label'] == metadata['project']['label']
+    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+
+    r = api_as_admin.get('/sessions/' + data.session)
+    assert r.ok
+    s = json.loads(r.content)
+    assert s['label'] == metadata['session']['label']
+    assert cmp(s['metadata'], metadata['session']['metadata']) == 0
+    assert s['subject']['code'] == metadata['session']['subject']['code']
+    s_timestamp = dateutil.parser.parse(s['timestamp'])
+    m_timestamp = dateutil.parser.parse(metadata['session']['timestamp'])
+    assert s_timestamp == m_timestamp
+
+    for f in s['files']:
+        mf = find_file_in_array(f['name'], metadata['session']['files'])
+        assert mf is not None
+        assert f['type'] == mf['type']
+        assert cmp(f['metadata'], mf['metadata']) == 0
+
+def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+
+    data = with_hierarchy_and_file_data
+    metadata = {
+        'project':{
+            'label': 'engine project',
+            'metadata': {'test': 'p'},
+            'files':[
+                {
+                    'name': data.files.keys()[0],
+                    'type': 'engine type 0',
+                    'metadata': {'test': 'f0'}
+                },
+                {
+                    'name': data.files.keys()[1],
+                    'type': 'engine type 1',
+                    'metadata': {'test': 'f1'}
+                }
+            ]
+        }
+    }
+    data.files['metadata'] = ('', json.dumps(metadata))
+
+    r = api_as_admin.post('/engine?level=project&id='+data.project, files=data.files)
+    assert r.ok
+
+    r = api_as_admin.get('/projects/' + data.project)
+    assert r.ok
+    p = json.loads(r.content)
+    assert p['label'] == metadata['project']['label']
+    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+
+    for f in p['files']:
+        mf = find_file_in_array(f['name'], metadata['project']['files'])
+        assert mf is not None
+        assert f['type'] == mf['type']
+        assert cmp(f['metadata'], mf['metadata']) == 0
+
+def test_acquisition_file_only_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+
+    data = with_hierarchy_and_file_data
+
+    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
+    assert r.ok
+
+    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    assert r.ok
+    a = json.loads(r.content)
+
+    for k,v in data.files.items():
+        mf = find_file_in_array(v[0], a['files'])
+        assert mf is not None
