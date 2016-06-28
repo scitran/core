@@ -27,8 +27,8 @@ def validate_data(data, schema_json, schema_type, verb, optional=False):
     if optional and data is None:
         return
 
-    schema_uri = util.schema_uri(schema_type, schema_json)
-    validator = from_schema_path(schema_uri)
+    suri = schema_uri(schema_type, schema_json)
+    validator = from_schema_path(suri)
     validator(data, verb)
 
 def _validate_json(json_data, schema, resolver):
@@ -73,6 +73,13 @@ def _resolve_schema(schema_url):
 
 def no_op(g, *args):
     return g
+
+def schema_uri(type_, schema_name):
+    return '/'.join([
+        config.get_item('site', 'api_url'),
+        'schemas',
+        type_, schema_name
+    ])
 
 def decorator_from_schema_path(schema_url):
     if schema_url is None:
