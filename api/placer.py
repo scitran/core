@@ -128,7 +128,7 @@ class UIDPlacer(Placer):
     def check(self):
         self.requireMetadata()
 
-        payload_schema_uri = util.schema_uri('input', self.metadata_schema)
+        payload_schema_uri = validators.schema_uri('input', self.metadata_schema)
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 

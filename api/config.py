@@ -5,6 +5,7 @@ import logging
 import pymongo
 import datetime
 import elasticsearch
+from . import util
 
 
 logging.basicConfig(
@@ -34,7 +35,7 @@ DEFAULT_CONFIG = {
         'api_url': 'https://localhost/api',
         'central_url': 'https://sdmc.scitran.io/api',
         'registered': False,
-        'ssl_cert': None,
+        'ssl_cert': None
     },
     'queue': {
         'max_retries': 3,
@@ -221,7 +222,7 @@ def get_config():
         db_config = db.singletons.find_one({'_id': 'config'})
         if db_config is not None:
             startup_config = copy.deepcopy(__config)
-            startup_config.update(db_config)
+            startup_config = util.deep_update(startup_config, db_config)
             # Precedence order for config is env vars -> db values -> default
             __config = apply_env_variables(startup_config)
         else:

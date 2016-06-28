@@ -102,9 +102,9 @@ class UserHandler(base.RequestHandler):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         payload = self.request.json_body
-        mongo_schema_uri = util.schema_uri('mongo', 'user.json')
+        mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        payload_schema_uri = util.schema_uri('input', 'user.json')
+        payload_schema_uri = validators.schema_uri('input', 'user.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'PUT')
         payload['modified'] = datetime.datetime.utcnow()
@@ -147,9 +147,9 @@ class UserHandler(base.RequestHandler):
         self._init_storage()
         permchecker = userauth.default(self)
         payload = self.request.json_body
-        mongo_schema_uri = util.schema_uri('mongo', 'user.json')
+        mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        payload_schema_uri = util.schema_uri('input', 'user.json')
+        payload_schema_uri = validators.schema_uri('input', 'user.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
