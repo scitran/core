@@ -167,20 +167,36 @@ class Queue(object):
         return result
 
     @staticmethod
-    def search(container, states=None, tags=None):
+    def search(containers, states=None, tags=None):
         """
-        Search the queue for jobs that mention a specific container and (optionally) match some set of states or tags.
+        Search the queue for jobs that mention at least one of a set of containers and (optionally) match some set of states or tags.
+        Currently, all containers must be of the same type.
+
+        @param containers: an array of ContainerRefs
+        @param states: an array of strings
+        @param tags: an array of strings
         """
 
+        # Limitation: container types must match.
+        type1 = containers[0].type
+        for container in containers:
+            if container.type != type1:
+                raise Exception('All containers passed to Queue.search must be of the same type')
+
+        array_string = str([ x.id for x in containers ])
+
         filter = """
+            var ids = $ids$
             for (var key in this['inputs']) {
                 var ct = this['inputs'][key]['type']
                 var ci = this['inputs'][key]['id']
-                if (ct === '$cT$' && ci == '$cI$') { return true }
+                if (ct === '$cT$' && ids.indexOf(ci) >= 0){ return true }
             }
-        """.replace('$cT$', container.type).replace('$cI$', container.id)
+        """.replace('$cT$', type1).replace('$ids$', array_string)
 
         query = { "$where": filter }
+
+        log.debug(query)
 
         if states is not None and len(states) > 0:
             query['state'] = {"$in": states}

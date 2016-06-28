@@ -9,7 +9,7 @@ from .. import config
 from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage, containerutil, noop
+from ..dao import APIStorageException, containerstorage, containerutil, noop, hierarchy
 from ..types import Origin
 from ..jobs.queue import Queue
 
@@ -189,7 +189,7 @@ class ContainerHandler(base.RequestHandler):
 
             .. sourcecode:: http
 
-                GET /api/acquisitions/3/jobs?states=pending&states=failed&tags=a&tags=b HTTP/1.1
+                GET /api/sessions/3/jobs?states=pending&states=failed&tags=a&tags=b HTTP/1.1
                 Host: demo.flywheel.io
                 Accept: */*
 
@@ -225,14 +225,32 @@ class ContainerHandler(base.RequestHandler):
 
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
+        if cont_name != 'sessions':
+            self.abort(400, 'Can only request jobs at the session level.')
+
         c = self._get_container(cid)
         permchecker = self._get_permchecker(c)
         result = permchecker(noop)('GET', cid)
 
-        cr	 = containerutil.ContainerReference(cont_name[:-1], cid)
+        children = hierarchy.get_children('session', cid)
+        id_array = [str(c['_id']) for c in children]
+        cont_array = [containerutil.ContainerReference('acquisition', cid) for cid in id_array]
+
         states = self.request.GET.getall('states')
         tags   = self.request.GET.getall('tags')
-        return Queue.search(cr, states=states, tags=tags)
+        jobs = Queue.search(cont_array, states=states, tags=tags)
+
+        response = {}
+        for j in jobs:
+            log.debug(j)
+            inputs = j.get('inputs', {})
+            for k,v in inputs.items():
+                if v['type'] == 'acquisition' and v['id'] in id_array:
+                    if response.get(v['id']) is not None:
+                        response[v['id']].append(j)
+                    else:
+                        response[v['id']] = [j]
+        return response
 
     def get_all(self, cont_name, par_cont_name=None, par_id=None):
         self.config = self.container_handler_configurations[cont_name]
