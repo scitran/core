@@ -191,9 +191,7 @@ class EnginePlacer(Placer):
     def check(self):
         self.requireTarget()
         if self.metadata is not None:
-            log.debug('about to validate')
             validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
-            log.debug('validated')
         self.saved = []
 
     def process_file_field(self, field, info):
