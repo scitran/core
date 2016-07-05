@@ -344,8 +344,7 @@ def update_container_hierarchy(metadata, cid, container_type):
     if c_obj is None:
         raise APIStorageException('container does not exist')
     if container_type in ['session', 'acquisition']:
-        update_timestamp = True if c_metadata.get('timestamp') else False
-        _update_hierarchy(c_obj, container_type, metadata, update_timestamp)
+        _update_hierarchy(c_obj, container_type, metadata)
     return c_obj
 
 
@@ -357,34 +356,26 @@ def _update_container(query, update, set_update, container_type):
     )
 
 
-def _update_hierarchy(container, container_type, metadata, update_timestamp=False):
+def _update_hierarchy(container, container_type, metadata):
     project_id = container.get('project') # for sessions
     now = datetime.datetime.utcnow()
 
     if container_type == 'acquisition':
-        update = {}
         session = metadata.get('session', {})
         session_obj = None
-        if update_timestamp:
-            update['$min'] = dict(timestamp=container['timestamp'])
-            session['timezone'] = dict(timezone=container.get('timezone'))
-        if update.keys() or session.keys():
+        if session.keys():
             session['modified'] = now
-            session_obj = _update_container({'_id': container['session']}, update, session, 'sessions')
+            session_obj = _update_container({'_id': container['session']}, {}, session, 'sessions')
         if session_obj is None:
             session_obj = get_container('session', container['session'])
         project_id = session_obj['project']
 
     if project_id is None:
         raise APIStorageException('Failed to find project id in session obj')
-    update = {}
     project = metadata.get('project', {})
-    if update_timestamp:
-        update['$max'] = dict(timestamp=container['timestamp'])
-        project['timezone'] = dict(timezone=container.get('timezone'))
     if project.keys():
         project['modified'] = now
-        project_obj = _update_container({'_id': project_id}, update, project, 'projects')
+        project_obj = _update_container({'_id': project_id}, {}, project, 'projects')
 
 
 def merge_fileinfos(parsed_files, infos):
