@@ -1,4 +1,3 @@
-import collections
 import datetime
 import enum as baseEnum
 import errno
@@ -71,7 +70,7 @@ def deep_update(d, u):
     Adapted from http://stackoverflow.com/a/3233356
     """
     for k, v in u.iteritems():
-        if isinstance(v, collections.Mapping):
+        if isinstance(v, dict):
             r = deep_update(d.get(k, {}), v)
             d[k] = r
         else:
