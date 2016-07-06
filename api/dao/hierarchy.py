@@ -356,6 +356,20 @@ def _update_container(query, update, set_update, container_type):
     )
 
 
+def update_container_nulls(base_query, update, container_type):
+    coll_name = container_type if container_type.endswith('s') else container_type+'s'
+    update_dict = util.mongo_dict(update)
+    bulk = config.db[coll_name].initialize_unordered_bulk_op()
+
+    for k,v in update_dict.items():
+        q = {}
+        q.update(base_query)
+        q['$or'] = [{k: {'$exists': False}}, {k: None}]
+        u = {'$set': {k: v}}
+        log.debug('the query is {} and the update is {}'.format(q,u))
+        bulk.find(q).update_one(u)
+    bulk.execute()
+
 def _update_hierarchy(container, container_type, metadata):
     project_id = container.get('project') # for sessions
     now = datetime.datetime.utcnow()
