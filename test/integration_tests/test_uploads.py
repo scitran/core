@@ -330,6 +330,61 @@ def test_acquisition_file_only_engine_upload(with_hierarchy_and_file_data, api_a
         mf = find_file_in_array(v[0], a['files'])
         assert mf is not None
 
+def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+
+    data = with_hierarchy_and_file_data
+
+    filedata_1 = {}
+    filedata_1['file1'] = ('file-one.csv', 'some,data,to,send\nanother,row,to,send\n')
+    filedata_1['metadata'] = ('', json.dumps({
+        'acquisition':{
+            'files':[
+                {
+                    'name': 'file-one.csv',
+                    'type': 'engine type 1',
+                    'metadata': {'test': 'f1'}
+                }
+            ]
+        }
+    }))
+
+    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=filedata_1)
+    assert r.ok
+
+    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    assert r.ok
+    a = json.loads(r.content)
+
+    mf = find_file_in_array('file-one.csv', a['files'])
+    assert mf is not None
+
+    filedata_2 = {}
+    filedata_2['file1'] = ('file-two.csv', 'some,data,to,send\nanother,row,to,send\n')
+    filedata_2['metadata'] = ('', json.dumps({
+        'acquisition':{
+            'files':[
+                {
+                    'name': 'file-two.csv',
+                    'type': 'engine type 1',
+                    'metadata': {'test': 'f1'}
+                }
+            ]
+        }
+    }))
+
+    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=filedata_2)
+    assert r.ok
+
+    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    assert r.ok
+    a = json.loads(r.content)
+
+    # Assert both files are still present after upload
+    mf = find_file_in_array('file-one.csv', a['files'])
+    assert mf is not None
+    mf = find_file_in_array('file-two.csv', a['files'])
+    assert mf is not None
+
 def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, api_as_admin):
 
     data = with_hierarchy_and_file_data
