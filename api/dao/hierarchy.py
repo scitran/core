@@ -334,52 +334,49 @@ def dict_fileinfos(infos):
     return dict_infos
 
 
-def update_container_hierarchy(metadata, acquisition_id, level):
-    project = metadata.get('project')
-    session = metadata.get('session')
-    acquisition = metadata.get('acquisition')
+def update_container_hierarchy(metadata, cid, container_type):
+    c_metadata = metadata.get(container_type)
     now = datetime.datetime.utcnow()
-    if acquisition.get('timestamp'):
-        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
-    acquisition['modified'] = now
-    acquisition_obj = _update_container({'_id': acquisition_id}, acquisition, 'acquisitions')
-    if acquisition_obj is None:
-        raise APIStorageException('acquisition doesn''t exist')
-    if acquisition.get('timestamp'):
-        session_obj = config.db.sessions.find_one_and_update(
-            {'_id': acquisition_obj['session']},
-            {
-                '$min': dict(timestamp=acquisition['timestamp']),
-                '$set': dict(timezone=acquisition.get('timezone'))
-            },
-            return_document=pymongo.collection.ReturnDocument.AFTER
-        )
-        config.db.projects.find_one_and_update(
-            {'_id': session_obj['project']},
-            {
-                '$max': dict(timestamp=acquisition['timestamp']),
-                '$set': dict(timezone=acquisition.get('timezone'))
-            }
-        )
-    session_obj = None
-    if session:
-        session['modified'] = now
-        session_obj = _update_container({'_id': acquisition_obj['session']}, session, 'sessions')
-    if project:
-        project['modified'] = now
-        if not session_obj:
-            session_obj = config.db.sessions.find_one({'_id': acquisition_obj['session']})
-        _update_container({'_id': session_obj['project']}, project, 'projects')
-    return acquisition_obj
+    if c_metadata.get('timestamp'):
+        c_metadata['timestamp'] = dateutil.parser.parse(c_metadata['timestamp'])
+    c_metadata['modified'] = now
+    c_obj = _update_container({'_id': cid}, {}, c_metadata, container_type)
+    if c_obj is None:
+        raise APIStorageException('container does not exist')
+    if container_type in ['session', 'acquisition']:
+        _update_hierarchy(c_obj, container_type, metadata)
+    return c_obj
 
-def _update_container(query, update, cont_name):
-    return config.db[cont_name].find_one_and_update(
-        query,
-        {
-            '$set': util.mongo_dict(update)
-        },
+
+def _update_container(query, update, set_update, container_type):
+    coll_name = container_type if container_type.endswith('s') else container_type+'s'
+    update['$set'] = util.mongo_dict(set_update)
+    return config.db[coll_name].find_one_and_update(query,update,
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
+
+
+def _update_hierarchy(container, container_type, metadata):
+    project_id = container.get('project') # for sessions
+    now = datetime.datetime.utcnow()
+
+    if container_type == 'acquisition':
+        session = metadata.get('session', {})
+        session_obj = None
+        if session.keys():
+            session['modified'] = now
+            session_obj = _update_container({'_id': container['session']}, {}, session, 'sessions')
+        if session_obj is None:
+            session_obj = get_container('session', container['session'])
+        project_id = session_obj['project']
+
+    if project_id is None:
+        raise APIStorageException('Failed to find project id in session obj')
+    project = metadata.get('project', {})
+    if project.keys():
+        project['modified'] = now
+        project_obj = _update_container({'_id': project_id}, {}, project, 'projects')
+
 
 def merge_fileinfos(parsed_files, infos):
     """it takes a dictionary of "hard_infos" (file size, hash)
