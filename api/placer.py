@@ -184,8 +184,9 @@ class LabelPlacer(UIDPlacer):
 
 class EnginePlacer(Placer):
     """
-    A placer that can accept files sent to it from an engine.
-    Currently a stub.
+    A placer that can accept files and/or metadata sent to it from the engine
+
+    It uses update_container_hierarchy to update the container and it's parents' fields from the metadata
     """
 
     def check(self):
@@ -196,28 +197,23 @@ class EnginePlacer(Placer):
 
     def process_file_field(self, field, info):
         if self.metadata is not None:
-            # OPPORTUNITY: hard-coded container levels will need to go away soon
-            # Engine shouldn't know about container names; maybe parent contexts?
-            # How will this play with upload unification? Unify schemas as well?
             file_mds = self.metadata.get(self.container_type, {}).get('files', [])
 
             for file_md in file_mds:
                 if file_md['name'] == info['name']:
+                    info.update(file_md)
                     break
-            else:
-                file_md = {}
-
-            for x in ('type', 'instrument', 'measurements', 'tags', 'metadata'):
-                info[x] = file_md.get(x) or info[x]
 
         self.save_file(field, info)
         self.saved.append(info)
 
     def finalize(self):
-        # Updating various properties of the hierarchy; currently assumes acquisitions; might need fixing for other levels.
-        # NOTE: only called in EnginePlacer
         if self.metadata is not None:
             bid = bson.ObjectId(self.id)
+
+            # Remove file metadata as it was already updated in process_file_field
+            for k in self.metadata.keys():
+                self.metadata[k].pop('files', {})
             self.obj = hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
 
         return self.saved

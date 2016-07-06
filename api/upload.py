@@ -206,14 +206,31 @@ class Upload(base.RequestHandler):
         """
         .. http:post:: /api/engine
 
-            Confirm endpoint is ready for requests
+            Default behavior:
+                Uploads a list of files sent as file1, file2, etc to a existing
+                container and updates fields of the files, the container and it's
+                parents as specified in the metadata fileformfield using the
+                engine placer class
+            When ``level`` is ``analysis``:
+                Uploads a list of files to an existing analysis object, marking
+                all files as ``output=true`` using the job-based analyses placer
+                class
 
-            :query level: container_type
-            :query id: container_id
-            :query job: job_id
+            :param level: one of ``project``, ``session``, ``acquisition``, ``analysis``
+            :type level: string
 
-            :statuscode 400: improper or missing params
-            :statuscode 402: engine uploads must be fron authorized drone
+            :param id: Container ID
+            :type id: string
+
+            :param id: Job ID
+            :type id: string
+
+            :statuscode 200: no error
+            :statuscode 400: Target container ``level`` is required
+            :statuscode 400: Level must be ``project``, ``session``, ``acquisition``, ``analysis``
+            :statuscode 400: Target container ``id`` is required
+            :statuscode 402: Uploads must be from an authorized drone
+
         """
 
         if not self.superuser_request:

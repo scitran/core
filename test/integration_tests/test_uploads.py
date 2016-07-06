@@ -178,12 +178,12 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
             'metadata': {'test': 'a'},
             'files':[
                 {
-                    'name': data.files.keys()[0],
+                    'name': 'one.csv',
                     'type': 'engine type 0',
                     'metadata': {'test': 'f0'}
                 },
                 {
-                    'name': data.files.keys()[1],
+                    'name': 'two.csv',
                     'type': 'engine type 1',
                     'metadata': {'test': 'f1'}
                 }
@@ -236,14 +236,14 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
             'subject': {'code': 'engine subject'},
             'timestamp': '2016-06-20T21:57:36+00:00',
             'metadata': {'test': 's'},
-            'files':[
+            'files': [
                 {
-                    'name': data.files.keys()[0],
+                    'name': 'one.csv',
                     'type': 'engine type 0',
                     'metadata': {'test': 'f0'}
                 },
                 {
-                    'name': data.files.keys()[1],
+                    'name': 'two.csv',
                     'type': 'engine type 1',
                     'metadata': {'test': 'f1'}
                 }
@@ -284,14 +284,14 @@ def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
         'project':{
             'label': 'engine project',
             'metadata': {'test': 'p'},
-            'files':[
+            'files': [
                 {
-                    'name': data.files.keys()[0],
+                    'name': 'one.csv',
                     'type': 'engine type 0',
                     'metadata': {'test': 'f0'}
                 },
                 {
-                    'name': data.files.keys()[1],
+                    'name': 'two.csv',
                     'type': 'engine type 1',
                     'metadata': {'test': 'f1'}
                 }
