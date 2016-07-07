@@ -340,25 +340,45 @@ def update_container_hierarchy(metadata, cid, container_type):
     if c_metadata.get('timestamp'):
         c_metadata['timestamp'] = dateutil.parser.parse(c_metadata['timestamp'])
     c_metadata['modified'] = now
-    c_obj = _update_container({'_id': cid}, {}, c_metadata, container_type)
+    c_obj = _update_container_nulls({'_id': cid}, c_metadata, container_type)
     if c_obj is None:
         raise APIStorageException('container does not exist')
     if container_type in ['session', 'acquisition']:
         _update_hierarchy(c_obj, container_type, metadata)
     return c_obj
 
+def _update_hierarchy(container, container_type, metadata):
+    project_id = container.get('project') # for sessions
+    now = datetime.datetime.utcnow()
 
-def _update_container(query, update, set_update, container_type):
+    if container_type == 'acquisition':
+        session = metadata.get('session', {})
+        session_obj = None
+        if session.keys():
+            session['modified'] = now
+            session_obj = _update_container_nulls({'_id': container['session']},  session, 'sessions')
+        if session_obj is None:
+            session_obj = get_container('session', container['session'])
+        project_id = session_obj['project']
+
+    if project_id is None:
+        raise APIStorageException('Failed to find project id in session obj')
+    project = metadata.get('project', {})
+    if project.keys():
+        project['modified'] = now
+        project_obj = _update_container_nulls({'_id': project_id}, project, 'projects')
+
+def _update_container(query, set_update, container_type):
     coll_name = container_type if container_type.endswith('s') else container_type+'s'
+    update = {}
     update['$set'] = util.mongo_dict(set_update)
     return config.db[coll_name].find_one_and_update(query,update,
         return_document=pymongo.collection.ReturnDocument.AFTER
     )
 
-
-def update_container_nulls(base_query, update, container_type):
+def _update_container_nulls(base_query, update, container_type):
     coll_name = container_type if container_type.endswith('s') else container_type+'s'
-    cont = config.db.[coll_name].find(base_query)
+    cont = config.db[coll_name].find_one(base_query)
     if cont is None:
         raise APIStorageException('Failed to find {} object using the query: {}'.format(container_type, base_query))
 
@@ -366,10 +386,9 @@ def update_container_nulls(base_query, update, container_type):
 
     if (update.get('metadata') is not None and
        (cont.get('metadata') is None or cont.get('metadata',{}).keys == 0)):
-        # If we are trying to update metadata fields and
-        # the container metadata does not exist or is empty,
+        # If we are trying to update metadata fields and the container metadata does not exist or is empty,
         # metadata can all be updated at once for efficiency
-        m_update = update.pop('metadata')
+        m_update = util.mongo_sanitize_fields(update.pop('metadata'))
         bulk.find(base_query).update_one({'$set': {'metadata': m_update}})
 
     update_dict = util.mongo_dict(update)
@@ -381,27 +400,7 @@ def update_container_nulls(base_query, update, container_type):
         log.debug('the query is {} and the update is {}'.format(q,u))
         bulk.find(q).update_one(u)
     bulk.execute()
-
-def _update_hierarchy(container, container_type, metadata):
-    project_id = container.get('project') # for sessions
-    now = datetime.datetime.utcnow()
-
-    if container_type == 'acquisition':
-        session = metadata.get('session', {})
-        session_obj = None
-        if session.keys():
-            session['modified'] = now
-            session_obj = _update_container({'_id': container['session']}, {}, session, 'sessions')
-        if session_obj is None:
-            session_obj = get_container('session', container['session'])
-        project_id = session_obj['project']
-
-    if project_id is None:
-        raise APIStorageException('Failed to find project id in session obj')
-    project = metadata.get('project', {})
-    if project.keys():
-        project['modified'] = now
-        project_obj = _update_container({'_id': project_id}, {}, project, 'projects')
+    return config.db[coll_name].find_one(base_query)
 
 
 def merge_fileinfos(parsed_files, infos):
