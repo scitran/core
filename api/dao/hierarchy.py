@@ -358,9 +358,21 @@ def _update_container(query, update, set_update, container_type):
 
 def update_container_nulls(base_query, update, container_type):
     coll_name = container_type if container_type.endswith('s') else container_type+'s'
-    update_dict = util.mongo_dict(update)
+    cont = config.db.[coll_name].find(base_query)
+    if cont is None:
+        raise APIStorageException('Failed to find {} object using the query: {}'.format(container_type, base_query))
+
     bulk = config.db[coll_name].initialize_unordered_bulk_op()
 
+    if (update.get('metadata') is not None and
+       (cont.get('metadata') is None or cont.get('metadata',{}).keys == 0)):
+        # If we are trying to update metadata fields and
+        # the container metadata does not exist or is empty,
+        # metadata can all be updated at once for efficiency
+        m_update = update.pop('metadata')
+        bulk.find(base_query).update_one({'$set': {'metadata': m_update}})
+
+    update_dict = util.mongo_dict(update)
     for k,v in update_dict.items():
         q = {}
         q.update(base_query)
