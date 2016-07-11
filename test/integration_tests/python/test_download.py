@@ -26,7 +26,7 @@ def with_a_download_available(api_as_admin, data_builder, bunch, request):
     metadata = {
         'name': file_name,
         'type': 'csv',
-        'instrument': 'MRI'
+        'modality': 'MRI'
     }
     metadata = json.dumps(metadata)
     files['metadata'] = ('', metadata)

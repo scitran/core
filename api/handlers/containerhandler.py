@@ -293,13 +293,10 @@ class ContainerHandler(base.RequestHandler):
         for result in results:
             if cont_name == 'sessions':
                 result = self.handle_analyses(result)
-<<<<<<< HEAD
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, cont_name)
-=======
             result = self._fill_required_fields(self.handle_origin(result), cont_name)
             modified_results.append(result)
->>>>>>> c89d5a1... Ensure containers return all defaults
 
         return modified_results
 
