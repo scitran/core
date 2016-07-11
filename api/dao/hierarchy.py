@@ -182,83 +182,52 @@ def _find_or_create_destination_project(group_id, project_label, timestamp):
         )
     return project
 
-
-def _create_session_query(session, project, type_):
-    if type_ == 'label':
+def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
+    if upload_type == 'label':
         return {
-            'label': session['label'],
-            'project': project['_id']
+            'label':        cont['label'],
+            parent_type:    bson.ObjectId(parent_id)
         }
-    elif type_ == 'uid':
+    elif upload_type == 'uid':
         return {
-            'uid': session['uid']
-        }
-    else:
-        raise NotImplementedError('upload type is not handled by _create_session_query')
-
-
-def _create_acquisition_query(acquisition, session, type_):
-    if type_ == 'label':
-        return {
-            'label': acquisition['label'],
-            'session': session['_id']
-        }
-    elif type_ == 'uid':
-        return {
-            'uid': acquisition['uid']
+            'uid': cont['uid']
         }
     else:
-        raise NotImplementedError('upload type is not handled by _create_acquisition_query')
+        raise NotImplementedError('upload type is not handled by _create_query')
 
+def _upsert_container(cont, cont_type, parent, parent_type, upload_type, timestamp):
+    cont['modified'] = timestamp
 
-def _upsert_session(session, project_obj, type_, timestamp):
-    session['modified'] = timestamp
-    if session.get('timestamp'):
-        session['timestamp'] = dateutil.parser.parse(session['timestamp'])
-    session['subject'] = containerutil.add_id_to_subject(session.get('subject'), project_obj['_id'])
-    session_operations = {
-        '$setOnInsert': dict(
-            group=project_obj['group'],
-            project=project_obj['_id'],
-            permissions=project_obj['permissions'],
-            public=project_obj.get('public', False),
-            created=timestamp
-        ),
-        '$set': session
-    }
-    session_obj = config.db.sessions.find_one_and_update(
-        _create_session_query(session, project_obj, type_),
-        session_operations,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER,
-    )
-    return session_obj
+    if cont.get('timestamp'):
+        cont['timestamp'] = dateutil.parser.parse(cont['timestamp'])
 
-def _upsert_acquisition(acquisition, session_obj, type_, timestamp):
-    if acquisition.get('timestamp'):
-        acquisition['timestamp'] = dateutil.parser.parse(acquisition['timestamp'])
-        session_operations = {'$min': dict(timestamp=acquisition['timestamp'])}
-        if acquisition.get('timezone'):
-            session_operations['$set'] = {'timezone': acquisition['timezone']}
-        config.db.sessions.update_one({'_id': session_obj['_id']}, session_operations)
+        if cont_type == 'acquisition':
+            session_operations = {'$min': dict(timestamp=cont['timestamp'])}
+            if cont.get('timezone'):
+                session_operations['$set'] = {'timezone': cont['timezone']}
+            config.db.sessions.update_one({'_id': parent['_id']}, session_operations)
 
-    acquisition['modified'] = timestamp
-    acq_operations = {
-        '$setOnInsert': dict(
-            session=session_obj['_id'],
-            permissions=session_obj['permissions'],
-            public=session_obj.get('public', False),
-            created=timestamp
-        ),
-        '$set': acquisition
-    }
-    acquisition_obj = config.db.acquisitions.find_one_and_update(
-        _create_acquisition_query(acquisition, session_obj, type_),
-        acq_operations,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER
-    )
-    return acquisition_obj
+    if cont_type == 'session':
+        cont['subject'] = containerutil.add_id_to_subject(cont.get('subject'), parent['_id'])
+
+    query = _create_query(cont, cont_type, parent_type, parent['_id'], upload_type)
+
+    if config.db[cont_type+'s'].find_one(query) is not None:
+        return _update_container_nulls(query, cont, cont_type)
+
+    else:
+        insert_vals = {
+            parent_type:    parent['_id'],
+            'permissions':  parent['permissions'],
+            'public':       parent.get('public', False),
+            'created':      timestamp
+        }
+        if cont_type == 'session':
+            insert_vals['group'] = parent['group']
+        cont.update(insert_vals)
+        insert_id = config.db[cont_type+'s'].insert(cont)
+        cont['_id'] = insert_id
+        return cont
 
 
 def _get_targets(project_obj, session, acquisition, type_, timestamp):
@@ -266,14 +235,14 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     if not session:
         return target_containers
     session_files = dict_fileinfos(session.pop('files', []))
-    session_obj = _upsert_session(session, project_obj, type_, timestamp)
+    session_obj = _upsert_container(session, 'session', project_obj, 'project', type_, timestamp)
     target_containers.append(
         (TargetContainer(session_obj, 'session'), session_files)
     )
     if not acquisition:
         return target_containers
     acquisition_files = dict_fileinfos(acquisition.pop('files', []))
-    acquisition_obj = _upsert_acquisition(acquisition, session_obj, type_, timestamp)
+    acquisition_obj = _upsert_container(acquisition, 'acquisition', session_obj, 'session', type_, timestamp)
     target_containers.append(
         (TargetContainer(acquisition_obj, 'acquisition'), acquisition_files)
     )
@@ -367,14 +336,6 @@ def _update_hierarchy(container, container_type, metadata):
     if project.keys():
         project['modified'] = now
         project_obj = _update_container_nulls({'_id': project_id}, project, 'projects')
-
-def _update_container(query, set_update, container_type):
-    coll_name = container_type if container_type.endswith('s') else container_type+'s'
-    update = {}
-    update['$set'] = util.mongo_dict(set_update)
-    return config.db[coll_name].find_one_and_update(query,update,
-        return_document=pymongo.collection.ReturnDocument.AFTER
-    )
 
 def _update_container_nulls(base_query, update, container_type):
     coll_name = container_type if container_type.endswith('s') else container_type+'s'
