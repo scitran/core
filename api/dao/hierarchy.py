@@ -345,8 +345,7 @@ def _update_container_nulls(base_query, update, container_type):
 
     bulk = config.db[coll_name].initialize_unordered_bulk_op()
 
-    if (update.get('metadata') is not None and
-       (cont.get('metadata') is None or cont.get('metadata',{}).keys == 0)):
+    if update.get('metadata') and not cont.get('metadata'):
         # If we are trying to update metadata fields and the container metadata does not exist or is empty,
         # metadata can all be updated at once for efficiency
         m_update = util.mongo_sanitize_fields(update.pop('metadata'))
