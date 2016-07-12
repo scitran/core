@@ -198,20 +198,23 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     r = api_as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
-    assert p['label'] == metadata['project']['label']
+    # Engine metadata should not replace existing fields
+    assert p['label'] != metadata['project']['label']
     assert cmp(p['metadata'], metadata['project']['metadata']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
-    assert s['label'] == metadata['session']['label']
+    # Engine metadata should not replace existing fields
+    assert s['label'] != metadata['session']['label']
     assert cmp(s['metadata'], metadata['session']['metadata']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
-    assert a['label'] == metadata['acquisition']['label']
+    # Engine metadata should not replace existing fields
+    assert a['label'] != metadata['acquisition']['label']
     a_timestamp = dateutil.parser.parse(a['timestamp'])
     m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
     assert a_timestamp == m_timestamp
@@ -258,13 +261,15 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     r = api_as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
-    assert p['label'] == metadata['project']['label']
+    # Engine metadata should not replace existing fields
+    assert p['label'] != metadata['project']['label']
     assert cmp(p['metadata'], metadata['project']['metadata']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
-    assert s['label'] == metadata['session']['label']
+    # Engine metadata should not replace existing fields
+    assert s['label'] != metadata['session']['label']
     assert cmp(s['metadata'], metadata['session']['metadata']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
     s_timestamp = dateutil.parser.parse(s['timestamp'])
@@ -306,7 +311,8 @@ def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     r = api_as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
-    assert p['label'] == metadata['project']['label']
+    # Engine metadata should not replace existing fields
+    assert p['label'] != metadata['project']['label']
     assert cmp(p['metadata'], metadata['project']['metadata']) == 0
 
     for f in p['files']:
@@ -413,20 +419,23 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     r = api_as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
-    assert p['label'] == metadata['project']['label']
+    # Engine metadata should not replace existing fields
+    assert p['label'] != metadata['project']['label']
     assert cmp(p['metadata'], metadata['project']['metadata']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
-    assert s['label'] == metadata['session']['label']
+    # Engine metadata should not replace existing fields
+    assert s['label'] != metadata['session']['label']
     assert cmp(s['metadata'], metadata['session']['metadata']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
-    assert a['label'] == metadata['acquisition']['label']
+    # Engine metadata should not replace existing fields
+    assert a['label'] != metadata['acquisition']['label']
     a_timestamp = dateutil.parser.parse(a['timestamp'])
     m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
     assert a_timestamp == m_timestamp

@@ -143,43 +143,6 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
 
 class Upload(base.RequestHandler):
 
-    def reaper(self):
-        """Receive a sortable reaper upload."""
-        if not self.superuser_request:
-            self.abort(402, 'uploads must be from an authorized drone')
-        with tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path')) as tempdir_path:
-            try:
-                file_store = files.FileStore(self.request, tempdir_path)
-            except files.FileStoreException as e:
-                self.abort(400, str(e))
-            now = datetime.datetime.utcnow()
-            fileinfo = dict(
-                name=file_store.filename,
-                created=now,
-                modified=now,
-                size=file_store.size,
-                hash=file_store.hash,
-                mimetype=util.guess_mimetype(file_store.filename),
-                tags=file_store.tags,
-                metadata=file_store.metadata.get('file', {}).get('metadata', {}),
-                origin=self.origin
-            )
-
-            target, file_metadata = hierarchy.create_container_hierarchy(file_store.metadata)
-            fileinfo.update(file_metadata)
-            f = target.find(file_store.filename)
-            target_path = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(fileinfo['hash']))
-            if not f:
-                file_store.move_file(target_path)
-                target.add_file(fileinfo)
-                rules.create_jobs(config.db, target.container, target.level[:-1], fileinfo)
-            elif not files.identical(file_store.hash, file_store.path, f['hash'], util.path_from_hash(f['hash'])):
-                file_store.move_file(target_path)
-                target.update_file(fileinfo)
-                rules.create_jobs(config.db, target.container, target.level[:-1], fileinfo)
-            throughput = file_store.size / file_store.duration.total_seconds()
-            log.info('Received    %s [%s, %s/s] from %s' % (file_store.filename, util.hrsize(file_store.size), util.hrsize(throughput), self.request.client_addr))
-
     def upload(self, strategy):
         """
         .. http:post:: /api/upload/<strategy:label|uid>
