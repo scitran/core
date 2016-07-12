@@ -267,7 +267,7 @@ class Download(base.RequestHandler):
             if self.is_true('bulk'):
                 return self._bulk_preflight_archivestream(req_spec.get('files', []))
             else:
-                payload_schema_uri = util.schema_uri('input', 'download.json')
+                payload_schema_uri = validators.schema_uri('input', 'download.json')
                 validator = validators.from_schema_path(payload_schema_uri)
                 validator(req_spec, 'POST')
                 log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))

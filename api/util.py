@@ -9,7 +9,6 @@ import uuid
 import requests
 import hashlib
 
-from . import config
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
     ('.bval', 'text', 'bval'),
@@ -65,6 +64,18 @@ def mongo_sanitize_fields(d):
     else:
         return d
 
+def deep_update(d, u):
+    """
+    Makes a deep update of dict d with dict u
+    Adapted from http://stackoverflow.com/a/3233356
+    """
+    for k, v in u.iteritems():
+        if isinstance(v, dict):
+            r = deep_update(d.get(k, {}), v)
+            d[k] = r
+        else:
+            d[k] = u[k]
+    return d
 
 
 def user_perm(permissions, _id, site=None):
@@ -163,12 +174,6 @@ def send_json_http_exception(response, message, code):
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.write(content)
 
-def schema_uri(type_, schema_name):
-    return '/'.join([
-        config.get_item('site', 'api_url'),
-        'schemas',
-        type_, schema_name
-    ])
 
 class Enum(baseEnum.Enum):
     # Enum strings are prefixed by their class: "Category.classifier".
