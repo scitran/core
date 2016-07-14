@@ -183,20 +183,7 @@ class Queue(object):
             if container.type != type1:
                 raise Exception('All containers passed to Queue.search must be of the same type')
 
-        array_string = str([ x.id for x in containers ])
-
-        filter = """
-            var ids = $ids$
-            for (var key in this['inputs']) {
-                var ct = this['inputs'][key]['type']
-                var ci = this['inputs'][key]['id']
-                if (ct === '$cT$' && ids.indexOf(ci) >= 0){ return true }
-            }
-        """.replace('$cT$', type1).replace('$ids$', array_string)
-
-        query = { "$where": filter }
-
-        log.debug(query)
+        query = {'inputs.id': {'$in': [x.id for x in containers]}, 'inputs.type': type1}
 
         if states is not None and len(states) > 0:
             query['state'] = {"$in": states}

@@ -30,7 +30,7 @@ def inflate_job_info(analysis):
 
     # If the job currently tied to the analysis failed, try to find one that didn't
     while job.state == 'failed' and job._id is not None:
-        next_job = config.db.jobs.find_one({'previous_job_id': job['_id']})
+        next_job = config.db.jobs.find_one({'previous_job_id': job._id})
         if next_job is None:
             break
         job = Job.load(next_job)
