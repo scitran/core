@@ -9,7 +9,7 @@ import sys
 
 from api import config
 
-CURRENT_DATABASE_VERSION = 10 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 11 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -311,6 +311,29 @@ def upgrade_to_10():
             job
         )
 
+def upgrade_to_11():
+    """
+    scitran/core issue #363
+
+    Restructures job objects' `inputs` field from a dict with arbitrary keys
+    into a list where the key becomes the field `input`
+    """
+
+    # Mongo type 3 is an 'object', type 4 is an array
+    jobs = config.db.jobs.find({'inputs': {'$type': 3}})
+
+    for job in jobs:
+
+        inputs_arr = []
+        for key, inp in job['inputs'].iteritems():
+            inp['input'] = key
+            inputs_arr.append(inp)
+
+        config.db.jobs.update(
+            {'_id': job['_id']},
+            {'$set': {'inputs': inputs_arr}}
+        )
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -340,6 +363,8 @@ def upgrade_schema():
             upgrade_to_9()
         if db_version < 10:
             upgrade_to_10()
+        if db_version < 11:
+            upgrade_to_11()
 
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
