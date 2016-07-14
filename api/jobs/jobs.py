@@ -43,9 +43,8 @@ def inflate_job_info(analysis):
 
     # Inflate files from job inputs, add to analysis file array
     files = analysis.get('files', [])
-    for i in getattr(job, 'inputs', []):
-        i.pop('input')
-        fileref = create_filereference_from_dictionary(i)
+    for i in getattr(job, 'inputs',{}):
+        fileref = create_filereference_from_dictionary(job.inputs[i])
         contref = create_containerreference_from_filereference(fileref)
         file_ = contref.find_file(fileref.name)
         if file_:
