@@ -5,6 +5,7 @@ import json
 import pytz
 
 from .jobs.jobs import Job
+from . import config
 
 def custom_json_serializer(obj):
     if isinstance(obj, bson.objectid.ObjectId):

@@ -12,48 +12,6 @@ from .. import config
 
 log = config.log
 
-def inflate_job_info(analysis):
-    """
-    Inflate job from id ref in analysis
-
-    Lookup job via id stored on analysis
-    Lookup input filerefs and inflate into files array with 'input': True
-    If job is in failed state, look for most recent job referencing this analysis
-    Update analysis if new job is found
-    """
-    if analysis.get('job') is None:
-        return analysis
-    try:
-        job = Job.get(analysis['job'])
-    except:
-        raise Exception('No job with id {} found.'.format(analysis['job']))
-
-    # If the job currently tied to the analysis failed, try to find one that didn't
-    while job.state == 'failed' and job._id is not None:
-        next_job = config.db.jobs.find_one({'previous_job_id': job._id})
-        if next_job is None:
-            break
-        job = Job.load(next_job)
-    if job._id != analysis['job']:
-        # Update analysis if job has changed
-        q = {'analyses._id': analysis['_id']}
-        u = {'$set': {'analyses.$.job': job._id}}
-        config.db.sessions.update_one(q, u)
-    analysis['job'] = job.map()
-
-    # Inflate files from job inputs, add to analysis file array
-    files = analysis.get('files', [])
-    for i in getattr(job, 'inputs',{}):
-        fileref = create_filereference_from_dictionary(job.inputs[i])
-        contref = create_containerreference_from_filereference(fileref)
-        file_ = contref.find_file(fileref.name)
-        if file_:
-            file_['input'] = True
-            files.append(file_)
-
-    analysis['files'] = files
-    return analysis
-
 class Job(object):
     def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, _id=None):
         """
