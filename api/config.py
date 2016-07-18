@@ -178,7 +178,6 @@ def create_or_recreate_ttl_index(coll_name, index_name, ttl):
 
 def initialize_db():
     log.info('Initializing database, creating indexes')
-    # TODO jobs indexes
     # TODO review all indexes
     db.projects.create_index([('gid', 1), ('name', 1)])
     db.sessions.create_index('project')
@@ -186,6 +185,7 @@ def initialize_db():
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
+    db.jobs.create_index([('inputs.id',1), ('inputs.type', 1)])
 
     # Must be kept in sync with jobs/gears.py
     db.singletons.update({"_id" : "gears"}, {

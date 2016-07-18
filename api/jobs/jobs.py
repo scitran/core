@@ -83,10 +83,14 @@ class Job(object):
         # Don't modify the map
         d = copy.deepcopy(e)
 
-        if d.get('inputs', None):
-            inputs = d['inputs']
-            for x in inputs.keys():
-                inputs[x] = create_filereference_from_dictionary(inputs[x])
+        if d.get('inputs'):
+            input_dict = {}
+
+            for i in d['inputs']:
+                inp = i.pop('input')
+                input_dict[inp] = create_filereference_from_dictionary(i)
+
+            d['inputs'] = input_dict
 
         if d.get('destination', None):
             d['destination'] = create_containerreference_from_dictionary(d['destination'])
@@ -108,19 +112,20 @@ class Job(object):
         Flatten struct to map
         """
 
-        d = self.__dict__
+        # Don't modify the job obj
+        d = copy.deepcopy(self.__dict__)
 
-        if d.get('inputs', None):
+        if d.get('inputs'):
             for x in d['inputs'].keys():
                 d['inputs'][x] = d['inputs'][x].__dict__
-
-        if d.get('destination', None):
-            d['destination'] = d['destination'].__dict__
-
-        if d['destination'] is None:
-            d.pop('destination')
-        if d['inputs'] is None:
+        else:
             d.pop('inputs')
+
+        if d.get('destination'):
+            d['destination'] = d['destination'].__dict__
+        else:
+            d.pop('destination')
+
         if d['_id'] is None:
             d.pop('_id')
         if d['previous_job_id'] is None:
@@ -132,8 +137,14 @@ class Job(object):
 
     def mongo(self):
         d = self.map()
-        if d.get('_id', None):
+        if d.get('_id'):
             d['_id'] = bson.ObjectId(d['_id'])
+        if d.get('inputs'):
+            input_array = []
+            for k, inp in d['inputs'].iteritems():
+                inp['input'] = k
+                input_array.append(inp)
+            d['inputs'] = input_array
 
         return d
 

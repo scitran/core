@@ -1,4 +1,5 @@
 import bson
+import copy
 import json
 import datetime
 import dateutil
@@ -10,8 +11,10 @@ from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage, containerutil, noop, hierarchy
+from ..dao.liststorage import AnalysesStorage
 from ..types import Origin
 from ..jobs.queue import Queue
+from ..jobs.jobs import Job
 
 log = config.log
 
@@ -159,7 +162,8 @@ class ContainerHandler(base.RequestHandler):
             return result
         for a in analyses:
             if a.get('job') is not None:
-                a = containerutil.inflate_job_info(a)
+                a = AnalysesStorage.inflate_job_info(a)
+
         result['analyses'] = analyses
         return result
 
@@ -242,14 +246,13 @@ class ContainerHandler(base.RequestHandler):
 
         response = {}
         for j in jobs:
-            log.debug(j)
-            inputs = j.get('inputs', {})
-            for k,v in inputs.items():
-                if v['type'] == 'acquisition' and v['id'] in id_array:
-                    if response.get(v['id']) is not None:
-                        response[v['id']].append(j)
+            job  = Job.load(j)
+            for k,v in job.inputs.iteritems():
+                if v.type == 'acquisition' and v.id in id_array:
+                    if response.get(v.id) is not None:
+                        response[v.id].append(job)
                     else:
-                        response[v['id']] = [j]
+                        response[v.id] = [job]
         return response
 
     def get_all(self, cont_name, par_cont_name=None, par_id=None):
