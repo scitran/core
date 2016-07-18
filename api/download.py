@@ -53,7 +53,7 @@ def symlinkarchivestream(ticket, data_path):
         t.linkname = os.path.relpath(filepath, data_path)
         yield t.tobuf()
     stream = cStringIO.StringIO()
-    with tarfile.open(mode='w|', fileobj=stream) as archive:
+    with tarfile.open(mode='w|', fileobj=stream) as _:
         pass
     yield stream.getvalue() # get tar stream trailer
     stream.close()
@@ -102,7 +102,7 @@ class Download(base.RequestHandler):
                         'name': filename
                     }}
                 })['files'][0]
-            except:
+            except Exception: # pylint: disable=broad-except
                 # self.abort(404, 'File {} on Container {} {} not found'.format(filename, cont_name, cont_id))
                 # silently skip missing files/files user does not have access to
                 continue
@@ -249,10 +249,7 @@ class Download(base.RequestHandler):
 
             :statuscode 400: describe me
             :statuscode 404: describe me
-        """
 
-
-        """
         In downloads we use filters in the payload to exclude/include files.
         To pass a single filter, each of its conditions should be satisfied.
         If a file pass at least one filter, it is included in the targets.

@@ -7,7 +7,6 @@ import pymongo
 import shutil
 import zipfile
 
-from . import base
 from . import config
 from . import encoder
 from . import files
@@ -15,7 +14,7 @@ from .jobs import rules
 from . import tempdir as tempfile
 from . import util
 from . import validators
-from .dao import hierarchy, APIStorageException, containerutil
+from .dao import containerutil, hierarchy
 
 log = config.log
 
@@ -27,7 +26,7 @@ class Placer(object):
     def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
         self.container_type = container_type
         self.container      = container
-        self.id             = id
+        self.id             = id            #pylint: disable=redefined-builtin
         self.metadata       = metadata
         self.timestamp      = timestamp
 
@@ -39,6 +38,9 @@ class Placer(object):
 
         # Should the caller expect a normal map return, or a generator that gets mapped to Server-Sent Events?
         self.sse            = False
+
+        # A list of files that have been saved via save_file() usually returned by finalize()
+        self.saved          = []
 
 
     def check(self):
@@ -104,7 +106,6 @@ class TargetedPlacer(Placer):
     def check(self):
         self.requireTarget()
         validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
-        self.saved = []
 
     def process_file_field(self, field, info):
         if self.metadata:
@@ -125,6 +126,11 @@ class UIDPlacer(Placer):
     metadata_schema = 'uidupload.json'
     create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
 
+    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
+        super(UIDPlacer, self).__init__(container_type, container, id, metadata, timestamp, origin, context)
+        self.metadata_for_file = {}
+
+
     def check(self):
         self.requireMetadata()
 
@@ -134,7 +140,7 @@ class UIDPlacer(Placer):
 
         targets = self.create_hierarchy(self.metadata)
 
-        self.metadata_for_file = { }
+        self.metadata_for_file = {}
 
         for target in targets:
             for name in target[1]:
@@ -142,8 +148,6 @@ class UIDPlacer(Placer):
                     'container': target[0],
                     'metadata': target[1][name]
                 }
-
-        self.saved = []
 
     def process_file_field(self, field, info):
 
@@ -193,7 +197,6 @@ class EnginePlacer(Placer):
         self.requireTarget()
         if self.metadata is not None:
             validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
-        self.saved = []
 
     def process_file_field(self, field, info):
         if self.metadata is not None:
@@ -214,7 +217,7 @@ class EnginePlacer(Placer):
             # Remove file metadata as it was already updated in process_file_field
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
-            self.obj = hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+            hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
 
         return self.saved
 
@@ -224,6 +227,12 @@ class TokenPlacer(Placer):
     A placer that can accept N files and save them to a persistent directory across multiple requests.
     Intended for use with a token that tracks where the files will be stored.
     """
+
+    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
+        super(TokenPlacer, self).__init__(container_type, container, id, metadata, timestamp, origin, context)
+
+        self.paths  =   []
+        self.folder =   None
 
     def check(self):
         token = self.context['token']
@@ -237,13 +246,10 @@ class TokenPlacer(Placer):
         #   upload.clean_packfile_tokens
         #
         # It must be kept in sync between each instance.
-        base = config.get_item('persistent', 'data_path')
-        self.folder = os.path.join(base, 'tokens', 'packfile', token)
+        base_path = config.get_item('persistent', 'data_path')
+        self.folder = os.path.join(base_path, 'tokens', 'packfile', token)
 
         util.mkdir_p(self.folder)
-
-        self.saved = []
-        self.paths = []
 
     def process_file_field(self, field, info):
         self.saved.append(info)
@@ -262,9 +268,27 @@ class PackfilePlacer(Placer):
     A placer that can accept N files, save them into a zip archive, and place the result on an acquisition.
     """
 
-    def check(self):
+    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
+        super(PackfilePlacer, self).__init__(container_type, container, id, metadata, timestamp, origin, context)
+
         # This endpoint is an SSE endpoint
         self.sse            = True
+
+        # Populated in check(), used in finalize()
+        self.p_id           = None
+        self.s_label        = None
+        self.a_label        = None
+        self.g_id           = None
+
+        self.permissions    = {}
+        self.folder         = None
+        self.name           = None
+        self.path           = None
+        self.zip            = None
+        self.ziptime        = None
+
+
+    def check(self):
 
         token = self.context['token']
 
@@ -277,8 +301,8 @@ class PackfilePlacer(Placer):
         #   upload.clean_packfile_tokens
         #
         # It must be kept in sync between each instance.
-        base = config.get_item('persistent', 'data_path')
-        self.folder = os.path.join(base, 'tokens', 'packfile', token)
+        base_path = config.get_item('persistent', 'data_path')
+        self.folder = os.path.join(base_path, 'tokens', 'packfile', token)
 
         if not os.path.isdir(self.folder):
             raise Exception('Packfile directory does not exist or has been deleted')
@@ -320,10 +344,10 @@ class PackfilePlacer(Placer):
 
         # Make a tempdir to store zip until moved
         # OPPORTUNITY: this is also called in files.py. Could be a util func.
-        self.tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
+        tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
 
         # Create a zip in the tempdir that later gets moved into the CAS.
-        self.path = os.path.join(self.tempdir.name, 'temp.zip')
+        self.path = os.path.join(tempdir.name, 'temp.zip')
         self.zip  = zipfile.ZipFile(self.path, 'w', zipfile.ZIP_DEFLATED, allowZip64=True)
 
         # OPPORTUNITY: add zip comment
@@ -332,7 +356,7 @@ class PackfilePlacer(Placer):
         # Bit of a silly hack: write our tempdir directory into the zip (not including its contents).
         # Creates an empty directory entry in the zip which will hold all the files inside.
         # This way, when you expand a zip, you'll get folder/things instead of a thousand dicoms splattered everywhere.
-        self.zip.write(self.tempdir.name, self.dir)
+        self.zip.write(tempdir.name, self.dir)
 
     def process_file_field(self, field, info):
         # Should not be called with any files
@@ -341,7 +365,7 @@ class PackfilePlacer(Placer):
     def finalize(self):
 
         paths = os.listdir(self.folder)
-        max = len(paths)
+        total = len(paths)
 
         # Write all files to zip
         complete = 0
@@ -358,7 +382,7 @@ class PackfilePlacer(Placer):
             complete += 1
             yield encoder.json_sse_pack({
                 'event': 'progress',
-                'data': { 'done': complete, 'total': max, 'percent': (complete / float(max)) * 100 },
+                'data': { 'done': complete, 'total': total, 'percent': (complete / float(total)) * 100 },
             })
 
         self.zip.close()
@@ -481,7 +505,6 @@ class AnalysisPlacer(Placer):
     def check(self):
         self.requireMetadata()
         #validators.validate_data(self.metadata, 'analysys.json', 'input', 'POST', optional=True)
-        self.saved = []
 
     def process_file_field(self, field, info):
         self.save_file(field)

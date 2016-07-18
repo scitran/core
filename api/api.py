@@ -1,16 +1,11 @@
-import bson.objectid
-import datetime
 import json
-import pytz
 import sys
 import traceback
 import webapp2
 import webapp2_extras.routes
 
 from . import base
-from .jobs.jobs import Job
 from .jobs.handlers import JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
-from .dao.containerutil import FileReference, ContainerReference
 from . import encoder
 from . import root
 from . import util
@@ -18,14 +13,14 @@ from . import config
 from . import centralclient
 from . import download
 from . import upload
-from handlers import listhandler
-from handlers import userhandler
-from handlers import grouphandler
-from handlers import containerhandler
-from handlers import collectionshandler
-from handlers import searchhandler
-from handlers import schemahandler
-from handlers import reporthandler
+from api.handlers import listhandler
+from api.handlers import userhandler
+from api.handlers import grouphandler
+from api.handlers import containerhandler
+from api.handlers import collectionshandler
+from api.handlers import searchhandler
+from api.handlers import schemahandler
+from api.handlers import reporthandler
 
 log = config.log
 
@@ -295,7 +290,7 @@ def dispatcher(router, request, response):
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
     except webapp2.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         if config.get_item('core', 'debug'):
             message = traceback.format_exc()
         else:
@@ -303,6 +298,8 @@ def dispatcher(router, request, response):
         util.send_json_http_exception(response, message, 500)
 
 def app_factory(*_, **__):
+    # pylint: disable=protected-access,unused-argument
+
     # don't use config.get_item() as we don't want to require the database at startup
     application = webapp2.WSGIApplication(routes, debug=config.__config['core']['debug'])
     application.router.set_dispatcher(dispatcher)

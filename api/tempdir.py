@@ -22,6 +22,7 @@ class TemporaryDirectory(object):
     Upon exiting the context, the directory and everything contained
     in it are removed.
     """
+    #pylint: disable=redefinded-builtin
 
     def __init__(self, suffix="", prefix=template, dir=None):
         self._closed = False
@@ -59,7 +60,7 @@ class TemporaryDirectory(object):
         # Issue a Warning if implicit cleanup needed
         self.cleanup(_warn=True)
 
-    # XXX (ncoghlan): The following code attempts to make
+    # The following code attempts to make
     # this class tolerant of the module nulling out process
     # that happens during CPython interpreter shutdown
     # Alas, it doesn't actually manage it. See issue #10188

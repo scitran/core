@@ -4,7 +4,6 @@ import errno
 import json
 import mimetypes
 import os
-import tempdir as tempfile
 import uuid
 import requests
 import hashlib
@@ -82,8 +81,7 @@ def user_perm(permissions, _id, site=None):
     for perm in permissions:
         if perm['_id'] == _id and perm.get('site') == site:
             return perm
-    else:
-        return {}
+    return {}
 
 def resolve_gravatar(email):
     """
@@ -102,8 +100,7 @@ def container_fileinfo(container, filename):
     for fileinfo in container.get('files', []):
         if fileinfo['filename'] == filename:
             return fileinfo
-    else:
-        return None
+    return None
 
 
 def download_ticket(ip, type_, target, filename, size, projects = None):

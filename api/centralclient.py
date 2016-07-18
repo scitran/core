@@ -17,10 +17,7 @@ from . import config
 import logging
 import logging.config
 
-# FIXME logging should be properly ported using the new config
-logging.basicConfig()
-log = logging.getLogger('scitran.api.centralclient')
-logging.getLogger('urllib3').setLevel(logging.WARNING)  # silence Requests library logging
+log = config.log
 
 fail_count = 0
 
@@ -57,7 +54,8 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
                     db.users.update_one({'_id': _id}, {'$set': {'remotes': remotes}})
             if sites:
                 db.sites.delete_many({'_id': {'$nin': [site['_id'] for site in response['sites']]}})
-                [db.sites.replace_one({'_id': site['_id']}, site, upsert=True) for site in sites]
+                for site in sites:
+                    db.sites.replace_one({'_id': site['_id']}, site, upsert=True)
                 db.users.update_many(   # clean users who no longer have remotes
                         {'remotes': {'$exists': True}, '_id': {'$nin': users.keys()}},
                         {'$unset': {'remotes': ''}},
@@ -143,7 +141,6 @@ class CentralClient(base.RequestHandler):
         """
 
         self.abort(404, 'register endpoint is not implemented')
-        # FIXME the code below should be properly ported using the new config
         # every request to this route is aborted at the moment
         if not config.get_item('site', 'registered'):
             self.abort(400, 'Site not registered with central')

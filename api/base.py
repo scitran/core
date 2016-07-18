@@ -1,4 +1,3 @@
-import copy
 import datetime
 import json
 import jsonschema
@@ -22,10 +21,9 @@ class RequestHandler(webapp2.RequestHandler):
 
     json_schema = None
 
-    def __init__(self, request=None, response=None):
+    def __init__(self, request=None, response=None): # pylint: disable=super-init-not-called
         self.initialize(request, response)
         self.debug = config.get_item('core', 'insecure')
-        request_start = datetime.datetime.utcnow()
 
         # set uid, source_site, public_request, and superuser
         self.uid = None
@@ -294,6 +292,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def dispatch(self):
         """dispatching and request forwarding"""
+
         site_id = config.get_item('site', 'id')
         target_site = self.get_param('site', site_id)
         if target_site == site_id:
@@ -308,26 +307,26 @@ class RequestHandler(webapp2.RequestHandler):
             if not target:
                 self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
             # adjust headers
-            self.headers = self.request.headers
-            self.headers['User-Agent'] = 'SciTran Instance ' + site_id
-            self.headers['X-User'] = self.uid
-            self.headers['X-Site'] = site_id
-            self.headers['Content-Length'] = len(self.request.body)
-            del self.headers['Host']
-            if 'Authorization' in self.headers: del self.headers['Authorization']
+            headers = self.request.headers
+            headers['User-Agent'] = 'SciTran Instance ' + site_id
+            headers['X-User'] = self.uid
+            headers['X-Site'] = site_id
+            headers['Content-Length'] = len(self.request.body)
+            del headers['Host']
+            if 'Authorization' in headers: del headers['Authorization']
             # adjust params
-            self.params = self.request.GET.mixed()
-            if 'user' in self.params: del self.params['user']
-            del self.params['site']
+            params = self.request.GET.mixed()
+            if 'user' in params: del params['user']
+            del params['site']
             log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
             target_uri = target['api_uri'] + self.request.path.split('/api')[1]
             r = requests.request(
                     self.request.method,
                     target_uri,
                     stream=True,
-                    params=self.params,
+                    params=params,
                     data=self.request.body_file,
-                    headers=self.headers,
+                    headers=headers,
                     cert=config.get_item('site', 'ssl_cert'))
             if r.status_code != 200:
                 self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
