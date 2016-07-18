@@ -23,10 +23,10 @@ class Placer(object):
     Interface for a placer, which knows how to process files and place them where they belong - on disk and database.
     """
 
-    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
         self.container_type = container_type
         self.container      = container
-        self.id             = id            #pylint: disable=redefined-builtin
+        self.id             = id_            #pylint: disable=redefined-builtin
         self.metadata       = metadata
         self.timestamp      = timestamp
 
@@ -126,8 +126,8 @@ class UIDPlacer(Placer):
     metadata_schema = 'uidupload.json'
     create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
 
-    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
-        super(UIDPlacer, self).__init__(container_type, container, id, metadata, timestamp, origin, context)
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
+        super(UIDPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
         self.metadata_for_file = {}
 
 
@@ -228,8 +228,8 @@ class TokenPlacer(Placer):
     Intended for use with a token that tracks where the files will be stored.
     """
 
-    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
-        super(TokenPlacer, self).__init__(container_type, container, id, metadata, timestamp, origin, context)
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
+        super(TokenPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
 
         self.paths  =   []
         self.folder =   None
@@ -268,8 +268,8 @@ class PackfilePlacer(Placer):
     A placer that can accept N files, save them into a zip archive, and place the result on an acquisition.
     """
 
-    def __init__(self, container_type, container, id, metadata, timestamp, origin, context):
-        super(PackfilePlacer, self).__init__(container_type, container, id, metadata, timestamp, origin, context)
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
+        super(PackfilePlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
 
         # This endpoint is an SSE endpoint
         self.sse            = True
@@ -282,9 +282,10 @@ class PackfilePlacer(Placer):
 
         self.permissions    = {}
         self.folder         = None
+        self.dir_           = None
         self.name           = None
         self.path           = None
-        self.zip            = None
+        self.zip_           = None
         self.ziptime        = None
 
 
@@ -339,8 +340,8 @@ class PackfilePlacer(Placer):
         self.ziptime = int(dateutil.parser.parse(stamp).strftime('%s'))
 
         # The zipfile is a santizied acquisition label
-        self.dir = util.sanitize_string_to_filename(self.a_label)
-        self.name = self.dir + '.zip'
+        self.dir_ = util.sanitize_string_to_filename(self.a_label)
+        self.name = self.dir_ + '.zip'
 
         # Make a tempdir to store zip until moved
         # OPPORTUNITY: this is also called in files.py. Could be a util func.
@@ -348,7 +349,7 @@ class PackfilePlacer(Placer):
 
         # Create a zip in the tempdir that later gets moved into the CAS.
         self.path = os.path.join(tempdir.name, 'temp.zip')
-        self.zip  = zipfile.ZipFile(self.path, 'w', zipfile.ZIP_DEFLATED, allowZip64=True)
+        self.zip_  = zipfile.ZipFile(self.path, 'w', zipfile.ZIP_DEFLATED, allowZip64=True)
 
         # OPPORTUNITY: add zip comment
         # self.zip.comment = json.dumps(metadata, default=metadata_encoder)
@@ -356,7 +357,7 @@ class PackfilePlacer(Placer):
         # Bit of a silly hack: write our tempdir directory into the zip (not including its contents).
         # Creates an empty directory entry in the zip which will hold all the files inside.
         # This way, when you expand a zip, you'll get folder/things instead of a thousand dicoms splattered everywhere.
-        self.zip.write(tempdir.name, self.dir)
+        self.zip_.write(tempdir.name, self.dir_)
 
     def process_file_field(self, field, info):
         # Should not be called with any files
@@ -376,7 +377,7 @@ class PackfilePlacer(Placer):
             os.utime(p, (self.ziptime, self.ziptime))
 
             # Place file into the zip folder we created before
-            self.zip.write(p, os.path.join(self.dir, os.path.basename(path)))
+            self.zip_.write(p, os.path.join(self.dir_, os.path.basename(path)))
 
             # Report progress
             complete += 1
@@ -385,7 +386,7 @@ class PackfilePlacer(Placer):
                 'data': { 'done': complete, 'total': total, 'percent': (complete / float(total)) * 100 },
             })
 
-        self.zip.close()
+        self.zip_.close()
 
         # Remove the folder created by TokenPlacer
         shutil.rmtree(self.folder)

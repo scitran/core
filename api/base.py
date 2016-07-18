@@ -225,7 +225,7 @@ class RequestHandler(webapp2.RequestHandler):
 
             # Upsert device record, with last-contacted time.
             # In the future, consider merging any keys into self.origin?
-            device_record = config.db['devices'].find_one_and_update({
+            config.db['devices'].find_one_and_update({
                     '_id': self.origin['id']
                 }, {
                     '$set': {

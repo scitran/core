@@ -206,9 +206,9 @@ class Upload(base.RequestHandler):
 
         if level == 'analysis':
             context = {'job_id': self.get_param('job')}
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cid, context=context)
+            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id_=cid, context=context)
         else:
-            return process_upload(self.request, Strategy.engine, container_type=level, id=cid, origin=self.origin)
+            return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin)
 
     def clean_packfile_tokens(self):
         """

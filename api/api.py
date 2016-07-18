@@ -13,14 +13,14 @@ from . import config
 from . import centralclient
 from . import download
 from . import upload
-from api.handlers import listhandler
-from api.handlers import userhandler
-from api.handlers import grouphandler
-from api.handlers import containerhandler
-from api.handlers import collectionshandler
-from api.handlers import searchhandler
-from api.handlers import schemahandler
-from api.handlers import reporthandler
+from .handlers import listhandler
+from .handlers import userhandler
+from .handlers import grouphandler
+from .handlers import containerhandler
+from .handlers import collectionshandler
+from .handlers import searchhandler
+from .handlers import schemahandler
+from .handlers import reporthandler
 
 log = config.log
 

@@ -70,8 +70,7 @@ def _resolve_schema(schema_url):
         resolvers[base_uri] = RefResolver(base_uri, None)
     return resolvers[base_uri].resolve(schema_name)[1], resolvers[base_uri]
 
-def no_op(g, *args):
-    #pylint disable=unused-argument
+def no_op(g, *args): # pylint: disable=unused-argument
     return g
 
 def schema_uri(type_, schema_name):

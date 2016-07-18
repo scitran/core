@@ -22,7 +22,7 @@ class TemporaryDirectory(object):
     Upon exiting the context, the directory and everything contained
     in it are removed.
     """
-    #pylint: disable=redefinded-builtin
+    # pylint: disable=redefined-builtin
 
     def __init__(self, suffix="", prefix=template, dir=None):
         self._closed = False

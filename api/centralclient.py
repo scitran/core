@@ -14,9 +14,6 @@ import requests
 from . import base
 from . import config
 
-import logging
-import logging.config
-
 log = config.log
 
 fail_count = 0
