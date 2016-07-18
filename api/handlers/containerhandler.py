@@ -250,11 +250,9 @@ class ContainerHandler(base.RequestHandler):
             for k,v in job.inputs.iteritems():
                 if v.type == 'acquisition' and v.id in id_array:
                     if response.get(v.id) is not None:
-                        dict_job = job.map()
-                        response[v.id].append(dict_job)
+                        response[v.id].append(job)
                     else:
-                        dict_job = job.map()
-                        response[v.id] = [dict_job]
+                        response[v.id] = [job]
         return response
 
     def get_all(self, cont_name, par_cont_name=None, par_id=None):

@@ -112,19 +112,20 @@ class Job(object):
         Flatten struct to map
         """
 
-        d = self.__dict__
+        # Don't modify the job obj
+        d = copy.deepcopy(self.__dict__)
 
-        if d.get('inputs', None):
+        if d.get('inputs'):
             for x in d['inputs'].keys():
                 d['inputs'][x] = d['inputs'][x].__dict__
-
-        if d.get('destination', None):
-            d['destination'] = d['destination'].__dict__
-
-        if d['destination'] is None:
-            d.pop('destination')
-        if d['inputs'] is None:
+        else:
             d.pop('inputs')
+
+        if d.get('destination'):
+            d['destination'] = d['destination'].__dict__
+        else:
+            d.pop('destination')
+
         if d['_id'] is None:
             d.pop('_id')
         if d['previous_job_id'] is None:
