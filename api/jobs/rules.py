@@ -1,5 +1,4 @@
 import fnmatch
-import json
 
 from .. import config
 from ..dao.containerutil import FileReference
@@ -112,7 +111,7 @@ def eval_rule(rule, file_, container):
 
     return True
 
-def queue_job_legacy(db, algorithm_id, input):
+def queue_job_legacy(algorithm_id, input_):
     """
     Tie together logic used from the no-manifest, single-file era.
     Takes a single FileReference instead of a map.
@@ -126,7 +125,7 @@ def queue_job_legacy(db, algorithm_id, input):
     input_name = gear['manifest']['inputs'].keys()[0]
 
     inputs = {
-        input_name: input
+        input_name: input_
     }
 
     job = Job(algorithm_id, inputs)
@@ -150,9 +149,9 @@ def create_jobs(db, container, container_type, file_):
     for rule in rules:
         if eval_rule(rule, file_, container):
             alg_name = rule['alg']
-            input = FileReference(type=container_type, id=str(container['_id']), name=file_['name'])
+            input_ = FileReference(type=container_type, id=str(container['_id']), name=file_['name'])
 
-            queue_job_legacy(db, alg_name, input)
+            queue_job_legacy(alg_name, input_)
             job_list.append(alg_name)
 
     return job_list

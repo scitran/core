@@ -58,7 +58,7 @@ def default_container(handler, container=None, target_parent_container=None):
     return g
 
 
-def collection_permissions(handler, container=None, target_parent_container=None):
+def collection_permissions(handler, container=None):
     """
     Collections don't have a parent_container.
     Permissions are checked on the collection itself or not at all if the collection is new.
@@ -100,7 +100,7 @@ def public_request(handler, container=None, parent_container=None):
         return f
     return g
 
-def list_permission_checker(handler, admin_only=False):
+def list_permission_checker(handler):
     def g(exec_op):
         def f(method, query=None, user=None, public=False, projection=None):
             handler_site = handler.user_site

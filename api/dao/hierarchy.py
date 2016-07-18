@@ -182,7 +182,7 @@ def _find_or_create_destination_project(group_id, project_label, timestamp):
         )
     return project
 
-def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
+def _create_query(cont, parent_type, parent_id, upload_type):
     if upload_type == 'label':
         return {
             'label':        cont['label'],
@@ -210,7 +210,7 @@ def _upsert_container(cont, cont_type, parent, parent_type, upload_type, timesta
     if cont_type == 'session':
         cont['subject'] = containerutil.add_id_to_subject(cont.get('subject'), parent['_id'])
 
-    query = _create_query(cont, cont_type, parent_type, parent['_id'], upload_type)
+    query = _create_query(cont, parent_type, parent['_id'], upload_type)
 
     if config.db[cont_type+'s'].find_one(query) is not None:
         return _update_container_nulls(query, cont, cont_type)
@@ -257,10 +257,10 @@ def upsert_bottom_up_hierarchy(metadata):
 
     # Fail if some fields are missing
     try:
-        group_id = group['_id']
-        project_label = project['label']
+        _ = group['_id']
+        _ = project['label']
+        _ = acquisition['uid']
         session_uid = session['uid']
-        acquisition_uid = acquisition['uid']
     except Exception as e:
         log.error(metadata)
         raise APIStorageException(str(e))
@@ -335,7 +335,7 @@ def _update_hierarchy(container, container_type, metadata):
     project = metadata.get('project', {})
     if project.keys():
         project['modified'] = now
-        project_obj = _update_container_nulls({'_id': project_id}, project, 'projects')
+        _update_container_nulls({'_id': project_id}, project, 'projects')
 
 def _update_container_nulls(base_query, update, container_type):
     coll_name = container_type if container_type.endswith('s') else container_type+'s'

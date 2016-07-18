@@ -249,12 +249,12 @@ class AnalysesStorage(ListStorage):
             raise Exception('No job with id {} found.'.format(analysis['job']))
 
         # If the job currently tied to the analysis failed, try to find one that didn't
-        while job.state == 'failed' and job._id is not None:
-            next_job = config.db.jobs.find_one({'previous_job_id': job._id})
+        while job.state == 'failed' and job.id_ is not None:
+            next_job = config.db.jobs.find_one({'previous_job_id': job.id_})
             if next_job is None:
                 break
             job = Job.load(next_job)
-        if job._id != analysis['job']:
+        if job.id_ != analysis['job']:
             # Update analysis if job has changed
             # Remove old inputs and replace with new job inputs
             # (In practice these should never change)

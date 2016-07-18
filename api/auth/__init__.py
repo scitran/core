@@ -20,8 +20,7 @@ def _get_access(uid, site, container):
     for perm in permissions_list:
         if perm['_id'] == uid and perm['site'] == site:
             return INTEGER_ROLES[perm['access']]
-    else:
-        return -1
+    return -1
 
 def always_ok(exec_op):
     """

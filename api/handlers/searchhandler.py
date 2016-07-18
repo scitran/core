@@ -1,5 +1,4 @@
 import bson
-import datetime
 import elasticsearch
 
 from .. import base
@@ -74,7 +73,6 @@ class SearchHandler(base.RequestHandler):
             self.abort(403, 'search is available only for authenticated users')
         queries = self.request.json_body
         path = queries.pop('path')
-        min_score = self.get_param('min_score', 0.5)
         all_data = self.is_true('all_data')
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
@@ -161,6 +159,6 @@ class SearchHandler(base.RequestHandler):
                 if collection:
                     result['collection'] = collection
                 results.append(result)
-        except elasticsearch.exceptions.ConnectionError as e:
+        except elasticsearch.exceptions.ConnectionError:
             self.abort(503, 'elasticsearch is not available')
         return results

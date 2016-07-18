@@ -6,7 +6,7 @@ from . import APIConsistencyException
 
 log = config.log
 
-def noop(*args, **kwargs):
+def noop(*args, **kwargs): # pylint: disable=unused-argument
     pass
 
 def get_list_storage_checker(action, list_name):
@@ -31,7 +31,7 @@ def get_container_storage_checker(action, cont_name):
         return check_children('session', 'acquisitions')
     return noop
 
-def user_on_permission(data_op, **kwargs):
+def user_on_permission(data_op, **kwargs): # pylint: disable=unused-argument
     """Check that for a permission the user already exists.
 
     Used before PUT operations.
@@ -46,7 +46,7 @@ def field_on_container(parent_field, parent_container_name):
 
     Used before POST/PUT operations.
     """
-    def f(data_op, **kwargs):
+    def f(data_op, **kwargs): # pylint: disable=unused-argument
         if data_op.get(parent_field) and not config.db[parent_container_name].find_one({'_id': data_op[parent_field]}):
             raise APIConsistencyException('{} {} does not exist'.format(parent_field, data_op[parent_field]))
     return f
@@ -66,7 +66,7 @@ def check_children(foreign_key_field, container_name):
     Raises:
         APIConsistencyException: Child document found
     """
-    def f(data_op, **kwargs):
+    def f(data_op, **kwargs): # pylint: disable=unused-argument
         if config.db[container_name].find_one({foreign_key_field: data_op['_id']}):
             raise APIConsistencyException(
                 'DELETE not allowed. Children {} found for {}'.format(container_name, data_op['_id'])

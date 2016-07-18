@@ -1,11 +1,8 @@
 """
 API request handlers for the jobs module
 """
-import bson.objectid
 
-from ..auth.containerauth import list_permission_checker, default_container
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
-from ..dao.containerstorage import ContainerStorage
 from .. import base
 from .. import config
 

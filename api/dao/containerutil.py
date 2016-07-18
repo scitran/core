@@ -43,9 +43,9 @@ class ContainerReference(object):
             raise Exception('Container type must be one of {}'.format(CONT_TYPES))
 
         if not isinstance(type, basestring):
-           raise Exception('Container type must be of type str')
+            raise Exception('Container type must be of type str')
         if not isinstance(id, basestring):
-           raise Exception('Container id must be of type str')
+            raise Exception('Container id must be of type str')
 
         self.type = type
         self.id   = id

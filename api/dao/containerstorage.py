@@ -40,7 +40,7 @@ class ContainerStorage(object):
         if action == 'GET' and _id:
             return self._get_el(_id, projection)
         if action == 'GET':
-            return self._get_all_el(query, user, public, projection)
+            return self._get_all_el(query, user, projection)
         if action == 'DELETE':
             return self._delete_el(_id)
         if action == 'PUT':
@@ -64,7 +64,7 @@ class ContainerStorage(object):
             if payload.get('metadata') is not None:
                 replace['metadata'] = util.mongo_sanitize_fields(payload.pop('metadata'))
             if payload.get('subject') is not None and payload['subject'].get('metadata') is not None:
-                    replace['subject.metadata'] = util.mongo_sanitize_fields(payload['subject'].pop('metadata'))
+                replace['subject.metadata'] = util.mongo_sanitize_fields(payload['subject'].pop('metadata'))
 
         update = {
             '$set': util.mongo_dict(payload)
@@ -97,7 +97,7 @@ class ContainerStorage(object):
                 raise APIStorageException(e.message)
         return self.dbc.find_one(_id, projection)
 
-    def _get_all_el(self, query, user, public, projection):
+    def _get_all_el(self, query, user, projection):
         if user:
             if query.get('permissions'):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]

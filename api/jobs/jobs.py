@@ -13,7 +13,7 @@ from .. import config
 log = config.log
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, _id=None):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None):
         """
         Creates a job.
 
@@ -74,7 +74,7 @@ class Job(object):
         self.modified        = modified
         self.state           = state
         self.request         = request
-        self._id             = _id
+        self.id_             = id_
 
     @classmethod
     def load(cls, e):
@@ -149,7 +149,7 @@ class Job(object):
         return d
 
     def insert(self):
-        if self._id is not None:
+        if self.id_ is not None:
             raise Exception('Cannot insert job that has already been inserted')
 
         result = config.db.jobs.insert_one(self.mongo())
@@ -200,8 +200,8 @@ class Job(object):
             })
 
         # Log job origin if provided
-        if self._id:
-            r['outputs'][0]['uri'] += '&job=' + self._id
+        if self.id_:
+            r['outputs'][0]['uri'] += '&job=' + self.id_
 
         self.request = r
         return self.request

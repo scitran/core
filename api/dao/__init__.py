@@ -7,5 +7,5 @@ class APIConsistencyException(Exception):
 class APIConflictException(Exception):
     pass
 
-def noop(*args, **kwargs):
+def noop(*args, **kwargs): # pylint: disable=unused-argument
     pass
