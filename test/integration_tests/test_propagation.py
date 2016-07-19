@@ -61,18 +61,18 @@ def test_public_propagation_from_project(with_hierarchy, data_builder, api_as_ad
     """
     data = with_hierarchy
 
-    payload = json.dumps({'public': True})
+    payload = json.dumps({'public': False})
     r = api_as_admin.put('/projects/' + data.project, data=payload)
     assert r.ok
 
     r = api_as_admin.get('/projects/' + data.project)
-    assert r.ok and json.loads(r.content)['public']
+    assert r.ok and not json.loads(r.content)['public']
 
     r = api_as_admin.get('/sessions/' + data.session)
-    assert r.ok and json.loads(r.content)['public']
+    assert r.ok and not json.loads(r.content)['public']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
-    assert r.ok and json.loads(r.content)['public']
+    assert r.ok and not json.loads(r.content)['public']
 
 def test_public_and_archived_propagation_from_project(with_hierarchy, data_builder, api_as_admin):
     """
@@ -104,15 +104,15 @@ def test_public_propagation_from_session(with_hierarchy, data_builder, api_as_ad
     """
     data = with_hierarchy
 
-    payload = json.dumps({'public': True})
+    payload = json.dumps({'archived': True})
     r = api_as_admin.put('/sessions/' + data.session, data=payload)
     assert r.ok
 
     r = api_as_admin.get('/sessions/' + data.session)
-    assert r.ok and json.loads(r.content)['public']
+    assert r.ok and json.loads(r.content)['archived']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
-    assert r.ok and json.loads(r.content)['public']
+    assert r.ok and json.loads(r.content)['archived']
 
 def test_set_public_acquisition(with_hierarchy, data_builder, api_as_admin):
     """
