@@ -319,7 +319,7 @@ def upgrade_to_11():
     into a list where the key becomes the field `input`
     """
 
-    jobs = config.db.jobs.find({'inputs.type': {'$exists': True}})
+    jobs = config.db.jobs.find({'inputs.type': {'$exists': False}})
 
     for job in jobs:
 
