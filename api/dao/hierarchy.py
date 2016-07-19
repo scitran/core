@@ -107,7 +107,7 @@ def propagate_changes(cont_name, _id, query, update):
         config.db.acquisitions.update_many(acquisition_q, update)
 
     elif cont_name == 'sessions':
-        query['sessions'] = _id
+        query['session'] = _id
         config.db.acquisitions.update_many(query, update)
     else:
         raise ValueError('changes can only be propagated from group, project or session level')
