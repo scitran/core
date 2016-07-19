@@ -319,8 +319,7 @@ def upgrade_to_11():
     into a list where the key becomes the field `input`
     """
 
-    # Mongo type 3 is an 'object', type 4 is an array
-    jobs = config.db.jobs.find({'inputs': {'$type': 3}})
+    jobs = config.db.jobs.find({'inputs.type': {'$exists': True}})
 
     for job in jobs:
 
