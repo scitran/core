@@ -7,7 +7,7 @@
     "lastname":         { "type": "string" },
     "firstname_hash":   { "type": "string" },
     "lastname_hash":    { "type": "string" },
-    "sex":              { "enum": ["male", "female", "other", null] },
+    "sex":              { "enum": ["male", "female", "other", "unknown", null] },
     "code":             { "type": "string" },
     "tags":             { "type": "array", "items": {"type": "string"} },
     "metadata":         { "type": "object" },
