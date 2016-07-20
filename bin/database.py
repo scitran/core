@@ -8,8 +8,10 @@ import logging
 import sys
 
 from api import config
+from api.dao import containerutil
+from api.jobs.jobs import Job
 
-CURRENT_DATABASE_VERSION = 11 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 12 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -333,6 +335,35 @@ def upgrade_to_11():
             {'$set': {'inputs': inputs_arr}}
         )
 
+def upgrade_to_12():
+    """
+    scitran/core PR #372
+
+    Store job inputs on job-based analyses
+    """
+
+    sessions = config.db.sessions.find({'analyses.job': {'$exists': True}})
+
+    for session in sessions:
+        for analysis in session.get('analyses'):
+            if analysis.get('job'):
+                job = Job.get(analysis['job'])
+                files = analysis.get('files', [])
+                files[:] = [x for x in files if x.get('output')] # remove any existing inputs and insert fresh
+
+                for i in getattr(job, 'inputs', {}):
+                    fileref = job.inputs[i]
+                    contref = containerutil.create_containerreference_from_filereference(job.inputs[i])
+                    file_ = contref.find_file(fileref.name)
+                    if file_:
+                        file_['input'] = True
+                        files.append(file_)
+
+                q = {'analyses._id': analysis['_id']}
+                u = {'$set': {'analyses.$.job': job._id, 'analyses.$.files': files}}
+                config.db.sessions.update_one(q, u)
+
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -364,6 +395,8 @@ def upgrade_schema():
             upgrade_to_10()
         if db_version < 11:
             upgrade_to_11()
+        if db_version < 12:
+            upgrade_to_12()
 
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
