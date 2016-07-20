@@ -257,20 +257,22 @@ class AnalysesStorage(ListStorage):
             job = Job.load(next_job)
         if job._id != analysis['job']:
             # Update analysis if job has changed
+            # Remove old inputs and replace with new job inputs
+            # (In practice these should never change)
+            files = analysis.get('files', [])
+            files[:] = [x for x in files if x.get('output')]
+
+            for i in getattr(job, 'inputs',{}):
+                fileref = job.inputs[i]
+                contref = containerutil.create_containerreference_from_filereference(job.inputs[i])
+                file_ = contref.find_file(fileref.name)
+                if file_:
+                    file_['input'] = True
+                    files.append(file_)
+
             q = {'analyses._id': analysis['_id']}
-            u = {'$set': {'analyses.$.job': job._id}}
+            u = {'$set': {'analyses.$.job': job._id, 'analyses.$.files': files}}
             config.db.sessions.update_one(q, u)
+
         analysis['job'] = job
-
-        # Inflate files from job inputs, add to analysis file array
-        files = analysis.get('files', [])
-        for i in getattr(job, 'inputs',{}):
-            fileref = job.inputs[i]
-            contref = containerutil.create_containerreference_from_filereference(job.inputs[i])
-            file_ = contref.find_file(fileref.name)
-            if file_:
-                file_['input'] = True
-                files.append(file_)
-
-        analysis['files'] = files
         return analysis

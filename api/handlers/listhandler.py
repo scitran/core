@@ -22,7 +22,7 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 from ..dao import hierarchy
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 
 log = config.log
@@ -706,19 +706,32 @@ class AnalysesHandler(ListHandler):
         default = self._default_analysis()
         default.update(analysis)
         analysis = default
+
+        # Save inputs to analysis and job
+        inputs = {} # For Job object (map of FileReferences)
+        files = [] # For Analysis object (list of file objects)
+        for x in job['inputs'].keys():
+            input_map = job['inputs'][x]
+            fileref = create_filereference_from_dictionary(input_map)
+            inputs[x] = fileref
+
+            contref = create_containerreference_from_filereference(fileref)
+            file_ = contref.find_file(fileref.name)
+            if file_:
+                file_['input'] = True
+                files.append(file_)
+        analysis['files'] = files
+
         result = storage.exec_op('POST', _id=cid, payload=analysis)
         if result.modified_count != 1:
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, cid))
 
-        gear_name = job['gear']
-        # Translate maps to FileReferences
-        inputs = {}
-        for x in job['inputs'].keys():
-            input_map = job['inputs'][x]
-            inputs[x] = create_filereference_from_dictionary(input_map)
+        # Prepare job
         tags = job.get('tags', [])
         if 'analysis' not in tags:
             tags.append('analysis')
+
+        gear_name = job['gear']
 
         destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
         job = Job(gear_name, inputs, destination=destination, tags=tags)
