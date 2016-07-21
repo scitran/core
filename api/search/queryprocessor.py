@@ -148,9 +148,8 @@ class TargetProperty(object):
 class TargetInAnalysis(TargetProperty):
 
     def __init__(self, name, query, analyses_query):
+        super(TargetInAnalysis, self).__init__(name, query)
         self.target_analysys = TargetProperty('analyses', analyses_query)
-        self.name = name
-        self.query = query
 
     def get_results(self, parent_name, parent_results):
         analysis_list = self.target_analysys.get_results(parent_name, parent_results)

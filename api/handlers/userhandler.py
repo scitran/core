@@ -7,9 +7,9 @@ from .. import base
 from .. import util
 from .. import config
 from .. import validators
-from ..auth import userauth, always_ok, ROLES
+from ..auth import userauth
 from ..dao import containerstorage
-from ..dao import noop
+from ..dao import noop, APIStorageException
 
 log = config.log
 
@@ -18,9 +18,9 @@ class UserHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(UserHandler, self).__init__(request, response)
+        self.storage = containerstorage.ContainerStorage('users', use_object_id=False)
 
     def get(self, _id):
-        self._init_storage()
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         result = permchecker(self.storage.exec_op)('GET', _id, projection={'api_key': 0} or None)
@@ -30,7 +30,6 @@ class UserHandler(base.RequestHandler):
 
     def self(self):
         """Return details for the current User."""
-        self._init_storage()
         if not self.uid:
             self.abort(400, 'no user is logged in')
         user = self.storage.exec_op('GET', self.uid)
@@ -47,7 +46,6 @@ class UserHandler(base.RequestHandler):
         return result
 
     def delete(self, _id):
-        self._init_storage()
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         # Check for authZ before cleaning up user permissions
@@ -94,8 +92,6 @@ class UserHandler(base.RequestHandler):
                 {"modified": 1}
 
         """
-
-        self._init_storage()
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         payload = self.request.json_body
@@ -159,9 +155,6 @@ class UserHandler(base.RequestHandler):
         else:
             self.abort(404, 'User {} not updated'.format(payload['_id']))
 
-    def _init_storage(self):
-        self.storage = containerstorage.ContainerStorage('users', use_object_id=False)
-
     def _cleanup_user_permissions(self, uid):
         try:
             config.db.collections.delete_many({'curator': uid})
@@ -172,17 +165,15 @@ class UserHandler(base.RequestHandler):
             config.db.projects.update_many(query, update)
             config.db.sessions.update_many(query, update)
             config.db.acquisitions.update_many(query, update)
-        except:
+        except APIStorageException:
             self.abort(500, 'Site-wide user permissions for {} were unabled to be removed'.format(uid))
 
     def avatar(self, uid):
-        self._init_storage()
         self.resolve_avatar(uid, default=self.request.GET.get('default'))
 
     def self_avatar(self):
         if self.uid is None:
             self.abort(404, 'not a logged-in user')
-        self._init_storage()
         self.resolve_avatar(self.uid, default=self.request.GET.get('default'))
 
     def resolve_avatar(self, email, default=None):
@@ -194,11 +185,10 @@ class UserHandler(base.RequestHandler):
         # Storage throws a 404; we want to catch that and handle it separately in the case of a provided default.
         try:
             user = self._get_user(email)
-        except:
+        except APIStorageException:
             user = {}
 
         avatar  = user.get('avatar', None)
-        avatars = user.get('avatars', {})
 
         # If the user exists but has no set avatar, try to get one
         if user and avatar is None:

@@ -270,7 +270,7 @@ class AnalysesStorage(ListStorage):
                     files.append(file_)
 
             q = {'analyses._id': analysis['_id']}
-            u = {'$set': {'analyses.$.job': job._id, 'analyses.$.files': files}}
+            u = {'$set': {'analyses.$.job': job.id_, 'analyses.$.files': files}}
             config.db.sessions.update_one(q, u)
 
         analysis['job'] = job

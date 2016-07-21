@@ -169,7 +169,7 @@ routing_regexes = {
     'note_id_re': '[0-9a-f]{24}',
     # schema regex
     # example: schema_path/schema.json
-    'schema_re': '[^/.]{3,60}/[^/.]{3,60}\.json'
+    'schema_re': r'[^/.]{3,60}/[^/.]{3,60}\.json'
 }
 
 def _format(route):

@@ -44,8 +44,8 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
             response = (json.loads(r.content))
             sites = response.get('sites')
             users = response.get('users')
-            log.debug('recieved sites: %s ' % ', '.join(s['_id'] for s in sites))
-            log.debug('recieved users: %s' % ', '.join([key for key in users]))
+            log.debug('recieved sites: %s ', ', '.join(s['_id'] for s in sites))
+            log.debug('recieved users: %s', ', '.join([key for key in users]))
             if response.get('users'):
                 for _id, remotes in response['users'].iteritems():
                     db.users.update_one({'_id': _id}, {'$set': {'remotes': remotes}})
@@ -57,10 +57,10 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
                         {'remotes': {'$exists': True}, '_id': {'$nin': users.keys()}},
                         {'$unset': {'remotes': ''}},
                         )
-            log.info('%3d users with remote data, %3d remotes' % (
+            log.info('%3d users with remote data, %3d remotes' ,
                     len([u['_id'] for u in db.users.find({'remotes': {'$exists': True}}, {'_id': True})]),
                     len([s['_id'] for s in db.sites.find({}, {'_id': True})])
-                    ))
+                    )
             return True
         else:
             # r.reason contains generic description for the specific error code
@@ -70,7 +70,7 @@ def update(db, api_uri, site_name, site_id, ssl_cert, central_url):
                 msg = reason.group(1)
             else:
                 msg = r.reason
-            log.warning('%s - %s' % (r.status_code, msg))
+            log.warning('%s - %s', r.status_code, msg)
             return False
 
 
@@ -139,21 +139,3 @@ class CentralClient(base.RequestHandler):
 
         self.abort(404, 'register endpoint is not implemented')
         # every request to this route is aborted at the moment
-        if not config.get_item('site', 'registered'):
-            self.abort(400, 'Site not registered with central')
-        if not config.get_item('site', 'ssl_cert'):
-            self.abort(400, 'SSL cert not configured')
-        if not config.get_item('site', 'central_url'):
-            self.abort(400, 'Central URL not configured')
-        if not update(db=config.db,
-                      api_uri=config.get_item('site', 'api_url'),
-                      site_name=config.get_item('site', 'name'),
-                      site_id=config.get_item('site', 'id'),
-                      ssl_cert=config.get_item('site', 'ssl_cert'),
-                      central_url=config.get_item('site', 'central_url'),):
-            fail_count += 1
-        else:
-            fail_count = 0
-        if fail_count == 3:
-            log.warning('scitran central unreachable, purging all remotes info')
-            clean_remotes(db=config.db, site_id=config.get_item('site', 'id'))

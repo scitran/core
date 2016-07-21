@@ -97,7 +97,7 @@ class Job(object):
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), _id=d['_id'])
+        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), id_=d['_id'])
 
     @classmethod
     def get(cls, _id):

@@ -83,7 +83,7 @@ class Queue(object):
         """
 
         if job.attempt >= max_attempts() and not force:
-            log.info('Permanently failed job %s (after %d attempts)' % (job.id_, job.attempt))
+            log.info('Permanently failed job %s (after %d attempts)', job.id_, job.attempt)
             return
 
         if job.state != 'failed':
@@ -109,7 +109,7 @@ class Queue(object):
         new_job.modified = now
 
         new_id = new_job.insert()
-        log.info('respawned job %s as %s (attempt %d)' % (job.id_, new_id, new_job.attempt))
+        log.info('respawned job %s as %s (attempt %d)', job.id_, new_id, new_job.attempt)
 
         return new_id
 

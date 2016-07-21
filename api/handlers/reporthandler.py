@@ -1,11 +1,9 @@
-import json
 import bson
 import dateutil
 import copy
 
 from .. import base
 from .. import config
-from .. import util
 
 log = config.log
 
@@ -19,7 +17,7 @@ class ReportHandler(base.RequestHandler):
     def __init__(self, request=None, response=None):
         super(ReportHandler, self).__init__(request, response)
 
-    def get(self, report_type, **kwargs):
+    def get(self, report_type):
         report = None
         if report_type == 'site':
             report = SiteReport()
@@ -38,7 +36,7 @@ class ReportHandler(base.RequestHandler):
             if end_date is not None and start_date is not None and end_date < start_date:
                 self.abort(400, 'End date {} is before start date {}'.format(end_date, start_date))
 
-            report = ProjectReport(map(bson.ObjectId, project_list),
+            report = ProjectReport([bson.ObjectId(id_) for id_ in project_list],
                                    start_date=start_date,
                                    end_date=end_date)
 
@@ -193,7 +191,7 @@ class ProjectReport(Report):
                 if perm.get('access') == 'admin':
                     admins.append(perm.get('_id'))
             admin_objs = config.db.users.find({'_id': {'$in': admins}})
-            project['admins'] = map(lambda x: x.get('firstname','')+' '+x.get('lastname',''), admin_objs)
+            project['admins'] = map(lambda x: x.get('firstname','')+' '+x.get('lastname',''), admin_objs) # pylint: disable=bad-builtin, deprecated-lambda
 
             base_query = self._base_query(p['_id'])
             project['session_count'] = config.db.sessions.count(base_query)

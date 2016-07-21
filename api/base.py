@@ -132,10 +132,10 @@ class RequestHandler(webapp2.RequestHandler):
 
         if cached_token:
             uid = cached_token['uid']
-            log.debug('looked up cached token in %dms' % ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
+            log.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
         else:
             uid = self.validate_oauth_token(access_token, timestamp)
-            log.debug('looked up remote token in %dms' % ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
+            log.debug('looked up remote token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
             # Cache the token for future requests
             config.db.authtokens.replace_one({'_id': access_token}, {'uid': uid, 'timestamp': timestamp}, upsert=True)
@@ -296,7 +296,7 @@ class RequestHandler(webapp2.RequestHandler):
         site_id = config.get_item('site', 'id')
         target_site = self.get_param('site', site_id)
         if target_site == site_id:
-            log.debug('from %s %s %s %s %s' % (self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
+            log.debug('from %s %s %s %s %s', self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
             return super(RequestHandler, self).dispatch()
         else:
             if not site_id:
@@ -318,7 +318,7 @@ class RequestHandler(webapp2.RequestHandler):
             params = self.request.GET.mixed()
             if 'user' in params: del params['user']
             del params['site']
-            log.debug(' for %s %s %s %s %s' % (target_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed())))
+            log.debug(' for %s %s %s %s %s', target_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
             target_uri = target['api_uri'] + self.request.path.split('/api')[1]
             r = requests.request(
                     self.request.method,

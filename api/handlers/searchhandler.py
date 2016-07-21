@@ -67,8 +67,9 @@ class SearchHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(SearchHandler, self).__init__(request, response)
+        self.search_containers = None
 
-    def advanced_search(self, **kwargs):
+    def advanced_search(self):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         queries = self.request.json_body
@@ -113,7 +114,7 @@ class SearchHandler(base.RequestHandler):
             parents.update(self._get_parents(parent_container, parent_name))
         return parents
 
-    def get_datatree(self, **kwargs):
+    def get_datatree(self):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         size = self.get_param('size')

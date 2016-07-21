@@ -9,10 +9,7 @@ import zipfile
 
 from .. import base
 from .. import config
-from .. import files
-from ..jobs import rules
 from ..jobs.jobs import Job
-from .. import tempdir as tempfile
 from .. import upload
 from .. import download
 from .. import util
@@ -73,7 +70,7 @@ def initialize_list_configurations():
             'input_schema_file': 'analysis.json'
         }
     }
-    list_handler_configurations = {
+    list_container_configurations = {
         'groups': {
             'roles':{
                 'storage': liststorage.ListStorage,
@@ -97,7 +94,7 @@ def initialize_list_configurations():
         'collections': copy.deepcopy(container_default_configurations)
     }
     # preload the Storage instances for all configurations
-    for cont_name, cont_config in list_handler_configurations.iteritems():
+    for cont_name, cont_config in list_container_configurations.iteritems():
         for list_name, list_config in cont_config.iteritems():
             storage_class = list_config['storage']
             storage = storage_class(
@@ -106,7 +103,7 @@ def initialize_list_configurations():
                 use_object_id=list_config.get('use_object_id', False)
             )
             list_config['storage'] = storage
-    return list_handler_configurations
+    return list_container_configurations
 
 
 list_handler_configurations = initialize_list_configurations()
@@ -130,7 +127,7 @@ class ListHandler(base.RequestHandler):
 
     def get(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
         try:
             result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
         except APIStorageException as e:
@@ -142,7 +139,7 @@ class ListHandler(base.RequestHandler):
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         payload = self.request.json_body
         payload_validator(payload, 'POST')
@@ -155,7 +152,7 @@ class ListHandler(base.RequestHandler):
 
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+        permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         payload = self.request.json_body
         payload_validator(payload, 'PUT')
@@ -171,7 +168,7 @@ class ListHandler(base.RequestHandler):
 
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
         try:
             result = keycheck(permchecker(storage.exec_op))('DELETE', _id, query_params=kwargs)
         except APIStorageException as e:
@@ -191,11 +188,11 @@ class ListHandler(base.RequestHandler):
         5) the mongo_validator that will check what will be sent to mongo against a json schema
         6) the keycheck decorator validating the request key
         """
-        config = list_handler_configurations[cont_name][list_name]
-        storage = config['storage']
-        permchecker = config['permchecker']
-        if config.get('get_full_container'):
-             query_params = None
+        conf = list_handler_configurations[cont_name][list_name]
+        storage = conf['storage']
+        permchecker = conf['permchecker']
+        if conf.get('get_full_container'):
+            query_params = None
         container = storage.get_container(_id, query_params)
         if container is not None:
             if self.superuser_request:
@@ -206,12 +203,12 @@ class ListHandler(base.RequestHandler):
                 permchecker = permchecker(self, container)
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
-        mongo_schema_uri = validators.schema_uri('mongo', config.get('storage_schema_file'))
+        mongo_schema_uri = validators.schema_uri('mongo', conf.get('storage_schema_file'))
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        input_schema_uri = validators.schema_uri('input', config.get('input_schema_file'))
+        input_schema_uri = validators.schema_uri('input', conf.get('input_schema_file'))
         input_validator = validators.from_schema_path(input_schema_uri)
         keycheck = validators.key_check(mongo_schema_uri)
-        return container, permchecker, storage, mongo_validator, input_validator, keycheck
+        return permchecker, storage, mongo_validator, input_validator, keycheck
 
 
 class PermissionsListHandler(ListHandler):
@@ -248,7 +245,7 @@ class PermissionsListHandler(ListHandler):
                     'permissions': config.db.projects.find_one({'_id': oid},{'permissions': 1})['permissions']
                 }}
                 hierarchy.propagate_changes(cont_name, oid, {}, update)
-            except:
+            except APIStorageException:
                 self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
 
 
@@ -260,7 +257,7 @@ class NotesListHandler(ListHandler):
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         payload = self.request.json_body
         input_validator(payload, 'POST')
@@ -278,7 +275,7 @@ class NotesListHandler(ListHandler):
 
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+        permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         payload = self.request.json_body
         input_validator(payload, 'PUT')
@@ -327,7 +324,7 @@ class TagsListHandler(ListHandler):
         """
         try:
             hierarchy.propagate_changes(cont_name, _id, query, update)
-        except:
+        except APIStorageException:
             self.abort(500, 'tag change not propagated from group {}'.format(_id))
 
 
@@ -406,7 +403,7 @@ class FileListHandler(ListHandler):
 
         """
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         list_name = storage.list_name
         filename = kwargs.get('name')
 
@@ -464,12 +461,6 @@ class FileListHandler(ListHandler):
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
-    def delete(self, cont_name, list_name, **kwargs):
-        filename = kwargs.get('name')
-        _id = kwargs.get('cid')
-        result = super(FileListHandler, self).delete(cont_name, list_name, **kwargs)
-        return result
-
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
 
@@ -481,10 +472,10 @@ class FileListHandler(ListHandler):
             cont_name_plural = cont_name + 's'
 
         # Authorize
-        container, permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name_plural, list_name, _id)
+        permchecker, _, _, _, _ = self._initialize_request(cont_name_plural, list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
-        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id=_id, origin=self.origin)
+        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
 
     def _check_packfile_token(self, project_id, token_id, check_user=True):
         """
@@ -563,7 +554,7 @@ class FileListHandler(ListHandler):
             'token': str(result.inserted_id)
         }
 
-    def packfile(self, cont_name, **kwargs):
+    def packfile(self, **kwargs):
         """
         Add files to an in-progress packfile.
         """
@@ -574,7 +565,7 @@ class FileListHandler(ListHandler):
 
         return upload.process_upload(self.request, upload.Strategy.token, origin=self.origin, context={'token': token_id})
 
-    def packfile_end(self, cont_name, **kwargs):
+    def packfile_end(self, **kwargs):
         """
         Complete and save an uploaded packfile.
         """
@@ -678,7 +669,7 @@ class AnalysesHandler(ListHandler):
 
         """
         _id = kwargs.pop('cid')
-        container, permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
         if self.is_true('job'):
@@ -840,7 +831,7 @@ class AnalysesHandler(ListHandler):
 
         """
         _id = kwargs.pop('cid')
-        container, permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         filename = kwargs.get('name')
         ticket_id = self.get_param('ticket')
         if not ticket_id:
@@ -910,7 +901,7 @@ class AnalysesHandler(ListHandler):
     def delete_note(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         analysis_id = kwargs.pop('_id')
-        container, permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         note_id = kwargs.get('note_id')
         permchecker(noop)('DELETE', _id=_id)
         result = storage.delete_note(_id=_id, analysis_id=analysis_id, note_id=note_id)
@@ -922,7 +913,7 @@ class AnalysesHandler(ListHandler):
     def add_note(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         analysis_id = kwargs.get('_id')
-        container, permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, input_validator, _ = self._initialize_request(cont_name, list_name, _id)
         payload = self.request.json_body
         input_validator(payload, 'POST')
         payload['_id'] = str(bson.objectid.ObjectId())

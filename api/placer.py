@@ -161,9 +161,9 @@ class UIDPlacer(Placer):
         container   = target['container']
         r_metadata  = target['metadata']
 
-        self.container_type = container.level
-        self.id             = container._id
-        self.container      = container.container
+        self.container_type = container['level']
+        self.id             = container['_id']
+        self.container      = container['container']
 
         info.update(r_metadata)
 
