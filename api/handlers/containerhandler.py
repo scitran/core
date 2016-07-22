@@ -271,8 +271,6 @@ class ContainerHandler(base.RequestHandler):
         elif self.public_request:
             permchecker = containerauth.list_public_request
         else:
-            # admin_only flag will limit the results to the set on which the user is an admin
-            admin_only = self.is_true('admin')
             permchecker = containerauth.list_permission_checker(self)
         # if par_cont_name (parent container name) and par_id are not null we return only results
         # within that container

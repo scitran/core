@@ -29,7 +29,7 @@ class CollectionsHandler(ContainerHandler):
 
 
 
-    def post(self, **kwargs):
+    def post(self):
         storage = self.container_handler_configurations['collections']['storage']
         mongo_validator, payload_validator = self._get_validators()
 

@@ -66,7 +66,8 @@ def archivestream(ticket):
         for filepath, arcpath, _ in ticket['target']:
             yield archive.gettarinfo(filepath, arcpath).tobuf()
             with open(filepath, 'rb') as fd:
-                for chunk in iter(lambda: fd.read(CHUNKSIZE), ''):
+                chunk = ''
+                for chunk in iter(lambda: fd.read(CHUNKSIZE), ''): # pylint: disable=cell-var-from-loop
                     yield chunk
                 if len(chunk) % BLOCKSIZE != 0:
                     yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'

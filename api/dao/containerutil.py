@@ -89,6 +89,9 @@ class ContainerReference(object):
         raise Exception("User " + userID + " does not have " + perm_name + " access to " + self.type + " " + self.id)
 
 class FileReference(ContainerReference):
+    # pylint: disable=redefined-builtin
+    # TODO: refactor to resolve pylint warning
+
     def __init__(self, type, id, name):
         super(FileReference, self).__init__(type, id)
         self.name = name
