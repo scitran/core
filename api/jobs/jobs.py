@@ -38,7 +38,7 @@ class Job(object):
             The state of this job. Defaults to 'pending'.
         request: map (optional)
             The request that is used for the engine. Generated when job is started.
-        _id: string (optional)
+        id_: string (optional)
             The database identifier for this job.
         """
 
@@ -115,6 +115,8 @@ class Job(object):
         # Don't modify the job obj
         d = copy.deepcopy(self.__dict__)
 
+        d['id'] = d.pop('id_', None)
+
         if d.get('inputs'):
             for x in d['inputs'].keys():
                 d['inputs'][x] = d['inputs'][x].__dict__
@@ -126,8 +128,8 @@ class Job(object):
         else:
             d.pop('destination')
 
-        if d['_id'] is None:
-            d.pop('_id')
+        if d['id'] is None:
+            d.pop('id')
         if d['previous_job_id'] is None:
             d.pop('previous_job_id')
         if d['request'] is None:
@@ -137,8 +139,8 @@ class Job(object):
 
     def mongo(self):
         d = self.map()
-        if d.get('_id'):
-            d['_id'] = bson.ObjectId(d['_id'])
+        if d.get('id'):
+            d['id'] = bson.ObjectId(d['id'])
         if d.get('inputs'):
             input_array = []
             for k, inp in d['inputs'].iteritems():

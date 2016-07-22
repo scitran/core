@@ -27,8 +27,8 @@ class ContainerStorage(object):
         return self._get_el(_id)
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
-                public=False, projection=None, recursive=False, r_payload=None,
-                replace_metadata=False): # pylint: disable=unused-argument
+                public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument
+                replace_metadata=False):
         """
         Generic method to exec an operation.
         The request is dispatched to the corresponding private methods.

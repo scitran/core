@@ -107,6 +107,8 @@ def process_form(request, hash_alg=None):
     return (form, tempdir)
 
 def getHashingFieldStorage(upload_dir, hash_alg):
+    # pylint: disable=attribute-defined-outside-init
+
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
 
