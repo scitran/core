@@ -38,6 +38,9 @@ def add_id_to_subject(subject, pid):
 
 
 class ContainerReference(object):
+    # pylint: disable=redefined-builtin
+    # TODO: refactor to resolve pylint warning
+
     def __init__(self, type, id):
         if type not in CONT_TYPES:
             raise Exception('Container type must be one of {}'.format(CONT_TYPES))
@@ -87,11 +90,7 @@ class ContainerReference(object):
 
 class FileReference(ContainerReference):
     def __init__(self, type, id, name):
-        if type not in CONT_TYPES:
-            raise Exception('Container type must be one of {}'.format(CONT_TYPES))
-
-        self.type = type
-        self.id   = id
+        super(FileReference, self).__init__(type, id)
         self.name = name
 
     @classmethod

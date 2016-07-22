@@ -87,7 +87,7 @@ def collection_permissions(handler, container=None):
 
 
 
-def public_request(handler, container=None, parent_container=None):
+def public_request(handler, container=None):
     """
     For public requests we allow only GET operations on containers marked as public.
     """

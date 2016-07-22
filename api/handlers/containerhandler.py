@@ -1,6 +1,4 @@
 import bson
-import copy
-import json
 import datetime
 import dateutil
 
@@ -83,6 +81,8 @@ class ContainerHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(ContainerHandler, self).__init__(request, response)
+        self.storage = None
+        self.config = None
 
     def get(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -234,7 +234,7 @@ class ContainerHandler(base.RequestHandler):
 
         c = self._get_container(cid)
         permchecker = self._get_permchecker(c)
-        result = permchecker(noop)('GET', cid)
+        permchecker(noop)('GET', cid)
 
         children = hierarchy.get_children('session', cid)
         id_array = [str(c['_id']) for c in children]
@@ -247,7 +247,7 @@ class ContainerHandler(base.RequestHandler):
         response = {}
         for j in jobs:
             job  = Job.load(j)
-            for k,v in job.inputs.iteritems():
+            for _,v in job.inputs.iteritems():
                 if v.type == 'acquisition' and v.id in id_array:
                     if response.get(v.id) is not None:
                         response[v.id].append(job)
@@ -273,7 +273,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             # admin_only flag will limit the results to the set on which the user is an admin
             admin_only = self.is_true('admin')
-            permchecker = containerauth.list_permission_checker(self, admin_only)
+            permchecker = containerauth.list_permission_checker(self)
         # if par_cont_name (parent container name) and par_id are not null we return only results
         # within that container
         if par_cont_name:
@@ -365,7 +365,7 @@ class ContainerHandler(base.RequestHandler):
             debuginfo.add_debuginfo(self, cont_name, results)
         return results
 
-    def post(self, cont_name, **kwargs):
+    def post(self, cont_name):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         mongo_validator, payload_validator = self._get_validators()
@@ -469,7 +469,7 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container= self._get_container(_id)
-        target_parent_container, parent_id_property = self._get_parent_container(container)
+        target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
             # This line exec the actual delete checking permissions using the decorator permchecker
@@ -525,7 +525,7 @@ class ContainerHandler(base.RequestHandler):
         if self.superuser_request:
             return always_ok
         elif self.public_request:
-            return containerauth.public_request(self, container, parent_container)
+            return containerauth.public_request(self, container)
         else:
             permchecker = self.config['permchecker']
             return permchecker(self, container, parent_container)
