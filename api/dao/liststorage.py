@@ -192,7 +192,6 @@ class AnalysesStorage(ListStorage):
         analysis = self._get_el(_id, {'_id': analysis_id})
         if analysis is None:
             raise APIStorageException('{} {} not found in {} {}.'.format(self.list_name, analysis_id, self.cont_name, _id))
-        analysis = containerutil.inflate_job_info(analysis)
         files = analysis.get('files')
         if files is None:
             return None
