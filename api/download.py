@@ -125,12 +125,13 @@ class Download(base.RequestHandler):
 
 
 
-    def _preflight_archivestream(self, req_spec):
+    def _preflight_archivestream(self, req_spec, collection=None):
         data_path = config.get_item('persistent', 'data_path')
         arc_prefix = 'sdm'
         file_cnt = 0
         total_size = 0
         targets = []
+
         # FIXME: check permissions of everything
         used_subpaths = {}
         for item in req_spec['nodes']:
@@ -139,33 +140,45 @@ class Download(base.RequestHandler):
                 project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
                 sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
                 session_dict = {session['_id']: session for session in sessions}
                 acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid', 'timestamp', 'timezone'])
                 session_prefixes = {}
+
                 for session in session_dict.itervalues():
                     session_prefix = prefix + '/' + self._path_from_container(session, used_subpaths, project['_id'])
                     session_prefixes[session['_id']] = session_prefix
                     total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
                     acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
             elif item['level'] == 'session':
                 session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id'])
                 total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-                acquisitions = config.db.acquisitions.find({'session': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
+
+                # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
+                a_query = {'session': item_id}
+                if collection:
+                    a_query['collections'] = bson.ObjectId(collection)
+                acquisitions = config.db.acquisitions.find(a_query, ['label', 'files', 'uid', 'timestamp', 'timezone'])
+
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
             elif item['level'] == 'acquisition':
                 acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
                 session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
         log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
         filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
         ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
@@ -271,4 +284,5 @@ class Download(base.RequestHandler):
                 validator = validators.from_schema_path(payload_schema_uri)
                 validator(req_spec, 'POST')
                 log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
-                return self._preflight_archivestream(req_spec)
+
+                return self._preflight_archivestream(req_spec, collection=self.get_param('collection'))
