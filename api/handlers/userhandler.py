@@ -38,7 +38,6 @@ class UserHandler(base.RequestHandler):
         return user
 
     def get_all(self):
-        self._init_storage()
         permchecker = userauth.list_permission_checker(self)
         result = permchecker(self.storage.exec_op)('GET', projection={'preferences': 0, 'api_key': 0})
         if result is None:
@@ -137,7 +136,6 @@ class UserHandler(base.RequestHandler):
 
         """
 
-        self._init_storage()
         permchecker = userauth.default(self)
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
