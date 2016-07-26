@@ -514,9 +514,9 @@ class AnalysisJobPlacer(AnalysisPlacer):
         # Search the sessions table for analysis, replace file field
         if self.metadata.get('files'):
             q = {'analyses._id': str(self.id)}
-            u = {'$set': {'analyses.$.files': self.metadata['files']}}
+            u = {'$push': {'analyses.$.files': {'$each': self.metadata['files']}}}
             if self.context.get('job_id'):
                 # If the original job failed, update the analysis with the job that succeeded
-                u['$set']['job'] = self.context['job_id']
+                u['$set'] = {'job': self.context['job_id']}
             config.db.sessions.update_one(q, u)
 
