@@ -22,24 +22,14 @@ def with_a_download_available(api_as_admin, data_builder, bunch, request):
     acquisition_id = data_builder.create_acquisition(session_id)
 
     # multiform fields for the file upload
-    files = {'file': (file_name, 'some,data,to,send\nanother,row,to,send\n'),
-             'tags': ('', '["incomplete"]'),
-             'metadata':
-             ('',
-              '''{   "group": {"_id": "scitran"},
-                    "project": {"label": "Testdata"},
-                    "session": {"uid": "1.2.840.113619.6.353.10437158128305161617400354036593525848"},
-                    "file": {"type": "nifti"},
-                    "acquisition": {"uid": "1.2.840.113619.2.353.4120.7575399.14591.1403393566.658_1",
-                    "timestamp": "1970-01-01T00:00:00",
-                    "label": "Screen Save",
-                    "instrument": "MRI",
-                    "measurement": "screensave",
-                    "timezone": "America/Los_Angeles"},
-                    "subject": {"code": "ex7236"}
-              }'''
-              )
-             }
+    files = {'file1': (file_name, 'some,data,to,send\nanother,row,to,send\n')}
+    metadata = {
+        'name': file_name,
+        'type': 'csv',
+        'instrument': 'MRI'
+    }
+    metadata = json.dumps(metadata)
+    files['metadata'] = ('', metadata)
 
     # upload the same file to each container created in the test
     api_as_admin.post('/acquisitions/' + acquisition_id + '/files', files=files)

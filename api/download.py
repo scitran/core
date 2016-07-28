@@ -7,10 +7,9 @@ import datetime
 import cStringIO
 
 from . import base
-from . import validators
-
-from . import util
 from . import config
+from . import util
+from . import validators
 
 log = config.log
 
@@ -132,12 +131,22 @@ class Download(base.RequestHandler):
         total_size = 0
         targets = []
 
-        # FIXME: check permissions of everything
         used_subpaths = {}
+        base_query = {}
+        if not self.superuser_request:
+            base_query['permissions._id'] = self.uid
+
         for item in req_spec['nodes']:
+
             item_id = bson.ObjectId(item['_id'])
+            base_query['_id'] = item_id
+
             if item['level'] == 'project':
-                project = config.db.projects.find_one({'_id': item_id}, ['group', 'label', 'files'])
+                project = config.db.projects.find_one(base_query, ['group', 'label', 'files'])
+                if not project:
+                    # silently skip missing objects/objects user does not have access to
+                    continue
+
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
@@ -157,7 +166,11 @@ class Download(base.RequestHandler):
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'session':
-                session = config.db.sessions.find_one({'_id': item_id}, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone'])
+                session = config.db.sessions.find_one(base_query, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone'])
+                if not session:
+                    # silently skip missing objects/objects user does not have access to
+                    continue
+
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id'])
                 total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
@@ -173,17 +186,24 @@ class Download(base.RequestHandler):
                     total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'acquisition':
-                acq = config.db.acquisitions.find_one({'_id': item_id}, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
+                acq = config.db.acquisitions.find_one(base_query, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
+                if not acq:
+                    # silently skip missing objects/objects user does not have access to
+                    continue
+
                 session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
-        log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-        filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
-        ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
-        config.db.downloads.insert_one(ticket)
-        return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+        if len(targets) > 0:
+            log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
+            filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+            ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
+            config.db.downloads.insert_one(ticket)
+            return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+        else:
+            self.abort(404, 'No requested containers could be found')
 
     def _path_from_container(self, container, used_subpaths, parent_id):
         def _find_new_path(path, list_used_subpaths):
@@ -277,6 +297,7 @@ class Download(base.RequestHandler):
                 config.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
             req_spec = self.request.json_body
+
             if self.is_true('bulk'):
                 return self._bulk_preflight_archivestream(req_spec.get('files', []))
             else:
