@@ -244,35 +244,18 @@ class MultiFileStore(object):
 
 # File extension --> scitran file type detection hueristics.
 # Listed in precendence order.
-FILE_EXTENSIONS = [
-    # Scientific file types
-    {'bval':         [ '.bval', '.bvals' ]},
-    {'bvec':         [ '.bvec', '.bvecs' ]},
-    {'dicom':        [ '.dcm', '.dcm.zip', '.dicom.zip' ]},
-    {'parrec':       [ '.parrec.zip', '.par-rec.zip' ]},
-    {'gephysio':     [ '.gephysio.zip' ]},
-    {'nifti':        [ '.nii.gz', '.nii' ]},
-    {'pfile':        [ '.7.gz', '.7' ]},
-    {'qa':           [ '.qa.png', '.qa.json' ]},
+with open(os.path.join(os.path.dirname(__file__), 'filetypes.json')) as fd:
+    TYPE_MAP = json.load(fd)
 
-    # Basic file types
-    {'archive':      [ '.zip', '.tbz2', '.tar.gz', '.tbz', '.tar.bz2', '.tgz', '.tar', '.txz', '.tar.xz' ]},
-    {'document':     [ '.docx', '.doc' ]},
-    {'image':        [ '.jpg', '.tif', '.jpeg', '.gif', '.bmp', '.png', '.tiff' ]},
-    {'markup':       [ '.html', '.htm' ]},
-    {'pdf':          [ '.pdf' ]},
-    {'presentation': [ '.ppt', '.pptx' ]},
-    {'source code':  [ '.c', '.py', '.cpp', '.js', '.m', '.json', '.java', '.php', '.css' ]},
-    {'spreadsheet':  [ '.xls', '.xlsx' ]},
-    {'tabular data': [ '.csv.gz', '.csv' ]},
-    {'text':         [ '.txt' ]},
-    {'video':        [ '.mpeg', '.mpg', '.mov', '.mp4', '.m4v', '.MTS' ]},
-]
+KNOWN_FILETYPES = {ext: filetype for filetype, extensions in TYPE_MAP.iteritems() for ext in extensions}
 
 def guess_type_from_filename(filename):
-    for x in FILE_EXTENSIONS:
-        key = x.keys()[0]
-        for extension in x[key]:
-            if filename.endswith(extension):
-                return key
-    return None
+    particles = filename.split('.')[1:]
+    extentions = ['.' + '.'.join(particles[i:]) for i in range(len(particles))]
+    for ext in extentions:
+        filetype = KNOWN_FILETYPES.get(ext.lower())
+        if filetype:
+            break
+    else:
+        filetype = None
+    return filetype
