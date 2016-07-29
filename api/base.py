@@ -42,9 +42,18 @@ class RequestHandler(webapp2.RequestHandler):
         if site_id is None:
             self.abort(503, 'Database not initialized')
 
-        # User (oAuth) authentication
         if access_token:
-            self.uid = self.authenticate_user(access_token)
+            if access_token.startswith('scitran-user '):
+                # User (API key) authentication
+                key = access_token.split()[0]
+                self.uid = self.authenticate_user_api_key(key)
+            elif access_token.startswith('scitran-drone '):
+                # Drone (API key) authentication
+                # When supported, remove custom headers and shared secret
+                self.abort(401, 'Drone API keys are not yet supported')
+            else:
+                # User (oAuth) authentication
+                self.uid = self.authenticate_user(access_token)
 
         # 'Debug' (insecure) setting: allow request to act as requested user
         elif self.debug and self.get_param('user'):
@@ -93,6 +102,23 @@ class RequestHandler(webapp2.RequestHandler):
                 self.superuser_request = False
 
         self.set_origin(drone_request)
+
+    def authenticate_user_api_key(self, key):
+        """
+        AuthN for user accounts via api key. Calls self.abort on failure.
+
+        Returns the user's UID.
+        """
+
+        uid = config.db.users.find_one({'api_key.key': key})
+
+        if uid:
+            timestamp = datetime.datetime.utcnow()
+            config.db.users.update({'_id': uid}, {'$set': {'api_key.last_used': timestamp}})
+            return uid
+        else:
+            self.abort(401, 'Invalid scitran-user API key')
+
 
     def authenticate_user(self, access_token):
         """
