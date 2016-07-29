@@ -249,6 +249,7 @@ FILE_EXTENSIONS = [
     {'bval':         [ '.bval', '.bvals' ]},
     {'bvec':         [ '.bvec', '.bvecs' ]},
     {'dicom':        [ '.dcm', '.dcm.zip', '.dicom.zip' ]},
+    {'parrec':       [ '.parrec.zip', '.par-rec.zip' ]},
     {'gephysio':     [ '.gephysio.zip' ]},
     {'nifti':        [ '.nii.gz', '.nii' ]},
     {'pfile':        [ '.7.gz', '.7' ]},
