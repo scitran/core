@@ -45,7 +45,7 @@ class RequestHandler(webapp2.RequestHandler):
         if access_token:
             if access_token.startswith('scitran-user '):
                 # User (API key) authentication
-                key = access_token.split()[0]
+                key = access_token.split()[1]
                 self.uid = self.authenticate_user_api_key(key)
             elif access_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
@@ -110,7 +110,8 @@ class RequestHandler(webapp2.RequestHandler):
         Returns the user's UID.
         """
 
-        uid = config.db.users.find_one({'api_key.key': key})
+        user = config.db.users.find_one({'api_key.key': key})
+        uid = user.get('_id')
 
         if uid:
             timestamp = datetime.datetime.utcnow()
