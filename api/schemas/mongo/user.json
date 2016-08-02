@@ -31,7 +31,17 @@
     "preferences":      {
                           "title": "Preferences",
                           "type": "object"
-                        }
+                        },
+    "api_keys":         {
+                          "type": "object",
+                          "properties": {
+                              "key":            {"type": "string"},
+                              "created":        {},
+                              "last_used":      {}
+                          },
+                          "additionalProperties": false
+    }
+
   },
   "additionalProperties": false,
   "required":["_id", "firstname", "lastname", "created", "modified", "root"]
