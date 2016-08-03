@@ -160,14 +160,22 @@ class UIDPlacer(Placer):
             return
         container   = target['container']
         r_metadata  = target['metadata']
-
-        self.container_type = container.level
-        self.id_            = container.id_
-        self.container      = container.container
-
         info.update(r_metadata)
 
-        self.save_file(field, info)
+        if container.level != 'subject':
+            self.container_type = container.level
+            self.id             = container._id
+            self.container      = container.container
+            self.save_file(field, info)
+        else:
+            if field is not None:
+                files.move_form_file_field_into_cas(field)
+            if info is not None:
+                container.upsert_file(info)
+
+                # # Queue any jobs as a result of this upload
+                # rules.create_jobs(config.db, self.container, self.container_type, info)
+
         self.saved.append(info)
 
     def finalize(self):

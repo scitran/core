@@ -18,10 +18,18 @@ PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'publ
 class TargetContainer(object):
 
     def __init__(self, container, level):
-        self.container = container
-        self.level = level
-        self.dbc = config.db[level]
-        self.id_ = container['_id']
+        if level == 'subject':
+            self.container = container.get('subject')
+            self.level = level
+            self.dbc = config.db['sessions']
+            self._id = container['_id']
+            self.file_prefix = 'subject.files'
+        else:
+            self.container = container
+            self.level = level
+            self.dbc = config.db[level]
+            self._id = container['_id']
+            self.file_prefix = 'files'
 
     def find(self, filename):
         for f in self.container.get('files', []):
@@ -29,23 +37,29 @@ class TargetContainer(object):
                 return f
         return None
 
+    def upsert_file(self, fileinfo):
+        result = self.dbc.find_one({'_id': self._id, self.file_prefix + '.name': fileinfo['name']})
+        if result:
+            self.update_file(fileinfo)
+        else:
+            self.add_file(fileinfo)
     def update_file(self, fileinfo):
 
-        update_set = {'files.$.modified': datetime.datetime.utcnow()}
+        update_set = {self.file_prefix + '.$.modified': datetime.datetime.utcnow()}
         # in this method, we are overriding an existing file.
         # update_set allows to update all the fileinfo like size, hash, etc.
         for k,v in fileinfo.iteritems():
-            update_set['files.$.' + k] = v
+            update_set[self.file_prefix + '.$.' + k] = v
         return self.dbc.find_one_and_update(
-            {'_id': self.id_, 'files.name': fileinfo['name']},
+            {'_id': self._id, self.file_prefix + '.name': fileinfo['name']},
             {'$set': update_set},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
     def add_file(self, fileinfo):
         return self.dbc.find_one_and_update(
-            {'_id': self.id_},
-            {'$push': {'files': fileinfo}},
+            {'_id': self._id},
+            {'$push': {self.file_prefix: fileinfo}},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
@@ -235,10 +249,21 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     if not session:
         return target_containers
     session_files = dict_fileinfos(session.pop('files', []))
+
+    subject_files = []
+    if session.get('subject'):
+        subject_files = dict_fileinfos(session['subject'].pop('files', []))
+
     session_obj = _upsert_container(session, 'session', project_obj, 'project', type_, timestamp)
     target_containers.append(
         (TargetContainer(session_obj, 'session'), session_files)
     )
+
+    if len(subject_files) > 0:
+        target_containers.append(
+            (TargetContainer(session_obj, 'subject'), subject_files)
+        )
+
     if not acquisition:
         return target_containers
     acquisition_files = dict_fileinfos(acquisition.pop('files', []))
