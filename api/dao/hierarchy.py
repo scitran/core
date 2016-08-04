@@ -201,7 +201,7 @@ def _create_query(cont, parent_type, parent_id, upload_type):
         q = {}
         q['label'] = cont['label']
         q[parent_type] = bson.ObjectId(parent_id)
-        if cont_type == 'sesson' and cont.get('subject',{}).get('code')
+        if cont_type == 'session' and cont.get('subject',{}).get('code'):
             q['subject.code'] = cont['subject']['code']
         return q
     elif upload_type == 'uid':
