@@ -149,20 +149,48 @@ class Download(base.RequestHandler):
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
                 total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
-                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone'])
+                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 session_dict = {session['_id']: session for session in sessions}
                 acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid', 'timestamp', 'timezone'])
                 session_prefixes = {}
 
-                for session in session_dict.itervalues():
-                    session_prefix = prefix + '/' + self._path_from_container(session, used_subpaths, project['_id'])
-                    session_prefixes[session['_id']] = session_prefix
-                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                if self.get_param('structure', '').lower() == 'bids':
+                    subject_dict = {}
+                    subject_prefixes = {}
+                    for session in session_dict.itervalues():
+                        if session.get('subject'):
+                            code = session['subject'].get('code', 'unknown_subject')
+                            # This is bad and we should try to combine these somehow,
+                            # or at least make sure we get all the files
+                            subject_dict[code] = session['subject']
 
-                for acq in acquisitions:
-                    session = session_dict[acq['session']]
-                    acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    for code, subject in subject_dict.iteritems():
+                        subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, project['_id'])
+                        subject_prefixes[code] = subject_prefix
+                        total_size, file_cnt = _append_targets(targets, subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
+                    for session in session_dict.itervalues():
+                        subject_code = session['subject'].get('code', 'unknown_subject')
+                        subject = subject_dict[subject_code]
+                        session_prefix = subject_prefixes[subject_code] + '/' + self._path_from_container(session, used_subpaths, subject_code)
+                        session_prefixes[session['_id']] = session_prefix
+                        total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
+                    for acq in acquisitions:
+                        session = session_dict[acq['session']]
+                        acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
+                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
+                else:
+                    for session in session_dict.itervalues():
+                        session_prefix = prefix + '/' + self._path_from_container(session, used_subpaths, project['_id'])
+                        session_prefixes[session['_id']] = session_prefix
+                        total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
+                    for acq in acquisitions:
+                        session = session_dict[acq['session']]
+                        acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
+                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'session':
                 session = config.db.sessions.find_one(base_query, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone'])
@@ -226,6 +254,8 @@ class Download(base.RequestHandler):
                 path = container['timestamp'].strftime('%Y%m%d_%H%M')
         if not path and container.get('uid'):
             path = container['uid']
+        if not path and container.get('code'):
+            path = container['code']
         if not path:
             path = 'untitled'
         path = _find_new_path(path, used_subpaths.get(parent_id, []))
