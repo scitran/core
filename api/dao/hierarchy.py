@@ -198,10 +198,12 @@ def _find_or_create_destination_project(group_id, project_label, timestamp):
 
 def _create_query(cont, parent_type, parent_id, upload_type):
     if upload_type == 'label':
-        return {
-            'label':        cont['label'],
-            parent_type:    bson.ObjectId(parent_id)
-        }
+        q = {}
+        q['label'] = cont['label']
+        q[parent_type] = bson.ObjectId(parent_id)
+        if cont_type == 'sesson' and cont.get('subject',{}).get('code')
+            q['subject.code'] = cont['subject']['code']
+        return q
     elif upload_type == 'uid':
         return {
             'uid': cont['uid']
