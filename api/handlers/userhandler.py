@@ -1,7 +1,7 @@
 import base64
 import datetime
 import pymongo
-import uuid
+import os
 
 from .. import base
 from .. import util
@@ -228,9 +228,8 @@ class UserHandler(base.RequestHandler):
         self._init_storage()
         if not self.uid:
             self.abort(400, 'no user is logged in')
-        generated_key = base64.urlsafe_b64encode(str(uuid.uuid4()))
+        generated_key = base64.urlsafe_b64encode(os.urandom(42))
         now = datetime.datetime.utcnow()
-        # Fix last used to unset somehow with containerstorage in the way
         payload = {'api_key': {'key': generated_key, 'created': now, 'last_used': None}}
         result = self.storage.exec_op('PUT', _id=self.uid, payload=payload)
         if result.modified_count == 1:
