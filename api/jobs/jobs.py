@@ -13,7 +13,7 @@ from .. import config
 log = config.log
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config=None):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None):
         """
         Creates a job.
 
@@ -77,7 +77,7 @@ class Job(object):
         self.state           = state
         self.request         = request
         self.id_             = id_
-        self.config          = config
+        self.config          = config_
 
     @classmethod
     def load(cls, e):
@@ -100,7 +100,7 @@ class Job(object):
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), id_=d['_id'], config=d.get('config', None))
+        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), id_=d['_id'], config_=d.get('config', None))
 
     @classmethod
     def get(cls, _id):
