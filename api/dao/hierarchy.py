@@ -21,7 +21,7 @@ class TargetContainer(object):
         self.container = container
         self.level = level
         self.dbc = config.db[level]
-        self._id = container['_id']
+        self.id_ = container['_id']
 
     def find(self, filename):
         for f in self.container.get('files', []):
@@ -37,14 +37,14 @@ class TargetContainer(object):
         for k,v in fileinfo.iteritems():
             update_set['files.$.' + k] = v
         return self.dbc.find_one_and_update(
-            {'_id': self._id, 'files.name': fileinfo['name']},
+            {'_id': self.id_, 'files.name': fileinfo['name']},
             {'$set': update_set},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
     def add_file(self, fileinfo):
         return self.dbc.find_one_and_update(
-            {'_id': self._id},
+            {'_id': self.id_},
             {'$push': {'files': fileinfo}},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )

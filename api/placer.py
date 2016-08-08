@@ -26,7 +26,7 @@ class Placer(object):
     def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
         self.container_type = container_type
         self.container      = container
-        self.id             = id_            #pylint: disable=redefined-builtin
+        self.id_            = id_
         self.metadata       = metadata
         self.timestamp      = timestamp
 
@@ -65,7 +65,7 @@ class Placer(object):
         """
         Helper function that throws unless a container was provided.
         """
-        if self.id is None or self.container is None or self.container_type is None:
+        if self.id_ is None or self.container is None or self.container_type is None:
             raise Exception('Must specify a target')
 
     def requireMetadata(self):
@@ -89,7 +89,7 @@ class Placer(object):
 
         # Update the DB
         if info is not None:
-            hierarchy.upsert_fileinfo(self.container_type, self.id, info)
+            hierarchy.upsert_fileinfo(self.container_type, self.id_, info)
 
             # Queue any jobs as a result of this upload
             rules.create_jobs(config.db, self.container, self.container_type, info)
@@ -162,7 +162,7 @@ class UIDPlacer(Placer):
         r_metadata  = target['metadata']
 
         self.container_type = container.level
-        self.id             = container._id
+        self.id_            = container.id_
         self.container      = container.container
 
         info.update(r_metadata)
@@ -212,7 +212,7 @@ class EnginePlacer(Placer):
 
     def finalize(self):
         if self.metadata is not None:
-            bid = bson.ObjectId(self.id)
+            bid = bson.ObjectId(self.id_)
 
             # Remove file metadata as it was already updated in process_file_field
             for k in self.metadata.keys():
@@ -480,8 +480,8 @@ class PackfilePlacer(Placer):
 
         # Set instance target for helper func
         self.container_type = 'acquisition'
-        self.id			 = str(acquisition['_id'])
-        self.container	  = acquisition
+        self.id_            = str(acquisition['_id'])
+        self.container	    = acquisition
 
         self.save_file(cgi_field, cgi_info)
 
@@ -537,7 +537,7 @@ class AnalysisJobPlacer(AnalysisPlacer):
         super(AnalysisJobPlacer, self).finalize()
         # Search the sessions table for analysis, replace file field
         if self.metadata.get('files'):
-            q = {'analyses._id': str(self.id)}
+            q = {'analyses._id': str(self.id_)}
             u = {'$push': {'analyses.$.files': {'$each': self.metadata['files']}}}
             if self.context.get('job_id'):
                 # If the original job failed, update the analysis with the job that succeeded

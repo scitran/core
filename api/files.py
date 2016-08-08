@@ -3,7 +3,6 @@ import cgi
 import json
 import shutil
 import hashlib
-import zipfile
 import datetime
 import collections
 
