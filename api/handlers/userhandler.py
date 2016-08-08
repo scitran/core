@@ -1,5 +1,7 @@
+import base64
 import datetime
 import pymongo
+import os
 
 from .. import base
 from .. import util
@@ -21,12 +23,7 @@ class UserHandler(base.RequestHandler):
         self._init_storage()
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
-        projection = []
-        if self.is_true('remotes'):
-            projection += ['remotes']
-        if self.is_true('status'):
-            projection += ['status']
-        result = permchecker(self.storage.exec_op)('GET', _id, projection=projection or None)
+        result = permchecker(self.storage.exec_op)('GET', _id, projection={'api_key': 0} or None)
         if result is None:
             self.abort(404, 'User does not exist')
         return result
@@ -44,7 +41,7 @@ class UserHandler(base.RequestHandler):
     def get_all(self):
         self._init_storage()
         permchecker = userauth.list_permission_checker(self)
-        result = permchecker(self.storage.exec_op)('GET', projection={'preferences': False})
+        result = permchecker(self.storage.exec_op)('GET', projection={'preferences': 0, 'api_key': 0})
         if result is None:
             self.abort(404, 'Not found')
         return result
@@ -226,6 +223,19 @@ class UserHandler(base.RequestHandler):
             self.redirect(str(default), code=307)
         else:
             self.abort(404, 'no avatar')
+
+    def generate_api_key(self):
+        self._init_storage()
+        if not self.uid:
+            self.abort(400, 'no user is logged in')
+        generated_key = base64.urlsafe_b64encode(os.urandom(42))
+        now = datetime.datetime.utcnow()
+        payload = {'api_key': {'key': generated_key, 'created': now, 'last_used': None}}
+        result = self.storage.exec_op('PUT', _id=self.uid, payload=payload)
+        if result.modified_count == 1:
+            return {'key': generated_key}
+        else:
+            self.abort(404, 'New key for user {} not generated'.format(self.uid))
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

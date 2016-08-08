@@ -198,6 +198,7 @@ routes = [
     webapp2_extras.routes.PathPrefixRoute(r'/api/users', [
         webapp2.Route(r'/self',                                 userhandler.UserHandler, handler_method='self', methods=['GET']),
         webapp2.Route(r'/self/avatar',                          userhandler.UserHandler, handler_method='self_avatar', methods=['GET']),
+        webapp2.Route(r'/self/key',                             userhandler.UserHandler, handler_method='generate_api_key',methods=['POST']),
         webapp2.Route(_format(r'/<_id:{user_id_re}>'),          userhandler.UserHandler, name='user'),
         webapp2.Route(_format(r'/<uid:{user_id_re}>/groups'),   grouphandler.GroupHandler, handler_method='get_all', methods=['GET'], name='groups'),
         webapp2.Route(_format(r'/<uid:{user_id_re}>/avatar'),   userhandler.UserHandler, handler_method='avatar', methods=['GET'], name='avatar'),
