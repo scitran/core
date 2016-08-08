@@ -223,7 +223,7 @@ class UserHandler(base.RequestHandler):
         if result.modified_count == 1:
             return {'key': generated_key}
         else:
-            self.abort(404, 'New key for user {} not generated'.format(self.uid))
+            self.abort(500, 'New key for user {} not generated'.format(self.uid))
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

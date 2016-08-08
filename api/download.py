@@ -123,8 +123,6 @@ class Download(base.RequestHandler):
             self.abort(404, 'No files requested could be found')
 
 
-
-
     def _preflight_archivestream(self, req_spec, collection=None):
         data_path = config.get_item('persistent', 'data_path')
         arc_prefix = 'sdm'

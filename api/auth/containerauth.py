@@ -58,7 +58,7 @@ def default_container(handler, container=None, target_parent_container=None):
     return g
 
 
-def collection_permissions(handler, container=None):
+def collection_permissions(handler, container=None, *args):
     """
     Collections don't have a parent_container.
     Permissions are checked on the collection itself or not at all if the collection is new.
