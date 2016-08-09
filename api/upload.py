@@ -7,12 +7,9 @@ import shutil
 from . import base
 from . import config
 from . import files
-from .jobs import rules
-from . import tempdir as tempfile
 from . import placer as pl
 from . import util
-from . import validators
-from .dao import hierarchy, APIStorageException
+from .dao import hierarchy
 
 log = config.log
 
@@ -27,7 +24,7 @@ Strategy = util.Enum('Strategy', {
     'analysis_job': pl.AnalysisJobPlacer   # Upload N files to an analysis as output from job results
 })
 
-def process_upload(request, strategy, container_type=None, id=None, origin=None, context=None, response=None, metadata=None):
+def process_upload(request, strategy, container_type=None, id_=None, origin=None, context=None, response=None, metadata=None):
     """
     Universal file upload entrypoint.
 
@@ -59,7 +56,7 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
     if not isinstance(strategy, Strategy):
         raise Exception('Unknown upload strategy')
 
-    if id is not None and container_type == None:
+    if id_ is not None and container_type == None:
         raise Exception('Unspecified container type')
 
     if container_type is not None and container_type not in ('acquisition', 'session', 'project', 'collection', 'analysis'):
@@ -68,8 +65,8 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
     timestamp = datetime.datetime.utcnow()
 
     container = None
-    if container_type and id:
-        container = hierarchy.get_container(container_type, id)
+    if container_type and id_:
+        container = hierarchy.get_container(container_type, id_)
 
     # The vast majority of this function's wall-clock time is spent here.
     # Tempdir is deleted off disk once out of scope, so let's hold onto this reference.
@@ -82,13 +79,13 @@ def process_upload(request, strategy, container_type=None, id=None, origin=None,
             raise files.FileStoreException('wrong format for field "metadata"')
 
     placer_class = strategy.value
-    placer = placer_class(container_type, container, id, metadata, timestamp, origin, context)
+    placer = placer_class(container_type, container, id_, metadata, timestamp, origin, context)
     placer.check()
 
     # Browsers, when sending a multipart upload, will send files with field name "file" (if sinuglar)
     # or "file1", "file2", etc (if multiple). Following this convention is probably a good idea.
     # Here, we accept any
-    file_fields = filter(lambda x: form[x].filename is not None, form)
+    file_fields = [x for x in form if form[x].filename is not None]
 
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
@@ -209,9 +206,9 @@ class Upload(base.RequestHandler):
 
         if level == 'analysis':
             context = {'job_id': self.get_param('job')}
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id=cid, context=context)
+            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id_=cid, context=context)
         else:
-            return process_upload(self.request, Strategy.engine, container_type=level, id=cid, origin=self.origin)
+            return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin)
 
     def clean_packfile_tokens(self):
         """
@@ -220,9 +217,7 @@ class Upload(base.RequestHandler):
             Clean up expired upload tokens and invalid token directories.
 
             :statuscode 402: describe me
-        """
 
-        """
         Ref placer.TokenPlacer and FileListHandler.packfile_start for context.
         """
 
@@ -248,8 +243,8 @@ class Upload(base.RequestHandler):
         #   upload.clean_packfile_tokens
         #
         # It must be kept in sync between each instance.
-        base = config.get_item('persistent', 'data_path')
-        folder = os.path.join(base, 'tokens', 'packfile')
+        basepath = config.get_item('persistent', 'data_path')
+        folder = os.path.join(basepath, 'tokens', 'packfile')
 
         util.mkdir_p(folder)
         paths = os.listdir(folder)

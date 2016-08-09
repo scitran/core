@@ -1,16 +1,11 @@
-import bson.objectid
-import datetime
 import json
-import pytz
 import sys
 import traceback
 import webapp2
 import webapp2_extras.routes
 
 from . import base
-from .jobs.jobs import Job
 from .jobs.handlers import JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
-from .dao.containerutil import FileReference, ContainerReference
 from . import encoder
 from . import root
 from . import util
@@ -18,14 +13,14 @@ from . import config
 from . import centralclient
 from . import download
 from . import upload
-from handlers import listhandler
-from handlers import userhandler
-from handlers import grouphandler
-from handlers import containerhandler
-from handlers import collectionshandler
-from handlers import searchhandler
-from handlers import schemahandler
-from handlers import reporthandler
+from .handlers import listhandler
+from .handlers import userhandler
+from .handlers import grouphandler
+from .handlers import containerhandler
+from .handlers import collectionshandler
+from .handlers import searchhandler
+from .handlers import schemahandler
+from .handlers import reporthandler
 
 log = config.log
 
@@ -174,7 +169,7 @@ routing_regexes = {
     'note_id_re': '[0-9a-f]{24}',
     # schema regex
     # example: schema_path/schema.json
-    'schema_re': '[^/.]{3,60}/[^/.]{3,60}\.json'
+    'schema_re': r'[^/.]{3,60}/[^/.]{3,60}\.json'
 }
 
 def _format(route):
@@ -222,12 +217,12 @@ routes = [
     webapp2.Route(_format(r'/api/groups/<_id:{group_id_re}>'),      grouphandler.GroupHandler, name='group_details'),
 
     webapp2.Route(r'/api/collections/curators',                                         collectionshandler.CollectionsHandler, handler_method='curators', methods=['GET']),
-    webapp2.Route(r'/api/<cont_name:collections>',                                      collectionshandler.CollectionsHandler, name='colls', handler_method='get_all', methods=['GET']),
-    webapp2.Route(r'/api/<cont_name:collections>',                                      collectionshandler.CollectionsHandler, methods=['POST']),
+    webapp2.Route(r'/api/collections',                                      collectionshandler.CollectionsHandler, name='colls', handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/collections',                                      collectionshandler.CollectionsHandler, methods=['POST']),
 
-    webapp2.Route(_format(r'/api/<cont_name:collections>/<cid:{cid_re}>'),              collectionshandler.CollectionsHandler, name='coll_details', methods=['GET', 'PUT', 'DELETE']),
-    webapp2.Route(_format(r'/api/<cont_name:collections>/<cid:{cid_re}>/sessions'),     collectionshandler.CollectionsHandler, name='coll_ses', handler_method='get_sessions', methods=['GET']),
-    webapp2.Route(_format(r'/api/<cont_name:collections>/<cid:{cid_re}>/acquisitions'), collectionshandler.CollectionsHandler, name='coll_acq', handler_method='get_acquisitions', methods=['GET']),
+    webapp2.Route(_format(r'/api/collections/<cid:{cid_re}>'),              collectionshandler.CollectionsHandler, name='coll_details', methods=['GET', 'PUT', 'DELETE']),
+    webapp2.Route(_format(r'/api/collections/<cid:{cid_re}>/sessions'),     collectionshandler.CollectionsHandler, name='coll_ses', handler_method='get_sessions', methods=['GET']),
+    webapp2.Route(_format(r'/api/collections/<cid:{cid_re}>/acquisitions'), collectionshandler.CollectionsHandler, name='coll_acq', handler_method='get_acquisitions', methods=['GET']),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>'),                          containerhandler.ContainerHandler, name='cont_list', handler_method='get_all', methods=['GET']),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>'),                          containerhandler.ContainerHandler, methods=['POST']),
@@ -295,7 +290,7 @@ def dispatcher(router, request, response):
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
     except webapp2.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         if config.get_item('core', 'debug'):
             message = traceback.format_exc()
         else:
@@ -303,6 +298,8 @@ def dispatcher(router, request, response):
         util.send_json_http_exception(response, message, 500)
 
 def app_factory(*_, **__):
+    # pylint: disable=protected-access,unused-argument
+
     # don't use config.get_item() as we don't want to require the database at startup
     application = webapp2.WSGIApplication(routes, debug=config.__config['core']['debug'])
     application.router.set_dispatcher(dispatcher)

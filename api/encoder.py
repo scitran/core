@@ -5,7 +5,6 @@ import json
 import pytz
 
 from .jobs.jobs import Job
-from . import config
 
 def custom_json_serializer(obj):
     if isinstance(obj, bson.objectid.ObjectId):
@@ -28,13 +27,13 @@ def sse_pack(d):
     For reading on the format:  https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format
     """
 
-    buffer = ''
+    buffer_ = ''
 
     for k in ['retry', 'id', 'event', 'data']:
         if k in d.keys():
-            buffer += '%s: %s\n' % (k, d[k])
+            buffer_ += '%s: %s\n' % (k, d[k])
 
-    return buffer + '\n'
+    return buffer_ + '\n'
 
 def json_sse_pack(d):
     """

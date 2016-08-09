@@ -5,7 +5,7 @@ from .. import util
 from .. import config
 from .. import debuginfo
 from .. import validators
-from ..auth import groupauth, always_ok
+from ..auth import groupauth
 from ..dao import containerstorage
 
 log = config.log
@@ -15,9 +15,9 @@ class GroupHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(GroupHandler, self).__init__(request, response)
+        self.storage = containerstorage.GroupStorage('groups', use_object_id=False)
 
     def get(self, _id):
-        self._init_storage()
         group = self._get_group(_id)
         if not group:
             self.abort(404, 'no such Group: ' + _id)
@@ -30,7 +30,6 @@ class GroupHandler(base.RequestHandler):
     def delete(self, _id):
         if _id == 'unknown':
             self.abort(400, 'The group "unknown" can\'t be deleted as it is integral within the API')
-        self._init_storage()
         group = self._get_group(_id)
         if not group:
             self.abort(404, 'no such Group: ' + _id)
@@ -43,8 +42,6 @@ class GroupHandler(base.RequestHandler):
         return result
 
     def get_all(self, uid=None):
-        self._init_storage()
-        query = None
         projection = {'name': 1, 'created': 1, 'modified': 1, 'roles': [], 'tags': []}
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
@@ -57,7 +54,6 @@ class GroupHandler(base.RequestHandler):
         return results
 
     def put(self, _id):
-        self._init_storage()
         group = self._get_group(_id)
         if not group:
             self.abort(404, 'no such Group: ' + _id)
@@ -75,7 +71,6 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'Group {} not updated'.format(_id))
 
     def post(self):
-        self._init_storage()
         permchecker = groupauth.default(self, None)
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'group.json')
@@ -94,9 +89,6 @@ class GroupHandler(base.RequestHandler):
                 return {'_id': payload['_id']}
         else:
             self.abort(404, 'Group {} not updated'.format(payload['_id']))
-
-    def _init_storage(self):
-        self.storage = containerstorage.GroupStorage('groups', use_object_id=False)
 
     def _get_group(self, _id):
         group = self.storage.get_container(_id)

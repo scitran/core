@@ -53,7 +53,7 @@ def symlinkarchivestream(ticket, data_path):
         t.linkname = os.path.relpath(filepath, data_path)
         yield t.tobuf()
     stream = cStringIO.StringIO()
-    with tarfile.open(mode='w|', fileobj=stream) as archive:
+    with tarfile.open(mode='w|', fileobj=stream) as _:
         pass
     yield stream.getvalue() # get tar stream trailer
     stream.close()
@@ -66,7 +66,8 @@ def archivestream(ticket):
         for filepath, arcpath, _ in ticket['target']:
             yield archive.gettarinfo(filepath, arcpath).tobuf()
             with open(filepath, 'rb') as fd:
-                for chunk in iter(lambda: fd.read(CHUNKSIZE), ''):
+                chunk = ''
+                for chunk in iter(lambda: fd.read(CHUNKSIZE), ''): # pylint: disable=cell-var-from-loop
                     yield chunk
                 if len(chunk) % BLOCKSIZE != 0:
                     yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
@@ -102,7 +103,7 @@ class Download(base.RequestHandler):
                         'name': filename
                     }}
                 })['files'][0]
-            except:
+            except Exception: # pylint: disable=broad-except
                 # self.abort(404, 'File {} on Container {} {} not found'.format(filename, cont_name, cont_id))
                 # silently skip missing files/files user does not have access to
                 continue
@@ -120,8 +121,6 @@ class Download(base.RequestHandler):
             return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
         else:
             self.abort(404, 'No files requested could be found')
-
-
 
 
     def _preflight_archivestream(self, req_spec, collection=None):
@@ -249,10 +248,7 @@ class Download(base.RequestHandler):
 
             :statuscode 400: describe me
             :statuscode 404: describe me
-        """
 
-
-        """
         In downloads we use filters in the payload to exclude/include files.
         To pass a single filter, each of its conditions should be satisfied.
         If a file pass at least one filter, it is included in the targets.

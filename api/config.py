@@ -73,7 +73,7 @@ def apply_env_variables(config):
                     elif value.lower() == 'none':
                         value = None
                     config[outer_key][inner_key] = value
-        except:
+        except Exception: # pylint: disable=broad-except
             # ignore uniterable keys like `created` and `modified`
             pass
     return config
@@ -213,7 +213,7 @@ def initialize_db():
     db.sites.replace_one({'_id': __config['site']['id']}, {'name': __config['site']['name'], 'site_url': __config['site']['api_url']}, upsert=True)
 
 def get_config():
-    global __last_update, __config, __config_persisted
+    global __last_update, __config, __config_persisted #pylint: disable=global-statement
     now = datetime.datetime.utcnow()
     if not __config_persisted:
         initialize_db()

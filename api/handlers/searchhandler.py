@@ -1,5 +1,4 @@
 import bson
-import datetime
 import elasticsearch
 
 from .. import base
@@ -68,13 +67,13 @@ class SearchHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(SearchHandler, self).__init__(request, response)
+        self.search_containers = None
 
-    def advanced_search(self, **kwargs):
+    def advanced_search(self):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         queries = self.request.json_body
         path = queries.pop('path')
-        min_score = self.get_param('min_score', 0.5)
         all_data = self.is_true('all_data')
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
@@ -115,7 +114,7 @@ class SearchHandler(base.RequestHandler):
             parents.update(self._get_parents(parent_container, parent_name))
         return parents
 
-    def get_datatree(self, **kwargs):
+    def get_datatree(self):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users')
         size = self.get_param('size')
@@ -161,6 +160,6 @@ class SearchHandler(base.RequestHandler):
                 if collection:
                     result['collection'] = collection
                 results.append(result)
-        except elasticsearch.exceptions.ConnectionError as e:
+        except elasticsearch.exceptions.ConnectionError:
             self.abort(503, 'elasticsearch is not available')
         return results

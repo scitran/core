@@ -3,7 +3,6 @@ import cgi
 import json
 import shutil
 import hashlib
-import zipfile
 import datetime
 import collections
 
@@ -93,7 +92,6 @@ def process_form(request, hash_alg=None):
 
     # Store form file fields in a tempdir
     tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
-    tempdir_path = tempdir.name
 
     # Deep vodoo; docs?
     env = request.environ.copy()
@@ -108,6 +106,8 @@ def process_form(request, hash_alg=None):
     return (form, tempdir)
 
 def getHashingFieldStorage(upload_dir, hash_alg):
+    # pylint: disable=attribute-defined-outside-init
+
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
 
@@ -196,29 +196,12 @@ class FileStore(object):
         move_file(self.path, target_path)
         self.path = target_path
 
-def identical(hash_0, path_0, hash_1, path_1):
-    if zipfile.is_zipfile(path_0) and zipfile.is_zipfile(path_1):
-        with zipfile.ZipFile(path_0) as zf1, zipfile.ZipFile(path_1) as zf2:
-            zf1_infolist = sorted(zf1.infolist(), key=lambda zi: zi.filename)
-            zf2_infolist = sorted(zf2.infolist(), key=lambda zi: zi.filename)
-            if zf1.comment != zf2.comment:
-                return False
-            if len(zf1_infolist) != len(zf2_infolist):
-                return False
-            for zii, zij in zip(zf1_infolist, zf2_infolist):
-                if zii.CRC != zij.CRC:
-                    return False
-            else:
-                return True
-    else:
-        return hash_0 == hash_1
-
 # TODO: Hopefully deprecated by unification branch
 class MultiFileStore(object):
     """This class provides and interface for file uploads.
     """
 
-    def __init__(self, request, dest_path, filename=None, hash_alg=DEFAULT_HASH_ALG):
+    def __init__(self, request, dest_path, hash_alg=DEFAULT_HASH_ALG):
         self.body = request.body_file
         self.environ = request.environ.copy()
         self.environ.setdefault('CONTENT_LENGTH', '0')

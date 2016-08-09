@@ -62,7 +62,7 @@ class Queue(object):
 
         # Create an object with all the fields that must not have changed concurrently.
         job_query =  {
-            '_id': bson.ObjectId(job._id),
+            '_id': bson.ObjectId(job.id_),
             'state': job.state,
         }
 
@@ -83,7 +83,7 @@ class Queue(object):
         """
 
         if job.attempt >= max_attempts() and not force:
-            log.info('Permanently failed job %s (after %d attempts)' % (job._id, job.attempt))
+            log.info('Permanently failed job %s (after %d attempts)', job.id_, job.attempt)
             return
 
         if job.state != 'failed':
@@ -92,14 +92,14 @@ class Queue(object):
         # Race condition: jobs should only be marked as failed once a new job has been spawned for it (if any).
         # No transactions in our database, so we can't do that.
         # Instead, make a best-hope attempt.
-        check = config.db.jobs.find_one({'previous_job_id': job._id })
+        check = config.db.jobs.find_one({'previous_job_id': job.id_ })
         if check is not None:
             found = Job.load(check)
-            raise Exception('Job ' + job._id + ' has already been retried as ' + str(found._id))
+            raise Exception('Job ' + job.id_ + ' has already been retried as ' + str(found.id_))
 
         new_job = copy.deepcopy(job)
-        new_job._id = None
-        new_job.previous_job_id = job._id
+        new_job.id_ = None
+        new_job.previous_job_id = job.id_
 
         new_job.state = 'pending'
         new_job.attempt += 1
@@ -109,7 +109,7 @@ class Queue(object):
         new_job.modified = now
 
         new_id = new_job.insert()
-        log.info('respawned job %s as %s (attempt %d)' % (job._id, new_id, new_job.attempt))
+        log.info('respawned job %s as %s (attempt %d)', job.id_, new_id, new_job.attempt)
 
         return new_id
 
@@ -145,7 +145,7 @@ class Queue(object):
         job = Job.load(result)
 
         if job.request is not None:
-            log.info('Job ' + job._id + ' already has a request, so not generating')
+            log.info('Job ' + job.id_ + ' already has a request, so not generating')
             print job.request
             return result
 
@@ -153,7 +153,7 @@ class Queue(object):
         request = job.generate_request(get_gear_by_name(job.name))
         result = config.db.jobs.find_one_and_update(
             {
-                '_id': bson.ObjectId(job._id)
+                '_id': bson.ObjectId(job.id_)
             },
             { '$set': {
                 'request': request }

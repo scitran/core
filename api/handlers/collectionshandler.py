@@ -6,12 +6,13 @@ from ..auth import containerauth, always_ok
 from ..dao import containerstorage
 from ..dao import APIStorageException
 
-from containerhandler import ContainerHandler
+from .containerhandler import ContainerHandler
 
 log = config.log
 
 
 class CollectionsHandler(ContainerHandler):
+    # pylint: disable=arguments-differ
 
     container_handler_configurations = ContainerHandler.container_handler_configurations
 
@@ -23,9 +24,15 @@ class CollectionsHandler(ContainerHandler):
         'list_projection': {'metadata': 0}
     }
 
-    def post(self, **kwargs):
+    def __init__(self, request=None, response=None):
+        super(CollectionsHandler, self).__init__(request, response)
         self.config = self.container_handler_configurations['collections']
-        self.storage = self.config['storage']
+        self.storage = self.container_handler_configurations['collections']['storage']
+
+    def get(self, **kwargs):
+        super(CollectionsHandler, self).get('collections', **kwargs)
+
+    def post(self):
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body
@@ -47,15 +54,13 @@ class CollectionsHandler(ContainerHandler):
 
     def put(self, **kwargs):
         _id = kwargs.pop('cid')
-        self.config = self.container_handler_configurations['collections']
-        self.storage = self.config['storage']
         container = self._get_container(_id)
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body or {}
         contents = payload.pop('contents', None)
         payload_validator(payload, 'PUT')
-        permchecker = self._get_permchecker(container)
+        permchecker = self._get_permchecker(container=container)
         payload['modified'] = datetime.datetime.utcnow()
         try:
             result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
@@ -89,22 +94,19 @@ class CollectionsHandler(ContainerHandler):
             self.abort(400, 'not a valid object id')
         config.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': bson.ObjectId(_id)}})
 
-    def delete(self, cont_name, **kwargs):
+    def delete(self, **kwargs):
         _id = kwargs.get('cid')
-        super(CollectionsHandler, self).delete(cont_name, **kwargs)
+        super(CollectionsHandler, self).delete('collections', **kwargs)
         config.db.acquisitions.update_many({'collections': bson.ObjectId(_id)}, {'$pull': {'collections': bson.ObjectId(_id)}})
 
-    def get_all(self, cont_name):
-        self.config = self.container_handler_configurations[cont_name]
-        self.storage = self.config['storage']
-        projection = self.config['list_projection']
+    def get_all(self):
+        projection = self.container_handler_configurations['collections']['list_projection']
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
             permchecker = containerauth.list_public_request
         else:
-            admin_only = self.is_true('admin')
-            permchecker = containerauth.list_permission_checker(self, admin_only)
+            permchecker = containerauth.list_permission_checker(self)
         query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
@@ -136,12 +138,8 @@ class CollectionsHandler(ContainerHandler):
         curator_ids = list(set((c['curator'] for c in self.get_all('collections'))))
         return list(config.db.users.find({'_id': {'$in': curator_ids}}, ['firstname', 'lastname']))
 
-    def get_sessions(self, cont_name, cid):
+    def get_sessions(self, cid):
         """Return the list of sessions in a collection."""
-
-        # FIXME use storage and permission checking abstractions
-        self.config = self.container_handler_configurations['collections']
-        self.storage = self.config['storage']
         if not bson.ObjectId.is_valid(cid):
             self.abort(400, 'not a valid object id')
         _id = bson.ObjectId(cid)
@@ -168,12 +166,8 @@ class CollectionsHandler(ContainerHandler):
                 sess['debug']['acquisitions'] = self.uri_for('coll_acq', cont_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.get_param('user', ''))
         return sessions
 
-    def get_acquisitions(self, cid, **kwargs):
+    def get_acquisitions(self, cid):
         """Return the list of acquisitions in a collection."""
-
-        # FIXME use storage and permission checking abstractions
-        self.config = self.container_handler_configurations['collections']
-        self.storage = self.config['storage']
         if not bson.ObjectId.is_valid(cid):
             self.abort(400, 'not a valid object id')
         _id = bson.ObjectId(cid)

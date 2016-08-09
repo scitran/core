@@ -1,10 +1,9 @@
-import os
-import re
 import copy
 import json
-import util
-import requests
 import jsonschema
+import re
+import requests
+
 from jsonschema.compat import urlopen, urlsplit
 
 from . import config
@@ -71,7 +70,7 @@ def _resolve_schema(schema_url):
         resolvers[base_uri] = RefResolver(base_uri, None)
     return resolvers[base_uri].resolve(schema_name)[1], resolvers[base_uri]
 
-def no_op(g, *args):
+def no_op(g, *args): # pylint: disable=unused-argument
     return g
 
 def schema_uri(type_, schema_name):
@@ -175,8 +174,6 @@ def _post_exclude_params(keys, payload):
     }
 
 def _check_query_params(keys, query_params):
-    set_keys = set(keys)
-    set_query_params_keys = set(query_params.keys())
     assert set(keys) == set(query_params.keys()), """
     {}
     is different from expected:

@@ -13,7 +13,7 @@ from .. import config
 log = config.log
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, _id=None):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None):
         """
         Creates a job.
 
@@ -38,7 +38,7 @@ class Job(object):
             The state of this job. Defaults to 'pending'.
         request: map (optional)
             The request that is used for the engine. Generated when job is started.
-        _id: string (optional)
+        id_: string (optional)
             The database identifier for this job.
         """
 
@@ -74,7 +74,7 @@ class Job(object):
         self.modified        = modified
         self.state           = state
         self.request         = request
-        self._id             = _id
+        self.id_             = id_
 
     @classmethod
     def load(cls, e):
@@ -97,7 +97,7 @@ class Job(object):
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), _id=d['_id'])
+        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), id_=d['_id'])
 
     @classmethod
     def get(cls, _id):
@@ -115,6 +115,8 @@ class Job(object):
         # Don't modify the job obj
         d = copy.deepcopy(self.__dict__)
 
+        d['id'] = d.pop('id_', None)
+
         if d.get('inputs'):
             for x in d['inputs'].keys():
                 d['inputs'][x] = d['inputs'][x].__dict__
@@ -126,8 +128,8 @@ class Job(object):
         else:
             d.pop('destination')
 
-        if d['_id'] is None:
-            d.pop('_id')
+        if d['id'] is None:
+            d.pop('id')
         if d['previous_job_id'] is None:
             d.pop('previous_job_id')
         if d['request'] is None:
@@ -137,8 +139,8 @@ class Job(object):
 
     def mongo(self):
         d = self.map()
-        if d.get('_id'):
-            d['_id'] = bson.ObjectId(d['_id'])
+        if d.get('id'):
+            d['id'] = bson.ObjectId(d['id'])
         if d.get('inputs'):
             input_array = []
             for k, inp in d['inputs'].iteritems():
@@ -149,7 +151,7 @@ class Job(object):
         return d
 
     def insert(self):
-        if self._id is not None:
+        if self.id_ is not None:
             raise Exception('Cannot insert job that has already been inserted')
 
         result = config.db.jobs.insert_one(self.mongo())
@@ -200,8 +202,8 @@ class Job(object):
             })
 
         # Log job origin if provided
-        if self._id:
-            r['outputs'][0]['uri'] += '&job=' + self._id
+        if self.id_:
+            r['outputs'][0]['uri'] += '&job=' + self.id_
 
         self.request = r
         return self.request
