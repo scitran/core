@@ -506,7 +506,7 @@ class AnalysisPlacer(Placer):
 
     def check(self):
         self.requireMetadata()
-        #validators.validate_data(self.metadata, 'analysys.json', 'input', 'POST', optional=True)
+        #validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
 
     def process_file_field(self, field, info):
         self.save_file(field)
@@ -529,17 +529,30 @@ class AnalysisPlacer(Placer):
             self.metadata['files'].append(metadata_info)
         return self.metadata
 
-class AnalysisJobPlacer(AnalysisPlacer):
+class AnalysisJobPlacer(Placer):
     def check(self):
-        super(AnalysisJobPlacer, self).check()
-        self.metadata['outputs'] = self.metadata['acquisition'].pop('files', [])
+        if self.id_ is None:
+            raise Exception('Must specify a target analysis')
+        #validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
+
+    def process_file_field(self, field, info):
+        if self.metadata is not None:
+            file_mds = self.metadata.get('acquisition', {}).get('files', [])
+
+            for file_md in file_mds:
+                if file_md['name'] == info['name']:
+                    info.update(file_md)
+                    break
+
+        info['output'] = True
+        self.save_file(field)
+        self.saved.append(info)
 
     def finalize(self):
-        super(AnalysisJobPlacer, self).finalize()
         # Search the sessions table for analysis, replace file field
-        if self.metadata.get('files'):
+        if self.saved:
             q = {'analyses._id': str(self.id_)}
-            u = {'$push': {'analyses.$.files': {'$each': self.metadata['files']}}}
+            u = {'$push': {'analyses.$.files': {'$each': self.saved}}}
             if self.context.get('job_id'):
                 # If the original job failed, update the analysis with the job that succeeded
                 u['$set'] = {'job': self.context['job_id']}

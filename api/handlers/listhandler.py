@@ -65,9 +65,7 @@ def initialize_list_configurations():
         'analyses': {
             'storage': liststorage.AnalysesStorage,
             'permchecker': listauth.default_sublist,
-            'use_object_id': True,
-            'storage_schema_file': 'analysis.json',
-            'input_schema_file': 'analysis.json'
+            'use_object_id': True
         }
     }
     list_container_configurations = {
@@ -203,11 +201,18 @@ class ListHandler(base.RequestHandler):
                 permchecker = permchecker(self, container)
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
-        mongo_schema_uri = validators.schema_uri('mongo', conf.get('storage_schema_file'))
-        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        input_schema_uri = validators.schema_uri('input', conf.get('input_schema_file'))
-        input_validator = validators.from_schema_path(input_schema_uri)
-        keycheck = validators.key_check(mongo_schema_uri)
+
+        mongo_validator = None
+        input_validator = None
+        keycheck = None
+
+        if conf.get('storage_schema_file'):
+            mongo_schema_uri = validators.schema_uri('mongo', conf.get('storage_schema_file'))
+            mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+            keycheck = validators.key_check(mongo_schema_uri)
+        if conf.get('input_schema_file'):
+            input_schema_uri = validators.schema_uri('input', conf.get('input_schema_file'))
+            input_validator = validators.from_schema_path(input_schema_uri)
         return permchecker, storage, mongo_validator, input_validator, keycheck
 
 
@@ -669,7 +674,7 @@ class AnalysesHandler(ListHandler):
 
         """
         _id = kwargs.pop('cid')
-        permchecker, storage, mongo_validator, _, keycheck = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
         if self.is_true('job'):
@@ -681,7 +686,7 @@ class AnalysesHandler(ListHandler):
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
         analysis = self._default_analysis()
         analysis.update(payload)
-        result = keycheck(mongo_validator(storage.exec_op))('POST', _id=_id, payload=analysis)
+        result = storage.exec_op('POST', _id=_id, payload=analysis)
         if result.modified_count == 1:
             return {'_id': analysis['_id']}
         else:
