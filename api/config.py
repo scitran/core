@@ -179,6 +179,7 @@ def create_or_recreate_ttl_index(coll_name, index_name, ttl):
 def initialize_db():
     log.info('Initializing database, creating indexes')
     # TODO review all indexes
+    db.users.create_index('api_key.key')
     db.projects.create_index([('gid', 1), ('name', 1)])
     db.sessions.create_index('project')
     db.sessions.create_index('uid')
