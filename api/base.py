@@ -108,13 +108,10 @@ class RequestHandler(webapp2.RequestHandler):
         Returns the user's UID.
         """
 
-        user = config.db.users.find_one({'api_key.key': key})
-        uid = user.get('_id')
-
-        if uid:
-            timestamp = datetime.datetime.utcnow()
-            config.db.users.update({'_id': uid}, {'$set': {'api_key.last_used': timestamp}})
-            return uid
+        timestamp = datetime.datetime.utcnow()
+        user = config.db.users.find_one_and_update({'api_key.key': key}, {'$set': {'api_key.last_used': timestamp}}, ['_id'])
+        if user:
+            return user['_id']
         else:
             self.abort(401, 'Invalid scitran-user API key')
 
