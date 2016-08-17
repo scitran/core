@@ -112,6 +112,7 @@ class JobsHandler(base.RequestHandler):
         config_         = submit.get('config', None)
         attempt_n       = submit.get('attempt_n', 1)
         previous_job_id = submit.get('previous_job_id', None)
+        now_flag        = submit.get('now', False) # A flag to increase job priority
 
         # Add destination container, or select one
         destination = None
@@ -126,8 +127,9 @@ class JobsHandler(base.RequestHandler):
             for x in inputs:
                 inputs[x].check_access(self.uid, 'ro')
             destination.check_access(self.uid, 'rw')
+            now_flag = False # Only superuser requests are allowed to set "now" flag
 
-        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, attempt=attempt_n, previous_job_id=previous_job_id)
+        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id)
         result = job.insert()
 
         return { "_id": result }
