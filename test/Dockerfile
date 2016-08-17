@@ -11,9 +11,9 @@ RUN pip install -r requirements.txt
 
 # Install node for testing tools
 # We need node >= 4.0 for newman so install from node-source repo
-RUN curl --silent https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
-RUN echo "deb https://deb.nodesource.com/5.x trusty main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-RUN echo "deb-src https://deb.nodesource.com/5.x trusty main" | sudo tee -a /etc/apt/sources.list.d/nodesource.list
+RUN curl --silent https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+RUN echo "deb https://deb.nodesource.com/5.x trusty main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN echo "deb-src https://deb.nodesource.com/5.x trusty main" |  tee -a /etc/apt/sources.list.d/nodesource.list
 RUN apt-get update && apt-get -y install nodejs npm && ln -s /usr/bin/nodejs /usr/bin/node 
 
 # Install abao: https://github.com/cybertk/abao
