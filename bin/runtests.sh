@@ -76,7 +76,7 @@ case "$1-$2" in
       -f test/docker-compose.yml \
       run \
       --rm \
-      --entrypoint "newman run /usr/src/tests/postman/integration_tests.postman_collection -e /usr/src/tests/postman/local_scitran_core.postman_environment" \
+      --entrypoint "newman run /usr/src/tests/postman/integration_tests.postman_collection -e /usr/src/tests/postman/environments/travis-ci.postman_environment" \
       integration-test ||
     # set failure exit code in the event any previous commands in chain failed.
     exit_code=1
