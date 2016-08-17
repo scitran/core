@@ -7,7 +7,7 @@
 set -e
 
 unit_test_path=test/unit_tests/
-integration_test_path=test/integration_tests/
+integration_test_path=test/integration_tests/python
 code_path=api/
 
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
