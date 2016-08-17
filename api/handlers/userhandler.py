@@ -96,7 +96,7 @@ class UserHandler(base.RequestHandler):
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        payload_schema_uri = validators.schema_uri('input', 'user.json')
+        payload_schema_uri = validators.schema_uri('input', 'user-update.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'PUT')
         payload['modified'] = datetime.datetime.utcnow()
@@ -140,7 +140,7 @@ class UserHandler(base.RequestHandler):
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        payload_schema_uri = validators.schema_uri('input', 'user.json')
+        payload_schema_uri = validators.schema_uri('input', 'user-new.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()

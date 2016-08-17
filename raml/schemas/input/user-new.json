@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "User",
   "type": "object",
-  "$ref":"user.json",
+  "$ref":"../definitions/user.json#",
   "additionalProperties": false,
   "required":["_id", "firstname", "lastname"]
 }
