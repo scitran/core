@@ -123,7 +123,8 @@ routes = [
     ]),
     webapp2.Route(r'/api/gears',             GearsHandler),
     webapp2_extras.routes.PathPrefixRoute(r'/api/gears', [
-        webapp2.Route(r'/<:[^/]+>',         GearHandler,  name='job'),
+        webapp2.Route(r'/<:[^/]+>',            GearHandler),
+        webapp2.Route(r'/<:[^/]+>/invocation', GearHandler, handler_method='get_invocation'),
     ]),
     webapp2.Route(r'/api/rules',             RulesHandler),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),

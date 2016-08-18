@@ -9,7 +9,7 @@ from ..dao.containerutil import create_filereference_from_dictionary, create_con
 from .. import base
 from .. import config
 
-from .gears import get_gears, get_gear_by_name, remove_gear, upsert_gear
+from .gears import get_gears, get_gear_by_name, get_invocation, remove_gear, upsert_gear
 from .jobs import Job
 from .queue import Queue
 
@@ -40,6 +40,14 @@ class GearHandler(base.RequestHandler):
             self.abort(403, 'Request requires login')
 
         return get_gear_by_name(_id)
+
+    def get_invocation(self, _id):
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        gear = get_gear_by_name(_id)
+        return get_invocation(gear)
 
     def post(self, _id):
         """Upsert an entire gear document."""

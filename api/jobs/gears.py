@@ -5,6 +5,8 @@ Gears
 from .. import config
 from .jobs import Job
 
+import gear_tools
+
 log = config.log
 
 # For now, gears are in a singleton, prefixed by a key
@@ -48,6 +50,9 @@ def get_gear_by_name(name):
 
     # Mongo returns the full document: { '_id' : 'gears', 'gear_list' : [ { .. } ] }, so strip that out
     return gear_doc[SINGLETON_KEY][0]
+
+def get_invocation(gear):
+    return gear_tools.derive_invocation_schema(gear['manifest'])
 
 def insert_gear(doc):
     config.db.singletons.update(
