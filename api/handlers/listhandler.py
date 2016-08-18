@@ -915,9 +915,14 @@ class AnalysesHandler(ListHandler):
     def add_note(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         analysis_id = kwargs.get('_id')
-        permchecker, storage, _, input_validator, _ = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         payload = self.request.json_body
+
+        notes_schema_file = list_handler_configurations[cont_name]['notes']['storage_schema_file']
+        input_schema_uri = validators.schema_uri('input', notes_schema_file)
+        input_validator = validators.from_schema_path(input_schema_uri)
         input_validator(payload, 'POST')
+
         payload['_id'] = str(bson.objectid.ObjectId())
         payload['user'] = payload.get('user', self.uid)
         payload['created'] = datetime.datetime.utcnow()
