@@ -65,7 +65,9 @@ def initialize_list_configurations():
         'analyses': {
             'storage': liststorage.AnalysesStorage,
             'permchecker': listauth.default_sublist,
-            'use_object_id': True
+            'use_object_id': True,
+            'storage_schema_file': 'analysis.json',
+            'input_schema_file': 'analysis.json'
         }
     }
     list_container_configurations = {
@@ -202,17 +204,11 @@ class ListHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
 
-        mongo_validator = None
-        input_validator = None
-        keycheck = None
-
-        if conf.get('storage_schema_file'):
-            mongo_schema_uri = validators.schema_uri('mongo', conf.get('storage_schema_file'))
-            mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-            keycheck = validators.key_check(mongo_schema_uri)
-        if conf.get('input_schema_file'):
-            input_schema_uri = validators.schema_uri('input', conf.get('input_schema_file'))
-            input_validator = validators.from_schema_path(input_schema_uri)
+        mongo_schema_uri = validators.schema_uri('mongo', conf.get('storage_schema_file'))
+        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+        keycheck = validators.key_check(mongo_schema_uri)
+        input_schema_uri = validators.schema_uri('input', conf.get('input_schema_file'))
+        input_validator = validators.from_schema_path(input_schema_uri)
         return permchecker, storage, mongo_validator, input_validator, keycheck
 
 
@@ -674,12 +670,14 @@ class AnalysesHandler(ListHandler):
 
         """
         _id = kwargs.pop('cid')
-        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
+        permchecker, storage, _, payload_validator, _ = self._initialize_request(cont_name, list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
         if self.is_true('job'):
             if cont_name == 'sessions':
-                return self._create_job_and_analysis(cont_name, _id, storage)
+                payload = self.request.json_body
+                payload_validator(payload.get('analysis',{}), 'POST')
+                return self._create_job_and_analysis(cont_name, _id, storage, payload)
             else:
                 self.abort(400, 'Analysis created via a job must be at the session level')
 
@@ -692,8 +690,7 @@ class AnalysesHandler(ListHandler):
         else:
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
 
-    def _create_job_and_analysis(self, cont_name, cid, storage):
-        payload = self.request.json_body
+    def _create_job_and_analysis(self, cont_name, cid, storage, payload):
         analysis = payload.get('analysis')
         job = payload.get('job')
         if job is None or analysis is None:
