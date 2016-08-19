@@ -233,49 +233,7 @@ class Download(base.RequestHandler):
         return path
 
     def download(self):
-        """
-        .. http:get::  /api/download
-
-            Download GET Description...
-
-            :statuscode 400: describe me
-            :statuscode 404: describe me
-
-
-        .. http:post:: /api/download
-
-            Download POST Description...
-
-            :statuscode 400: describe me
-            :statuscode 404: describe me
-
-        In downloads we use filters in the payload to exclude/include files.
-        To pass a single filter, each of its conditions should be satisfied.
-        If a file pass at least one filter, it is included in the targets.
-        For example:
-
-        download_payload = {
-            'optional': True,
-            'nodes': [{'level':'project', '_id':project_id}],
-            'filters':[{
-                'tags':{'+':['incomplete']}
-            },
-            {
-                'types':{'-':['dicom']}
-            }]
-        }
-        will download files with tag 'incomplete' OR type different from 'dicom'
-
-        download_payload = {
-            'optional': True,
-            'nodes': [{'level':'project', '_id':project_id}],
-            'filters':[{
-                'tags':{'+':['incomplete']},
-                'types':{'+':['dicom']}
-            }]
-        }
-        will download only files with tag 'incomplete' AND type different from 'dicom'
-        """
+        """Download files or create a download ticket"""
         ticket_id = self.get_param('ticket')
         if ticket_id:
             ticket = config.db.downloads.find_one({'_id': ticket_id})

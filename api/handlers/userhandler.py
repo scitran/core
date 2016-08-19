@@ -59,38 +59,7 @@ class UserHandler(base.RequestHandler):
         return result
 
     def put(self, _id):
-        """
-        .. http:put:: /api/users/(uid)
-
-            Update user
-
-            :query root: explain...
-
-            :param uid: User ID (email address)
-            :type uid: string
-
-            :reqheader Authorization: required OAuth session token
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                PUT /api/users/jdoe@gmail.com?root=true HTTP/1.1
-                Host: demo.flywheel.io
-                Authorization: ya29..a356DasssSFG_FEbggasr435g54GG$33DFGSssghnj-HSsdfgs450nvsASAPinZCXVqertt
-                Content-Type: application/json;charset=UTF-8
-                {"firstname":"John","lastname":"Doe","email":"jdoe@gmail.com","root":true}
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Content-Type: application/json; charset=utf-8
-                Content-Length: 15
-                {"modified": 1}
-
-        """
+        """Update a user"""
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         payload = self.request.json_body
@@ -107,35 +76,7 @@ class UserHandler(base.RequestHandler):
             self.abort(404, 'User {} not updated'.format(_id))
 
     def post(self):
-        """
-        .. http:post:: /api/users
-
-            Add user
-            :query root: explain...
-
-            :reqheader Authorization: required OAuth session token
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                POST /api/users?root=true HTTP/1.1
-                Host: demo.flywheel.io
-                Authorization: ya29..a356DasssSFG_FEbggasr435g54GG$33DFGSssghnj-HSsdfgs450nvsASAPinZCXVqertt
-                Content-Type: application/json;charset=UTF-8
-                {"_id":"jane.doe@gmail.com","firstname":"Jane","lastname":"Doe","email":"jane.doe@gmail.com"}
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Content-Type: application/json; charset=utf-8
-                Vary: Accept-Encoding
-                {"_id": "jane.doe@gmail.com"}
-
-        """
-
+        """Add user"""
         permchecker = userauth.default(self)
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')

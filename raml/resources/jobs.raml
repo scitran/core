@@ -83,20 +83,45 @@ get:
       200:
         description: |
           The job has been updated.  No response body is sent.
-/{JobId}/retry:
+/{JobId}:
   uriParameters:
     JobId:
       type: string
-  description: Retry a job
-  post:
-    description: |
-      Retry a job
-      The job must have a state of 'failed', and must not have already been retried.
-      The failed jobs config is copied to a new job.
-      The ID of the new job is returned
+  get:
+    description: Get job details
     responses:
       200:
         body:
           application/json:
-            example: |
-              {"_id":"57a35c118120be0e8d1f3f5f"}
+            example: !include ../examples/job.json
+            schema: !include ../schemas/output/job.json
+  put:
+    description: Update a job
+    body:
+      application/json:
+        example: !include ../examples/input/job-update.json
+    responses:
+      200:
+        description: Job was updated.  No value is returned
+  /retry:
+    description: Retry a job
+    post:
+      description: |
+        Retry a job
+        The job must have a state of 'failed', and must not have already been retried.
+        The failed jobs config is copied to a new job.
+        The ID of the new job is returned
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {"_id":"57a35c118120be0e8d1f3f5f"}
+  /config.json:
+    get:
+      description: Get a job's config
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include ../examples/output/job-config.json
