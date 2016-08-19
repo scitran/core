@@ -71,7 +71,7 @@ class RulesHandler(base.RequestHandler):
     """Provide /rules API routes."""
 
     def get(self):
-        """List gears"""
+        """List rules"""
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
