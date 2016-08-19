@@ -57,12 +57,13 @@ get:
     JobId:
       type: string
   get:
-    description: Get info about a specific job
+    description: Get job details
     responses:
       200:
         body:
           application/json:
             example: !include ../examples/job.json
+            schema: !include ../schemas/output/job.json
       404:
         description: JobId not found
   put:
@@ -71,32 +72,6 @@ get:
       Enforces a valid state machine transition, if any.
       Rejects any change to a job that is not currently in 'pending' or 'running' state.
       Accepts the same body as /api/jobs/add , except all fields are optional.
-    body:
-      application/json:
-        example: |
-          {
-            "tags":[
-              "test-tag"
-            ]
-          }
-    responses:
-      200:
-        description: |
-          The job has been updated.  No response body is sent.
-/{JobId}:
-  uriParameters:
-    JobId:
-      type: string
-  get:
-    description: Get job details
-    responses:
-      200:
-        body:
-          application/json:
-            example: !include ../examples/job.json
-            schema: !include ../schemas/output/job.json
-  put:
-    description: Update a job
     body:
       application/json:
         example: !include ../examples/input/job-update.json
