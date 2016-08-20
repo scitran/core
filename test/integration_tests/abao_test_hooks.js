@@ -34,6 +34,7 @@ hooks.skip("GET /jobs/next -> 200");
 hooks.skip("GET /jobs -> 200");
 hooks.skip("GET /jobs/{JobId} -> 200");
 hooks.skip("PUT /jobs/{JobId} -> 200");
+hooks.skip("GET /jobs/{JobId}/config.json -> 200");
 
 // Can only retry a failed job
 hooks.skip("POST /jobs/{JobId}/retry -> 200");
