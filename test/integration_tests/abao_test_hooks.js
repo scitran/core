@@ -69,7 +69,7 @@ hooks.before("GET /jobs/{JobId} -> 200", function(test, done) {
     done();
 });
 
-hooks.before("GET /jobs/{JobId}/config.json" -> 200", function(test, done) {
+hooks.before("GET /jobs/{JobId}/config.json -> 200", function(test, done) {
     test.request.params = {
         JobId: job_id
     };
