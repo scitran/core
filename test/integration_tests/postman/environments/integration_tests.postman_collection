@@ -22,7 +22,7 @@
 			"data": [
 				{
 					"key": "file1",
-					"value": "test_files/engine-analyses-1.txt",
+					"value": "engine-analyses-1.txt",
 					"type": "file",
 					"enabled": true
 				},
@@ -35,10 +35,10 @@
 			],
 			"dataMode": "params",
 			"version": 2,
-			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
+			"tests": null,
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1471607560876,
+			"time": 1471607394844,
 			"name": "Test /engine upload - type \"analysis\"",
 			"description": "",
 			"collectionId": "a8f4f3da-c945-3c88-f6a2-6d77e69506ca",
