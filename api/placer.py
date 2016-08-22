@@ -506,7 +506,7 @@ class AnalysisPlacer(Placer):
 
     def check(self):
         self.requireMetadata()
-        #validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
+        validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
 
     def process_file_field(self, field, info):
         self.save_file(field)
@@ -533,7 +533,6 @@ class AnalysisJobPlacer(Placer):
     def check(self):
         if self.id_ is None:
             raise Exception('Must specify a target analysis')
-        #validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
 
     def process_file_field(self, field, info):
         if self.metadata is not None:

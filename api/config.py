@@ -104,6 +104,7 @@ schema_path = __config['persistent']['schema_path']
 
 expected_mongo_schemas = set([
     'acquisition.json',
+    'analysis.json',
     'collection.json',
     'container.json',
     'file.json',
@@ -119,6 +120,7 @@ expected_mongo_schemas = set([
 ])
 expected_input_schemas = set([
     'acquisition.json',
+    'analysis.json',
     'collection.json',
     'container.json',
     'file.json',
