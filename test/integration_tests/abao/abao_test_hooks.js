@@ -3,6 +3,7 @@ var hooks = require('hooks');
 // Variables for passing results as input to subsequent tests
 var job_id = '';
 var gear_name = '';
+var group_id = 'test_group';
 
 // Tests we're skipping, fix these
 
@@ -121,6 +122,14 @@ hooks.before("PUT /users/{UserId} -> 200", function(test, done) {
     done();
 });
 
+hooks.before("PUT /users/{UserId} -> 400", function(test, done) {
+    test.request.params = {
+        UserId: "jane.doe@gmail.com"
+    };
+    test.request.body = {"not_a_valid_property":"foo"};
+    done();
+});
+
 hooks.before("DELETE /users/{UserId} -> 200", function(test, done) {
     test.request.params = {
         UserId: "jane.doe@gmail.com"
@@ -145,6 +154,42 @@ hooks.before("POST /gears/{GearName} -> 200", function(test, done) {
 hooks.before("GET /gears/{GearName} -> 200", function(test, done) {
     test.request.params = {
         GearName: "dcm_convert"
+    };
+    done();
+});
+
+hooks.before("GET /groups -> 200", function(test, done) {
+    // POST happens after GET, so hardcode a group_id
+    // group_id = test.response.body[0]._id;
+    done();
+});
+
+hooks.before("PUT /groups/{GroupId} -> 400", function(test, done) {
+    test.request.params = {
+        GroupId: group_id
+    };
+    test.request.body = {"not_a_real_property":"foo"};
+    done();
+});
+
+hooks.before("POST /groups -> 400", function(test, done) {
+    test.request.body = {"not_a_real_property":"foo"};
+    done();
+});
+
+
+hooks.before("GET /groups/{GroupId} -> 200", function(test, done) {
+    test.request.params = {
+        GroupId: group_id
+    };
+    done();
+});
+
+
+
+hooks.before("DELETE /groups/{GroupId} -> 200", function(test, done) {
+    test.request.params = {
+        GroupId: group_id
     };
     done();
 });

@@ -2,6 +2,14 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "array",
   "items": {
-    "$ref":"../definitions/user-output.json#"
+    "allOf":[
+      {"$ref":"../definitions/user-output.json#"},
+      {
+        "required":[
+           "_id", "firstname", "lastname",
+           "root", "email", "created", "modified"
+           ]
+      }
+    ]
   }
 }

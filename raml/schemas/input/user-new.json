@@ -3,7 +3,7 @@
   "title": "User",
   "type": "object",
   "allOf":[
-    {"$ref":"../definitions/user.json#"}
+    {"$ref":"../definitions/user-input.json#"}
   ],
   "required":["_id", "firstname", "lastname"]
 }

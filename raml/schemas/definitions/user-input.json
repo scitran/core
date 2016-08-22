@@ -2,7 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "allOf":[
     {"$ref":"user.json#"},
-    {"$ref":"created-modified.json"},
     {
       "type":"object",
       "properties":{
@@ -10,12 +9,11 @@
         "firstname":{},
         "lastname":{},
         "email":{},
+        "avatar":{},
         "avatars":{},
         "root":{},
         "disabled":{},
-        "preferences":{},
-        "created":{},
-        "modified":{}
+        "preferences":{}
       },
       "additionalProperties":false
     }
