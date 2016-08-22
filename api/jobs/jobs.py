@@ -138,6 +138,8 @@ class Job(object):
             d.pop('previous_job_id')
         if d['request'] is None:
             d.pop('request')
+        if d['now'] is False:
+            d.pop('now')
 
         return d
 
