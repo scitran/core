@@ -139,14 +139,7 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 class Upload(base.RequestHandler):
 
     def upload(self, strategy):
-        """
-        .. http:post:: /api/upload/<strategy:label|uid>
-
-            Receive a sortable reaper upload.
-
-            :statuscode 402: no error
-            :statuscode 500: no error
-        """
+        """Receive a sortable reaper upload."""
 
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
@@ -161,35 +154,7 @@ class Upload(base.RequestHandler):
         return process_upload(self.request, strategy, origin=self.origin)
 
     def engine(self):
-        """
-        .. http:post:: /api/engine
-
-            Default behavior:
-                Uploads a list of files sent as file1, file2, etc to a existing
-                container and updates fields of the files, the container and it's
-                parents as specified in the metadata fileformfield using the
-                engine placer class
-            When ``level`` is ``analysis``:
-                Uploads a list of files to an existing analysis object, marking
-                all files as ``output=true`` using the job-based analyses placer
-                class
-
-            :param level: one of ``project``, ``session``, ``acquisition``, ``analysis``
-            :type level: string
-
-            :param id: Container ID
-            :type id: string
-
-            :param id: Job ID
-            :type id: string
-
-            :statuscode 200: no error
-            :statuscode 400: Target container ``level`` is required
-            :statuscode 400: Level must be ``project``, ``session``, ``acquisition``, ``analysis``
-            :statuscode 400: Target container ``id`` is required
-            :statuscode 402: Uploads must be from an authorized drone
-
-        """
+        """Handles file uploads from the engine"""
 
         if not self.superuser_request:
             self.abort(402, 'uploads must be from an authorized drone')
@@ -211,13 +176,7 @@ class Upload(base.RequestHandler):
             return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin)
 
     def clean_packfile_tokens(self):
-        """
-        .. http:post:: /api/clean-packfiles
-
-            Clean up expired upload tokens and invalid token directories.
-
-            :statuscode 402: describe me
-
+        """Clean up expired upload tokens and invalid token directories.
         Ref placer.TokenPlacer and FileListHandler.packfile_start for context.
         """
 

@@ -84,34 +84,7 @@ def clean_remotes(db, site_id):
 class CentralClient(base.RequestHandler):
 
     def sites(self):
-        """
-        .. http:get:: /api/sites
-
-            Return local and remote sites.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                GET /api/sites HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                [{"onload": true, "_id": "local", "name": "BaliDemo"}]
-
-
-        """
-
+        """List sites"""
         projection = ['name', 'onload']
         # TODO onload for local is true
         site_id = config.get_item('site', 'id')

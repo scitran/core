@@ -21,44 +21,7 @@ class GearsHandler(base.RequestHandler):
     """Provide /gears API routes."""
 
     def get(self):
-        """
-        .. http:get:: /api/gears
-
-            List all gears.
-
-            :query fields: filter fields returned. Defaults to ['name']. Pass 'all' for everything.
-            :type fields: string
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                GET /api/gears HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                [
-                    {
-                        "name": "dicom_mr_classifier"
-                    },
-                    {
-                        "name": "dcm_convert"
-                    },
-                    {
-                        "name": "qa-report-fmri"
-                    }
-                ]
-        """
+        """List all gears."""
 
         if self.public_request:
             self.abort(403, 'Request requires login')
@@ -70,47 +33,10 @@ class GearsHandler(base.RequestHandler):
         return get_gears(fields)
 
 class GearHandler(base.RequestHandler):
-
     """Provide /gears/x API routes."""
 
     def get(self, _id):
-        """
-        .. http:get:: /api/gears/(gid)
-
-            Detail a gear.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                GET /api/gears/dcm_convert HTTP/1.1
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Content-Type: application/json; charset=utf-8
-                {
-                    "name": "dcm_convert"
-                    "manifest": {
-                        "config": {},
-                        "inputs": {
-                            "dicom": {
-                                "base": "file",
-                                "type": {
-                                    "enum": [
-                                        "dicom"
-                                    ]
-                                }
-                            }
-                        },
-                    },
-                }
-
-        """
+        """Detail a gear."""
 
         if self.public_request:
             self.abort(403, 'Request requires login')
@@ -118,37 +44,7 @@ class GearHandler(base.RequestHandler):
         return get_gear_by_name(_id)
 
     def post(self, _id):
-        """
-        .. http:post:: /api/gears/(gid)
-
-            Upsert an entire gear document.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                POST /api/gears/dicom_mr_classifier HTTP/1.1
-                {
-                    "name": "dicom_mr_classifier",
-                    "category": "classifier",
-                    "input": {
-                        // ...
-                    },
-                    "manifest": {
-                        // ..
-                    }
-                }
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Content-Type: application/json; charset=utf-8
-                { "name": "dicom_mr_classifier" }
-        """
+        """Upsert an entire gear document."""
 
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
@@ -162,25 +58,7 @@ class GearHandler(base.RequestHandler):
         return { 'name': _id }
 
     def delete(self, _id):
-        """
-        .. http:delete:: /api/gears/(gid)
-
-            Delete a gear. Generally not recommended.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                DELETE /api/gears/dicom_mr_classifier HTTP/1.1
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-        """
+        """Delete a gear. Generally not recommended."""
 
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
@@ -193,75 +71,14 @@ class RulesHandler(base.RequestHandler):
     """Provide /rules API routes."""
 
     def get(self):
-        """
-        .. http:get:: /api/rules
-
-            List gear rules.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                GET /api/rules HTTP/1.1
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Content-Type: application/json; charset=utf-8
-                [
-                    {
-                        "alg" : "dicom_mr_classifier",
-                        "all" : [
-                            [
-                                "file.type",
-                                "dicom"
-                            ]
-                        ]
-                    },
-                ]
-        """
-
+        """List rules"""
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
         return config.db.singletons.find_one({"_id" : "rules"})['rule_list']
 
     def post(self):
-        """
-        .. http:post:: /api/rules
-
-            Upsert all rules
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                POST /api/rules HTTP/1.1
-                [
-                    {
-                        "alg" : "dicom_mr_classifier",
-                        "all" : [
-                            [
-                                "file.type",
-                                "dicom"
-                            ]
-                        ]
-                    },
-                ]
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-        """
-
+        """Upsert all rules"""
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
@@ -270,65 +87,16 @@ class RulesHandler(base.RequestHandler):
 
 
 class JobsHandler(base.RequestHandler):
-
     """Provide /jobs API routes."""
-
     def get(self):
-        """
-        List all jobs.
-        """
+        """List all jobs."""
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
         return list(config.db.jobs.find())
 
     def add(self):
-        """
-        .. http:post:: /api/jobs/add
-
-            Add a job to the queue.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                POST /api/jobs/add HTTP/1.1
-
-                {
-                    "gear": "dcm_convert",
-
-                    "inputs": {
-                        "dicom": {
-                            "type": "acquisition",
-                            "id": "573c9e6a844eac7fc01747cd",
-                            "name" : "1_1_dicom.zip"
-                        }
-                    },
-
-                    "destination": {
-                        "type": "acquisition",
-                        "id": "573c9e6a844eac7fc01747cd"
-                    },
-
-                    "tags": [
-                        "ad-hoc"
-                    ]
-                }
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                {
-                    "_id": "573cb66b135d87002660597c"
-                }
-        """
-
+        """Add a job to the queue."""
         submit = self.request.json
 
         gear_name = submit['gear']
@@ -394,7 +162,6 @@ class JobsHandler(base.RequestHandler):
 
 
 class JobHandler(base.RequestHandler):
-
     """Provides /Jobs/<jid> routes."""
 
     def get(self, _id):
@@ -404,32 +171,7 @@ class JobHandler(base.RequestHandler):
         return Job.get(_id)
 
     def get_config(self, _id):
-        """
-        .. http:get:: /api/jobs/x/config.json
-
-            Returns the job's config as a downloadable json file
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                GET /api/jobs/3/config.json HTTP/1.1
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Content-Disposition: attachment; filename="config.json"
-                Content-Type: application/octet-stream
-
-                {
-                    "speed": 5
-                }
-        """
-
+        """Get a job's config"""
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
@@ -457,34 +199,11 @@ class JobHandler(base.RequestHandler):
         Queue.mutate(j, self.request.json)
 
     def retry(self, _id):
+        """ Retry a job.
+
+        The job must have a state of 'failed', and must not have already been retried.
+        Returns the id of the new, generated job.
         """
-        .. http:post:: /api/jobs/(jid)/retry
-
-            Retry a job.
-
-            The job must have a state of 'failed', and must not have already been retried.
-            Returns the id of the new, generated job.
-
-            :statuscode 200: no error
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                POST /api/jobs/3/retry HTTP/1.1
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                {
-                    "_id": "573cb66b135d87002660597c"
-                }
-        """
-
         j = Job.get(_id)
 
         # Permission check

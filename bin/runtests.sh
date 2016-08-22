@@ -7,7 +7,7 @@
 set -e
 
 unit_test_path=test/unit_tests/
-integration_test_path=test/integration_tests/
+integration_test_path=test/integration_tests/python
 code_path=api/
 
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
@@ -55,6 +55,7 @@ case "$1-$2" in
       exit 1
     ) &&
     # execute tests
+    
     docker-compose \
       -f test/docker-compose.yml \
       run \
@@ -64,6 +65,18 @@ case "$1-$2" in
       -f test/docker-compose.yml \
       run \
       --rm \
+      integration-test &&
+    docker-compose \
+      -f test/docker-compose.yml \
+      run \
+      --rm \
+      --entrypoint "abao /usr/src/raml/api.raml --server=http://scitran-core:8080/api --hookfiles=/usr/src/tests/abao/abao_test_hooks.js" \
+      integration-test &&
+    docker-compose \
+      -f test/docker-compose.yml \
+      run \
+      --rm \
+      --entrypoint "newman run /usr/src/tests/postman/integration_tests.postman_collection -e /usr/src/tests/postman/environments/travis-ci.postman_environment" \
       integration-test ||
     # set failure exit code in the event any previous commands in chain failed.
     exit_code=1
