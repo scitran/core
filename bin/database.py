@@ -11,7 +11,7 @@ from api import config
 from api.dao import containerutil
 from api.jobs.jobs import Job
 
-CURRENT_DATABASE_VERSION = 14 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 15 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -315,7 +315,7 @@ def upgrade_to_10():
 
 def upgrade_to_11():
     """
-    scitran/core issue #363
+    scitran/core issue #362
 
     Restructures job objects' `inputs` field from a dict with arbitrary keys
     into a list where the key becomes the field `input`
@@ -379,6 +379,50 @@ def upgrade_to_14():
         {'_id': 'config', 'persistent.schema_path': {'$exists': True}},
         {'$unset': {'persistent.schema_path': ''}})
 
+def upgrade_to_15():
+    """
+    scitran/pull issue #417
+
+    First remove all timestamps that are empty or not mongo date or string format.
+    Then attempt to convert strings to dates, removing those that cannot be converted.
+    Mongo $type maps: String = 2, Date = 9
+    """
+    query = {}
+    query['$or'] = [
+                    {'timestamp':''},
+                    {'$and': [
+                        {'timestamp': {'$exists': True}},
+                        {'timestamp': {'$not': {'$type':2}}},
+                        {'timestamp': {'$not': {'$type':9}}}
+                    ]}
+                ]
+    unset = {'$unset': {'timestamp': ''}}
+
+    config.db.sessions.update_many(query, unset)
+    config.db.acquisitions.update_many(query, unset)
+
+    query =  {'$and': [
+                {'timestamp': {'$exists': True}},
+                {'timestamp': {'$type':2}}
+            ]}
+    sessions = config.db.sessions.find(query)
+    for s in sessions:
+        try:
+            fixed_timestamp = dateutil.parser.parse(s['timestamp'])
+        except:
+            config.db.sessions.update_one({'_id': s['_id']}, {'$unset': {'timestamp': ''}})
+            continue
+        config.db.sessions.update_one({'_id': s['_id']}, {'$set': {'timestamp': fixed_timestamp}})
+
+    acquisitions = config.db.acquisitions.find(query)
+    for a in acquisitions:
+        try:
+            fixed_timestamp = dateutil.parser.parse(a['timestamp'])
+        except:
+            config.db.sessions.update_one({'_id': a['_id']}, {'$unset': {'timestamp': ''}})
+            continue
+        config.db.sessions.update_one({'_id': a['_id']}, {'$set': {'timestamp': fixed_timestamp}})
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version
@@ -387,36 +431,12 @@ def upgrade_schema():
     """
 
     db_version = get_db_version()
-    try:
-        if db_version < 1:
-            upgrade_to_1()
-        if db_version < 2:
-            upgrade_to_2()
-        if db_version < 3:
-            upgrade_to_3()
-        if db_version < 4:
-            upgrade_to_4()
-        if db_version < 5:
-            upgrade_to_5()
-        if db_version < 6:
-            upgrade_to_6()
-        if db_version < 7:
-            upgrade_to_7()
-        if db_version < 8:
-            upgrade_to_8()
-        if db_version < 9:
-            upgrade_to_9()
-        if db_version < 10:
-            upgrade_to_10()
-        if db_version < 11:
-            upgrade_to_11()
-        if db_version < 12:
-            upgrade_to_12()
-        if db_version < 13:
-            upgrade_to_13()
-        if db_version < 14:
-            upgrade_to_14()
 
+    try:
+        while db_version < CURRENT_DATABASE_VERSION:
+            db_version += 1
+            upgrade_script = 'upgrade_to_'+str(db_version)
+            globals().get(upgrade_script)()
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
