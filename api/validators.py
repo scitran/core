@@ -46,7 +46,7 @@ def no_op(g, *args): # pylint: disable=unused-argument
 
 def schema_uri(type_, schema_name):
     return os.path.join(
-        config.get_item('persistent', 'schema_path'),
+        config.schema_path,
         type_,
         schema_name
     )

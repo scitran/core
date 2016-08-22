@@ -11,7 +11,7 @@ from api import config
 from api.dao import containerutil
 from api.jobs.jobs import Job
 
-CURRENT_DATABASE_VERSION = 13 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 14 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -373,6 +373,11 @@ def upgrade_to_13():
         {'_id': 'config', 'persistent.schema_path': {'$exists': True}},
         {'$unset': {'persistent.schema_path': ''}})
 
+def upgrade_to_14():
+    """schema_path is no longer user configurable"""
+    config.db.singletons.find_one_and_update(
+        {'_id': 'config', 'persistent.schema_path': {'$exists': True}},
+        {'$unset': {'persistent.schema_path': ''}})
 
 def upgrade_schema():
     """
@@ -409,6 +414,8 @@ def upgrade_schema():
             upgrade_to_12()
         if db_version < 13:
             upgrade_to_13()
+        if db_version < 14:
+            upgrade_to_14()
 
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')

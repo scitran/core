@@ -53,7 +53,6 @@ DEFAULT_CONFIG = {
         'db_connect_timeout': '2000',
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
-        'schema_path': os.path.join(os.path.dirname(os.path.abspath(__file__)), '../raml/schemas'),
         'elasticsearch_host': 'localhost:9200',
     },
 }
@@ -100,7 +99,7 @@ log.debug(str(db))
 es = elasticsearch.Elasticsearch([__config['persistent']['elasticsearch_host']])
 
 # validate the lists of json schemas
-schema_path = __config['persistent']['schema_path']
+schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../raml/schemas')
 
 expected_mongo_schemas = set([
     'acquisition.json',
