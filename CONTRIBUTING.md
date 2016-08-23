@@ -1,3 +1,20 @@
+## Steps for Contributing
+1. Create a new branch off of up-to-date master
+2. Make your changes.  If you are adding an endpoint or resource to the API,
+follow "Adding an API Resource"
+3. Make sure your code follows the "Code Standards" section of this document
+4. Use "git rebase -i" to squash your commits into one or a few. Follow commit message guidelines.
+5. Push your feature branch and make sure Travis CI passes
+6. Submit a pull request to master and tag at least one reviewer
+
+## Code Standards
+### Docstrings
+- Use [google style docstrings](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
+- Add docstrings to all functions with a one-line description of its purpose
+### Format
+Use descriptive but not overly verbose variable names.  incoming_request instead of r.  Follow PEP8, exceptions by reviewer approval.  
+
+## Adding an API Resource
 ### Design resource
 1. Begin by writing a description of your API resource and it’s business functionality
 2. Choose a name for your resource that describes what it does
