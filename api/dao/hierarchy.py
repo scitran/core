@@ -269,7 +269,7 @@ def upsert_bottom_up_hierarchy(metadata, upsert=True):
     if session_obj: # skip project creation, if session exists
         # If we do not wish to upsert, confirm acquisition also exists before proceeding
         if not upsert:
-            a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['id'])
+            a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['_id'])
             if a is None:
                 raise APINotFoundException('Acquisition with uid {} does not exist'.format(acquisition_uid))
 
@@ -289,7 +289,7 @@ def upsert_bottom_up_hierarchy(metadata, upsert=True):
         return upsert_top_down_hierarchy(metadata, 'uid')
 
 
-def upsert_top_down_hierarchy(metadata, type_='label', upsert=True):
+def upsert_top_down_hierarchy(metadata, type_='label', upsert=True): #pylint: disable=unused-argument
     group = metadata['group']
     project = metadata['project']
     session = metadata.get('session')

@@ -48,6 +48,7 @@ hooks.skip("POST /download -> 200");
 hooks.skip("GET /download -> 200");
 hooks.skip("POST /upload/label -> 200");
 hooks.skip("POST /upload/uid -> 200");
+hooks.skip("POST /upload/uid -> 404");
 hooks.skip("POST /engine -> 200");
 
 hooks.beforeEach(function (test, done) {
@@ -103,6 +104,11 @@ hooks.before("GET /download -> 404", function(test, done) {
     test.request.query = {
         ticket: '1234'
     };
+    done();
+});
+
+hooks.before("POST /upload/label -> 404", function(test, done) {
+    test.request.query['update-only'] = 'true'
     done();
 });
 

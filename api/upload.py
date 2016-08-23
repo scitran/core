@@ -151,7 +151,11 @@ class Upload(base.RequestHandler):
             strategy = Strategy.uidupload
         else:
             self.abort(500, 'stragegy {} not implemented'.format(strategy))
-        context = {'upsert': not(self.is_true('update-only'))}
+
+        update_only = self.is_true('update-only')
+        if update_only and strategy != Strategy.uidupload:
+            self.abort(404, 'update-only is not a supported feature for label uploads')
+        context = {'upsert': not(update_only)}
         return process_upload(self.request, strategy, origin=self.origin, context=context)
 
     def engine(self):
