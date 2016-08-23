@@ -9,7 +9,7 @@ import re
 from .. import files
 from .. import util
 from .. import config
-from . import APIStorageException, containerutil
+from . import APIStorageException, APINotFoundException, containerutil
 
 log = config.log
 
@@ -249,7 +249,7 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     return target_containers
 
 
-def upsert_bottom_up_hierarchy(metadata):
+def upsert_bottom_up_hierarchy(metadata, upsert=True):
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
@@ -259,16 +259,21 @@ def upsert_bottom_up_hierarchy(metadata):
     try:
         _ = group['_id']
         _ = project['label']
-        _ = acquisition['uid']
+        acquisition_uid = acquisition['uid']
         session_uid = session['uid']
     except Exception as e:
         log.error(metadata)
         raise APIStorageException(str(e))
 
-    now = datetime.datetime.utcnow()
-
     session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
+        # If we do not wish to upsert, confirm acquisition also exists before proceeding
+        if not upsert:
+            a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['id'])
+            if a is None:
+                raise APINotFoundException('Acquisition with uid {} does not exist'.format(acquisition_uid))
+
+        now = datetime.datetime.utcnow()
         project_files = dict_fileinfos(project.pop('files', []))
         project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
         target_containers = _get_targets(project_obj, session, acquisition, 'uid', now)
@@ -276,11 +281,15 @@ def upsert_bottom_up_hierarchy(metadata):
             (TargetContainer(project_obj, 'project'), project_files)
         )
         return target_containers
+
+    elif not upsert:
+        raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))
+
     else:
         return upsert_top_down_hierarchy(metadata, 'uid')
 
 
-def upsert_top_down_hierarchy(metadata, type_='label'):
+def upsert_top_down_hierarchy(metadata, type_='label', upsert=True):
     group = metadata['group']
     project = metadata['project']
     session = metadata.get('session')

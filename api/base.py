@@ -13,7 +13,7 @@ from . import files
 from . import config
 from .types import Origin
 from . import validators
-from .dao import APIConsistencyException, APIConflictException
+from .dao import APIConsistencyException, APIConflictException, APINotFoundException
 
 log = config.log
 
@@ -274,6 +274,8 @@ class RequestHandler(webapp2.RequestHandler):
             log.warn(str(exception))
         elif isinstance(exception, APIConsistencyException):
             code = 400
+        elif isinstance(exception, APINotFoundException):
+            code = 404
         elif isinstance(exception, APIConflictException):
             code = 409
         elif isinstance(exception, files.FileStoreException):

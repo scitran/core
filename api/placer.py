@@ -138,7 +138,7 @@ class UIDPlacer(Placer):
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 
-        targets = self.create_hierarchy(self.metadata)
+        targets = self.create_hierarchy(self.metadata, upsert=self.context.get('upsert', True))
 
         self.metadata_for_file = {}
 

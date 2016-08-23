@@ -151,7 +151,8 @@ class Upload(base.RequestHandler):
             strategy = Strategy.uidupload
         else:
             self.abort(500, 'stragegy {} not implemented'.format(strategy))
-        return process_upload(self.request, strategy, origin=self.origin)
+        context = {'upsert': not(self.is_true('update-only'))}
+        return process_upload(self.request, strategy, origin=self.origin, context=context)
 
     def engine(self):
         """Handles file uploads from the engine"""
