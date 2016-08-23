@@ -436,7 +436,10 @@ def upgrade_schema():
         while db_version < CURRENT_DATABASE_VERSION:
             db_version += 1
             upgrade_script = 'upgrade_to_'+str(db_version)
-            globals().get(upgrade_script)()
+            globals()[upgrade_script]()
+    except KeyError as e:
+        logging.exception('Attempted to upgrade using script that does not exist: {}'.format(e))
+        sys.exit(1)
     except Exception as e:
         logging.exception('Incremental upgrade of db failed')
         sys.exit(1)
