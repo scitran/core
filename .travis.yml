@@ -14,7 +14,6 @@ before_script:
 script:
   - bin/runtests.sh unit --ci
   - bin/runtests.sh integration --ci
-# Disable Refactor and Convention reports
-  - pylint --disable=C,R api
+  - ./test/lint.sh api
 after_success:
   - coveralls

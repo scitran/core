@@ -1,31 +1,32 @@
-## Steps for Contributing
-1. Create a new branch off of up-to-date master
-2. Make your changes.  If you are adding an endpoint or resource to the API,
-follow "Adding an API Resource"
-3. Make sure your code follows the "Code Standards" section of this document
-4. Use "git rebase -i origin/master" to squash your commits into one or a few. Follow commit message guidelines.
-5. Push your feature branch and make sure Travis CI passes
-6. Submit a pull request to master and tag at least one reviewer
+## Contributing
+1. Contributions should follow the "Code Standards" section of this document.
+1. If adding an endpoint or resource to the API, also follow "Adding an API Resource".
+1. Follow commit message guidelines.
+1. Use `git rebase [-i]` to clean up your contribution and resolve pending merge conflicts.
+1. Submit a pull request and ensure that CI passes.
+
 
 ## Code Standards
 ### Docstrings
-- Use [google style docstrings](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
-- Add docstrings to all functions with a one-line description of its purpose
+- Use [Google Style Docstrings](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
+- Add docstrings to all functions with a one-line description of its purpose.
+
 ### Format
-Use descriptive but not overly verbose variable names.  incoming_request instead of r.  Follow PEP8, exceptions by reviewer approval.  
+Ensure that `./test/lint.sh api` exists without errors.
+
 
 ## Adding an API Resource
-### Design resource
-1. Begin by writing a description of your API resource and it’s business functionality
-2. Choose a name for your resource that describes what it does
-3. Create a url from the name.  If your resource is a collection and the name is a noun, pluralize the name e.g. “uploads”
+### Design Resource
+1. Write a description of your API resource and its business functionality.
+1. Choose a descriptive name for your resource that aligns with existing names.
+1. Create a URL from the name. If your resource is a collection, the name should be a pluralized noun, e.g., "files".
 
-### Add RAML for API endpoints
-1. Create a new resource file, called <resource_name>.raml   e.g. “uploads.raml”.  Create this file in the resources raml/resources directory
-2. In api.raml, add a line with the URL of your resource and an include directive for your resource raml file.  E.g.   “/uploads: !include resources/uploads.raml”
-3. In your resource file, define your resource.  Begin by adding a “description” property with the description you wrote in step 1
-4. Add example properties for both request and response.  Examples should be stored in the examples/ directory, for example core/raml/examples/request/uploads.json 
-5. Use http://jsonschema.net/#/  to generate jsonschema for both request and response body.  Edit jsonschema as necessary.  Before generating your schema, scroll down and uncheck “allow additional properties”  Schemas are stored in the “schemas” folder, for example core/raml/schemas/input/uploads.json   
+### Add RAML for API Endpoints
+1. Create a new resource file, called `<resource_name>.raml`, e.g., `files.raml`. Create this file in the `raml/resources` directory.
+1. In `api.raml`, add a line with the URL of your resource and an include directive for your resource raml file, e.g., `/files: !include resources/files.raml`.
+1. In your resource file, define your resource. Begin by adding a `description` property with the description you wrote in step 1.
+1. Add example properties for both request and response. Examples should be stored in the `examples/` directory, e.g., `raml/examples/request/files.json`.
+1. Use [JSONSchema.net](http://jsonschema.net/) to generate a JSON schema for both request and response body. Edit the schema as necessary. Before generating your schema, scroll down and uncheck "allow additional properties".  Schemas are stored in the `schemas/` directory, e.g., `raml/schemas/input/files.json`.
 
-### [Testing](https://github.com/scitran/core/blob/master/TESTING.md) - Click here
-
+### Testing
+Follow the procedures outlined in our [testing instructions](https://github.com/scitran/core/blob/master/TESTING.md).
