@@ -447,18 +447,19 @@ def upgrade_schema():
         config.db.singletons.update_one({'_id': 'version'}, {'$set': {'database': CURRENT_DATABASE_VERSION}})
         sys.exit(0)
 
-try:
-    if len(sys.argv) > 1:
-        if sys.argv[1] == 'confirm_schema_match':
-            confirm_schema_match()
-        elif sys.argv[1] == 'upgrade_schema':
-            upgrade_schema()
+if __name__ == '__main__':
+    try:
+        if len(sys.argv) > 1:
+            if sys.argv[1] == 'confirm_schema_match':
+                confirm_schema_match()
+            elif sys.argv[1] == 'upgrade_schema':
+                upgrade_schema()
+            else:
+                logging.error('Unknown method name given as argv to database.py')
+                sys.exit(1)
         else:
-            logging.error('Unknown method name given as argv to database.py')
+            logging.error('No method name given as argv to database.py')
             sys.exit(1)
-    else:
-        logging.error('No method name given as argv to database.py')
+    except Exception as e:
+        logging.exception('Unexpected error in database.py')
         sys.exit(1)
-except Exception as e:
-    logging.exception('Unexpected error in database.py')
-    sys.exit(1)
