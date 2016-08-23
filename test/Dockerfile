@@ -20,7 +20,7 @@ RUN apt-get update && apt-get -y install nodejs
 
 # Install abao: https://github.com/cybertk/abao
 # Using our fork of abao to expand jsonschema refs
-RUN npm install -g git+https://github.com/flywheel-io/abao.git#add-jsonschema-deref
+RUN npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref
 
 # Install newman for running postman collection tests from CLI
 RUN npm install -g newman
