@@ -117,17 +117,19 @@ class Queue(object):
     def start_job(tags=None):
         """
         Atomically change a 'pending' job to 'running' and returns it. Updates timestamp.
-        Will return None if there are no jobs to offer.
+        Will return None if there are no jobs to offer. Searches for jobs marked "now"
+        most recently first, followed by unmarked jobs in FIFO order if none are found.
 
         Potential jobs must match at least one tag, if provided.
         """
 
-        query = { 'state': 'pending' }
+        query = { 'state': 'pending', 'now': True }
 
         if tags is not None:
             query['tags'] = {'$in': tags }
 
-        # First, atomically mark document as running.
+        # First look for jobs marked "now" sorted by modified most recently
+        # Mark as running if found
         result = config.db.jobs.find_one_and_update(
             query,
 
@@ -135,9 +137,23 @@ class Queue(object):
                 'state': 'running',
                 'modified': datetime.datetime.utcnow()}
             },
-            sort=[('modified', 1)],
+            sort=[('modified', -1)],
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
+
+        # If no jobs marked "now" are found, search again ordering by FIFO
+        if result is None:
+            query['now'] = {'$ne': True}
+            result = config.db.jobs.find_one_and_update(
+                query,
+
+                { '$set': {
+                    'state': 'running',
+                    'modified': datetime.datetime.utcnow()}
+                },
+                sort=[('modified', 1)],
+                return_document=pymongo.collection.ReturnDocument.AFTER
+            )
 
         if result is None:
             return None

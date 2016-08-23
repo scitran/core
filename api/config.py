@@ -189,6 +189,7 @@ def initialize_db():
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
     db.jobs.create_index([('inputs.id',1), ('inputs.type', 1)])
+    db.jobs.create_index([('state', 1),('now', 1), ('modified', 1)])
 
     # Must be kept in sync with jobs/gears.py
     db.singletons.update({"_id" : "gears"}, {

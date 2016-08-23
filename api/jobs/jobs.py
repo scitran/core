@@ -13,7 +13,7 @@ from .. import config
 log = config.log
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None, now=False):
         """
         Creates a job.
 
@@ -46,14 +46,14 @@ class Job(object):
 
         # TODO: validate inputs against the manifest
 
-        now = datetime.datetime.utcnow()
+        time_now = datetime.datetime.utcnow()
 
         if tags is None:
             tags = []
         if created is None:
-            created = now
+            created = time_now
         if modified is None:
-            modified = now
+            modified = time_now
 
         if destination is None and inputs is not None:
             # Grab an arbitrary input's container
@@ -78,6 +78,7 @@ class Job(object):
         self.request         = request
         self.id_             = id_
         self.config          = config_
+        self.now             = now
 
     @classmethod
     def load(cls, e):
@@ -137,6 +138,8 @@ class Job(object):
             d.pop('previous_job_id')
         if d['request'] is None:
             d.pop('request')
+        if d['now'] is False:
+            d.pop('now')
 
         return d
 
