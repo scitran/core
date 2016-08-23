@@ -3,7 +3,7 @@
 2. Make your changes.  If you are adding an endpoint or resource to the API,
 follow "Adding an API Resource"
 3. Make sure your code follows the "Code Standards" section of this document
-4. Use "git rebase -i" to squash your commits into one or a few. Follow commit message guidelines.
+4. Use "git rebase -i origin/master" to squash your commits into one or a few. Follow commit message guidelines.
 5. Push your feature branch and make sure Travis CI passes
 6. Submit a pull request to master and tag at least one reviewer
 

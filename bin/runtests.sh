@@ -77,7 +77,12 @@ case "$1-$2" in
       run \
       --rm \
       --entrypoint "newman run /usr/src/tests/postman/integration_tests.postman_collection -e /usr/src/tests/postman/environments/travis-ci.postman_environment" \
-      integration-test ||
+      integration-test &&
+    echo "Checking number of files with DOS encoding:" &&
+    ! find * -type f -exec file {} \; | \
+      grep -I "with CRLF line terminators" &&
+    echo "Checking for files with windows style newline:" &&
+    ! grep -rI $'\r' * ||
     # set failure exit code in the event any previous commands in chain failed.
     exit_code=1
 
