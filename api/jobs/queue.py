@@ -143,7 +143,7 @@ class Queue(object):
 
         # If no jobs marked "now" are found, search again ordering by FIFO
         if result is None:
-            query['now'] = False
+            query['now'] = {'$ne': True}
             result = config.db.jobs.find_one_and_update(
                 query,
 
