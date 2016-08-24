@@ -355,6 +355,8 @@ def _update_hierarchy(container, container_type, metadata):
         session_obj = None
         if session.keys():
             session['modified'] = now
+            if session.get('timestamp'):
+                session['timestamp'] = dateutil.parser.parse(session['timestamp'])
             session_obj = _update_container_nulls({'_id': container['session']},  session, 'sessions')
         if session_obj is None:
             session_obj = get_container('session', container['session'])
