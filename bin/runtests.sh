@@ -70,7 +70,7 @@ case "$1-$2" in
       -f test/docker-compose.yml \
       run \
       --rm \
-      --entrypoint "abao /usr/src/raml/api.raml --server=http://scitran-core:8080/api --hookfiles=/usr/src/tests/abao/abao_test_hooks.js" \
+      --entrypoint "/bin/bash -c 'cd /usr/src/raml/schemas/definitions && abao /usr/src/raml/api.raml --server=http://scitran-core:8080/api --hookfiles=/usr/src/tests/abao/abao_test_hooks.js'" \
       integration-test &&
     docker-compose \
       -f test/docker-compose.yml \
