@@ -186,6 +186,15 @@ class LabelPlacer(UIDPlacer):
     create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
 
 
+class UIDMatchPlacer(UIDPlacer):
+    """
+    A placer that uploads to an existing hierarchy it finds based on uid.
+    """
+
+    metadata_schema = 'uidmatchupload.json'
+    create_hierarchy = staticmethod(hierarchy.find_existing_hierarchy)
+
+
 class EnginePlacer(Placer):
     """
     A placer that can accept files and/or metadata sent to it from the engine

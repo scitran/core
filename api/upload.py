@@ -20,6 +20,7 @@ Strategy = util.Enum('Strategy', {
     'packfile'    : pl.PackfilePlacer,      # Upload N files as a new packfile to a container.
     'labelupload' : pl.LabelPlacer,
     'uidupload'   : pl.UIDPlacer,
+    'uidmatch'    : pl.UIDMatchPlacer,
     'analysis'    : pl.AnalysisPlacer,      # Upload N files to an analysis as input and output (no db updates)
     'analysis_job': pl.AnalysisJobPlacer   # Upload N files to an analysis as output from job results
 })
@@ -149,6 +150,8 @@ class Upload(base.RequestHandler):
             strategy = Strategy.labelupload
         elif strategy == 'uid':
             strategy = Strategy.uidupload
+        elif strategy == 'uid-match':
+            strategy = Strategy.uidmatch
         else:
             self.abort(500, 'stragegy {} not implemented'.format(strategy))
         return process_upload(self.request, strategy, origin=self.origin)

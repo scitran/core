@@ -9,7 +9,7 @@ import re
 from .. import files
 from .. import util
 from .. import config
-from . import APIStorageException, containerutil
+from . import APIStorageException, APINotFoundException, containerutil
 
 log = config.log
 
@@ -249,6 +249,37 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     return target_containers
 
 
+def find_existing_hierarchy(metadata):
+    project = metadata.get('project', {})
+    session = metadata.get('session', {})
+    acquisition = metadata.get('acquisition', {})
+
+    # Fail if some fields are missing
+    try:
+        acquisition_uid = acquisition['uid']
+        session_uid = session['uid']
+    except Exception as e:
+        log.error(metadata)
+        raise APIStorageException(str(e))
+
+    # Confirm session and acquisition exist
+    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
+    if session_obj is None:
+        raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))
+    a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['_id'])
+    if a is None:
+        raise APINotFoundException('Acquisition with uid {} does not exist'.format(acquisition_uid))
+
+    now = datetime.datetime.utcnow()
+    project_files = dict_fileinfos(project.pop('files', []))
+    project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
+    target_containers = _get_targets(project_obj, session, acquisition, 'uid', now)
+    target_containers.append(
+        (TargetContainer(project_obj, 'project'), project_files)
+    )
+    return target_containers
+
+
 def upsert_bottom_up_hierarchy(metadata):
     group = metadata.get('group', {})
     project = metadata.get('project', {})
@@ -265,10 +296,9 @@ def upsert_bottom_up_hierarchy(metadata):
         log.error(metadata)
         raise APIStorageException(str(e))
 
-    now = datetime.datetime.utcnow()
-
     session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
+        now = datetime.datetime.utcnow()
         project_files = dict_fileinfos(project.pop('files', []))
         project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
         target_containers = _get_targets(project_obj, session, acquisition, 'uid', now)
