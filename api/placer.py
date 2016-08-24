@@ -138,7 +138,7 @@ class UIDPlacer(Placer):
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 
-        targets = self.create_hierarchy(self.metadata, upsert=self.context.get('upsert', True))
+        targets = self.create_hierarchy(self.metadata)
 
         self.metadata_for_file = {}
 
@@ -184,6 +184,15 @@ class LabelPlacer(UIDPlacer):
 
     metadata_schema = 'labelupload.json'
     create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
+
+
+class UIDMatchPlacer(UIDPlacer):
+    """
+    A placer that uploads to an existing hierarchy it finds based on uid.
+    """
+
+    metadata_schema = 'uidmatchupload.json'
+    create_hierarchy = staticmethod(hierarchy.find_existing_hierarchy)
 
 
 class EnginePlacer(Placer):

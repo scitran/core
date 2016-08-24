@@ -85,7 +85,7 @@ routes = [
     webapp2.Route(r'/api',                  root.Root),
     webapp2_extras.routes.PathPrefixRoute(r'/api', [
         webapp2.Route(r'/download',         download.Download, handler_method='download', methods=['GET', 'POST'], name='download'),
-        webapp2.Route(r'/upload/<strategy:label|uid>',           upload.Upload, handler_method='upload', methods=['POST']),
+        webapp2.Route(r'/upload/<strategy:label|uid|uid-match>',           upload.Upload, handler_method='upload', methods=['POST']),
         webapp2.Route(r'/clean-packfiles',  upload.Upload, handler_method='clean_packfile_tokens', methods=['POST']),
         webapp2.Route(r'/engine',           upload.Upload, handler_method='engine', methods=['POST']),
         webapp2.Route(r'/sites',            centralclient.CentralClient, handler_method='sites', methods=['GET']),

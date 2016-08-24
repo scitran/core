@@ -138,6 +138,7 @@ expected_input_schemas = set([
     'enginemetadata.json',
     'labelupload.json',
     'uidupload.json',
+    'uidmatchupload.json',
     'search.json'
 ])
 mongo_schemas = set()

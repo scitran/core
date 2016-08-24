@@ -17,6 +17,7 @@ hooks.skip("GET /download -> 400");
 // Should 422 for missing metadata field
 hooks.skip("POST /upload/label -> 402");
 hooks.skip("POST /upload/uid -> 402");
+hooks.skip("POST /upload/uid-match -> 402");
 
 // Should 422 for JSON not matching schema
 // After this is fixed, add "validates-json-body" trait
@@ -48,7 +49,8 @@ hooks.skip("POST /download -> 200");
 hooks.skip("GET /download -> 200");
 hooks.skip("POST /upload/label -> 200");
 hooks.skip("POST /upload/uid -> 200");
-hooks.skip("POST /upload/uid -> 404");
+hooks.skip("POST /upload/uid-match -> 200");
+hooks.skip("POST /upload/uid-match -> 404");
 hooks.skip("POST /engine -> 200");
 
 hooks.beforeEach(function (test, done) {
@@ -104,11 +106,6 @@ hooks.before("GET /download -> 404", function(test, done) {
     test.request.query = {
         ticket: '1234'
     };
-    done();
-});
-
-hooks.before("POST /upload/label -> 404", function(test, done) {
-    test.request.query['update-only'] = 'true'
     done();
 });
 

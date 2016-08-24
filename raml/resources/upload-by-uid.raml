@@ -4,11 +4,6 @@ post:
     Same behavior as /api/upload/label,
      except the metadata field must be uid format
      See api/schemas/input/uidupload.json for the fromat of this metadata.
-  queryParameters:
-    update-only:
-      type: boolean
-      required: false
-      description: If true, it will only upload to containers that already exist
   body:
     multipart/form-data:
   responses:
@@ -18,5 +13,3 @@ post:
           example: !include ../examples/file_info_list.json
     402:
       description: Uploads must be from an authorized drone
-    404:
-      description: Session or Acquisition with uid does not exist
