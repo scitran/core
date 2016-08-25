@@ -23,6 +23,6 @@ RUN apt-get update && apt-get -y install nodejs
 RUN npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref
 
 # Install newman for running postman collection tests from CLI
-RUN npm install -g newman
+RUN npm install -g newman@3.0.1
 
 ENTRYPOINT ["py.test"]
