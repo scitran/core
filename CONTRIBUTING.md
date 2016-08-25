@@ -12,8 +12,11 @@
 - Add docstrings to all functions with a one-line description of its purpose.
 
 ### Format
-Ensure that `./test/lint.sh api` exits without errors.
+- Ensure that `./test/lint.sh api` exits without errors.
 
+### Commit Messages
+1. The subject line should be a phrase describing the commit and limited to 50 characters
+1. The subject line should be as specific as possible, e.g. "Add new API resource for user api keys" not "Updated authentication.
 
 ## Adding an API Resource
 ### Design Resource
