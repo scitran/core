@@ -2,11 +2,12 @@
 [![Coverage Status](https://coveralls.io/repos/github/scitran/core/badge.svg?branch=master)](https://coveralls.io/github/scitran/core?branch=master)
 [![Code Climate](https://codeclimate.com/github/scitran/core/badges/gpa.svg)](https://codeclimate.com/github/scitran/core)
 
-# SciTran – Scientific Data Management
+# SciTran – Scientific Transparency
 
 ### Overview
 
-HTTP API and core components for the SciTran SDM system.  To learn more about the Scientific Transparency Project as a whole and other related software, see scitran.github.io
+SciTran Core is a RESTful HTTP API, written in Python and backed by MongoDB. It is the central component of the [SciTran data management system](https://scitran.github.io). Its purpose is to enable scientific transparency through secure data management and reproducible processing.
+
 
 ### [Documentation](https://scitran.github.io/core)
 
@@ -15,7 +16,7 @@ HTTP API and core components for the SciTran SDM system.  To learn more about th
 ### [Testing](https://github.com/scitran/core/blob/master/TESTING.md)
 
 ### [License](https://github.com/scitran/core/blob/master/LICENSE)
-  
+
 
 ### Usage
 ```
@@ -25,16 +26,3 @@ or
 ```
 PYTHONPATH=. uwsgi --http :8443 --virtualenv ./runtime --master --wsgi-file bin/api.wsgi
 ```
-
-### Maintenance
-
-#### Upgrading Python Packages
-
-List outdated packages
-```
-pip list --local --outdated
-```
-
-Then review and decide what upgrades to make, if any.  
-Changes to `requirements.txt` should always be a pull request.
-

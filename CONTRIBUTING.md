@@ -6,6 +6,17 @@
 1. Submit a pull request and ensure that CI passes.
 
 
+## Upgrading Python Packages
+
+List outdated packages
+```
+pip list --local --outdated
+```
+
+Then review and decide what upgrades to make, if any.
+Changes to `requirements.txt` should always be by pull request.
+
+
 ## Code Standards
 ### Docstrings
 - Use [Google Style Docstrings](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
@@ -16,7 +27,7 @@
 
 ### Commit Messages
 1. The subject line should be a phrase describing the commit and limited to 50 characters
-1. The subject line should be as specific as possible, e.g. "Add new API resource for user api keys" not "Updated authentication.
+1. The subject line should be as specific as possible, e.g. "Add new API resource for user API keys", rather than "Update authentication".
 
 ## Adding an API Resource
 ### Design Resource
