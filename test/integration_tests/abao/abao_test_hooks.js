@@ -104,8 +104,8 @@ hooks.before("GET /download -> 404", function(test, done) {
     done();
 });
 
-hooks.before("POST /users -> 422", function(test, done) {
-    test.request.body = {totally:"not valid"};
+hooks.before("POST /users -> 400", function(test, done) {
+    test.request.body = {api_key:{key:"test"}};
     done();
 });
 
