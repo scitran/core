@@ -4,7 +4,7 @@ set -e
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
-VIRTUALENV_PATH=${VIRTUALENV_PATH:-"./virtualenv"}
+SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"$( pwd )/runtime"}
 
 if [ -f "`which brew`" ]; then
     echo "Homebrew is installed"
@@ -38,17 +38,18 @@ else
     echo "Installed Virtualenv"
 fi
 
-if [ -d "$VIRTUALENV_PATH" ]; then
-    echo "Virtualenv exists at $VIRTUALENV_PATH"
+if [ -d "$SCITRAN_RUNTIME_PATH" ]; then
+    echo "Virtualenv exists at $SCITRAN_RUNTIME_PATH"
 else
-    echo "Creating 'scitran' Virtualenv at $VIRTUALENV_PATH"
-    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran) " $VIRTUALENV_PATH
-    echo "Created 'scitran' Virtualenv at $VIRTUALENV_PATH"
+    echo "Creating 'scitran' Virtualenv at $SCITRAN_RUNTIME_PATH"
+    virtualenv -p `brew --prefix`/bin/python --prompt="(scitran) " $SCITRAN_RUNTIME_PATH
+    echo "Created 'scitran' Virtualenv at $SCITRAN_RUNTIME_PATH"
 fi
 
 echo "Activating Virtualenv"
 set -a
-. $VIRTUALENV_PATH/bin/activate
+# Note this will fail with "unbound variable" errors if "set -u" is enabled
+. $SCITRAN_RUNTIME_PATH/bin/activate
 
 pip install -U pip
 env LDFLAGS="-L$(brew --prefix openssl)/lib" \
@@ -59,15 +60,15 @@ echo "Installing Python requirements"
 ./bin/install-python-requirements.sh
 
 echo "Installing node and dev dependencies"
-if [ ! -f "$VIRTUALENV_PATH/bin/node" ]; then
+if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
   # Node doesn't exist in the virtualenv, install
   echo "Installing nodejs"
   node_source_dir=`mktemp -d`
   curl https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz | tar xvz -C "$node_source_dir"
-  mv $node_source_dir/node-v6.4.0-darwin-x64/bin/* "$VIRTUALENV_PATH/bin"
-  mv $node_source_dir/node-v6.4.0-darwin-x64/lib/* "$VIRTUALENV_PATH/lib"
+  mv $node_source_dir/node-v6.4.0-darwin-x64/bin/* "$SCITRAN_RUNTIME_PATH/bin"
+  mv $node_source_dir/node-v6.4.0-darwin-x64/lib/* "$SCITRAN_RUNTIME_PATH/lib"
   rm -rf "$node_source_dir"
-  npm config set prefix "$VIRTUALENV_PATH"
+  npm config set prefix "$SCITRAN_RUNTIME_PATH"
 fi
 
 pip install -U -r "test/integration_tests/requirements.txt"

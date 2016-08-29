@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -eu
 
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/../.."

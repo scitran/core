@@ -8,4 +8,3 @@ bootstrap.json
 .cache
 .coverage
 coverage.xml
-/virtualenv

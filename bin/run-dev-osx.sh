@@ -91,13 +91,13 @@ trap clean_up EXIT
 
 ulimit -n 1024
 mkdir -p "$SCITRAN_PERSISTENT_DB_PATH"
-"$MONGOD_EXECUTABLE" --port $SCITRAN_PERSISTENT_DB_PORT --logpath "$MONGODB_LOG_FILE" --dbpath "$SCITRAN_PERSISTENT_DB_PATH" --smallfiles &
+mongod --port $SCITRAN_PERSISTENT_DB_PORT --logpath "$SCITRAN_PERSISTENT_PATH/mongod.log" --dbpath "$SCITRAN_PERSISTENT_DB_PATH" --smallfiles &
 MONGOD_PID=$!
 
 sleep 2
 
 if [ "$SCITRAN_RUNTIME_UWSGI_INI" == "" ]; then
-  "$SCITRAN_RUNTIME_PATH/bin/uwsgi" \
+  uwsgi \
     --http "$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT" \
     --master --http-keepalive \
     --so-keepalive --add-header "Connection: Keep-Alive" \
@@ -113,7 +113,7 @@ if [ "$SCITRAN_RUNTIME_UWSGI_INI" == "" ]; then
     --env "SCITRAN_PERSISTENT_DATA_PATH=$SCITRAN_PERSISTENT_DATA_PATH" &
     UWSGI_PID=$!
 else
-  "$SCITRAN_RUNTIME_PATH/bin/uwsgi" --ini "$SCITRAN_RUNTIME_UWSGI_INI" &
+  uwsgi --ini "$SCITRAN_RUNTIME_UWSGI_INI" &
   UWSGI_PID=$!
 fi
 
