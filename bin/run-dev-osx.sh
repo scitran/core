@@ -60,11 +60,7 @@ done
 
 set -a
 
-VIRTUALENV_PATH=${VIRTUALENV_PATH:-"$( pwd )/virtualenv"}
-MONGODB_DATA_DIR="$VIRTUALENV_PATH/mongo_data"
-MONGODB_LOG_FILE="$VIRTUALENV_PATH/mongodb.log"
-MONGOD_EXECUTABLE="$VIRTUALENV_PATH/bin/mongod"
-
+SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"$( pwd )/runtime"}
 SCITRAN_RUNTIME_HOST=${SCITRAN_RUNTIME_HOST:-"127.0.0.1"}
 SCITRAN_RUNTIME_PORT=${SCITRAN_RUNTIME_PORT:-"8080"}
 SCITRAN_RUNTIME_UWSGI_INI=${SCITRAN_RUNTIME_UWSGI_INI:-""}
@@ -72,7 +68,7 @@ SCITRAN_RUNTIME_BOOTSTRAP=${SCITRAN_RUNTIME_BOOTSTRAP:-"./bootstrap.json"}
 
 SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-$(  openssl rand -base64 32 )}
 
-SCITRAN_PERSISTENT_PATH="$VIRTUALENV_PATH/scitran-persistent"
+SCITRAN_PERSISTENT_PATH=${SCITRAN_PERSISTENT_PATH:-"$( pwd )/persistent"}
 SCITRAN_PERSISTENT_DATA_PATH="$SCITRAN_PERSISTENT_PATH/data"
 SCITRAN_PERSISTENT_DB_PATH=${SCITRAN_PERSISTENT_DB_PATH:-"$SCITRAN_PERSISTENT_PATH/db"}
 SCITRAN_PERSISTENT_DB_PORT=${SCITRAN_PERSISTENT_DB_PORT:-"9001"}
@@ -91,7 +87,7 @@ clean_up () {
 }
 trap clean_up EXIT
 
-. "$VIRTUALENV_PATH/bin/activate"
+. "$SCITRAN_RUNTIME_PATH/bin/activate"
 
 ulimit -n 1024
 mkdir -p "$SCITRAN_PERSISTENT_DB_PATH"
@@ -100,18 +96,15 @@ MONGOD_PID=$!
 
 sleep 2
 
-# Always drop integration-tests db on startup
-echo -e "use integration-tests \n db.dropDatabase()" | mongo "$SCITRAN_PERSISTENT_DB_URI"
-
 if [ "$SCITRAN_RUNTIME_UWSGI_INI" == "" ]; then
-  "$VIRTUALENV_PATH/bin/uwsgi" \
+  "$SCITRAN_RUNTIME_PATH/bin/uwsgi" \
     --http "$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT" \
     --master --http-keepalive \
     --so-keepalive --add-header "Connection: Keep-Alive" \
     --processes 1 --threads 1 \
     --enable-threads \
     --wsgi-file "bin/api.wsgi" \
-    -H "$VIRTUALENV_PATH" \
+    -H "$SCITRAN_RUNTIME_PATH" \
     --die-on-term \
     --py-autoreload $AUTO_RELOAD \
     --env "SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET" \
@@ -120,7 +113,7 @@ if [ "$SCITRAN_RUNTIME_UWSGI_INI" == "" ]; then
     --env "SCITRAN_PERSISTENT_DATA_PATH=$SCITRAN_PERSISTENT_DATA_PATH" &
     UWSGI_PID=$!
 else
-  "$VIRTUALENV_PATH/bin/uwsgi" --ini "$SCITRAN_RUNTIME_UWSGI_INI" &
+  "$SCITRAN_RUNTIME_PATH/bin/uwsgi" --ini "$SCITRAN_RUNTIME_UWSGI_INI" &
   UWSGI_PID=$!
 fi
 
