@@ -19,11 +19,6 @@ hooks.skip("POST /upload/label -> 402");
 hooks.skip("POST /upload/uid -> 402");
 hooks.skip("POST /upload/uid-match -> 402");
 
-// Should 422 for JSON not matching schema
-// After this is fixed, add "validates-json-body" trait
-// to all endpoints which validate a json body
-hooks.skip("POST /users -> 422");
-
 // Should 404
 hooks.skip("GET /jobs/{JobId} -> 404");
 
@@ -109,8 +104,8 @@ hooks.before("GET /download -> 404", function(test, done) {
     done();
 });
 
-hooks.before("POST /users -> 422", function(test, done) {
-    test.request.body = {totally:"not valid"};
+hooks.before("POST /users -> 400", function(test, done) {
+    test.request.body = {api_key:{key:"test"}};
     done();
 });
 
