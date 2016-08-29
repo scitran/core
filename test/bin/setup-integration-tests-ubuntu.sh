@@ -9,10 +9,7 @@ pip install -U -r "test/integration_tests/requirements.txt"
 node_source_dir=`mktemp -d`
 curl https://nodejs.org/dist/v6.4.0/node-v6.4.0-linux-x64.tar.gz | tar xvz -C "$node_source_dir"
 
-# Avoid using -z
-has_virtualenv=$( env | grep VIRTUAL_ENV= )
-
-if [ "$has_virtualenv" == "" ]; then
+if [ -z "$VIRTUAL_ENV" ]; then
     sudo mv $node_source_dir/node-v6.4.0-linux-x64/bin/* /usr/local/bin
     sudo mv $node_source_dir/node-v6.4.0-linux-x64/lib/* /usr/local/lib
     sudo npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref
