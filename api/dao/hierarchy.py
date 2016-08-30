@@ -196,7 +196,7 @@ def _find_or_create_destination_project(group_id, project_label, timestamp):
         )
     return project
 
-def _create_query(cont, parent_type, parent_id, upload_type):
+def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
     if upload_type == 'label':
         q = {}
         q['label'] = cont['label']
@@ -226,7 +226,7 @@ def _upsert_container(cont, cont_type, parent, parent_type, upload_type, timesta
     if cont_type == 'session':
         cont['subject'] = containerutil.add_id_to_subject(cont.get('subject'), parent['_id'])
 
-    query = _create_query(cont, parent_type, parent['_id'], upload_type)
+    query = _create_query(cont, cont_type, parent_type, parent['_id'], upload_type)
 
     if config.db[cont_type+'s'].find_one(query) is not None:
         return _update_container_nulls(query, cont, cont_type)

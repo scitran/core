@@ -160,11 +160,12 @@ class UIDPlacer(Placer):
             return
         container   = target['container']
         r_metadata  = target['metadata']
+
         info.update(r_metadata)
 
         if container.level != 'subject':
             self.container_type = container.level
-            self.id             = container._id
+            self.id_            = container._id
             self.container      = container.container
             self.save_file(field, info)
         else:

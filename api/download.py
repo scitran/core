@@ -78,7 +78,7 @@ class Download(base.RequestHandler):
 
     def _bulk_preflight_archivestream(self, file_refs):
         data_path = config.get_item('persistent', 'data_path')
-        arc_prefix = 'sdm'
+        arc_prefix =  self.get_param('prefix', 'scitran')
         file_cnt = 0
         total_size = 0
         targets = []
@@ -115,7 +115,7 @@ class Download(base.RequestHandler):
                 file_cnt += 1
 
         if len(targets) > 0:
-            filename = arc_prefix + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+            filename = arc_prefix + '_ '+datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
             ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
             config.db.downloads.insert_one(ticket)
             return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
@@ -125,7 +125,7 @@ class Download(base.RequestHandler):
 
     def _preflight_archivestream(self, req_spec, collection=None):
         data_path = config.get_item('persistent', 'data_path')
-        arc_prefix = 'sdm'
+        arc_prefix = self.get_param('prefix', 'scitran')
         file_cnt = 0
         total_size = 0
         targets = []
@@ -154,52 +154,44 @@ class Download(base.RequestHandler):
                 acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid', 'timestamp', 'timezone'])
                 session_prefixes = {}
 
-                if self.get_param('structure', '').lower() == 'bids':
-                    subject_dict = {}
-                    subject_prefixes = {}
-                    for session in session_dict.itervalues():
-                        if session.get('subject'):
-                            code = session['subject'].get('code', 'unknown_subject')
-                            # This is bad and we should try to combine these somehow,
-                            # or at least make sure we get all the files
-                            subject_dict[code] = session['subject']
+                subject_dict = {}
+                subject_prefixes = {}
+                for session in session_dict.itervalues():
+                    if session.get('subject'):
+                        code = session['subject'].get('code', 'unknown_subject')
+                        # This is bad and we should try to combine these somehow,
+                        # or at least make sure we get all the files
+                        subject_dict[code] = session['subject']
 
-                    for code, subject in subject_dict.iteritems():
-                        subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, project['_id'])
-                        subject_prefixes[code] = subject_prefix
-                        total_size, file_cnt = _append_targets(targets, subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                for code, subject in subject_dict.iteritems():
+                    subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, project['_id'])
+                    subject_prefixes[code] = subject_prefix
+                    total_size, file_cnt = _append_targets(targets, subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
-                    for session in session_dict.itervalues():
-                        subject_code = session['subject'].get('code', 'unknown_subject')
-                        subject = subject_dict[subject_code]
-                        session_prefix = subject_prefixes[subject_code] + '/' + self._path_from_container(session, used_subpaths, subject_code)
-                        session_prefixes[session['_id']] = session_prefix
-                        total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                for session in session_dict.itervalues():
+                    subject_code = session['subject'].get('code', 'unknown_subject')
+                    subject = subject_dict[subject_code]
+                    session_prefix = subject_prefixes[subject_code] + '/' + self._path_from_container(session, used_subpaths, subject_code)
+                    session_prefixes[session['_id']] = session_prefix
+                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
-                    for acq in acquisitions:
-                        session = session_dict[acq['session']]
-                        acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                for acq in acquisitions:
+                    session = session_dict[acq['session']]
+                    acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
+                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
-                else:
-                    for session in session_dict.itervalues():
-                        session_prefix = prefix + '/' + self._path_from_container(session, used_subpaths, project['_id'])
-                        session_prefixes[session['_id']] = session_prefix
-                        total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
-
-                    for acq in acquisitions:
-                        session = session_dict[acq['session']]
-                        acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                        total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'session':
-                session = config.db.sessions.find_one(base_query, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone'])
+                session = config.db.sessions.find_one(base_query, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 if not session:
                     # silently skip missing objects/objects user does not have access to
                     continue
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id'])
+                subject = session.get('subject', {'code': 'unknown_subject'})
+                if not subject.get('code'):
+                    subject['code'] = 'unknown_subject'
+                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id'])
                 total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
@@ -218,14 +210,18 @@ class Download(base.RequestHandler):
                     # silently skip missing objects/objects user does not have access to
                     continue
 
-                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone'])
+                subject = session.get('subject', {'code': 'unknown_subject'})
+                if not subject.get('code'):
+                    subject['code'] = 'unknown_subject'
+
+                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone', 'subject'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
+                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
         if len(targets) > 0:
             log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-            filename = 'sdm_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+            filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
             ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
             config.db.downloads.insert_one(ticket)
             return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
@@ -235,6 +231,7 @@ class Download(base.RequestHandler):
     def _path_from_container(self, container, used_subpaths, parent_id):
         def _find_new_path(path, list_used_subpaths):
             """from the input path finds a path that hasn't been used"""
+            path = str(path).replace('/', '_')
             if path not in list_used_subpaths:
                 return path
             i = 0
