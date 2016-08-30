@@ -7,7 +7,7 @@
 ### Ubuntu
 ```
 # Follow installation instructions in README first
-workon scitran-core
+. /runtime/bin/activate # Or wherever your scitran virtualenv is
 ./test/bin/setup-integration-tests-ubuntu.sh
 ./test/bin/run-tests-ubuntu.sh
 ```
