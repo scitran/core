@@ -61,7 +61,7 @@ VOLUME /var/scitran/logs
 #
 # Split this out for better cache re-use.
 #
-COPY requirements.txt docker/requirements-docker.txt docs/requirements-docs.txt /var/scitran/code/api/
+COPY requirements.txt docker/requirements-docker.txt sphinx/requirements-docs.txt /var/scitran/code/api/
 
 RUN pip install --upgrade pip wheel setuptools \
   && pip install -r /var/scitran/code/api/requirements-docker.txt \
