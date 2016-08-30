@@ -165,7 +165,7 @@ class UIDPlacer(Placer):
 
         if container.level != 'subject':
             self.container_type = container.level
-            self.id_            = container._id
+            self.id_            = container.id_
             self.container      = container.container
             self.save_file(field, info)
         else:

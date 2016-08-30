@@ -22,13 +22,13 @@ class TargetContainer(object):
             self.container = container.get('subject')
             self.level = level
             self.dbc = config.db['sessions']
-            self._id = container['_id']
+            self.id_ = container['_id']
             self.file_prefix = 'subject.files'
         else:
             self.container = container
             self.level = level
             self.dbc = config.db[level]
-            self._id = container['_id']
+            self.id_ = container['_id']
             self.file_prefix = 'files'
 
     def find(self, filename):
@@ -38,7 +38,7 @@ class TargetContainer(object):
         return None
 
     def upsert_file(self, fileinfo):
-        result = self.dbc.find_one({'_id': self._id, self.file_prefix + '.name': fileinfo['name']})
+        result = self.dbc.find_one({'_id': self.id_, self.file_prefix + '.name': fileinfo['name']})
         if result:
             self.update_file(fileinfo)
         else:
@@ -51,14 +51,14 @@ class TargetContainer(object):
         for k,v in fileinfo.iteritems():
             update_set[self.file_prefix + '.$.' + k] = v
         return self.dbc.find_one_and_update(
-            {'_id': self._id, self.file_prefix + '.name': fileinfo['name']},
+            {'_id': self.id_, self.file_prefix + '.name': fileinfo['name']},
             {'$set': update_set},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
     def add_file(self, fileinfo):
         return self.dbc.find_one_and_update(
-            {'_id': self._id},
+            {'_id': self.id_},
             {'$push': {self.file_prefix: fileinfo}},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
