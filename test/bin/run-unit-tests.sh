@@ -11,4 +11,4 @@ echo "Checking for files with windows style newline:"
 ! find * -path "runtime" -prune -o -path "persistent" -prune -o -type f \
   -exec grep -rI $'\r' {} \+
 
-PYTHONPATH="$( pwd )" py.test test/unit_tests/python
+PYTHONPATH="$( pwd )"  py.test --cov=api --cov-append test/unit_tests/python

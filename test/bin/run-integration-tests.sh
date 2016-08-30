@@ -34,7 +34,7 @@ SCITRAN_PERSISTENT_DB_URI="$MONGODB_URI" \
 
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
-    py.test test/integration_tests/python
+    py.test --cov=api --cov-append test/integration_tests/python
 
 # Have to change into definitions directory to resolve
 # relative $ref's in the jsonschema's
