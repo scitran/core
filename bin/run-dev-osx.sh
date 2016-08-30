@@ -129,7 +129,7 @@ if [ $BOOTSTRAP_USERS -eq 1 ]; then
     else
         echo "Bootstrapping users"
         SCITRAN_PERSISTENT_DB_URI="$SCITRAN_PERSISTENT_DB_URI" \
-          bin/bootstrap.py "$SCITRAN_RUNTIME_BOOTSTRAP"
+          bin/bootstrap-dev.py "$SCITRAN_RUNTIME_BOOTSTRAP"
         echo "Bootstrapped users"
         touch "$SCITRAN_PERSISTENT_DB_PATH/.bootstrapped"
     fi
