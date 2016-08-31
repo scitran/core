@@ -300,7 +300,7 @@ class ProjectReport(Report):
 
 
             # Count subjects by sex
-            # Use first sex reporting for subjects with multiple entries
+            # Use last sex reporting for subjects with multiple entries
             sex_q = copy.deepcopy(subject_q)
             sex_q['subject.sex'] = {'$ne': None}
 
