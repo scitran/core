@@ -80,7 +80,7 @@ fi
 
 
 # Install testing dependencies
-pip install -r "test/integration_tests/requirements.txt"
+pip install -r "test/integration_tests/requirements-integration-test.txt"
 if [ ! -f "$VIRTUAL_ENV/bin/abao" ]; then
   npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref
 fi

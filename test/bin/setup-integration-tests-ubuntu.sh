@@ -3,7 +3,7 @@ set -e
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
 
-pip install -U -r "test/integration_tests/requirements.txt"
+pip install -U -r "test/integration_tests/requirements-integration-test.txt"
 
 
 node_source_dir=`mktemp -d`
