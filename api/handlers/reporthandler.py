@@ -50,18 +50,32 @@ class ReportHandler(base.RequestHandler):
             self.abort(403, 'User {} does not have required permissions to generate report'.format(self.uid))
 
 
-def _get_result(output):
+def _get_result_list(output):
     """
     Helper function for extracting mongo aggregation results
 
     Given the output of a mongo aggregation call, checks 'ok' field
-    If not 1.0 or 'result' field does not exist, throws APIReportException
+    If not 1.0, 'result' field does not exist or 'result' array is empty,
+    throws APIReportException
     """
 
     if output.get('ok', 0) is not 1.0:
         result = output.get('result')
-        if result is not None:
-            return result[0] if len(result) > 0 else {}
+        if result is not None and len(result) > 0:
+            return result
+
+    raise APIReportException
+
+def _get_result(output):
+    """
+    Helper function for extracting a singular mongo aggregation result
+
+    If more than one item is in the results array, throws APIReportException
+    """
+
+    results = _get_result_list(output)
+    if len(results) == 1:
+        return results[0]
 
     raise APIReportException
 
@@ -175,6 +189,80 @@ class ProjectReport(Report):
 
         return base_query
 
+    def _base_demo_grid(self):
+        """
+        Constructs a base demographics grid for the project report
+        """
+
+        races = [
+                    'American Indian or Alaska Native',
+                    'Asian',
+                    'Native Hawaiian or Other Pacific Islander',
+                    'Black or African American',
+                    'White',
+                    'More Than One Race',
+                    'Unknown or Not Reported'
+        ]
+        ethnicities = [
+                    'Not Hispanic or Latino',
+                    'Hispanic or Latino',
+                    'Unknown or Not Reported'
+        ]
+        sexes = [
+                    'Female',
+                    'Male',
+                    'Unknown or Not Reported'
+        ]
+
+        sexes_obj = dict([(s, 0) for s in sexes])
+        eth_obj = dict([(e, copy.deepcopy(sexes_obj)) for e in ethnicities])
+        eth_obj['Total'] = 0
+        race_obj = dict([(r, copy.deepcopy(eth_obj)) for r in races])
+        race_obj['Total'] = copy.deepcopy(eth_obj)
+
+        return race_obj
+
+    def _process_demo_results(self, results):
+        """
+        Given demographics aggregation results, fill in base demographics grid
+
+        All `null` or unlisted values will be counted as 'Unknown or Not Reported'
+        """
+        UNR = 'Unknown or Not Reported'
+        grid = self._base_demo_grid()
+        total = 0
+
+        for r in results:
+            try:
+                count = int(r['count'])
+                cell = r['_id']
+                race = cell['race']
+                ethnicity = cell['ethnicity']
+                sex = cell['sex']
+            except Exception as e:
+                raise APIReportException('Demographics aggregation was malformed: {}'.format(e))
+
+            # Null or unrecognized values are listed as UNR default
+            if race is None or race not in grid:
+                race = UNR
+            if ethnicity is None or ethnicity not in grid[race]:
+                ethnicity = UNR
+            if sex is None:
+                sex = UNR
+            else:
+                sex.capitalize() # We store sex as lowercase in the db
+            if sex not in grid[race][ethnicity]:
+                sex = UNR
+
+            # Tally up
+            total += count
+            grid[race]['Total'] += count
+            grid[race][ethnicity][sex] += count
+            grid['Total'][ethnicity][sex] += count
+
+        return grid, total
+
+
     def build(self):
         report = {}
         report['projects'] = []
@@ -200,7 +288,6 @@ class ProjectReport(Report):
             # Any stats on subjects require an aggregation to group by subject._id
             subject_q = copy.deepcopy(base_query)
             subject_q['subject._id'] = {'$ne': None}
-            log.debug(subject_q)
 
             pipeline = [
                 {'$match': subject_q},
@@ -219,7 +306,7 @@ class ProjectReport(Report):
 
             pipeline = [
                 {'$match': sex_q},
-                {'$group': {'_id': '$subject._id', 'sex': {'$first': '$subject.sex'}}},
+                {'$group': {'_id': '$subject._id', 'sex': {'$last': '$subject.sex'}}},
                 {'$project': {'_id': 1, 'female':  {'$cond': [{'$eq': ['$sex', 'female']}, 1, 0]},
                                         'male':    {'$cond': [{'$eq': ['$sex', 'male']}, 1, 0]},
                                         'other':   {'$cond': [{'$eq': ['$sex', 'other']}, 1, 0]}}},
@@ -233,6 +320,23 @@ class ProjectReport(Report):
             project['males_count'] = result.get('male',0)
             project['other_count'] = result.get('other',0)
 
+
+            # Construct grid of subject sex, race and ethnicity
+            # Use last sex/race/ethnicity reporting for subjects with multiple entries
+            grid_q = copy.deepcopy(subject_q)
+
+            pipeline = [
+                {'$match': grid_q},
+                {'$group': {'_id': '$subject._id', 'sex':       {'$last': '$subject.sex'},
+                                                   'race':      {'$last': '$subject.race'},
+                                                   'ethnicity': {'$last': '$subject.ethnicity'}}},
+                {'$group': {'_id': { 'sex': '$sex', 'race': '$race', 'ethnicity': '$ethnicity'}, 'count': {'$sum': 1}}}
+            ]
+            results = _get_result_list(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+
+            grid, total = self._process_demo_results(results)
+            project['demographics_grid'] = grid
+            project['demographics_total'] = total
 
             # Count subjects by age group
             # Age is taken as an average over all subject entries
