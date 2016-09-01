@@ -12,9 +12,6 @@ import datetime
 
 import jsonschema
 
-repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
-sys.path.append(repo_path)
-
 from api import config, validators
 
 def bootstrap_users_and_groups(bootstrap_json_file_path):
