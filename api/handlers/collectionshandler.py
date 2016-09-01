@@ -30,7 +30,7 @@ class CollectionsHandler(ContainerHandler):
         self.storage = self.container_handler_configurations['collections']['storage']
 
     def get(self, **kwargs):
-        super(CollectionsHandler, self).get('collections', **kwargs)
+        return super(CollectionsHandler, self).get('collections', **kwargs)
 
     def post(self):
         mongo_validator, payload_validator = self._get_validators()
