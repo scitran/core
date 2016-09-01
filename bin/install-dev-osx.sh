@@ -59,31 +59,35 @@ pip install -r requirements.txt
 
 # Install MongoDB
 MONGODB_URL="http://downloads.mongodb.org/osx/mongodb-osx-x86_64-v3.2-latest.tgz"
-if [ -x "$VIRTUAL_ENV/bin/mongod" ]; then
-    MONGODB_VERSION=$($VIRTUAL_ENV/bin/mongod --version | grep "db version" | cut -d "v" -f 3)
+if [ -x "$SCITRAN_RUNTIME_PATH/bin/mongod" ]; then
+    MONGODB_VERSION=$($SCITRAN_RUNTIME_PATH/bin/mongod --version | grep "db version" | cut -d "v" -f 3)
     echo "MongoDB version $MONGODB_VERSION is installed"
-    echo "Remove $VIRTUAL_ENV/bin/mongod to install latest version"
+    echo "Remove $SCITRAN_RUNTIME_PATH/bin/mongod to install latest version"
 else
     echo "Installing MongoDB"
-    curl $MONGODB_URL | tar xz -C $VIRTUAL_ENV/bin --strip-components 2
-    MONGODB_VERSION=$($VIRTUAL_ENV/bin/mongod --version | grep "db version" | cut -d "v" -f 3)
+    curl $MONGODB_URL | tar xz -C $SCITRAN_RUNTIME_PATH/bin --strip-components 2
+    MONGODB_VERSION=$($SCITRAN_RUNTIME_PATH/bin/mongod --version | grep "db version" | cut -d "v" -f 3)
     echo "MongoDB version $MONGODB_VERSION installed"
 fi
 
 
 # Install Node.js
 if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
-  echo "Installing Node.js"
-  NODE_URL="https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz"
-  curl $NODE_URL | tar xz -C $VIRTUAL_ENV --strip-components 1
+  echo "Installing nodejs"
+  node_source_dir=`mktemp -d`
+  curl https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz | tar xvz -C "$node_source_dir"
+  mv $node_source_dir/node-v6.4.0-darwin-x64/bin/* "$SCITRAN_RUNTIME_PATH/bin"
+  mv $node_source_dir/node-v6.4.0-darwin-x64/lib/* "$SCITRAN_RUNTIME_PATH/lib"
+  rm -rf "$node_source_dir"
+  "$SCITRAN_RUNTIME_PATH/bin/npm" config set prefix "$SCITRAN_RUNTIME_PATH"
 fi
 
 
 # Install testing dependencies
 pip install -r "test/integration_tests/requirements-integration-test.txt"
-if [ ! -f "$VIRTUAL_ENV/bin/abao" ]; then
+if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/abao" ]; then
   npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref
 fi
-if [ ! -f "$VIRTUAL_ENV/bin/newman" ]; then
+if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/newman" ]; then
   npm install -g newman@3.0.1
 fi

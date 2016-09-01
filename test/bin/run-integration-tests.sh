@@ -28,6 +28,7 @@ done
 echo "Bootstrapping test data..."
 # Don't call things bootstrap.json because that's in root .gitignore
 
+PYTHONPATH="$( pwd )" \
 SCITRAN_PERSISTENT_DB_URI="$MONGODB_URI" \
   python "bin/bootstrap-dev.py" \
   "test/integration_tests/bootstrap-test-accounts.json"

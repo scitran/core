@@ -20,7 +20,7 @@ USAGE="
 CONFIG_FILE=""
 BOOTSTRAP_USERS=1
 BOOTSTRAP_TESTDATA=1
-AUTO_RELOAD=0
+AUTO_RELOAD_INTERVAL=0
 INSTALL_APP=1
 
 while [[ "$#" -gt 0 ]]; do
@@ -40,7 +40,6 @@ while [[ "$#" -gt 0 ]]; do
       INSTALL_APP=0
       ;;
       -R|--reload)
-      AUTO_RELOAD=1
       AUTO_RELOAD_INTERVAL=$1
       shift
       ;;
@@ -129,6 +128,7 @@ if [ $BOOTSTRAP_USERS -eq 1 ]; then
         echo "Users previously bootstrapped. Remove $SCITRAN_PERSISTENT_DB_PATH to re-bootstrap."
     else
         echo "Bootstrapping users"
+        PYTHONPATH="$( pwd )" \
         SCITRAN_PERSISTENT_DB_URI="$SCITRAN_PERSISTENT_DB_URI" \
           bin/bootstrap-dev.py "$SCITRAN_RUNTIME_BOOTSTRAP"
         echo "Bootstrapped users"
