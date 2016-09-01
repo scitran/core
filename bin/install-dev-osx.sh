@@ -75,7 +75,7 @@ fi
 if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
   echo "Installing nodejs"
   node_source_dir=`mktemp -d`
-  curl https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz | tar xvz -C "$node_source_dir"
+  curl https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz | tar xz -C "$node_source_dir"
   mv $node_source_dir/node-v6.4.0-darwin-x64/bin/* "$SCITRAN_RUNTIME_PATH/bin"
   mv $node_source_dir/node-v6.4.0-darwin-x64/lib/* "$SCITRAN_RUNTIME_PATH/lib"
   rm -rf "$node_source_dir"
