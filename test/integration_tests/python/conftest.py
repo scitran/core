@@ -83,7 +83,7 @@ class RequestsAccessor(object):
 @pytest.fixture(scope="module")
 def api_as_admin(base_url):
     accessor = RequestsAccessor(base_url,
-        {"user": "admin@user.com", "root": "true"},
+        {"root": "true"},
         default_headers={
             "Authorization":"scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
             }
@@ -94,7 +94,6 @@ def api_as_admin(base_url):
 @pytest.fixture(scope="module")
 def api_as_user(base_url):
     accessor = RequestsAccessor(base_url,
-        {"user": "admin@user.com"},
         default_headers={
             "Authorization":"scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
             }
