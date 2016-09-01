@@ -30,7 +30,7 @@ echo "Bootstrapping test data..."
 
 SCITRAN_PERSISTENT_DB_URI="$MONGODB_URI" \
   python "bin/bootstrap-dev.py" \
-  "test/integration_tests/bootstrap-data.json"
+  "test/integration_tests/bootstrap-test-accounts.json"
 
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
