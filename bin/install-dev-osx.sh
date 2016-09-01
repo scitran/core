@@ -79,7 +79,7 @@ if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
   mv $node_source_dir/node-v6.4.0-darwin-x64/bin/* "$SCITRAN_RUNTIME_PATH/bin"
   mv $node_source_dir/node-v6.4.0-darwin-x64/lib/* "$SCITRAN_RUNTIME_PATH/lib"
   rm -rf "$node_source_dir"
-  "$SCITRAN_RUNTIME_PATH/bin/npm" config set prefix "$SCITRAN_RUNTIME_PATH"
+  npm config set prefix "$SCITRAN_RUNTIME_PATH"
 fi
 
 
