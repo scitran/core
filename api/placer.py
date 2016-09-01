@@ -10,11 +10,12 @@ import zipfile
 from . import config
 from . import encoder
 from . import files
-from .jobs import rules
 from . import tempdir as tempfile
 from . import util
 from . import validators
 from .dao import containerutil, hierarchy
+from .jobs import rules
+from .types import Origin
 
 log = config.log
 
@@ -401,6 +402,15 @@ class PackfilePlacer(Placer):
         # Remove the folder created by TokenPlacer
         shutil.rmtree(self.folder)
 
+        # Lookup uid on token
+        token  = self.context['token']
+        uid = config.db['tokens'].find_one({ '_id': token }).get('user')
+        self.origin = {
+            'type': str(Origin.user),
+            'id': uid
+        }
+
+
         # Create an anyonmous object in the style of our augmented file fields.
         # Not a great practice. See process_upload() for details.
         cgi_field = util.obj_from_map({
@@ -496,7 +506,6 @@ class PackfilePlacer(Placer):
         self.save_file(cgi_field, cgi_info)
 
         # Delete token
-        token  = self.context['token']
         config.db['tokens'].delete_one({ '_id': token })
 
         result = {
