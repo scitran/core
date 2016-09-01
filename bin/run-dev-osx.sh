@@ -58,7 +58,7 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-set -a
+set -o allexport
 
 SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"$( pwd )/runtime"}
 SCITRAN_RUNTIME_HOST=${SCITRAN_RUNTIME_HOST:-"127.0.0.1"}
@@ -75,6 +75,8 @@ SCITRAN_PERSISTENT_DB_PORT=${SCITRAN_PERSISTENT_DB_PORT:-"9001"}
 SCITRAN_PERSISTENT_DB_URI=${SCITRAN_PERSISTENT_DB_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"}
 
 SCITRAN_SITE_API_URL="http://$SCITRAN_RUNTIME_HOST:$SCITRAN_RUNTIME_PORT/api"
+
+set +o allexport
 
 if [ $INSTALL_APP -eq 1 ]; then
   ./bin/install-dev-osx.sh
