@@ -54,6 +54,8 @@ echo "Activating Virtualenv"
 
 echo "Installing Python requirements"
 pip install "pip>=8"
+# Compile uwsgi with https support
+CFLAGS="-I/usr/local/opt/openssl/include" LDFLAGS="-L/usr/local/opt/openssl/lib" UWSGI_PROFILE_OVERRIDE=ssl=true pip install  --no-cache-dir  uwsgi
 pip install -r requirements.txt
 
 
