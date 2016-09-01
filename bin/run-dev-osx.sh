@@ -29,6 +29,7 @@ while [[ "$#" -gt 0 ]]; do
   case $key in
       -C|--config-file)
       CONFIG_FILE="$1"
+      . "$CONFIG_FILE"
       shift
       ;;
       --help)
@@ -106,7 +107,7 @@ if [ "$SCITRAN_RUNTIME_UWSGI_INI" == "" ]; then
     --wsgi-file "bin/api.wsgi" \
     -H "$SCITRAN_RUNTIME_PATH" \
     --die-on-term \
-    --py-autoreload $AUTO_RELOAD \
+    --py-autoreload $AUTO_RELOAD_INTERVAL \
     --env "SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET" \
     --env "SCITRAN_PERSISTENT_DB_URI=$SCITRAN_PERSISTENT_DB_URI" \
     --env "SCITRAN_PERSISTENT_PATH=$SCITRAN_PERSISTENT_PATH" \
