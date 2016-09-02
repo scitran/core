@@ -25,13 +25,12 @@ BOOTSTRAP_TESTDATA=1
 AUTO_RELOAD_INTERVAL=0
 INSTALL_APP=1
 
-while [[ "$#" -gt 0 ]]; do
+while [ "$#" -gt 0 ]; do
   key="$1"
 
   case $key in
       -C|--config-file)
       CONFIG_FILE="$1"
-      . "$CONFIG_FILE"
       shift
       ;;
       --help)
@@ -59,6 +58,12 @@ while [[ "$#" -gt 0 ]]; do
   esac
   shift
 done
+
+if [ "$CONFIG_FILE" != "" ]; then
+    EXISTING_ENV=$(env | grep "SCITRAN_" | cat)
+    source "$CONFIG_FILE"
+    eval "$EXISTING_ENV"
+fi
 
 set -o allexport
 
