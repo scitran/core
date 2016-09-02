@@ -35,6 +35,11 @@ Run a development instance of scitran-core
  -T, --no-testdata: do not bootstrap testdata
  -U, --no-user: do not bootstrap users and groups
 ```
+Note: For the best experience, please upgrade bash using
+```
+brew install bash bash-completion
+sudo dscl . -create /Users/$(whoami) UserShell /usr/local/bin/bash
+```
 
 #### Ubuntu
 ```
