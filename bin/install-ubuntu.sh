@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
+
 set -eu
 
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
-
-SCITRAN_USER="scitran-core"
 
 sudo apt-get update
 sudo apt-get install -y \
@@ -20,6 +19,6 @@ sudo apt-get install -y \
     libpcre3-dev \
     git
 
-sudo useradd -d /var/scitran -m -r "$SCITRAN_USER"
+pip install -U pip
 
-./bin/install-python-requirements.sh
+pip install -r requirements.txt

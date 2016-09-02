@@ -19,7 +19,7 @@ SciTran Core is a RESTful HTTP API, written in Python and backed by MongoDB. It 
 
 
 ### Usage
-**Currently Python 2 Only**  
+**Currently Python 2 Only**
 
 #### OSX
 ```
@@ -35,7 +35,7 @@ Run a development instance of scitran-core
  -T, --no-testdata: do not bootstrap testdata
  -U, --no-user: do not bootstrap users and groups
 ```
-Note: For the best experience, please upgrade bash using
+Note: For the best experience, please upgrade bash.
 ```
 brew install bash bash-completion
 sudo dscl . -create /Users/$(whoami) UserShell /usr/local/bin/bash
