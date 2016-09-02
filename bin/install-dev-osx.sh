@@ -92,5 +92,5 @@ if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/abao" ]; then
   npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref
 fi
 if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/newman" ]; then
-  npm install -g newman@3.0.1
+  npm install -g newman@3.1.0
 fi
