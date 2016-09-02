@@ -4,6 +4,8 @@ set -e
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
+echo() { builtin echo -e "\e[1;7mSCITRAN\e[0;7m $@\e[27m"; }
+
 USAGE="
     Run a development instance of scitran-core\n
     Also starts mongo, on port 9001 by default\n

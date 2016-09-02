@@ -7,6 +7,8 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
 SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"./runtime"}
 
+echo() { builtin echo -e "\e[1;7mSCITRAN\e[0;7m $@\e[27m"; }
+
 if hash brew 2>/dev/null; then
     echo "Homebrew is installed"
 else
