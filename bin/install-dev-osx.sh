@@ -7,7 +7,9 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
 SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"./runtime"}
 
-echo() { builtin echo -e "\e[1;7mSCITRAN\e[0;7m $@\e[27m"; }
+if [ $(echo $BASH_VERSION | cut -c 1) -ge 4 ]; then
+    echo() { builtin echo -e "\e[1;7mSCITRAN\e[0;7m $@\e[27m"; }
+fi
 
 if hash brew 2>/dev/null; then
     echo "Homebrew is installed"
@@ -51,14 +53,13 @@ fi
 
 
 echo "Activating Virtualenv"
-. $SCITRAN_RUNTIME_PATH/bin/activate # will fail with `set -u`
+source $SCITRAN_RUNTIME_PATH/bin/activate # will fail with `set -u`
 
 
 echo "Installing Python requirements"
 pip install "pip>=8"
-# Compile uwsgi with https support
-CFLAGS="-I/usr/local/opt/openssl/include" LDFLAGS="-L/usr/local/opt/openssl/lib" UWSGI_PROFILE_OVERRIDE=ssl=true pip install  --no-cache-dir  uwsgi
-pip install -r requirements.txt
+CFLAGS="-I/usr/local/opt/openssl/include" LDFLAGS="-L/usr/local/opt/openssl/lib" UWSGI_PROFILE_OVERRIDE="ssl=true" \
+    pip install --no-cache-dir -r requirements.txt
 
 
 # Install MongoDB
@@ -77,16 +78,14 @@ fi
 
 # Install Node.js
 if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
-  echo "Installing nodejs"
-  node_source_dir=`mktemp -d`
-  curl https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz | tar xz -C "$node_source_dir"
-  mv $node_source_dir/node-v6.4.0-darwin-x64/bin/* "$SCITRAN_RUNTIME_PATH/bin"
-  mv $node_source_dir/node-v6.4.0-darwin-x64/lib/* "$SCITRAN_RUNTIME_PATH/lib"
-  rm -rf "$node_source_dir"
+    echo "Installing Node.js"
+    NODE_URL="https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz"
+    curl $NODE_URL | tar xz -C $VIRTUAL_ENV --strip-components 1
 fi
 
 
 # Install testing dependencies
+echo "Installing testing dependencies"
 pip install -r "test/integration_tests/requirements-integration-test.txt"
 if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/abao" ]; then
   npm install -g git+https://github.com/flywheel-io/abao.git#better-jsonschema-ref

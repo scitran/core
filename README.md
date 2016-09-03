@@ -19,23 +19,14 @@ SciTran Core is a RESTful HTTP API, written in Python and backed by MongoDB. It 
 
 
 ### Usage
-**Currently Python 2 Only**  
+**Currently Python 2 Only**
 
 #### OSX
 ```
 $ ./bin/run-dev-osx.sh --help
-Run a development instance of scitran-core
- Also starts mongo on port 9001 by default
-
- Usage:
-
- -C, --config-file <shell-script>: Source a shell script to set environemnt variables
- -I, --no-install: Do not attempt install the application first
- -R, --reload <interval>: Enable live reload, specifying interval in seconds
- -T, --no-testdata: do not bootstrap testdata
- -U, --no-user: do not bootstrap users and groups
 ```
-Note: For the best experience, please upgrade bash using
+
+For the best experience, please upgrade to a recent version of bash.
 ```
 brew install bash bash-completion
 sudo dscl . -create /Users/$(whoami) UserShell /usr/local/bin/bash
