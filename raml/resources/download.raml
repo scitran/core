@@ -5,6 +5,14 @@ post:
     Use filters in the payload to exclude/include files.
     To pass a single filter, each of its conditions should be satisfied.
     If a file pass at least one filter, it is included in the targets.
+  queryParameters:
+    prefix:
+      type: string
+      required: false
+      description: |
+       A string to customize the name of the download
+       in the format <prefix>_<timestamp>.tar.gz.
+       Defaults to "scitran".
   body:
     application/json:
       description: Download files with tag 'incomplete' OR type 'dicom'

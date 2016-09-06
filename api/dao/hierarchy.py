@@ -18,10 +18,18 @@ PROJECTION_FIELDS = ['group', 'name', 'label', 'timestamp', 'permissions', 'publ
 class TargetContainer(object):
 
     def __init__(self, container, level):
-        self.container = container
-        self.level = level
-        self.dbc = config.db[level]
-        self.id_ = container['_id']
+        if level == 'subject':
+            self.container = container.get('subject')
+            self.level = level
+            self.dbc = config.db['sessions']
+            self.id_ = container['_id']
+            self.file_prefix = 'subject.files'
+        else:
+            self.container = container
+            self.level = level
+            self.dbc = config.db[level]
+            self.id_ = container['_id']
+            self.file_prefix = 'files'
 
     def find(self, filename):
         for f in self.container.get('files', []):
@@ -29,15 +37,21 @@ class TargetContainer(object):
                 return f
         return None
 
+    def upsert_file(self, fileinfo):
+        result = self.dbc.find_one({'_id': self.id_, self.file_prefix + '.name': fileinfo['name']})
+        if result:
+            self.update_file(fileinfo)
+        else:
+            self.add_file(fileinfo)
     def update_file(self, fileinfo):
 
-        update_set = {'files.$.modified': datetime.datetime.utcnow()}
+        update_set = {self.file_prefix + '.$.modified': datetime.datetime.utcnow()}
         # in this method, we are overriding an existing file.
         # update_set allows to update all the fileinfo like size, hash, etc.
         for k,v in fileinfo.iteritems():
-            update_set['files.$.' + k] = v
+            update_set[self.file_prefix + '.$.' + k] = v
         return self.dbc.find_one_and_update(
-            {'_id': self.id_, 'files.name': fileinfo['name']},
+            {'_id': self.id_, self.file_prefix + '.name': fileinfo['name']},
             {'$set': update_set},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
@@ -45,7 +59,7 @@ class TargetContainer(object):
     def add_file(self, fileinfo):
         return self.dbc.find_one_and_update(
             {'_id': self.id_},
-            {'$push': {'files': fileinfo}},
+            {'$push': {self.file_prefix: fileinfo}},
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
 
@@ -182,12 +196,14 @@ def _find_or_create_destination_project(group_id, project_label, timestamp):
         )
     return project
 
-def _create_query(cont, parent_type, parent_id, upload_type):
+def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
     if upload_type == 'label':
-        return {
-            'label':        cont['label'],
-            parent_type:    bson.ObjectId(parent_id)
-        }
+        q = {}
+        q['label'] = cont['label']
+        q[parent_type] = bson.ObjectId(parent_id)
+        if cont_type == 'session' and cont.get('subject',{}).get('code'):
+            q['subject.code'] = cont['subject']['code']
+        return q
     elif upload_type == 'uid':
         return {
             'uid': cont['uid']
@@ -210,7 +226,7 @@ def _upsert_container(cont, cont_type, parent, parent_type, upload_type, timesta
     if cont_type == 'session':
         cont['subject'] = containerutil.add_id_to_subject(cont.get('subject'), parent['_id'])
 
-    query = _create_query(cont, parent_type, parent['_id'], upload_type)
+    query = _create_query(cont, cont_type, parent_type, parent['_id'], upload_type)
 
     if config.db[cont_type+'s'].find_one(query) is not None:
         return _update_container_nulls(query, cont, cont_type)
@@ -235,10 +251,21 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     if not session:
         return target_containers
     session_files = dict_fileinfos(session.pop('files', []))
+
+    subject_files = []
+    if session.get('subject'):
+        subject_files = dict_fileinfos(session['subject'].pop('files', []))
+
     session_obj = _upsert_container(session, 'session', project_obj, 'project', type_, timestamp)
     target_containers.append(
         (TargetContainer(session_obj, 'session'), session_files)
     )
+
+    if len(subject_files) > 0:
+        target_containers.append(
+            (TargetContainer(session_obj, 'subject'), subject_files)
+        )
+
     if not acquisition:
         return target_containers
     acquisition_files = dict_fileinfos(acquisition.pop('files', []))
