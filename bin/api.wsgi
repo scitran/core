@@ -1,4 +1,6 @@
 # vim: filetype=python
+import sys
+import os.path
 
 from api import api
 

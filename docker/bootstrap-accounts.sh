@@ -22,7 +22,7 @@ export PYTHONPATH=.
 
 
 # Bootstrap Users
-./bin/bootstrap.py --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${SCITRAN_SITE_API_URL}" "${bootstrap_user_file}"
+./bin/load_users_drone_secret.py --insecure --secret "${SCITRAN_CORE_DRONE_SECRET}" "${SCITRAN_SITE_API_URL}" "${bootstrap_user_file}"
 
 
 )
