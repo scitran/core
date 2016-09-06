@@ -200,12 +200,12 @@ class Job(object):
         # Add config, if any
         if self.config is not None:
 
-            if self._id is None:
+            if self.id_ is None:
                 raise Exception('Running a job requires an ID')
 
             r['inputs'].append({
                 'type': 'scitran',
-                'uri': '/jobs/' + self._id + '/config.json',
+                'uri': '/jobs/' + self.id_ + '/config.json',
                 'location': '/flywheel/v0',
             })
 
