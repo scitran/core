@@ -250,7 +250,7 @@ class ProjectReport(Report):
             if sex is None:
                 sex = UNR
             else:
-                sex.capitalize() # We store sex as lowercase in the db
+                sex = sex.capitalize() # We store sex as lowercase in the db
             if sex not in grid[race][ethnicity]:
                 sex = UNR
 
