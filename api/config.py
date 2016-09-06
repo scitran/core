@@ -186,6 +186,7 @@ def initialize_db():
     db.projects.create_index([('gid', 1), ('name', 1)])
     db.sessions.create_index('project')
     db.sessions.create_index('uid')
+    db.sessions.create_index('created')
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
