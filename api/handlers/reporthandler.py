@@ -317,7 +317,7 @@ class ProjectReport(Report):
             result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
             project['female_count'] = result.get('female',0)
-            project['males_count'] = result.get('male',0)
+            project['male_count'] = result.get('male',0)
             project['other_count'] = result.get('other',0)
 
 
