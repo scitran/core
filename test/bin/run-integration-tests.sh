@@ -33,6 +33,11 @@ SCITRAN_PERSISTENT_DB_URI="$MONGODB_URI" \
   python "bin/bootstrap-dev.py" \
   "test/integration_tests/bootstrap-test-accounts.json"
 
+# Remove __pycache__ directory for issue with __file__ attribute
+# Due to running the tests on the host creating bytecode files
+# Which have a mismatched __file__ attribute when loaded in docker container
+rm -rf test/integration_tests/python/__pycache__
+
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
     py.test --cov=api --cov-append test/integration_tests/python
