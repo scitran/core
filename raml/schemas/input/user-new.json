@@ -2,7 +2,8 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "User",
   "type": "object",
-  "$ref":"../definitions/user.json#",
-  "additionalProperties": false,
+  "allOf":[
+    {"$ref":"../definitions/user.json#"}
+  ],
   "required":["_id", "firstname", "lastname"]
 }

@@ -2,7 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "array",
   "items": {
-    "$ref":"../definitions/user-output.json#",
-    "additionalProperties":false
+    "$ref":"../definitions/user-output.json#"
   }
 }
