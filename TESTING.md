@@ -12,6 +12,11 @@
 ./test/bin/run-tests-ubuntu.sh
 ```
 
+### Docker
+```
+./test/bin/run-tests-docker.sh
+```
+
 ### Tools
 - [abao](https://github.com/cybertk/abao/)
 - [postman](https://www.getpostman.com/docs/)
