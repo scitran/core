@@ -25,7 +25,7 @@
                           "title": "Email",
                           "type": "string"
                         },
-    "avatars":          { "$ref": "avatars.json"},
+    "avatars":          { "$ref": "../definitions/avatars.json"},
     "avatar":           {
                           "format": "uri",
                           "title": "Avatar",
@@ -37,6 +37,9 @@
                           "title": "Preferences",
                           "type": "object"
                         },
+    "api_key":         {
+      "$ref":"../definitions/user-api_key.json"
+    },
     "created":{"type":"string"},
     "modified":{"type":"string"}
   },
