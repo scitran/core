@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "a0f19409-88fa-06e1-41b2-e377fa373af1",
+		"_postman_id": "e4301b09-a091-741e-e9ba-6fe23acd14e6",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -42,6 +42,40 @@
 			"response": []
 		},
 		{
+			"name": "/users missing required",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 400\"] = responseCode.code === 400;\n\ntests[\"Body has validation error message\"] = responseBody.has(\"'firstname' is a required property\");"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/users?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"_id\":\"jane.doe@gmail.com\", \"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
+				},
+				"description": "\n\n"
+			},
+			"response": []
+		},
+		{
 			"name": "Test /engine upload - type \"analysis\"",
 			"event": [
 				{
@@ -69,8 +103,7 @@
 							"key": "file1",
 							"type": "file",
 							"enabled": true,
-							"value": "engine-analyses-1.txt",
-                            "src":"test/integration_tests/postman/test_files/engine-analyses-1.txt"
+							"src": "test/integration_tests/postman/test_files/engine-analyses-1.txt"
 						},
 						{
 							"key": "metadata",
