@@ -12,6 +12,32 @@
 ./test/bin/run-tests-ubuntu.sh
 ```
 
+### Docker
+```
+# Execute this from the root of this repository
+
+# Build the docker image
+docker build -t scitran-core .
+
+# Launch Mongo isinstance
+docker run --name some-mongo -d mongo
+
+# Execute tests
+docker run \
+  --rm \
+  --name scitran-core-tester \
+  -e "SCITRAN_PERSISTENT_DB_URI=mongodb://some-mongo:27017/scitran" \
+  --link some-mongo \
+  -v $(pwd):/var/scitran/code/api \
+  --entrypoint bash \
+  scitran-core \
+    /var/scitran/code/api/test/bin/run-tests-ubuntu.sh
+
+# Stop and remove mongo container
+docker rm -v -f some-mongo
+
+```
+
 ### Tools
 - [abao](https://github.com/cybertk/abao/)
 - [postman](https://www.getpostman.com/docs/)

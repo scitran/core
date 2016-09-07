@@ -67,6 +67,9 @@ RUN pip install --upgrade pip wheel setuptools \
   && pip install -r /var/scitran/code/api/requirements-docker.txt \
   && pip install -r /var/scitran/code/api/requirements.txt
 
+COPY test /var/scitran/code/api/test/
+RUN bash -e -x /var/scitran/code/api/test/bin/setup-integration-tests-ubuntu.sh
+
 
 # Copy full repo
 #
