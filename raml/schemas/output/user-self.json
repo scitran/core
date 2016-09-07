@@ -1,28 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "User",
-  "type": "object",
   "properties": {
     "_id":              {
+                          "maxLength": 64,
+                          "minLength": 2,
+                          "pattern": "^[0-9a-z.@_-]*$",
                           "title": "ID",
                           "type": "string"
                         },
-    "created":          {},
-    "modified":         {},
     "firstname":        {
+                          "maxLength": 64,
+                          "minLength": 1,
                           "title": "First Name",
                           "type": "string"
                         },
     "lastname":         {
+                          "maxLength": 64,
+                          "minLength": 1,
                           "title": "Last Name",
                           "type": "string"
                         },
     "email":            {
+                          "format": "email",
                           "title": "Email",
                           "type": "string"
                         },
     "avatars":          { "$ref": "../definitions/avatars.json"},
     "avatar":           {
+                          "format": "uri",
                           "title": "Avatar",
                           "type": "string"
                         },
@@ -34,8 +39,13 @@
                         },
     "api_key":         {
       "$ref":"../definitions/user-api_key.json"
-    }
+    },
+    "created":{"type":"string"},
+    "modified":{"type":"string"}
   },
-  "additionalProperties": false,
-  "required":["_id", "firstname", "lastname", "created", "modified", "root"]
+  "required":[
+     "_id", "firstname", "lastname",
+     "root", "email", "created", "modified"
+   ],
+   "additionalProperties":false
 }
