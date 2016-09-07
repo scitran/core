@@ -12,7 +12,7 @@ post:
   is: [validates-json-body]
   body:
     application/json:
-      example: !include ../examples/user_jane_doe.json
+      example: !include ../examples/input/user-new.json
       schema: !include ../schemas/input/user-new.json
   responses:
     200:
@@ -30,7 +30,7 @@ post:
         body:
           application/json:
             example: !include ../examples/user_jane_doe.json
-            schema: !include ../schemas/output/user.json
+            schema: !include ../schemas/output/user-self.json
 /self/avatar:
   description: Current user's avatar
   get:

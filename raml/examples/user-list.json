@@ -1,3 +1,9 @@
-[
-  {"_id":"jane.doe@gmail.com","firstname":"Jane","lastname":"Doe","email":"jane.doe@gmail.com"}
-]
+[{
+	"_id": "jane.doe@gmail.com",
+	"firstname": "Jane",
+	"lastname": "Doe",
+	"email": "jane.doe@gmail.com",
+	"root": true,
+  "created": "2016-09-02T22:58:18.624000+00:00",
+  "modified": "2016-09-02T22:58:18.624000+00:00"
+}]
