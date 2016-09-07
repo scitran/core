@@ -122,3 +122,17 @@ class GroupStorage(ContainerStorage):
             },
             upsert=True)
 
+def inflate_container(cr):
+    """
+    Given a container reference, inflate its hierarchy into a map.
+    Eeventually, this might want to deduplicate with logic in hierarchy.py.
+    """
+
+    if cr.type != 'session':
+        raise Exception('Only sessions are supported for inflation right now')
+
+    oid = bson.ObjectId(cr.id)
+    root = ContainerStorage('sessions', True).exec_op('GET', oid, projection={'permissions': 0})
+    root['acquisitions'] = ContainerStorage('acquisitions', True).exec_op('GET', query={'session': oid}, projection={'permissions': 0})
+
+    return root

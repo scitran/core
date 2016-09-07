@@ -5,11 +5,11 @@ API request handlers for the jobs module
 import json
 import StringIO
 
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from .. import base
 from .. import config
 
-from .gears import get_gears, get_gear_by_name, get_invocation, remove_gear, upsert_gear
+from .gears import get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job
 from .queue import Queue
 
@@ -47,7 +47,19 @@ class GearHandler(base.RequestHandler):
             self.abort(403, 'Request requires login')
 
         gear = get_gear_by_name(_id)
-        return get_invocation(gear)
+        return get_invocation_schema(gear)
+
+    def suggest(self, _id, cont_name, cid):
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        cr = ContainerReference(cont_name, cid)
+        if not self.superuser_request:
+            cr.check_access(self.uid, 'ro')
+
+        gear = get_gear_by_name(_id)
+        return suggest_container(gear, cr)
 
     def post(self, _id):
         """Upsert an entire gear document."""
