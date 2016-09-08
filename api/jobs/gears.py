@@ -2,8 +2,7 @@
 Gears
 """
 
-import bson.objectid
-import jsonschema
+# import jsonschema
 from jsonschema import Draft4Validator
 import gear_tools
 
