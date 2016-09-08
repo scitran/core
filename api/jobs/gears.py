@@ -11,7 +11,6 @@ from .. import config
 from .jobs import Job
 from ..dao.containerstorage import inflate_container
 
-
 log = config.log
 
 # For now, gears are in a singleton, prefixed by a key
@@ -77,7 +76,7 @@ def suggest_container(gear, cr):
         for f in acq.get('files', []):
             f['suggested'] = {}
             for x in schemas:
-                f['suggested'][x] = schemas[x].is_valid({})
+                f['suggested'][x] = schemas[x].is_valid(f)
 
     return root
 
