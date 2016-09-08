@@ -5,7 +5,6 @@ import copy
 from .. import base
 from .. import config
 
-log = config.log
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 

@@ -133,7 +133,7 @@ if [ "$SCITRAN_RUNTIME_UWSGI_INI" == "" ]; then
         --home "$SCITRAN_RUNTIME_PATH" \
         --wsgi-file "bin/api.wsgi" \
         --py-autoreload $AUTO_RELOAD_INTERVAL \
-        &
+        --logformat '%(addr) - %(user) [%(ltime)] "%(method) %(uri) %(proto)" %(status) %(size) "%(referer)" "%(uagent)" request_id=%(request_id)' &
     UWSGI_PID=$!
 else
     uwsgi --ini "$SCITRAN_RUNTIME_UWSGI_INI" &
