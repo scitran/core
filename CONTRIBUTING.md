@@ -17,9 +17,11 @@ Then review and decide what upgrades to make, if any.
 Changes to `requirements.txt` should always be by pull request.
 
 ## Code Standards
+
 ### Testing
 - Add tests for every change made
 - Tests should be realistic and exercise a wide range of possibilities
+
 ### Docstrings
 - Use [Google Style Docstrings](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
 - Add docstrings to all functions with a one-line description of its purpose.
