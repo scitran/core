@@ -709,6 +709,7 @@ class AnalysesHandler(ListHandler):
             contref = create_containerreference_from_filereference(fileref)
             file_ = contref.find_file(fileref.name)
             if file_:
+                file_.pop('output', None) # If file was from an analysis
                 file_['input'] = True
                 files.append(file_)
         analysis['files'] = files
