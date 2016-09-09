@@ -16,8 +16,12 @@ pip list --local --outdated
 Then review and decide what upgrades to make, if any.
 Changes to `requirements.txt` should always be by pull request.
 
-
 ## Code Standards
+
+### Testing
+- Add tests for every change made
+- Tests should be realistic and exercise a wide range of possibilities
+
 ### Docstrings
 - Use [Google Style Docstrings](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
 - Add docstrings to all functions with a one-line description of its purpose.
@@ -34,6 +38,10 @@ Ensure that `./test/bin/lint.sh api` exits without errors.
 1. Write a description of your API resource and its business functionality.
 1. Choose a descriptive name for your resource that aligns with existing names.
 1. Create a URL from the name. If your resource is a collection, the name should be a pluralized noun, e.g., "files".
+
+### Quality Standards
+1. All API resources must have input validation
+1. New API resources should follow the error handling convention and raise webapp2.HTTPException
 
 ### Add RAML for API Endpoints
 1. Create a new resource file, called `<resource_name>.raml`, e.g., `files.raml`. Create this file in the `raml/resources` directory.
