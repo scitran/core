@@ -1,6 +1,6 @@
 
 
-### Tips for Review
+### Review Checklist
 
 - Tests were added to cover all code changes
 - Documentation was added / updated
