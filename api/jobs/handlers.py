@@ -4,10 +4,13 @@ API request handlers for the jobs module
 
 import json
 import StringIO
+import gear_tools
+from jsonschema import Draft4Validator, ValidationError
 
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from .. import base
 from .. import config
+from .. import util
 
 from .gears import get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job
@@ -127,7 +130,7 @@ class JobsHandler(base.RequestHandler):
 
         # Add job tags, config, attempt number, and/or previous job ID, if present
         tags            = submit.get('tags', None)
-        config_         = submit.get('config', None)
+        config_         = submit.get('config', {})
         attempt_n       = submit.get('attempt_n', 1)
         previous_job_id = submit.get('previous_job_id', None)
         now_flag        = submit.get('now', False) # A flag to increase job priority
@@ -146,6 +149,28 @@ class JobsHandler(base.RequestHandler):
                 inputs[x].check_access(self.uid, 'ro')
             destination.check_access(self.uid, 'rw')
             now_flag = False # Only superuser requests are allowed to set "now" flag
+
+        # Config manifest check
+        gear = get_gear_by_name(gear_name)
+        if len(gear.get('manifest', {}).get('config', {})) > 0:
+
+            invocation = gear_tools.derive_invocation_schema(gear['manifest'])
+            ci = gear_tools.isolate_config_invocation(invocation)
+            validator = Draft4Validator(ci)
+
+            try:
+                validator.validate(config_)
+            except ValidationError as err:
+                key = None
+                if len(err.relative_path) > 0:
+                    key = err.relative_path[0]
+
+                self.response.set_status(422)
+                return {
+                    'reason': 'config did not match manifest',
+                    'error': err.message.replace("u'", "'"),
+                    'key': key
+                }
 
         job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id)
         result = job.insert()
@@ -203,7 +228,7 @@ class JobHandler(base.RequestHandler):
         self.response.headers['Content-Disposition'] = 'attachment; filename="config.json"'
 
         # Serve config as formatted json file
-        encoded = json.dumps(c, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
+        encoded = json.dumps({"config": c}, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
         self.response.app_iter = StringIO.StringIO(encoded)
 
     def put(self, _id):
