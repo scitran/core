@@ -1,4 +1,6 @@
+import atexit
 import json
+import os
 import sys
 import traceback
 
@@ -225,7 +227,8 @@ def app_factory(*_, **__):
     application = webapp2.WSGIApplication(routes, debug=config.__config['core']['debug'])
     application.router.set_dispatcher(dispatcher)
     application.request_class = SciTranRequest
-
+    if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true":
+        start_coverage()
     # configure new relic
     if config.__config['core']['newrelic']:
         try:
@@ -241,3 +244,16 @@ def app_factory(*_, **__):
             sys.exit(1)
 
     return application
+
+# Functions to enable code coverage when API is started for testing
+def start_coverage():
+    import coverage
+    config.log.info("Enabling code coverage")
+    cov = coverage.coverage(source=["api"], data_suffix="integration-tests")
+    cov.start()
+    atexit.register(save_coverage, cov)
+
+def save_coverage(cov):
+    config.log.info("Saving coverage")
+    cov.stop()
+    cov.save()
