@@ -23,7 +23,7 @@ class RequestHandler(webapp2.RequestHandler):
     def __init__(self, request=None, response=None): # pylint: disable=super-init-not-called
         """Set uid, source_site, public_request, and superuser"""
         self.initialize(request, response)
-        self.debug = config.get_item('core', 'insecure')
+
         self.uid = None
         self.source_site = None
 
@@ -50,10 +50,6 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 # User (oAuth) authentication
                 self.uid = self.authenticate_user(access_token)
-
-        # 'Debug' (insecure) setting: allow request to act as requested user
-        elif self.debug and self.get_param('user'):
-            self.uid = self.get_param('user')
 
         # Drone shared secret authentication
         elif drone_secret is not None:

@@ -114,13 +114,6 @@ class CollectionsHandler(ContainerHandler):
         self._filter_all_permissions(results, self.uid, self.user_site)
         if self.is_true('counts'):
             self._add_results_counts(results)
-        if self.debug:
-            for coll in results:
-                coll['debug'] = {}
-                cid = str(coll['_id'])
-                coll['debug']['details'] =  self.uri_for('coll_details', cont_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
-                coll['debug']['acquisitions'] = self.uri_for('coll_acq', cont_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
-                coll['debug']['sessions'] =     self.uri_for('coll_ses', cont_name='collections', cid=cid, _full=True) + '?user=' + self.get_param('user', '')
         return results
 
     def _add_results_counts(self, results):
@@ -159,11 +152,6 @@ class CollectionsHandler(ContainerHandler):
             self._add_session_measurements(sessions)
         for sess in sessions:
             sess = self.handle_origin(sess)
-            if self.debug:
-                sess['debug'] = {}
-                sid = str(sess['_id'])
-                sess['debug']['details'] = self.uri_for('cont_details', cont_name='sessions', cid=sid, _full=True) + '?user=' + self.get_param('user', '')
-                sess['debug']['acquisitions'] = self.uri_for('coll_acq', cont_name='collections', cid=cid, _full=True) + '?session=%s&user=%s' % (sid, self.get_param('user', ''))
         return sessions
 
     def get_acquisitions(self, cid):
@@ -184,11 +172,6 @@ class CollectionsHandler(ContainerHandler):
         self._filter_all_permissions(acquisitions, self.uid, self.user_site)
         for acq in acquisitions:
             acq.setdefault('timestamp', datetime.datetime.utcnow())
-        if self.debug:
-            for acq in acquisitions:
-                acq['debug'] = {}
-                aid = str(acq['_id'])
-                acq['debug']['details'] = self.uri_for('cont_details', cont_name='acquisitions', cid=aid, _full=True) + '?user=' + self.get_param('user', '')
         for acquisition in acquisitions:
             acquisition = self.handle_origin(acquisition)
         return acquisitions
