@@ -1,6 +1,7 @@
 import json
 import sys
 import traceback
+
 import webapp2
 import webapp2_extras.routes
 
@@ -21,8 +22,14 @@ from .handlers import collectionshandler
 from .handlers import searchhandler
 from .handlers import schemahandler
 from .handlers import reporthandler
+from .request import SciTranRequest
 
 log = config.log
+
+try:
+    import uwsgi
+except ImportError:
+    uwsgi = None
 
 class Config(base.RequestHandler):
 
@@ -191,6 +198,12 @@ routes = [
 
 def dispatcher(router, request, response):
     try:
+        if uwsgi is not None:
+            uwsgi.set_logvar('request_id', request.id)
+    except: # pylint: disable=bare-except
+        request.logger.error("Error setting request_id log var", exc_info=True)
+
+    try:
         rv = router.default_dispatcher(request, response)
         if rv is not None:
             response.write(json.dumps(rv, default=encoder.custom_json_serializer))
@@ -198,6 +211,7 @@ def dispatcher(router, request, response):
     except webapp2.HTTPException as e:
         util.send_json_http_exception(response, str(e), e.code)
     except Exception as e: # pylint: disable=broad-except
+        request.logger.error("Error dispatching request", exc_info=True)
         if config.get_item('core', 'debug'):
             message = traceback.format_exc()
         else:
@@ -210,6 +224,7 @@ def app_factory(*_, **__):
     # don't use config.get_item() as we don't want to require the database at startup
     application = webapp2.WSGIApplication(routes, debug=config.__config['core']['debug'])
     application.router.set_dispatcher(dispatcher)
+    application.request_class = SciTranRequest
 
     # configure new relic
     if config.__config['core']['newrelic']:
