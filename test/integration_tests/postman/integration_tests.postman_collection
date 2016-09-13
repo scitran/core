@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "e4301b09-a091-741e-e9ba-6fe23acd14e6",
+		"_postman_id": "ca989cc3-1a13-91e0-4e31-d10ad810c738",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -103,7 +103,8 @@
 							"key": "file1",
 							"type": "file",
 							"enabled": true,
-							"src": "test/integration_tests/postman/test_files/engine-analyses-1.txt"
+							"src": "test/integration_tests/postman/test_files/engine-analyses-1.txt",
+							"value": ""
 						},
 						{
 							"key": "metadata",
@@ -112,6 +113,194 @@
 							"enabled": true
 						}
 					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Create test-group",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/groups?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\"_id\":\"test-group\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Create test-project",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-project-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\n    \"group\": \"test-group\",\n    \"label\": \"test-project\",\n    \"public\": false\n  }"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Create test-session-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-session-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\n    \"subject\": {\n      \"code\": \"test-subject-1\"\n    },\n    \"label\": \"test-session-1\",\n    \"project\": \"{{test-project-id}}\",\n    \"public\": false\n  }"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Create test-acquisition-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-acquisition-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"label\": \"test-acquisition-1\",\n    \"session\":\"{{test-session-id}}\",\n    \"public\": false\n }"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Upload file to test-acquisition-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/upload/label?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"group\": {\"_id\": \"{{test-group-id}}\"}, \"project\": {\"label\": \"test-project-1\"}, \"session\":{\"label\":\"test-session-1\"}, \"acquisition\":{\"label\":\"test-acquisition-1\", \"files\":[{\"name\":\"test-1.dcm\"}]}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"value": "",
+							"type": "file",
+							"enabled": true,
+							"src":"test/integration_tests/postman/test_files/test-1.dcm"
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Add job",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/jobs/add",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"gear\": \"dcm_convert\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-id}}\",\n            \"name\" : \"test-1.dcm\"\n        }\n    },\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
 				},
 				"description": ""
 			},
