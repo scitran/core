@@ -20,6 +20,7 @@ uwsgi --http "localhost:8081" --master --http-keepalive \
   --enable-threads \
   --wsgi-file bin/api.wsgi \
   --die-on-term \
+  --logformat '%(addr) - %(user) [%(ltime)] "%(method) %(uri) %(proto)" %(status) %(size) "%(referer)" "%(uagent)" request_id=%(request_id)' \
   --env "SCITRAN_PERSISTENT_DB_URI=$SCITRAN_PERSISTENT_DB_URI" \
   --env "SCITRAN_PERSISTENT_PATH=$SCITRAN_PERSISTENT_PATH" \
   --env "SCITRAN_PERSISTENT_DATA_PATH=$SCITRAN_PERSISTENT_DATA_PATH" &
