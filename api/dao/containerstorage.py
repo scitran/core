@@ -23,8 +23,24 @@ class ContainerStorage(object):
         self.use_object_id = use_object_id
         self.dbc = config.db[cont_name]
 
-    def get_container(self, _id):
-        return self._get_el(_id)
+    def get_container(self, _id, projection=None, get_children=False):
+        cont = self._get_el(_id, projection)
+
+        if get_children:
+            # TODO: This needs to exist in one place, not several
+            child_map = {
+                'groups':   'projects',
+                'projects': 'sessions',
+                'sessions': 'acquisitions'
+            }
+
+            child_name = child_map.get(self.cont_name)
+            if not child_name:
+                raise ValueError('Children can only be listed from group, project or session level')
+            else:
+                query = {cont_name: _id}
+                ContainerStorage(child_name, True)._get_all_el(query, projection)
+
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument

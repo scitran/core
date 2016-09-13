@@ -8,7 +8,7 @@ import gear_tools
 
 from .. import config
 from .jobs import Job
-from ..dao.containerstorage import inflate_container
+from ..dao.containerstorage import ContainerStorage
 
 log = config.log
 
@@ -57,12 +57,12 @@ def get_gear_by_name(name):
 def get_invocation_schema(gear):
     return gear_tools.derive_invocation_schema(gear['manifest'])
 
-def suggest_container(gear, cr):
+def suggest_container(gear, cont_name, cid):
     """
     Given a container reference, suggest files that would work well for each input on a gear.
     """
 
-    root = inflate_container(cr)
+    root = ContainerStorage(cont_name, True).get_container(cid, projection={'permissions':0}, get_children=True)
     invocation_schema = get_invocation_schema(gear)
 
     schemas = {}

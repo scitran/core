@@ -72,18 +72,18 @@ def get_container(cont_name, _id):
         '_id': _id,
     })
 
-def get_children(cont_name, _id):
+def get_children(cont_name, _id, projection=None):
     """
     Given a container name and id, return all children of that object in the hierarchy
     """
     cid = bson.ObjectId(_id)
     if cont_name == 'session':
-        return config.db.acquisitions.find({'session': cid})
+        return config.db.acquisitions.find({'session': cid}, projection)
     elif cont_name == 'project':
-        return config.db.sessions.find({'project': cid})
+        return config.db.sessions.find({'project': cid}, projection)
     elif cont_name == 'group':
         # groups do not use ObjectIds
-        return config.db.projects.find({'group':_id})
+        return config.db.projects.find({'group':_id}, projection)
     else:
         raise ValueError('Children can only be listed from group, project or session level')
 
