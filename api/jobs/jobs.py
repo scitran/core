@@ -214,7 +214,7 @@ class Job(object):
 
             r['inputs'].append({
                 'type': 'scitran',
-                'uri': '/' + i.type + 's/' + i.id + '/files/' + i.name,
+                'uri': i.file_uri(i.name),
                 'location': '/flywheel/v0/input/' + input_name,
             })
 

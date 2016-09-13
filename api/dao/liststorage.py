@@ -254,7 +254,7 @@ class AnalysesStorage(ListStorage):
             if next_job is None:
                 break
             job = Job.load(next_job)
-        if job.id_ != analysis['job']:
+        if job.id_ != str(analysis['job']):
             # Update analysis if job has changed
             # Remove old inputs and replace with new job inputs
             # (In practice these should never change)
