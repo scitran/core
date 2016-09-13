@@ -2,8 +2,13 @@
 Gears
 """
 
+# import jsonschema
+from jsonschema import Draft4Validator
+import gear_tools
+
 from .. import config
 from .jobs import Job
+from ..dao.containerstorage import inflate_container
 
 log = config.log
 
@@ -48,6 +53,31 @@ def get_gear_by_name(name):
 
     # Mongo returns the full document: { '_id' : 'gears', 'gear_list' : [ { .. } ] }, so strip that out
     return gear_doc[SINGLETON_KEY][0]
+
+def get_invocation_schema(gear):
+    return gear_tools.derive_invocation_schema(gear['manifest'])
+
+def suggest_container(gear, cr):
+    """
+    Given a container reference, suggest files that would work well for each input on a gear.
+    """
+
+    root = inflate_container(cr)
+    invocation_schema = get_invocation_schema(gear)
+
+    schemas = {}
+    for x in gear['manifest']['inputs']:
+        schema = gear_tools.isolate_file_invocation(invocation_schema, x)
+        schemas[x] = Draft4Validator(schema)
+
+    # It would be nice to have use a visitor here instead of manual key loops.
+    for acq in root['acquisitions']:
+        for f in acq.get('files', []):
+            f['suggested'] = {}
+            for x in schemas:
+                f['suggested'][x] = schemas[x].is_valid(f)
+
+    return root
 
 def insert_gear(doc):
     config.db.singletons.update(
