@@ -2,17 +2,14 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "array",
   "items": {
-    "$ref":"../definitions/job.json#",
-    "required": [
-      "inputs",
-      "attempt",
-      "name",
-      "tags",
-      "destination",
-      "modified",
-      "created",
-      "state",
-      "_id"
+    "allOf":[
+      {"$ref":"../definitions/job-output.json#"},
+      {
+        "required":[
+           "_id", "name", "inputs",
+           "destination", "tags", "state", "attempt"
+           ]
+      }
     ]
   }
 }

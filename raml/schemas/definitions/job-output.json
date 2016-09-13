@@ -9,28 +9,30 @@
       "type": "string"
     },
     "inputs": {
-      "type": "object",
-      "additionalProperties": {
+      "type":"array",
+      "items":{
         "type": "object",
-          "properties": {
-            "type": {
+        "properties": {
+          "input":{
+            "type":"string"
+          },
+          "type": {
+            "type": "string"
+          },
+            "id": {
               "type": "string"
             },
-              "id": {
+              "name": {
                 "type": "string"
-              },
-                "name": {
-                  "type": "string"
-                }
-          },
-          "required": [
-            "type",
-            "id",
-            "name"
-          ],
-          "additionalProperties":false
+              }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ],
+        "additionalProperties":false
       }
-
     },
     "destination": {
       "type": "object",
@@ -54,5 +56,8 @@
         "type": "string"
       }
     }
-  }
+  },
+  "allOf":[
+    {"$ref":"created-modified.json#"}
+  ]
 }

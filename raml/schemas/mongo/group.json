@@ -15,7 +15,7 @@
                         },
     "roles":            {
                           "type": "array",
-                          "items": {"$ref": "permission.json"},
+                          "items": {"$ref": "../definitions/permission.json"},
                           "title": "Roles",
                           "default": [],
                           "uniqueItems": true

@@ -58,7 +58,7 @@ class GroupHandler(base.RequestHandler):
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'group.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        payload_schema_uri = validators.schema_uri('input', 'group.json')
+        payload_schema_uri = validators.schema_uri('input', 'group-update.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'PUT')
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
@@ -72,7 +72,7 @@ class GroupHandler(base.RequestHandler):
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'group.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        payload_schema_uri = validators.schema_uri('input', 'group.json')
+        payload_schema_uri = validators.schema_uri('input', 'group-new.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
