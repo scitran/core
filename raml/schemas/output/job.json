@@ -2,13 +2,35 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "allOf":[
     {"$ref":"../definitions/job.json#"},
+    {"$ref":"../definitions/created-modified.json#"},
     {
       "type":"object",
-      "id":{"type":"string"}
+      "properties":{
+        "id":{"type":"string"},
+        "name":{},
+        "inputs":{},
+        "destination":{},
+        "tags":{},
+        "state":{},
+        "attempt":{},
+        "created":{},
+        "modified":{},
+        "config":{
+          "oneOf":[
+            {
+              "enum":[null]
+            },
+            {
+              "type":"object"
+            }
+          ]
+        }
+      },
+      "additionalProperties":false
     }
   ],
   "required":[
-     "id", "name", "inputs",
+     "id", "name", "inputs", "config",
      "destination", "tags", "state", "attempt"
      ]
 }

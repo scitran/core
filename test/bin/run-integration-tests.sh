@@ -42,10 +42,12 @@ BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
     py.test --cov=api --cov-append test/integration_tests/python
 
+newman run test/integration_tests/postman/integration_tests.postman_collection -e test/integration_tests/postman/environments/integration_tests.postman_environment
+
 # Have to change into definitions directory to resolve
 # relative $ref's in the jsonschema's
 pushd raml/schemas/definitions
 abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../test/integration_tests/abao/abao_test_hooks.js"
 popd
 
-newman run test/integration_tests/postman/integration_tests.postman_collection -e test/integration_tests/postman/environments/integration_tests.postman_environment
+

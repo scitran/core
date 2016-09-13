@@ -27,12 +27,6 @@ hooks.skip("GET /jobs/{JobId} -> 404");
 // 500 saying unknown gear
 hooks.skip("GET /jobs/next -> 200");
 
-// No way to order tests, have to add a job before it can be listed
-hooks.skip("GET /jobs -> 200");
-hooks.skip("GET /jobs/{JobId} -> 200");
-hooks.skip("PUT /jobs/{JobId} -> 200");
-hooks.skip("GET /jobs/{JobId}/config.json -> 200");
-
 // Can only retry a failed job
 hooks.skip("POST /jobs/{JobId}/retry -> 200");
 
