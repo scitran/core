@@ -2,7 +2,6 @@ import datetime
 
 from .. import base
 from .. import util
-from .. import debuginfo
 from .. import validators
 from ..auth import groupauth
 from ..dao import containerstorage
@@ -46,8 +45,6 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'Not found')
         if not self.superuser_request:
             self._filter_roles(results, self.uid, self.user_site)
-        if self.debug:
-            debuginfo.add_debuginfo(self, 'groups', results)
         return results
 
     def put(self, _id):

@@ -5,7 +5,6 @@ import dateutil
 from .. import base
 from .. import util
 from .. import config
-from .. import debuginfo
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage, containerutil, noop, hierarchy
@@ -104,8 +103,6 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('paths'):
             for fileinfo in result['files']:
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
-        if self.debug:
-            debuginfo.add_debuginfo(self, cont_name, result)
 
         if cont_name == 'sessions':
             result = self.handle_analyses(result)
@@ -299,8 +296,6 @@ class ContainerHandler(base.RequestHandler):
         # and add a list of the measurements in the child acquisitions
         if cont_name == 'sessions' and self.is_true('measurements'):
             self._add_session_measurements(results)
-        if self.debug:
-            debuginfo.add_debuginfo(self, cont_name, results)
 
         for result in results:
             result = self.handle_origin(result)
@@ -359,8 +354,6 @@ class ContainerHandler(base.RequestHandler):
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, uid))
         self._filter_all_permissions(results, uid, user['site'])
-        if self.debug:
-            debuginfo.add_debuginfo(self, cont_name, results)
         return results
 
     def post(self, cont_name):

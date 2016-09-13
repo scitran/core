@@ -139,12 +139,7 @@ class Root(base.RequestHandler):
             [(/schema/group)]                   | group schema
             [(/schema/user)]                    | user schema
             """
-
-        if self.debug and self.uid:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1?user=%s&root=%r)' % (self.uid, self.superuser_request), resources)
-            resources = re.sub(r'(\(.*)\*<uid>\*(.*\))', r'\1%s\2' % self.uid, resources)
-        else:
-            resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
+        resources = re.sub(r'\[\((.*)\)\]', r'[\1](/api\1)', resources)
         resources = resources.replace('<', '&lt;').replace('>', '&gt;').strip()
 
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8'
@@ -165,12 +160,6 @@ class Root(base.RequestHandler):
         self.response.write('</style>\n')
         self.response.write('</head>\n')
         self.response.write('<body style="min-width:900px">\n')
-        if self.debug and not self.get_param('user'):
-            self.response.write('<form name="username" action="" method="get">\n')
-            self.response.write('Username: <input type="text" name="user">\n')
-            self.response.write('Root: <input type="checkbox" name="root" value="1">\n')
-            self.response.write('<input type="submit" value="Generate Custom Links">\n')
-            self.response.write('</form>\n')
         self.response.write(markdown.markdown(resources, ['extra']))
         self.response.write('</body>\n')
         self.response.write('</html>\n')

@@ -23,9 +23,8 @@ logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence Paste 
 # NOTE: Keep in sync with environment variables in sample.config file.
 DEFAULT_CONFIG = {
     'core': {
-        'log_level': 'info',
         'debug': False,
-        'insecure': False,
+        'log_level': 'info',
         'newrelic': None,
         'drone_secret': None,
     },
