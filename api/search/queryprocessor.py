@@ -87,14 +87,14 @@ class SearchContainer(object):
         if self.results is not None:
             updated_results = {}
             log.debug('{} {} {}'.format(self.cont_name, list_ids, filter_on_field))
-            for _id, r in self.results.items():
+            for _id, r in self.results.iteritems():
                 # if we are not filtering on the _id we need to get the _source
                 doc = r if filter_on_field == '_id' else r['_source']
                 log.debug('{} {}'.format(self.cont_name, doc.get(filter_on_field, [])))
                 if self._to_set(doc.get(filter_on_field, [])).intersection(list_ids):
                     updated_results[_id] = r
             self.results = updated_results
-            log.debug('{} {}'.format(self.cont_name, self.results))
+            log.debug('{} {}'.format(self.cont_name, len(self.results)))
         else:
             self.results = self._exec_query(self.query)
 
@@ -105,7 +105,7 @@ class SearchContainer(object):
             return set([value_or_list])
 
     def collect(self):
-        if (self.is_target or self.child_targets) and self.results is None:
+        if self.is_target and self.results is None:
             self.results = self._exec_query(query={"match_all": {}})
         final_results = {self.cont_name: self.results.values()} if self.is_target else {}
         for t in self.child_targets:
@@ -158,19 +158,22 @@ class TargetInAnalysis(TargetProperty):
 
 class PreparedSearch(object):
 
-    containers = ['groups', 'projects', 'sessions', 'collections', 'acquisitions']
-
     def __init__(self, target_paths, queries, all_data=False, user=None):
+        self.containers = ['groups', 'projects', 'sessions', 'collections', 'acquisitions']
         self.queries = queries
         self.target_lists = {}
         for path in target_paths:
             targets = self._get_targets(path)
             self._merge_into(targets, self.target_lists)
         self.search_containers = {}
-        for cont_name in self.containers:
+        last_relevant_container = None
+        for i, cont_name in enumerate(self.containers[::-1]):
             query = self.queries.get(cont_name)
             targets = self.target_lists.get(cont_name, [])
-            self.search_containers[cont_name] = SearchContainer(cont_name, query, targets, all_data, user)
+            if query or targets or last_relevant_container is not None:
+                last_relevant_container = last_relevant_container if last_relevant_container is not None else i
+                self.search_containers[cont_name] = SearchContainer(cont_name, query, targets, all_data, user)
+        self.containers = self.containers[:None if last_relevant_container == 0 else - last_relevant_container]
 
     def _get_targets(self, path):
         path_parts = path.split('/')
@@ -201,9 +204,10 @@ class PreparedSearch(object):
             container = self.search_containers[cont_name]
             partial_results = container.get_results()
             for child_name in querygraph[cont_name].get('children', []):
-                self.search_containers[child_name].receive(
-                    cont_name, partial_results
-                )
+                if child_name in self.containers:
+                    self.search_containers[child_name].receive(
+                        cont_name, partial_results
+                    )
         results = {}
         for cont_name in self.containers[::-1]:
             container = self.search_containers[cont_name]

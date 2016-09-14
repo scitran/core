@@ -23,7 +23,10 @@ def es_query(input_query, doc_type, min_score=0.5, additional_filter=None):
                 'filter': es_filter
             }
         },
-        'min_score': min_score
+        'min_score': min_score,
+        '_source': {
+            'exclude': ['*.metadata']
+        }
     }
     return query
 
