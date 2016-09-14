@@ -4,6 +4,8 @@ set -eu
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
 
+rm -f .coverage.integration-tests
+
 USAGE="
     Usage:\n
     $0 <api-base-url> <mongodb-uri>\n
@@ -40,7 +42,7 @@ rm -rf test/integration_tests/python/__pycache__
 
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
-    py.test --cov=api --cov-append test/integration_tests/python
+    py.test test/integration_tests/python
 
 newman run test/integration_tests/postman/integration_tests.postman_collection -e test/integration_tests/postman/environments/integration_tests.postman_environment
 

@@ -13,7 +13,13 @@ SCITRAN_PERSISTENT_PATH="$( mktemp -d )"
 
 clean_up () {
   kill $API_PID || true
+  wait 2> /dev/null
   rm -rf "$SCITRAN_PERSISTENT_PATH"
+  # Report on unit tests and integration tests separately
+  coverage report -m
+  rm .coverage
+  coverage combine
+  coverage report -m
 }
 
 trap clean_up EXIT
@@ -29,6 +35,7 @@ trap clean_up EXIT
 
 SCITRAN_RUNTIME_PORT=8081 \
     SCITRAN_CORE_DRONE_SECRET=integration-tests \
+    SCITRAN_RUNTIME_COVERAGE="true" \
     ./bin/run-dev-osx.sh -T -U -I &
 API_PID=$!
 

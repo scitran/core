@@ -16,4 +16,6 @@ echo "Checking for files with windows style newline:"
 # Which have a mismatched __file__ attribute when loaded in docker container
 rm -rf test/unit_tests/python/__pycache__
 
-PYTHONPATH="$( pwd )"  py.test --cov=api --cov-append test/unit_tests/python
+rm -f .coverage
+
+PYTHONPATH="$( pwd )"  py.test --cov=api test/unit_tests/python
