@@ -74,7 +74,20 @@ class GearHandler(base.RequestHandler):
         if _id != doc.get('name', ''):
             self.abort(400, 'Name key must be present and match URL')
 
-        upsert_gear(self.request.json)
+        try:
+            upsert_gear(self.request.json)
+        except ValidationError as err:
+            key = None
+            if len(err.relative_path) > 0:
+                key = err.relative_path[0]
+
+            self.response.set_status(400)
+            return {
+                'reason': 'Gear manifest does not match schema',
+                'error': err.message.replace("u'", "'"),
+                'key': key
+            }
+
         return { 'name': _id }
 
     def delete(self, _id):

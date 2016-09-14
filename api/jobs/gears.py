@@ -89,6 +89,8 @@ def suggest_container(gear, cont_name, cid):
     return root
 
 def insert_gear(doc):
+    gear_tools.validate_manifest(doc['manifest'])
+
     config.db.singletons.update(
         {"_id" : "gears"},
         {'$push': {'gear_list': doc} }
@@ -118,5 +120,7 @@ def remove_gear(name):
     )
 
 def upsert_gear(doc):
+    gear_tools.validate_manifest(doc['manifest'])
+
     remove_gear(doc['name'])
     insert_gear(doc)
