@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "76371a5e-113e-8773-bb5a-1fb6e3d7ec08",
+		"_postman_id": "90e24cfd-f35f-ae05-7248-c066527bf096",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -119,7 +119,7 @@
 			"response": []
 		},
 		{
-			"name": "Add dcm_convert gear",
+			"name": "Add dcm-convert gear",
 			"event": [
 				{
 					"listen": "test",
@@ -130,7 +130,7 @@
 				}
 			],
 			"request": {
-				"url": "{{baseUri}}/gears/dcm_convert?root=true",
+				"url": "{{baseUri}}/gears/dcm-convert?root=true",
 				"method": "POST",
 				"header": [
 					{
@@ -141,7 +141,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"name\": \"dcm_convert\",\n\t\"manifest\": {\n\t\t\"config\": {},\n\t\t\"inputs\": {\n\t\t\t\"dicom\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"type\": {\n\t\t\t\t\t\"enum\": [\n\t\t\t\t\t\t\"dicom\"\n\t\t\t\t\t]\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {}\n}"
+					"raw": "{\n\t\"name\": \"dcm-convert\",\n\t\"manifest\": {\n\t\t\"config\": {},\n\t\t\"inputs\": {\n\t\t\t\"dicom\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"type\": {\n\t\t\t\t\t\"enum\": [\n\t\t\t\t\t\t\"dicom\"\n\t\t\t\t\t]\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {}\n}"
 				},
 				"description": ""
 			},
@@ -297,8 +297,7 @@
 							"key": "file",
 							"src": "test/integration_tests/postman/test_files/test-1.dcm",
 							"type": "file",
-							"enabled": true,
-							"value": "test-1.dcm"
+							"enabled": true
 						}
 					]
 				},
@@ -329,9 +328,67 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"gear\": \"dcm_convert\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
+					"raw": "{\n    \"gear\": \"dcm-convert\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
 				},
 				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Submit invalid gear",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 400\"] = responseCode.code === 400;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/gears/test_gear?root=true",
+				"method": "post",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"category\": \"converter\",\n\t\"input\": { },\n\t\"name\": \"test_gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test_gear\",\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t},\n\t\t\"description\": \"A gear to test the API\",\n\t\t\"license\": \"Other\",\n\t\t\"author\": \"\",\n\t\t\"url\": \"https://unknown.example\",\n\t\t\"label\": \"An exported gear\",\n\t\t\"source\": \"https://unknown.example\",\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t}\n\t}\n}"
+				},
+				"description": "Create or update a gear.\n\"Name\" field of gear must match \"GearName\" uri parameter\nIf no existing gear is found, one will be created\nOtherwise, the specified gear will be updated\n\n\nParameters:\n\nGearName: Name of the gear to interact with\n\n"
+			},
+			"response": []
+		},
+		{
+			"name": "Submit valid gear",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/gears/test-gear?root=true",
+				"method": "post",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"category\": \"converter\",\n\t\"input\": { },\n\t\"name\": \"test-gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test-gear\",\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t},\n\t\t\"description\": \"A gear to test the API\",\n\t\t\"license\": \"Other\",\n\t\t\"author\": \"\",\n\t\t\"version\": \"0\",\n\t\t\"url\": \"https://unknown.example\",\n\t\t\"label\": \"An exported gear\",\n\t\t\"source\": \"https://unknown.example\",\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t}\n\t}\n}"
+				},
+				"description": "Create or update a gear.\n\"Name\" field of gear must match \"GearName\" uri parameter\nIf no existing gear is found, one will be created\nOtherwise, the specified gear will be updated\n\n\nParameters:\n\nGearName: Name of the gear to interact with\n\n"
 			},
 			"response": []
 		}
