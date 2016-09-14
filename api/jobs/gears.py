@@ -71,11 +71,20 @@ def suggest_container(gear, cont_name, cid):
         schemas[x] = Draft4Validator(schema)
 
     # It would be nice to have use a visitor here instead of manual key loops.
-    for acq in root['acquisitions']:
+    for acq in root.get('acquisitions', []):
         for f in acq.get('files', []):
             f['suggested'] = {}
             for x in schemas:
                 f['suggested'][x] = schemas[x].is_valid(f)
+
+    for analysis in root.get('analyses',{}):
+        files = analysis.get('files', [])
+        files[:] = [x for x in files if x.get('output')]
+        for f in files:
+            f['suggested'] = {}
+            for x in schemas:
+                f['suggested'][x] = schemas[x].is_valid(f)
+        analysis['files'] = files
 
     return root
 
