@@ -7,7 +7,7 @@ from .. import util
 from .. import config
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage, containerutil, noop, hierarchy
+from ..dao import APIStorageException, containerstorage, containerutil, noop
 from ..dao.liststorage import AnalysesStorage
 from ..types import Origin
 from ..jobs.queue import Queue
@@ -229,11 +229,11 @@ class ContainerHandler(base.RequestHandler):
         if cont_name != 'sessions':
             self.abort(400, 'Can only request jobs at the session level.')
 
-        c = self._get_container(cid)
-        permchecker = self._get_permchecker(c)
+        cont = self._get_container(cid, projection={'permissions': 0}, get_children=True)
+        permchecker = self._get_permchecker(cont)
         permchecker(noop)('GET', cid)
 
-        children = hierarchy.get_children('session', cid)
+        children = cont.get('acquisitions')
         id_array = [str(c['_id']) for c in children]
         cont_array = [containerutil.ContainerReference('acquisition', cid) for cid in id_array]
 
@@ -502,9 +502,9 @@ class ContainerHandler(base.RequestHandler):
             parent_container = None
         return parent_container, parent_id_property
 
-    def _get_container(self, _id):
+    def _get_container(self, _id, projection=None, get_children=False):
         try:
-            container = self.storage.get_container(_id)
+            container = self.storage.get_container(_id, projection=projection, get_children=get_children)
         except APIStorageException as e:
             self.abort(400, e.message)
         if container is not None:

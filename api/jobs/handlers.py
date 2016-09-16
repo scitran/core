@@ -61,7 +61,7 @@ class GearHandler(base.RequestHandler):
             cr.check_access(self.uid, 'ro')
 
         gear = get_gear_by_name(_id)
-        return suggest_container(gear, cr)
+        return suggest_container(gear, cont_name+'s', cid)
 
     def post(self, _id):
         """Upsert an entire gear document."""

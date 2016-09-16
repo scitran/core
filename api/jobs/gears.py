@@ -8,7 +8,7 @@ import gear_tools
 
 from .. import config
 from .jobs import Job
-from ..dao.containerstorage import inflate_container
+from ..dao.containerstorage import ContainerStorage
 
 log = config.log
 
@@ -57,12 +57,12 @@ def get_gear_by_name(name):
 def get_invocation_schema(gear):
     return gear_tools.derive_invocation_schema(gear['manifest'])
 
-def suggest_container(gear, cr):
+def suggest_container(gear, cont_name, cid):
     """
     Given a container reference, suggest files that would work well for each input on a gear.
     """
 
-    root = inflate_container(cr)
+    root = ContainerStorage(cont_name, True).get_container(cid, projection={'permissions':0}, get_children=True)
     invocation_schema = get_invocation_schema(gear)
 
     schemas = {}
@@ -71,11 +71,20 @@ def suggest_container(gear, cr):
         schemas[x] = Draft4Validator(schema)
 
     # It would be nice to have use a visitor here instead of manual key loops.
-    for acq in root['acquisitions']:
+    for acq in root.get('acquisitions', []):
         for f in acq.get('files', []):
             f['suggested'] = {}
             for x in schemas:
                 f['suggested'][x] = schemas[x].is_valid(f)
+
+    for analysis in root.get('analyses',{}):
+        files = analysis.get('files', [])
+        files[:] = [x for x in files if x.get('output')]
+        for f in files:
+            f['suggested'] = {}
+            for x in schemas:
+                f['suggested'][x] = schemas[x].is_valid(f)
+        analysis['files'] = files
 
     return root
 

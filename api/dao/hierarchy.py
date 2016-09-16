@@ -72,21 +72,6 @@ def get_container(cont_name, _id):
         '_id': _id,
     })
 
-def get_children(cont_name, _id):
-    """
-    Given a container name and id, return all children of that object in the hierarchy
-    """
-    cid = bson.ObjectId(_id)
-    if cont_name == 'session':
-        return config.db.acquisitions.find({'session': cid})
-    elif cont_name == 'project':
-        return config.db.sessions.find({'project': cid})
-    elif cont_name == 'group':
-        # groups do not use ObjectIds
-        return config.db.projects.find({'group':_id})
-    else:
-        raise ValueError('Children can only be listed from group, project or session level')
-
 def propagate_changes(cont_name, _id, query, update):
     """
     Propagates changes down the heirarchy tree.

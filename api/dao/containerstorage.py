@@ -23,8 +23,25 @@ class ContainerStorage(object):
         self.use_object_id = use_object_id
         self.dbc = config.db[cont_name]
 
-    def get_container(self, _id):
-        return self._get_el(_id)
+    def get_container(self, _id, projection=None, get_children=False):
+        cont = self._get_el(_id, projection=projection)
+
+        if get_children:
+            child_map = {
+                'groups':   'projects',
+                'projects': 'sessions',
+                'sessions': 'acquisitions'
+            }
+
+            child_name = child_map.get(self.cont_name)
+            if not child_name:
+                raise ValueError('Children can only be listed from group, project or session level')
+            else:
+                query = {self.cont_name[:-1]: bson.objectid.ObjectId(_id)}
+                cont[child_name] = ContainerStorage(child_name, True).exec_op('GET', query=query, projection=projection)
+
+        return cont
+
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument
@@ -121,18 +138,3 @@ class GroupStorage(ContainerStorage):
                 '$setOnInsert': {'roles': roles}
             },
             upsert=True)
-
-def inflate_container(cr):
-    """
-    Given a container reference, inflate its hierarchy into a map.
-    Eeventually, this might want to deduplicate with logic in hierarchy.py.
-    """
-
-    if cr.type != 'session':
-        raise Exception('Only sessions are supported for inflation right now')
-
-    oid = bson.ObjectId(cr.id)
-    root = ContainerStorage('sessions', True).exec_op('GET', oid, projection={'permissions': 0})
-    root['acquisitions'] = ContainerStorage('acquisitions', True).exec_op('GET', query={'session': oid}, projection={'permissions': 0})
-
-    return root
