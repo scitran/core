@@ -87,7 +87,7 @@ class SearchHandler(base.RequestHandler):
         return results
 
     def _augment_result(self, result, result_type):
-        if result_type in ['files', 'notes']:
+        if result_type in ['files', 'notes', 'analyses']:
             container = result['_source'].pop('container')
             container_name = result['_source']['container_name']
             result['_source'][container_name[:-1]] = container
