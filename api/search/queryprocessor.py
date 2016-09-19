@@ -167,13 +167,27 @@ class PreparedSearch(object):
             self._merge_into(targets, self.target_lists)
         self.search_containers = {}
         last_relevant_container = None
+        # In this loop we check for each container
+        # 1) if there is a parent container affected by this search
+        # 2) if there is a query on the container
+        # 3) if the container is a target of the query
+        # If one of the conditions is true, we include the container in the search
+        # the index of the last relevant container is saved
+        #
+        # Please note that the containers are checked in reverse order so the index is
+        # from the end of the container list.
         for i, cont_name in enumerate(self.containers[::-1]):
             query = self.queries.get(cont_name)
             targets = self.target_lists.get(cont_name, [])
             if query or targets or last_relevant_container is not None:
-                last_relevant_container = last_relevant_container if last_relevant_container is not None else i
+                if last_relevant_container is None:
+                    last_relevant_container = i
                 self.search_containers[cont_name] = SearchContainer(cont_name, query, targets, all_data, user)
-        self.containers = self.containers[:None if last_relevant_container == 0 else - last_relevant_container]
+        # In this line, we exclude from search all the non relevant containers (The one "after" the relevant container)
+        # if the index of the last relevant container is 0 we include all the containers
+        if last_relevant_container != 0:
+            self.containers = self.containers[:- last_relevant_container]
+
 
     def _get_targets(self, path):
         path_parts = path.split('/')
