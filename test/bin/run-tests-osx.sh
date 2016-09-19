@@ -10,6 +10,7 @@ SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"$( pwd )/runtime"}
 SCITRAN_PERSISTENT_DB_PORT=9003
 SCITRAN_PERSISTENT_DB_URI="mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/integration-tests"
 SCITRAN_PERSISTENT_PATH="$( mktemp -d )"
+SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-$( openssl rand -base64 32 )}
 
 clean_up () {
   kill $API_PID || true
@@ -34,11 +35,12 @@ trap clean_up EXIT
 ./test/bin/run-unit-tests.sh
 
 SCITRAN_RUNTIME_PORT=8081 \
-    SCITRAN_CORE_DRONE_SECRET=integration-tests \
+    SCITRAN_CORE_DRONE_SECRET="$SCITRAN_CORE_DRONE_SECRET" \
     SCITRAN_RUNTIME_COVERAGE="true" \
     ./bin/run-dev-osx.sh -T -U -I &
 API_PID=$!
 
 ./test/bin/run-integration-tests.sh \
     "http://localhost:8081/api" \
-    "$SCITRAN_PERSISTENT_DB_URI"
+    "$SCITRAN_PERSISTENT_DB_URI" \
+    "$SCITRAN_CORE_DRONE_SECRET"
