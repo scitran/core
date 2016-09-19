@@ -6,6 +6,7 @@ from .. import config
 from .. import util
 from ..search import pathparser, queryprocessor, es_query
 
+log = config.log
 
 parent_container_dict = {
     'acquisitions': 'sessions',
@@ -108,7 +109,12 @@ class SearchHandler(base.RequestHandler):
         if parent_container_dict.get(cont_name):
             parent_name = parent_container_dict[cont_name]
             parent_id = container[parent_name[:-1]]
-            parent_container = self.search_containers[parent_name].results[parent_id]['_source']
+            parent_results = self.search_containers[parent_name].results
+            if parent_results is None:
+                return parents
+            parent_container = parent_results.get(parent_id, {}).get('_source')
+            if parent_container is None:
+                return parents
             parents[parent_name[:-1]] = parent_container
             parents.update(self._get_parents(parent_container, parent_name))
         return parents
