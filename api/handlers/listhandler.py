@@ -835,8 +835,10 @@ class AnalysesHandler(ListHandler):
         permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         filename = kwargs.get('name')
         ticket_id = self.get_param('ticket')
-        if not ticket_id:
+        if ticket_id is None:
             permchecker(noop)('GET', _id=_id)
+        elif ticket_id != '':
+            ticket = self._check_ticket(ticket_id, _id, filename)
         analysis_id = kwargs.get('_id')
         fileinfo = storage.get_fileinfo(_id, analysis_id, filename)
         if fileinfo is None:
@@ -844,7 +846,7 @@ class AnalysesHandler(ListHandler):
             if filename:
                 error_msg = 'Could not find file {} on analysis {}'.format(filename, analysis_id)
             self.abort(404, error_msg)
-        if not ticket_id:
+        if ticket_id == '':
             if filename:
                 total_size = fileinfo[0]['size']
                 file_cnt = 1
@@ -860,7 +862,6 @@ class AnalysesHandler(ListHandler):
                 'filename': filename
             }
         else:
-            ticket = self._check_ticket(ticket_id, _id, filename)
             if not filename:
                 self._send_batch(ticket)
                 return
