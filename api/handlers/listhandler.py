@@ -726,7 +726,7 @@ class AnalysesHandler(ListHandler):
         gear_name = job['gear']
 
         destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
-        job = Job(gear_name, inputs, destination=destination, tags=tags)
+        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=job.get('config'))
         job_id = job.insert()
         if not job_id:
             self.abort(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
