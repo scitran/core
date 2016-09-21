@@ -14,29 +14,25 @@
                 "maximum":  {"type": "integer", "minimum": 0}
             },
             "required": ["schema"]
-        },
-        "requirement-array": {
-            "properties": {
-                "requirements": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {"$ref": "#/definitions/requirement"}
-                },
-                "minimum":  {"type": "integer", "minimum": 0},
-                "maximum":  {"type": "integer", "minimum": 0}
-            },
-            "required": ["requirements"]
         }
     },
     "properties": {
         "session": {
             "properties": {
-                "schema":   {"$ref": "http://json-schema.org/draft-04/schema"},
+                "schema":   {"$ref": "http://json-schema.org/draft-04/schema"}
             },
             "required": ["schema"]
         },
-        "acquisitions": {"$ref": "#/definitions/requirement-array"},
-        "files": {"$ref": "#/definitions/requirement-array"}
+        "acquisitions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"$ref": "#/definitions/requirement"}
+        },
+        "files": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"$ref": "#/definitions/requirement"}
+        }
     },
     "additionalProperties": false
 }

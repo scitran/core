@@ -42,6 +42,19 @@ class ContainerStorage(object):
 
         return cont
 
+    def set_fields(self, _id, payload):
+        """
+        Doesn't use util.mongo_dict. Directly sets the fields in payload
+        """
+
+        update = {'$set': util.mongo_sanitize_fields(payload)}
+        if self.use_object_id:
+            try:
+                _id = bson.objectid.ObjectId(_id)
+            except bson.errors.InvalidId as e:
+                raise APIStorageException(e.message)
+        return self.dbc.update_one({'_id': _id}, update)
+
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument

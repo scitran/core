@@ -482,6 +482,26 @@ class ContainerHandler(base.RequestHandler):
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
         return list(config.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
 
+    def set_project_template(self, **kwargs):
+        project_id = kwargs.pop('cid')
+        self.config = self.container_handler_configurations['projects']
+        self.storage = self.config['storage']
+        container = self._get_container(project_id)
+
+        template = self.request.json_body
+        validators.validate_data(template, 'project-template.json', 'input', 'POST')
+        payload = {'template': template}
+        payload['modified'] = datetime.datetime.utcnow()
+
+        permchecker = self._get_permchecker(container)
+        result = permchecker(noop)('PUT', project_id, payload=payload)
+        result = self.storage.set_fields(project_id, payload)
+
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
+
     def _get_validators(self):
         mongo_schema_uri = validators.schema_uri('mongo', self.config.get('storage_schema_file'))
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)

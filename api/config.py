@@ -128,6 +128,7 @@ expected_input_schemas = set([
     'packfile.json',
     'permission.json',
     'project.json',
+    'project-template.json',
     'session.json',
     'subject.json',
     'user-new.json',

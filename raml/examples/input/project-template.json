@@ -9,75 +9,72 @@
             }
         }
     },
-    "acquisitions": {
-        "definitions": [
-            {
-                "schema": {
-                    "$schema": "http://json-schema.org/draft-04/schema#",
-                    "type": "object",
-                    "properties": {
-                        "measurement": {
-                            "type":     "string",
-                            "pattern":  "^[aA]natomical$" }
-                    },
-                    "required": ["measurement"]
+    "acquisitions": [
+        {
+            "schema": {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "measurement": {
+                        "type":     "string",
+                        "pattern":  "^[aA]natomical$" }
                 },
-                "minimum": 2,
-                "maximum": 2,
-                "files": [
-                    {
-                        "schema": {
-                            "$schema": "http://json-schema.org/draft-04/schema#",
-                            "type": "object",
-                            "properties": {
-
-                                "type": { "enum": ["nifti"] }
-                            },
-                            "required": ["type"]
-                        },
-                        "minimum": 2
-                    },
-                    {
-                        "schema": {
-                            "$schema": "http://json-schema.org/draft-04/schema#",
-                            "type": "object",
-                            "properties": {
-                                "type": { "enum": ["dicom"] }
-                            },
-                            "required": ["type"]
-                        },
-                        "minimum": 2
-                    }
-                ]
+                "required": ["measurement"]
             },
-            {
-                "schema": {
-                    "$schema": "http://json-schema.org/draft-04/schema#",
-                    "type": "object",
-                    "properties": {
-                        "measurement": {
-                            "type":     "string",
-                            "pattern":  "^(?i)functional$" }
+            "minimum": 2,
+            "files": [
+                {
+                    "schema": {
+                        "$schema": "http://json-schema.org/draft-04/schema#",
+                        "type": "object",
+                        "properties": {
+
+                            "type": { "enum": ["nifti"] }
+                        },
+                        "required": ["type"]
                     },
-                    "required": ["measurement"]
+                    "minimum": 2
                 },
-                "maximum": 1
-            }
-            {
-                "schema": {
-                    "$schema": "http://json-schema.org/draft-04/schema#",
-                    "type": "object",
-                    "properties": {
-                        "measurement": { "enum": ["Localizer"] },
-                        "label":  {
-                            "type": "string",
-                            "pattern": "t1"
-                        }
+                {
+                    "schema": {
+                        "$schema": "http://json-schema.org/draft-04/schema#",
+                        "type": "object",
+                        "properties": {
+                            "type": { "enum": ["dicom"] }
+                        },
+                        "required": ["type"]
                     },
-                    "required": ["label", "measurement"]
+                    "minimum": 2
+                }
+            ]
+        },
+        {
+            "schema": {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "measurement": {
+                        "type":     "string",
+                        "pattern":  "^(?i)functional$" }
                 },
-                "minimum": 2
-            }
-        ]
-    }
+                "required": ["measurement"]
+            },
+            "minimum": 3
+        }
+        {
+            "schema": {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "measurement": { "enum": ["Localizer"] },
+                    "label":  {
+                        "type": "string",
+                        "pattern": "t1"
+                    }
+                },
+                "required": ["label", "measurement"]
+            },
+            "minimum": 2
+        }
+    ]
 }
