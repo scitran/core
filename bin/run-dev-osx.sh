@@ -154,7 +154,11 @@ if [ $BOOTSTRAP_USERS -eq 1 ]; then
         echo "Users previously bootstrapped. Remove $SCITRAN_PERSISTENT_DB_PATH to re-bootstrap."
     else
         echo "Bootstrapping users"
-        PYTHONPATH=. bin/bootstrap-dev.py "$SCITRAN_RUNTIME_BOOTSTRAP"
+        PYTHONPATH=. bin/load_users_drone_secret.py \
+          --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" \
+          "$SCITRAN_SITE_API_URL" \
+          "$SCITRAN_RUNTIME_BOOTSTRAP"
+
         echo "Bootstrapped users"
         touch "$SCITRAN_PERSISTENT_DB_PATH/.bootstrapped"
     fi

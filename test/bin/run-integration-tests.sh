@@ -8,13 +8,14 @@ rm -f .coverage.integration-tests
 
 USAGE="
     Usage:\n
-    $0 <api-base-url> <mongodb-uri>\n
+    $0 <api-base-url> <mongodb-uri> <drone-secret>\n
     \n
 "
 
-if [ "$#" -eq 2 ]; then
+if [ "$#" -eq 3 ]; then
   SCITRAN_SITE_API_URL=$1
   MONGODB_URI=$2
+  SCITRAN_CORE_DRONE_SECRET=$3
 else
     echo "Wrong number of positional arguments"
     echo $USAGE >&2
@@ -32,13 +33,20 @@ echo "Bootstrapping test data..."
 
 PYTHONPATH="$( pwd )" \
 SCITRAN_PERSISTENT_DB_URI="$MONGODB_URI" \
-  python "bin/bootstrap-dev.py" \
+  python "bin/load_users_drone_secret.py" \
+  --secret "$SCITRAN_CORE_DRONE_SECRET" \
+  "$SCITRAN_SITE_API_URL" \
   "test/integration_tests/bootstrap-test-accounts.json"
 
 # Remove __pycache__ directory for issue with __file__ attribute
 # Due to running the tests on the host creating bytecode files
 # Which have a mismatched __file__ attribute when loaded in docker container
 rm -rf test/integration_tests/python/__pycache__
+
+PYTHONPATH="$( pwd )" \
+    SCITRAN_PERSISTENT_DB_URI="$MONGODB_URI" \
+    python test/bin/inject_api_key.py admin@user.com \
+    "XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
 
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
@@ -51,5 +59,3 @@ newman run test/integration_tests/postman/integration_tests.postman_collection -
 pushd raml/schemas/definitions
 abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../test/integration_tests/abao/abao_test_hooks.js"
 popd
-
-
