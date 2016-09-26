@@ -1,6 +1,7 @@
 import bson
 import datetime
 import dateutil
+import json
 
 from .. import base
 from .. import util
@@ -51,7 +52,7 @@ class ContainerHandler(base.RequestHandler):
         'projects': {
             'storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('groups', use_object_id=use_object_id['groups']),
+            'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
             'list_projection': {'metadata': 0},
@@ -59,7 +60,7 @@ class ContainerHandler(base.RequestHandler):
             'children_cont': 'sessions'
         },
         'sessions': {
-            'storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
+            'storage': containerstorage.SessionStorage(),
             'permchecker': containerauth.default_container,
             'parent_storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
             'storage_schema_file': 'session.json',
@@ -69,9 +70,9 @@ class ContainerHandler(base.RequestHandler):
             'children_cont': 'acquisitions'
         },
         'acquisitions': {
-            'storage': containerstorage.ContainerStorage('acquisitions', use_object_id=use_object_id['acquisitions']),
+            'storage': containerstorage.AcquisitionStorage(),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
+            'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
             'list_projection': {'metadata': 0}
@@ -484,23 +485,23 @@ class ContainerHandler(base.RequestHandler):
 
     def set_project_template(self, **kwargs):
         project_id = kwargs.pop('cid')
+        log.debug('the project_id is {}'.format(project_id))
         self.config = self.container_handler_configurations['projects']
         self.storage = self.config['storage']
         container = self._get_container(project_id)
 
         template = self.request.json_body
         validators.validate_data(template, 'project-template.json', 'input', 'POST')
-        payload = {'template': template}
+        payload = {'template': json.dumps(template)}
         payload['modified'] = datetime.datetime.utcnow()
 
         permchecker = self._get_permchecker(container)
-        result = permchecker(noop)('PUT', project_id, payload=payload)
-        result = self.storage.set_fields(project_id, payload)
+        result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload)
 
         if result.modified_count == 1:
             return {'modified': result.modified_count}
         else:
-            self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
+            self.abort(404, 'Could not find project {}'.format(project_id))
 
     def _get_validators(self):
         mongo_schema_uri = validators.schema_uri('mongo', self.config.get('storage_schema_file'))

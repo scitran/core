@@ -13,6 +13,7 @@ from . import files
 from . import tempdir as tempfile
 from . import util
 from . import validators
+from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .dao import containerutil, hierarchy
 from .jobs import rules
 from .types import Origin
@@ -94,6 +95,14 @@ class Placer(object):
             # Queue any jobs as a result of this upload
             rules.create_jobs(config.db, self.container, self.container_type, info)
 
+    def recalc_session_compliance(self):
+        if self.container_type in ['session', 'acquisition']:
+            if self.container_type is 'session':
+                session_id = self.id_
+            else:
+                session_id = AcquisitionStorage().get_container(self.id_).get('session')
+            SessionStorage().recalc_session_compliance(session_id)
+
 
 class TargetedPlacer(Placer):
     """
@@ -114,6 +123,7 @@ class TargetedPlacer(Placer):
         self.saved.append(info)
 
     def finalize(self):
+        self.recalc_session_compliance()
         return self.saved
 
 
@@ -129,6 +139,7 @@ class UIDPlacer(Placer):
     def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
         super(UIDPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
         self.metadata_for_file = {}
+        self.session_id = None
 
 
     def check(self):
@@ -144,6 +155,8 @@ class UIDPlacer(Placer):
         self.metadata_for_file = {}
 
         for target in targets:
+            if target[0].level is 'session':
+                self.session_id = target[0].id_
             for name in target[1]:
                 self.metadata_for_file[name] = {
                     'container': target[0],
@@ -181,6 +194,10 @@ class UIDPlacer(Placer):
         self.saved.append(info)
 
     def finalize(self):
+        if self.session_id:
+            self.container_type = 'session'
+            self.id_ = self.session_id
+            self.recalc_session_compliance()
         return self.saved
 
 
@@ -238,6 +255,7 @@ class EnginePlacer(Placer):
                 self.metadata[k].pop('files', {})
             hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
 
+        self.recalc_session_compliance()
         return self.saved
 
 
@@ -279,6 +297,7 @@ class TokenPlacer(Placer):
             dest = os.path.join(self.folder, os.path.basename(path))
             shutil.move(path, dest)
 
+        self.recalc_session_compliance()
         return self.saved
 
 
@@ -513,6 +532,8 @@ class PackfilePlacer(Placer):
         self.container	    = acquisition
 
         self.save_file(cgi_field, cgi_info)
+
+        self.recalc_session_compliance()
 
         # Delete token
         config.db['tokens'].delete_one({ '_id': token })
