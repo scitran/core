@@ -57,7 +57,7 @@ clean_up () {
 trap clean_up EXIT
 
 if [[ $( docker images "$IMAGE_NAME_SCITRAN_CORE" | tail -n +2 ) == "" ]]; then
-  echo "scitran-core image not found.  Building"
+  echo "$IMAGE_NAME_SCITRAN_CORE image not found.  Building"
   BUILD_IMAGE="true"
 fi
 
