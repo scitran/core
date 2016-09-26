@@ -2,7 +2,7 @@ var hooks = require('hooks');
 
 // Variables for passing results as input to subsequent tests
 var job_id = '';
-var gear_name = '';
+var gear_name = 'test-case-gear';
 var group_id = 'test_group';
 
 // Tests we're skipping, fix these
@@ -140,14 +140,14 @@ hooks.before("GET /gears/{GearName} -> 200", function(test, done) {
 
 hooks.before("POST /gears/{GearName} -> 200", function(test, done) {
     test.request.params = {
-        GearName: "dcm_convert"
+        GearName: gear_name
     };
     done();
 });
 
 hooks.before("GET /gears/{GearName} -> 200", function(test, done) {
     test.request.params = {
-        GearName: "dcm_convert"
+        GearName: gear_name
     };
     done();
 });

@@ -1,16 +1,37 @@
 {
-	"name": "dcm_convert",
+	"name": "test-case-gear",
 	"manifest": {
-		"config": {},
+		"name": "test-case-gear",
+		"label": "Test Case Gear",
+		"version": "0",
+
+		"author": "Nathaniel Kofalt",
+		"description": "A gear built to drive test cases",
+
+		"url":     "http://none.example",
+		"source":  "http://none.example",
+		"license": "MIT",
+
+		"config": {
+			"two-digit multiple of ten": {
+				"exclusiveMaximum": true,
+				"type": "number",
+				"multipleOf": 10,
+				"maximum": 100
+			}
+		},
+
 		"inputs": {
-			"dicom": {
+			"any text file <= 100 KB": {
 				"base": "file",
-				"type": {
-					"enum": [
-						"dicom"
-					]
+				"name": {
+					"pattern": "^.*.txt$"
+				},
+				"size": {
+					"maximum": 100000
 				}
 			}
 		}
-	}
+	},
+	"input": {}
 }
