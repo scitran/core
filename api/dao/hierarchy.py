@@ -335,9 +335,7 @@ def upsert_bottom_up_hierarchy(metadata, user=None):
         return upsert_top_down_hierarchy(metadata, 'uid', user=user)
 
 
-def upsert_top_down_hierarchy(metadata, type_, user=None):
-    if type_ is None:
-        type_ = 'label'
+def upsert_top_down_hierarchy(metadata, type_='label', user=None):
     log.debug('I know my type is {}'.format(type_))
     group = metadata['group']
     project = metadata['project']
