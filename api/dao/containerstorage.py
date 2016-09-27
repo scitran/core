@@ -33,10 +33,11 @@ class ContainerStorage(object):
     @staticmethod
     def factory(cont_name, use_object_id = False):
         """
-        Factory method to aid in the creation of a ContainerStorage when cont_name is dynamic.
+        Factory method to aid in the creation of a ContainerStorage instance
+        when cont_name is dynamic.
         """
         if cont_name == 'groups':
-            return GroupStorage(cont_name, use_object_id)
+            return GroupStorage()
         elif cont_name == 'sessions':
             return SessionStorage()
         elif cont_name == 'acquisitions':
@@ -56,7 +57,7 @@ class ContainerStorage(object):
         if not child_name:
             raise ValueError('Children can only be listed from group, project or session level')
         query = {self.cont_name[:-1]: bson.objectid.ObjectId(_id)}
-        return self.factory(child_name, True).get_all_el(query, None, projection)
+        return self.factory(child_name, use_object_id=True).get_all_el(query, None, projection)
 
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
@@ -76,7 +77,7 @@ class ContainerStorage(object):
         if action == 'DELETE':
             return self.delete_el(_id)
         if action == 'PUT':
-            return self.update_el(_id, payload, recursive, r_payload, replace_metadata)
+            return self.update_el(_id, payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
         if action == 'POST':
             return self.create_el(payload)
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
@@ -111,7 +112,7 @@ class ContainerStorage(object):
                 raise APIStorageException(e.message)
         if recursive and r_payload is not None:
             hierarchy.propagate_changes(self.cont_name, _id, {}, {'$set': util.mongo_dict(r_payload)})
-        self.dbc.update_one({'_id': _id}, update)
+        return self.dbc.update_one({'_id': _id}, update)
 
     def delete_el(self, _id):
         if self.use_object_id:
@@ -170,15 +171,18 @@ class SessionStorage(ContainerStorage):
 
     def update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
         session = self.get_container(_id)
+        if session is None:
+            raise APINotFoundException('Could not find session {}'.format(_id))
         if session.get('project_has_template'):
             project = ContainerStorage('projects', use_object_id=True).get_container(payload['project'])
             session.update(payload)
             payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
         return super(SessionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
 
-    def recalc_session_compliance(self, session_id, session=None, template=None):
+    def recalc_session_compliance(self, session_id):
+        session = self.get_container(session_id)
         if session is None:
-            session = self.get_container(session_id)
+            raise APINotFoundException('Could not find session {}'.format(session_id))
         if session.get('project_has_template'):
             if template is None:
                 template = ContainerStorage('projects', use_object_id=True).get_container(session['project']).get('template')
@@ -193,13 +197,23 @@ class AcquisitionStorage(ContainerStorage):
         super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True)
 
     def create_el(self, payload):
-        result = super(AcquisitionStorage, self)._create_el(payload)
+        result = super(AcquisitionStorage, self).create_el(payload)
         SessionStorage().recalc_session_compliance(payload['session'])
         return result
 
     def update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
-        result = super(AcquisitionStorage, self)._update_el(_id, payload, recursive, r_payload, replace_metadata)
+        result = super(AcquisitionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
         acquisition = self.get_container(_id)
+        if acquisition is None:
+            raise APINotFoundException('Could not find acquisition {}'.format(_id))
+        SessionStorage().recalc_session_compliance(acquisition['session'])
+        return result
+
+    def delete_el(self, _id):
+        acquisition = self.get_container(_id)
+        if acquisition is None:
+            raise APINotFoundException('Could not find acquisition {}'.format(_id))
+        result = super(AcquisitionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
         SessionStorage().recalc_session_compliance(acquisition['session'])
         return result
 
