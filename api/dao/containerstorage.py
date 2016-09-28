@@ -39,6 +39,8 @@ class ContainerStorage(object):
         """
         if cont_name == 'groups':
             return GroupStorage()
+        elif cont_name == 'projects':
+            return ProjectStorage()
         elif cont_name == 'sessions':
             return SessionStorage()
         elif cont_name == 'acquisitions':
@@ -158,6 +160,28 @@ class GroupStorage(ContainerStorage):
             },
             upsert=True)
 
+
+class ProjectStorage(ContainerStorage):
+
+    def __init__(self):
+        super(ProjectStorage,self).__init__('projects', use_object_id=True)
+
+    def recalc_sessions_compliance(self, project_id):
+        project = self.get_container(project_id, get_children=True)
+        if not project:
+            raise APINotFoundException('Could not find project {}'.format(project_id))
+        template = json.loads(project.get('template',{}))
+        if not template:
+            return
+        else:
+            changed_sessions = []
+            session_storage = SessionStorage()
+            for s in project.get('sessions', []):
+                changed = session_storage.recalc_session_compliance(s['_id'], session=s, template=template)
+                if changed:
+                    changed_sessions.append(s['_id'])
+
+
 class SessionStorage(ContainerStorage):
 
     def __init__(self):
@@ -181,6 +205,10 @@ class SessionStorage(ContainerStorage):
         return super(SessionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
 
     def recalc_session_compliance(self, session_id, session=None, template=None):
+        """
+        Calculates a session's compliance with the project's session template.
+        Returns True if the status changed, False otherwise
+        """
         if session is None:
             session = self.get_container(session_id)
         if session is None:
@@ -192,6 +220,9 @@ class SessionStorage(ContainerStorage):
             if session.get('satisfies_template') != satisfies_template:
                 update = {'satisfies_template': satisfies_template}
                 super(SessionStorage, self).update_el(session_id, update)
+                return True
+        return False
+
 
 class AcquisitionStorage(ContainerStorage):
 

@@ -1,0 +1,40 @@
+/{ProjectId}/template:
+  uriParameters:
+    ProjectId:
+      type: string
+      required: true
+  post:
+    description: Set the session template for a project
+    body:
+      application/json:
+        example: !include ../examples/input/project-template.json
+        schema: !include ../schemas/input/project-template.json
+    responses:
+      200:
+        description: Template was saved
+        body:
+          application/json:
+            example: |
+              {"modified": 1}
+      404:
+        description: Project was not found
+
+/{ProjectId}/template/recalc:
+  uriParameters:
+    ProjectId:
+      type: string
+      required: true
+  post:
+    description: |
+      Recalculate if sessions in the project satisfy the template.
+      Returns list of modified sessions
+    body:
+      application/json:
+        example: !include ../examples/input/project-template.json
+        schema: !include ../schemas/input/project-template.json
+    responses:
+      200:
+        description: Project's sessions' compliance was recalculated, returns list of
+      404:
+        description: Project was not found
+

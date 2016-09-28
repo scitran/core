@@ -5,76 +5,51 @@
             "properties": {
                 "label": {
                     "type":     "string",
-                    "pattern":  "^(?i)functional$" }
+                    "pattern":  "^(?i)test_pattern$" }
             }
         }
     },
     "acquisitions": [
-        {
-            "schema": {
-                "$schema": "http://json-schema.org/draft-04/schema#",
-                "type": "object",
-                "properties": {
-                    "measurement": {
-                        "type":     "string",
-                        "pattern":  "^[aA]natomical$" }
-                },
-                "required": ["measurement"]
-            },
-            "minimum": 2,
-            "files": [
-                {
-                    "schema": {
-                        "$schema": "http://json-schema.org/draft-04/schema#",
-                        "type": "object",
-                        "properties": {
-
-                            "type": { "enum": ["nifti"] }
-                        },
-                        "required": ["type"]
+            {
+                "schema": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "measurement": {
+                            "type":     "string",
+                            "pattern":  "^[aA]natomical$" }
                     },
-                    "minimum": 2
+                    "required": ["measurement"]
                 },
-                {
-                    "schema": {
-                        "$schema": "http://json-schema.org/draft-04/schema#",
-                        "type": "object",
-                        "properties": {
-                            "type": { "enum": ["dicom"] }
-                        },
-                        "required": ["type"]
+                "minimum": 2
+            },
+            {
+                "schema": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "measurement": {
+                            "type":     "string",
+                            "pattern":  "^(?i)functional$" }
                     },
-                    "minimum": 2
-                }
-            ]
-        },
-        {
-            "schema": {
-                "$schema": "http://json-schema.org/draft-04/schema#",
-                "type": "object",
-                "properties": {
-                    "measurement": {
-                        "type":     "string",
-                        "pattern":  "^(?i)functional$" }
+                    "required": ["measurement"]
                 },
-                "required": ["measurement"]
+                "minimum": 1
             },
-            "minimum": 3
-        }
-        {
-            "schema": {
-                "$schema": "http://json-schema.org/draft-04/schema#",
-                "type": "object",
-                "properties": {
-                    "measurement": { "enum": ["Localizer"] },
-                    "label":  {
-                        "type": "string",
-                        "pattern": "t1"
-                    }
+            {
+                "schema": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "measurement": { "enum": ["Localizer"] },
+                        "label":  {
+                            "type": "string",
+                            "pattern": "t1"
+                        }
+                    },
+                    "required": ["label", "measurement"]
                 },
-                "required": ["label", "measurement"]
-            },
-            "minimum": 2
-        }
-    ]
+                "minimum": 1
+            }
+        ]
 }
