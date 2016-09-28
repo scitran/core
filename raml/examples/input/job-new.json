@@ -1,17 +1,20 @@
 {
-    "gear": "dcm_convert",
-    "inputs": {
-        "dicom": {
-            "type": "acquisition",
-            "id": "573c9e6a844eac7fc01747cd",
-            "name" : "1_1_dicom.zip"
-        }
-    },
-    "destination": {
-        "type": "acquisition",
-        "id": "573c9e6a844eac7fc01747cd"
-    },
-    "tags": [
-        "ad-hoc"
-    ]
+	"gear": "test-case-gear",
+	"inputs": {
+		"dicom": {
+			"type": "acquisition",
+			"id": "573c9e6a844eac7fc01747cd",
+			"name" : "1_1_dicom.zip"
+		}
+	},
+	"config": {
+		"two-digit multiple of ten": 20
+	},
+	"destination": {
+		"type": "acquisition",
+		"id": "573c9e6a844eac7fc01747cd"
+	},
+	"tags": [
+		"ad-hoc"
+	]
 }
