@@ -1,11 +1,12 @@
 import bson.errors
 import bson.objectid
+import json
 import pymongo.errors
 
 from .. import util
 from .. import config
 from . import consistencychecker
-from . import APIStorageException, APIConflictException
+from . import APIStorageException, APIConflictException, APINotFoundException
 from . import hierarchy
 
 log = config.log
@@ -173,19 +174,20 @@ class SessionStorage(ContainerStorage):
         session = self.get_container(_id)
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(_id))
-        if session.get('project_has_template'):
-            project = ContainerStorage('projects', use_object_id=True).get_container(payload['project'])
+        if session.get('project_has_template') or payload.get('project_has_template'):
+            project = ContainerStorage('projects', use_object_id=True).get_container(session['project'])
             session.update(payload)
-            payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
+            payload['satisfies_template'] = hierarchy.is_session_compliant(session, json.loads(project.get('template')))
         return super(SessionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
 
-    def recalc_session_compliance(self, session_id):
-        session = self.get_container(session_id)
+    def recalc_session_compliance(self, session_id, session=None, template=None):
+        if session is None:
+            session = self.get_container(session_id)
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(session_id))
         if session.get('project_has_template'):
             if template is None:
-                template = ContainerStorage('projects', use_object_id=True).get_container(session['project']).get('template')
+                template = json.loads(ContainerStorage('projects', use_object_id=True).get_container(session['project']).get('template'))
             satisfies_template = hierarchy.is_session_compliant(session, template)
             if session.get('satisfies_template') != satisfies_template:
                 update = {'satisfies_template': satisfies_template}
@@ -213,7 +215,7 @@ class AcquisitionStorage(ContainerStorage):
         acquisition = self.get_container(_id)
         if acquisition is None:
             raise APINotFoundException('Could not find acquisition {}'.format(_id))
-        result = super(AcquisitionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
+        result = super(AcquisitionStorage, self).delete_el(_id)
         SessionStorage().recalc_session_compliance(acquisition['session'])
         return result
 

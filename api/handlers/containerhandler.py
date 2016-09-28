@@ -499,6 +499,12 @@ class ContainerHandler(base.RequestHandler):
         result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload)
 
         if result.modified_count == 1:
+            sessions = self.storage.get_children(project_id, projection={'_id':1})
+            log.debug('sessions are {}'.format(sessions))
+            session_storage = self.container_handler_configurations['sessions']['storage']
+            for s in sessions:
+                log.debug('update session {}'.format(s))
+                session_storage.exec_op('PUT', s['_id'], payload={'project_has_template': True})
             return {'modified': result.modified_count}
         else:
             self.abort(404, 'Could not find project {}'.format(project_id))
