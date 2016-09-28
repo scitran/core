@@ -120,7 +120,11 @@ def is_session_compliant(session, template):
     """
     s_requirements = template.get('session')
     a_requirements = template.get('acquisitions')
-    #f_requirements = template.get('files')
+    f_requirements = template.get('files')
+
+    acquisitions = []
+    if a_requirements or f_requirements:
+        acquisitions = config.db.acquisitions.find({'session': session['_id']})
 
     if s_requirements:
         validator = Draft4Validator(s_requirements.get('schema'))
@@ -130,7 +134,6 @@ def is_session_compliant(session, template):
             return False
 
     if a_requirements:
-        acquisitions = config.db.acquisitions.find({'session': session['_id']})
         for req in a_requirements:
             validator = Draft4Validator(req.get('schema'))
             min_count = req.get('minimum')
@@ -146,22 +149,22 @@ def is_session_compliant(session, template):
             if count < min_count:
                 return False
 
-    # if f_requirements:
-    #     files = [] #This is where we'd get acquisitions
-    #     for req in f_requirements:
-    #         validator = Draft4Validator(req.get('schema'))
-    #         min_count = req.get('minimum')
-    #         count = 0
-    #         while count < min_count:
-    #             for f in files:
-    #                 try:
-    #                     validator.validate(f)
-    #                 except ValidationError as err:
-    #                     continue
-    #                 else:
-    #                     count += 1
-    #         if count < min_count:
-    #             return False
+    if f_requirements:
+        files = [f for a in acquisitions for f in a.get('files', [])]
+        for req in f_requirements:
+            validator = Draft4Validator(req.get('schema'))
+            min_count = req.get('minimum')
+            count = 0
+            while count < min_count:
+                for f in files:
+                    try:
+                        validator.validate(f)
+                    except ValidationError as err:
+                        continue
+                    else:
+                        count += 1
+            if count < min_count:
+                return False
 
     return True
 
