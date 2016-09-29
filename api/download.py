@@ -210,11 +210,11 @@ class Download(base.RequestHandler):
                     # silently skip missing objects/objects user does not have access to
                     continue
 
+                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone', 'subject'])
                 subject = session.get('subject', {'code': 'unknown_subject'})
                 if not subject.get('code'):
                     subject['code'] = 'unknown_subject'
 
-                session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone', 'subject'])
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
