@@ -166,24 +166,29 @@ def _find_or_create_destination_project(group_id, project_label, timestamp, user
     group_id, project_label = _group_id_fuzzy_match(group_id, project_label)
     group = config.db.groups.find_one({'_id': group_id})
 
-    if user and not has_access(user, group, 'rw'):
-        raise APIPermissionException('User {} does not have read-write access to group {}'.format(user, group_id))
+    project = config.db.projects.find_one({'group': group['_id'],'label': {'$regex': re.escape(project_label), '$options': 'i'}})
 
-    project = config.db.projects.find_one_and_update(
-        {'group': group['_id'],
-         'label': {'$regex': re.escape(project_label), '$options': 'i'}
-        },
-        {
-            '$setOnInsert': {
+    if project:
+        # If the project already exists, check the user's access
+        if user and not has_access(user, project, 'rw'):
+            raise APIPermissionException('User {} does not have read-write access to project {}'.format(user, project['label']))
+        return project
+
+    else:
+        # if the project doesn't exit, check the user's access at the group level
+        if user and not has_access(user, group, 'rw'):
+            raise APIPermissionException('User {} does not have read-write access to group {}'.format(user, group_id))
+
+        project = {
+                'group': group['_id'],
                 'label': project_label,
-                'permissions': group['roles'], 'public': False,
-                'created': timestamp, 'modified': timestamp
-            }
-        },
-        PROJECTION_FIELDS,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER,
-        )
+                'permissions': group['roles'],
+                'public': False,
+                'created': timestamp,
+                'modified': timestamp
+        }
+        result = config.db.projects.insert_one(project)
+        project['_id'] = result.inserted_id
     return project
 
 def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
