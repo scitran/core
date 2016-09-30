@@ -10,5 +10,8 @@ class APIConflictException(Exception):
 class APINotFoundException(Exception):
     pass
 
+class APIPermissionException(Exception):
+    pass
+
 def noop(*args, **kwargs): # pylint: disable=unused-argument
     pass

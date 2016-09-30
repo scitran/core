@@ -22,6 +22,9 @@ def _get_access(uid, site, container):
             return INTEGER_ROLES[perm['access']]
     return -1
 
+def has_access(uid, container, perm, site='local'):
+    return _get_access(uid, site, container) >= INTEGER_ROLES[perm]
+
 def always_ok(exec_op):
     """
     This decorator leaves the original method unchanged.

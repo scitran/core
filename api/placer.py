@@ -138,7 +138,8 @@ class UIDPlacer(Placer):
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 
-        targets = self.create_hierarchy(self.metadata)
+        # If not a superuser request, pass uid of user making the upload request
+        targets = self.create_hierarchy(self.metadata, user=self.context.get('uid'))
 
         self.metadata_for_file = {}
 

@@ -9,7 +9,8 @@ import re
 from .. import files
 from .. import util
 from .. import config
-from . import APIStorageException, APINotFoundException, containerutil
+from ..auth import has_access
+from . import APIStorageException, APINotFoundException, APIPermissionException, containerutil
 
 log = config.log
 
@@ -161,24 +162,33 @@ def _group_id_fuzzy_match(group_id, project_label):
         group_id = 'unknown'
     return group_id, project_label
 
-def _find_or_create_destination_project(group_id, project_label, timestamp):
+def _find_or_create_destination_project(group_id, project_label, timestamp, user):
     group_id, project_label = _group_id_fuzzy_match(group_id, project_label)
     group = config.db.groups.find_one({'_id': group_id})
-    project = config.db.projects.find_one_and_update(
-        {'group': group['_id'],
-         'label': {'$regex': re.escape(project_label), '$options': 'i'}
-        },
-        {
-            '$setOnInsert': {
+
+    project = config.db.projects.find_one({'group': group['_id'],'label': {'$regex': re.escape(project_label), '$options': 'i'}})
+
+    if project:
+        # If the project already exists, check the user's access
+        if user and not has_access(user, project, 'rw'):
+            raise APIPermissionException('User {} does not have read-write access to project {}'.format(user, project['label']))
+        return project
+
+    else:
+        # if the project doesn't exit, check the user's access at the group level
+        if user and not has_access(user, group, 'rw'):
+            raise APIPermissionException('User {} does not have read-write access to group {}'.format(user, group_id))
+
+        project = {
+                'group': group['_id'],
                 'label': project_label,
-                'permissions': group['roles'], 'public': False,
-                'created': timestamp, 'modified': timestamp
-            }
-        },
-        PROJECTION_FIELDS,
-        upsert=True,
-        return_document=pymongo.collection.ReturnDocument.AFTER,
-        )
+                'permissions': group['roles'],
+                'public': False,
+                'created': timestamp,
+                'modified': timestamp
+        }
+        result = config.db.projects.insert_one(project)
+        project['_id'] = result.inserted_id
     return project
 
 def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
@@ -194,7 +204,7 @@ def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
             'uid': cont['uid']
         }
     else:
-        raise NotImplementedError('upload type is not handled by _create_query')
+        raise NotImplementedError('upload type {} is not handled by _create_query'.format(upload_type))
 
 def _upsert_container(cont, cont_type, parent, parent_type, upload_type, timestamp):
     cont['modified'] = timestamp
@@ -261,7 +271,7 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     return target_containers
 
 
-def find_existing_hierarchy(metadata):
+def find_existing_hierarchy(metadata, user=None):
     project = metadata.get('project', {})
     session = metadata.get('session', {})
     acquisition = metadata.get('acquisition', {})
@@ -276,8 +286,12 @@ def find_existing_hierarchy(metadata):
 
     # Confirm session and acquisition exist
     session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
+
     if session_obj is None:
         raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))
+    if user and not has_access(user, session_obj, 'rw'):
+        raise APIPermissionException('User {} does not have read-write access to session {}'.format(user, session_uid))
+
     a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['_id'])
     if a is None:
         raise APINotFoundException('Acquisition with uid {} does not exist'.format(acquisition_uid))
@@ -292,7 +306,7 @@ def find_existing_hierarchy(metadata):
     return target_containers
 
 
-def upsert_bottom_up_hierarchy(metadata):
+def upsert_bottom_up_hierarchy(metadata, user=None):
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
@@ -310,6 +324,10 @@ def upsert_bottom_up_hierarchy(metadata):
 
     session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
+
+        if user and not has_access(user, session_obj, 'rw'):
+            raise APIPermissionException('User {} does not have read-write access to session {}'.format(user, session_uid))
+
         now = datetime.datetime.utcnow()
         project_files = dict_fileinfos(project.pop('files', []))
         project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
@@ -319,10 +337,11 @@ def upsert_bottom_up_hierarchy(metadata):
         )
         return target_containers
     else:
-        return upsert_top_down_hierarchy(metadata, 'uid')
+        return upsert_top_down_hierarchy(metadata, 'uid', user=user)
 
 
-def upsert_top_down_hierarchy(metadata, type_='label'):
+def upsert_top_down_hierarchy(metadata, type_='label', user=None):
+    log.debug('I know my type is {}'.format(type_))
     group = metadata['group']
     project = metadata['project']
     session = metadata.get('session')
@@ -330,7 +349,7 @@ def upsert_top_down_hierarchy(metadata, type_='label'):
 
     now = datetime.datetime.utcnow()
     project_files = dict_fileinfos(project.pop('files', []))
-    project_obj = _find_or_create_destination_project(group['_id'], project['label'], now)
+    project_obj = _find_or_create_destination_project(group['_id'], project['label'], now, user)
     target_containers = _get_targets(project_obj, session, acquisition, type_, now)
     target_containers.append(
         (TargetContainer(project_obj, 'project'), project_files)

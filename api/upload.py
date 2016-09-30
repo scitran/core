@@ -143,7 +143,11 @@ class Upload(base.RequestHandler):
         """Receive a sortable reaper upload."""
 
         if not self.superuser_request:
-            self.abort(402, 'uploads must be from an authorized drone')
+            user = self.uid
+            if not user:
+                self.abort(403, 'Uploading requires login')
+
+        context = {'uid': self.uid if not self.superuser_request else None}
 
         # TODO: what enum
         if strategy == 'label':
@@ -154,7 +158,7 @@ class Upload(base.RequestHandler):
             strategy = Strategy.uidmatch
         else:
             self.abort(500, 'stragegy {} not implemented'.format(strategy))
-        return process_upload(self.request, strategy, origin=self.origin)
+        return process_upload(self.request, strategy, origin=self.origin, context=context)
 
     def engine(self):
         """Handles file uploads from the engine"""

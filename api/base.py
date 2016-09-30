@@ -13,7 +13,7 @@ from . import files
 from . import config
 from .types import Origin
 from . import validators
-from .dao import APIConsistencyException, APIConflictException, APINotFoundException
+from .dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -272,6 +272,8 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.warning(str(exception))
         elif isinstance(exception, APIConsistencyException):
             code = 400
+        elif isinstance(exception, APIPermissionException):
+            code = 403
         elif isinstance(exception, APINotFoundException):
             code = 404
         elif isinstance(exception, APIConflictException):
