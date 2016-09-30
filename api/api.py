@@ -172,6 +172,7 @@ routes = [
     webapp2.Route(_format(r'/api/users/<uid:{user_id_re}>/<cont_name:{cont_name_re}>'), containerhandler.ContainerHandler, name='user_conts', handler_method='get_all_for_user', methods=['GET']),
 
     webapp2.Route(r'/api/projects/groups',                                              containerhandler.ContainerHandler, handler_method='get_groups_with_project', methods=['GET']),
+    webapp2.Route(r'/api/projects/recalc',                                              containerhandler.ContainerHandler, handler_method='calculate_project_compliance', methods=['POST']),
     webapp2.Route(_format(r'/api/projects/<cid:{cid_re}>/template'),                    containerhandler.ContainerHandler, handler_method='set_project_template', methods=['POST']),
     webapp2.Route(_format(r'/api/projects/<cid:{cid_re}>/template/recalc'),             containerhandler.ContainerHandler, handler_method='calculate_project_compliance', methods=['POST']),
 

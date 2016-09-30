@@ -509,10 +509,10 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'Could not find project {}'.format(project_id))
 
     def calculate_project_compliance(self, **kwargs):
-        project_id = kwargs.pop('cid')
+        project_id = kwargs.pop('cid', None)
         self.config = self.container_handler_configurations['projects']
         self.storage = self.config['storage']
-        return {'sessions_changed': self.storage.recalc_sesssions_compliance(project_id)}
+        return {'sessions_changed': self.storage.recalc_sessions_compliance(project_id=project_id)}
 
     def _get_validators(self):
         mongo_schema_uri = validators.schema_uri('mongo', self.config.get('storage_schema_file'))

@@ -166,20 +166,29 @@ class ProjectStorage(ContainerStorage):
     def __init__(self):
         super(ProjectStorage,self).__init__('projects', use_object_id=True)
 
-    def recalc_sessions_compliance(self, project_id):
-        project = self.get_container(project_id, get_children=True)
-        if not project:
-            raise APINotFoundException('Could not find project {}'.format(project_id))
-        template = json.loads(project.get('template',{}))
-        if not template:
-            return
+    def recalc_sessions_compliance(self, project_id=None):
+        if project_id is None:
+            # Recalc all projects
+            projects = self.get_all_el({'template': {'$exists': True}}, None, None)
         else:
-            changed_sessions = []
-            session_storage = SessionStorage()
-            for s in project.get('sessions', []):
-                changed = session_storage.recalc_session_compliance(s['_id'], session=s, template=template)
-                if changed:
-                    changed_sessions.append(s['_id'])
+            project = self.get_container(project_id, get_children=True)
+            if project:
+                projects = [project]
+            else:
+                raise APINotFoundException('Could not find project {}'.format(project_id))
+        changed_sessions = []
+
+        for project in projects:
+            template = json.loads(project.get('template',{}))
+            if not template:
+                return
+            else:
+                session_storage = SessionStorage()
+                for s in project.get('sessions', []):
+                    changed = session_storage.recalc_session_compliance(s['_id'], session=s, template=template)
+                    if changed:
+                        changed_sessions.append(s['_id'])
+        return changed_sessions
 
 
 class SessionStorage(ContainerStorage):
