@@ -34,7 +34,7 @@ function Main() {(
     EXEC_BUILD_TRIGGER=true
   fi
 
-  if ! $EXEC_BUILD_TRIGGER && [ "${SOURCE_CONTROL_REF_TYPE}" == "Tag" ] ; then
+  if [ "${SOURCE_CONTROL_REF_TYPE}" == "Tag" ] ; then
     EXEC_BUILD_TRIGGER=true
   fi
 
