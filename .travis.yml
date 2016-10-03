@@ -13,3 +13,8 @@ script:
 
 after_success:
   - coveralls
+  # docker/build-trigger.sh contains the rules for when to, and not to trigger
+  - if [ "$TRAVIS_EVENT_TYPE" == "push" ]; then
+      ./docker/build-trigger.sh Tag "${TRAVIS_TAG}" "${BUILD_TRIGGER_URL}" ;
+      ./docker/build-trigger.sh Branch "${TRAVIS_BRANCH}" "${BUILD_TRIGGER_URL}" ;
+    fi
