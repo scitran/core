@@ -138,31 +138,34 @@ def is_session_compliant(session, template):
             validator = Draft4Validator(req.get('schema'))
             min_count = req.get('minimum')
             count = 0
-            while count < min_count:
-                for a in acquisitions:
-                    try:
-                        validator.validate(a)
-                    except ValidationError:
-                        continue
-                    else:
-                        count += 1
+            for a in acquisitions:
+                try:
+                    validator.validate(a)
+                except ValidationError:
+                    continue
+                else:
+                    count += 1
+                    if count >= min_count:
+                        break
             if count < min_count:
                 return False
 
     if f_requirements:
+        acquisitions = config.db.acquisitions.find({'session': session['_id']})
         files = [f for a in acquisitions for f in a.get('files', [])]
         for req in f_requirements:
             validator = Draft4Validator(req.get('schema'))
             min_count = req.get('minimum')
             count = 0
-            while count < min_count:
-                for f in files:
-                    try:
-                        validator.validate(f)
-                    except ValidationError as err:
-                        continue
-                    else:
-                        count += 1
+            for f in files:
+                try:
+                    validator.validate(a)
+                except ValidationError:
+                    continue
+                else:
+                    count += 1
+                    if count >= min_count:
+                        break
             if count < min_count:
                 return False
 
