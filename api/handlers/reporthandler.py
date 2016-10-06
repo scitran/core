@@ -147,6 +147,7 @@ class ProjectReport(Report):
       - Female Subjects
       - Other Subjects
       - Subjects with sex type Other
+      - Demographics grid (Race/Ethnicity/Sex)
       - Subjects under 18
       - Subjects over 18
     """
@@ -221,14 +222,33 @@ class ProjectReport(Report):
 
         return race_obj
 
-    def _process_demo_results(self, results):
+    def _base_project_report(self):
+        """
+        Constructs a dictionary representation of the project report with neutral values
+        """
+        return {
+                'name':                 '',
+                'group_name':           '',
+                'admins':               [],
+                'session_count':        0,
+                'subjects_count':       0,
+                'female_count':         0,
+                'male_count':           0,
+                'other_count':          0,
+                'demographics_grid':    self._base_demo_grid(),
+                'demographics_total':   0,
+                'over_18_count':        0,
+                'under_18_count':       0
+            }
+
+
+    def _process_demo_results(self, results, grid):
         """
         Given demographics aggregation results, fill in base demographics grid
 
         All `null` or unlisted values will be counted as 'Unknown or Not Reported'
         """
         UNR = 'Unknown or Not Reported'
-        grid = self._base_demo_grid()
         total = 0
 
         for r in results:
@@ -268,7 +288,7 @@ class ProjectReport(Report):
 
         projects = config.db.projects.find({'_id': {'$in': self.projects}})
         for p in projects:
-            project = {}
+            project = self._base_project_report()
             project['name'] = p.get('label')
             project['group_name'] = p.get('group')
 
@@ -282,6 +302,12 @@ class ProjectReport(Report):
 
             base_query = self._base_query(p['_id'])
             project['session_count'] = config.db.sessions.count(base_query)
+
+            # If there are no sessions in this project for the date range,
+            # no need to continue grabbing more stats
+            if project['session_count'] == 0:
+                report['projects'].append(project)
+                continue
 
             # Count subjects
             # Any stats on subjects require an aggregation to group by subject._id
@@ -333,7 +359,7 @@ class ProjectReport(Report):
             ]
             results = _get_result_list(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
-            grid, total = self._process_demo_results(results)
+            grid, total = self._process_demo_results(results, project['demographics_grid'])
             project['demographics_grid'] = grid
             project['demographics_total'] = total
 
