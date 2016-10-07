@@ -3,7 +3,7 @@ import datetime
 
 from .. import config
 from ..auth import containerauth, always_ok
-from ..dao import containerstorage
+from ..dao import containerstorage, containerutil
 from ..dao import APIStorageException
 
 from .containerhandler import ContainerHandler
@@ -112,8 +112,9 @@ class CollectionsHandler(ContainerHandler):
         if results is None:
             self.abort(404, 'Element not found in collection {}'.format(self.storage.cont_name))
         self._filter_all_permissions(results, self.uid, self.user_site)
-        if self.is_true('counts'):
-            self._add_results_counts(results)
+        for result in results:
+            if self.is_true('stats'):
+                result = containerutil.get_stats(result, 'collections')
         return results
 
     def _add_results_counts(self, results):

@@ -125,7 +125,6 @@ class ContainerStorage(object):
         result = self.dbc.find(query, projection)
         return list(result)
 
-
 class GroupStorage(ContainerStorage):
 
     def _create_el(self, payload):

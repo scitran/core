@@ -37,6 +37,32 @@ def add_id_to_subject(subject, pid):
         subject['_id'] = bson.ObjectId()
     return subject
 
+def get_stats(cont, cont_type):
+    """
+    Add a session and attachment count to a project or collection
+    """
+
+    if cont_type == 'projects':
+        cont['session_count'] = config.db.sessions.count({'project': cont['_id']})
+    elif cont_type is 'collections':
+        pipeline = [
+            {'$match': {'collections': cont['_id']}},
+            {'$group': {'_id': '$session'}},
+            {'$group': {'_id': 1, 'count': { '$sum': 1 }}}
+        ]
+        result = config.db.command('aggregate', 'acquisitions', pipeline=pipeline).get('result', [])
+        if len(result) > 0:
+            cont['session_count'] = result[0].get('count', 0)
+        else:
+            cont['session_count'] = 0
+
+        # session_ids = config.db.acquisitions.find({'collection': bson.ObjectId(cont['_id'])}. {'session': 1})
+        # cont['session_count'] = len(set([s['session'] for s in session_ids]))
+    else:
+        return cont
+    cont['attachment_count'] = len(cont.get('files', []))
+    return cont
+
 
 class ContainerReference(object):
     # pylint: disable=redefined-builtin
