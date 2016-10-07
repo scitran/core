@@ -117,17 +117,6 @@ class CollectionsHandler(ContainerHandler):
                 result = containerutil.get_stats(result, 'collections')
         return results
 
-    def _add_results_counts(self, results):
-        session_counts = config.db.acquisitions.aggregate([
-            {'$match': {'collections': {'$in': [collection['_id'] for collection in results]}}},
-            {'$unwind': "$collections"},
-            {'$group': {'_id': "$collections", 'sessions': {'$addToSet': "$session"}}}
-            ])
-        session_counts = {coll['_id']: len(coll['sessions']) for coll in session_counts}
-        for coll in results:
-            coll['session_count'] = session_counts.get(coll['_id'], 0)
-
-
     def curators(self):
         curator_ids = list(set((c['curator'] for c in self.get_all('collections'))))
         return list(config.db.users.find({'_id': {'$in': curator_ids}}, ['firstname', 'lastname']))
