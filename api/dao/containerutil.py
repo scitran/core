@@ -42,25 +42,33 @@ def get_stats(cont, cont_type):
     Add a session and attachment count to a project or collection
     """
 
-    if cont_type == 'projects':
-        cont['session_count'] = config.db.sessions.count({'project': cont['_id']})
-    elif cont_type is 'collections':
-        pipeline = [
-            {'$match': {'collections': cont['_id']}},
-            {'$group': {'_id': '$session'}},
-            {'$group': {'_id': 1, 'count': { '$sum': 1 }}}
-        ]
-        result = config.db.command('aggregate', 'acquisitions', pipeline=pipeline).get('result', [])
-        if len(result) > 0:
-            cont['session_count'] = result[0].get('count', 0)
-        else:
-            cont['session_count'] = 0
-
-        # session_ids = config.db.acquisitions.find({'collection': bson.ObjectId(cont['_id'])}. {'session': 1})
-        # cont['session_count'] = len(set([s['session'] for s in session_ids]))
-    else:
+    if cont_type not in ['projects', 'collections']:
         return cont
+
+    session_ids = []
+    if cont_type == 'projects':
+        result = list(config.db.sessions.find({'project': cont['_id']}, {'_id': 1}))
+        session_ids = [s['_id'] for s in result]
+    elif cont_type == 'collections':
+        result = config.db.acquisitions.find({'collections': cont['_id']}, {'session': 1})
+        session_ids = list(set([s['session'] for s in result]))
+
+    pipeline = [
+        {'$match': {'_id': {'$in': session_ids}, 'subject._id': {'$ne': None}}},
+        {'$group': {'_id': '$subject._id'}},
+        {'$group': {'_id': 1, 'count': { '$sum': 1 }}}
+    ]
+
+    result = config.db.command('aggregate', 'sessions', pipeline=pipeline).get('result', [])
+
+    if len(result) > 0:
+        cont['subject_count'] = result[0].get('count', 0)
+    else:
+        cont['subject_count'] = 0
+
     cont['attachment_count'] = len(cont.get('files', []))
+    cont['session_count'] = len(session_ids)
+
     return cont
 
 
