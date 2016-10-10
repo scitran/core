@@ -98,11 +98,11 @@ class Placer(object):
             rules.create_jobs(config.db, self.container, self.container_type, info)
 
     def recalc_session_compliance(self):
-        if self.container_type in ['session', 'acquisition']:
-            if self.container_type is 'session':
+        if self.container_type in ['session', 'acquisition'] and self.id_:
+            if self.container_type == 'session':
                 session_id = self.id_
             else:
-                session_id = AcquisitionStorage().get_container(self.id_).get('session')
+                session_id = AcquisitionStorage().get_container(str(self.id_)).get('session')
             SessionStorage().recalc_session_compliance(session_id)
 
 
