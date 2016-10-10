@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "fc8f9020-aa70-327d-4e99-9c8a98db1009",
+		"_postman_id": "0cd62962-97a4-0bda-dd64-7c3a79d47345",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -36,8 +36,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				},
-				"description": "List users\n\n"
+				}
 			},
 			"response": []
 		},
@@ -70,8 +69,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\", \"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				},
-				"description": "\n\n"
+				}
 			},
 			"response": []
 		},
@@ -113,8 +111,7 @@
 							"enabled": true
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -142,8 +139,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n\"_id\":\"test-group\"\n}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -171,8 +167,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"group\": \"test-group\",\n    \"label\": \"test-project\",\n    \"public\": false\n  }"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -200,8 +195,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"test-subject-1\"\n    },\n    \"label\": \"test-session-1\",\n    \"project\": \"{{test-project-id}}\",\n    \"public\": false\n  }"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -229,8 +223,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\": \"test-acquisition-1\",\n    \"session\":\"{{test-session-id}}\",\n    \"public\": false\n }"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -268,12 +261,10 @@
 							"key": "file",
 							"src": "test/integration_tests/postman/test_files/test-1.dcm",
 							"type": "file",
-							"enabled": true,
-							"value": ""
+							"enabled": true
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -359,6 +350,383 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"gear\": \"test-case-gear\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"config\": {\n\t\t\"two-digit multiple of ten\": 20\n\t},\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create project",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-project-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\n    \"group\": \"test-group\",\n    \"label\": \"Project with template\",\n    \"public\": false\n  }"
+				},
+				"description": "Create the project for testing session templates"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create compliant session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-compliant-session-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\n    \"subject\": {\n      \"code\": \"ex8945\"\n    },\n    \"label\": \"Compliant Session\",\n    \"project\": \"{{ST-project-id}}\",\n    \"public\": false\n  }"
+				},
+				"description": "Create a session that will be compliant with the project-level session template"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create non-compliant session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-noncompliant-session-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\n    \"subject\": {\n      \"code\": \"ex9849\"\n    },\n    \"label\": \"Non-compliant Session\",\n    \"project\": \"{{ST-project-id}}\",\n    \"public\": false\n  }"
+				},
+				"description": "Create a session that will NOT be compliant with the project-level session template"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create acquisition-1 for compliant session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-cs-acquisition-1\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"label\": \"c-acquisition-1-t1\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
+				},
+				"description": "Create an acquisition for the compliant session"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create acquisition-2 for compliant session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-cs-acquisition-2\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"label\": \"c-acquisition-2\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
+				},
+				"description": "Create an acquisition for the compliant session"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create acquisition-1 for noncompliant session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-ncs-acquisition-1\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"label\": \"nc-acquisition-1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
+				},
+				"description": "Create an acquisition for the noncompliant session"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Add project template",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project updated\"] = jsonData.modified == 1;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects/{{ST-project-id}}/template",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"session\": {\n        \"schema\": {\n            \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n            \"properties\": {\n                \"subject\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"code\": {\n                            \"type\":     \"string\",\n                            \"pattern\":  \"^ex\" \n                        }\n                    },\n                    \"required\": [\"code\"]\n                }\n            },\n            \"required\": [\"subject\"]\n        }\n    },\n    \"acquisitions\": [\n        {\n            \"schema\": {\n                \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n                \"type\": \"object\",\n                \"properties\": {\n                    \"measurement\": {\n                        \"type\":     \"string\",\n                        \"pattern\":  \"^(?i)localizer$\" \n                    }\n                },\n                \"required\": [\"measurement\"]\n            },\n            \"minimum\": 2\n        },\n        {\n            \"schema\": {\n                \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n                \"type\": \"object\",\n                \"properties\": {\n                    \"measurement\": {\n                        \"type\":     \"string\",\n                        \"pattern\":  \"^(?i)localizer$\" \n                    },\n                    \"label\":  {\n                        \"type\": \"string\",\n                        \"pattern\": \"t1\"\n                    }\n                },\n                \"required\": [\"label\", \"measurement\"]\n            },\n            \"minimum\": 1\n        }\n    ]\n}"
+				},
+				"description": "Should modify project and it's sessions. Both sessions should have a \"project-has-template\" flag as \"true\" and the session setup to be compliant should have \"compliant\" flag set to True."
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Test session 1 is marked as compilant",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === true;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{ST-compliant-session-id}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Test session 2 is marked as non-compilant copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === false;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{ST-noncompliant-session-id}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Create acquisition-2 for noncompliant session",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-ncs-acquisition-2\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions?root=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"label\": \"nc-acquisition-2-t1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
+				},
+				"description": "This should make the session compliant"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Test session 2 is now marked as compliant",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === true;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{ST-noncompliant-session-id}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Update session 2 to be non-compliant",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{ST-noncompliant-session-id}}?root=true",
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\n    \"subject\": {\n      \"code\": \"bad-subject-code\"\n    }\n  }"
+				},
+				"description": "Create a session that will NOT be compliant with the project-level session template"
+			},
+			"response": []
+		},
+		{
+			"name": "[Session Template] Test session 2 is now marked as non-compliant",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === false;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{ST-noncompliant-session-id}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
 				},
 				"description": ""
 			},

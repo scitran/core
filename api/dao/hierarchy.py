@@ -124,7 +124,7 @@ def is_session_compliant(session, template):
 
     acquisitions = []
     if a_requirements or f_requirements:
-        acquisitions = config.db.acquisitions.find({'session': session['_id']})
+        acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
 
     if s_requirements:
         validator = Draft4Validator(s_requirements.get('schema'))
@@ -151,7 +151,6 @@ def is_session_compliant(session, template):
                 return False
 
     if f_requirements:
-        acquisitions = config.db.acquisitions.find({'session': session['_id']})
         files_ = [f for a in acquisitions for f in a.get('files', [])]
         for req in f_requirements:
             validator = Draft4Validator(req.get('schema'))
