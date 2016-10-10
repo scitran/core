@@ -3,7 +3,7 @@ import datetime
 
 from .. import config
 from ..auth import containerauth, always_ok
-from ..dao import containerstorage
+from ..dao import containerstorage, containerutil
 from ..dao import APIStorageException
 
 from .containerhandler import ContainerHandler
@@ -112,20 +112,10 @@ class CollectionsHandler(ContainerHandler):
         if results is None:
             self.abort(404, 'Element not found in collection {}'.format(self.storage.cont_name))
         self._filter_all_permissions(results, self.uid, self.user_site)
-        if self.is_true('counts'):
-            self._add_results_counts(results)
+        for result in results:
+            if self.is_true('stats'):
+                result = containerutil.get_stats(result, 'collections')
         return results
-
-    def _add_results_counts(self, results):
-        session_counts = config.db.acquisitions.aggregate([
-            {'$match': {'collections': {'$in': [collection['_id'] for collection in results]}}},
-            {'$unwind': "$collections"},
-            {'$group': {'_id': "$collections", 'sessions': {'$addToSet': "$session"}}}
-            ])
-        session_counts = {coll['_id']: len(coll['sessions']) for coll in session_counts}
-        for coll in results:
-            coll['session_count'] = session_counts.get(coll['_id'], 0)
-
 
     def curators(self):
         curator_ids = list(set((c['curator'] for c in self.get_all('collections'))))

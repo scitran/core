@@ -301,6 +301,8 @@ class ContainerHandler(base.RequestHandler):
             result = self.handle_origin(result)
             if cont_name == 'sessions':
                 result = self.handle_analyses(result)
+            if self.is_true('stats'):
+                result = containerutil.get_stats(result, cont_name)
 
         return results
 
