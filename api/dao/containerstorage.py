@@ -52,13 +52,14 @@ class ContainerStorage(object):
         cont = self.get_el(_id, projection=projection)
         if get_children:
             children = self.get_children(_id, projection=projection)
-            cont[CHILD_MAP.get(self.cont_name)] = children
+            cont[CHILD_MAP[self.cont_name]] = children
         return cont
 
     def get_children(self, _id, projection=None):
-        child_name = CHILD_MAP.get(self.cont_name)
-        if not child_name:
-            raise ValueError('Children can only be listed from group, project or session level')
+        try:
+            child_name = CHILD_MAP[self.cont_name]
+        except KeyError:
+            raise APINotFoundException('Children cannot be listed from the {0} level'.format(self.cont_name))
         query = {self.cont_name[:-1]: bson.objectid.ObjectId(_id)}
         return self.factory(child_name, use_object_id=True).get_all_el(query, None, projection)
 

@@ -34,7 +34,9 @@
         schema: !include ../schemas/input/project-template.json
     responses:
       200:
-        description: Project's sessions' compliance was recalculated, returns list of
+        description: |
+          Project's sessions' compliance was recalculated.
+          Returns list of session that were modified.
       404:
         description: Project was not found
 

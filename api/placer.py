@@ -18,8 +18,6 @@ from .dao import containerutil, hierarchy
 from .jobs import rules
 from .types import Origin
 
-from . import config
-log = config.log
 
 class Placer(object):
     """

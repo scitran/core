@@ -108,7 +108,10 @@ class ListStorage(object):
         log.debug('update {}'.format(update))
         result =  self.dbc.update_one(query, update)
         if self.list_name is 'files' and self.cont_name in ['sessions', 'acquisitions']:
-            session_id = _id if self.cont_name == 'sessions' else AcquisitionStorage().get_container(_id).get('session')
+            if self.cont_name == 'sessions':
+                session_id = _id
+            else:
+                session_id = AcquisitionStorage().get_container(_id).get('session')
             SessionStorage().recalc_session_compliance(session_id)
         return result
 
