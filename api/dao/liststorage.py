@@ -4,6 +4,7 @@ import bson.objectid
 from .. import config
 from . import consistencychecker, containerutil
 from . import APIStorageException, APIConflictException
+from .containerstorage import SessionStorage, AcquisitionStorage
 from ..jobs.jobs import Job
 
 log = config.log
@@ -105,7 +106,14 @@ class ListStorage(object):
         update = {'$pull': {self.list_name: query_params} }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
-        return self.dbc.update_one(query, update)
+        result =  self.dbc.update_one(query, update)
+        if self.list_name is 'files' and self.cont_name in ['sessions', 'acquisitions']:
+            if self.cont_name == 'sessions':
+                session_id = _id
+            else:
+                session_id = AcquisitionStorage().get_container(_id).get('session')
+            SessionStorage().recalc_session_compliance(session_id)
+        return result
 
     def _get_el(self, _id, query_params):
         log.debug('query_params {}'.format(query_params))

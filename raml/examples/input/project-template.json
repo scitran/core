@@ -1,0 +1,55 @@
+{
+    "session": {
+        "schema": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "properties": {
+                "label": {
+                    "type":     "string",
+                    "pattern":  "^(?i)test_pattern$" }
+            }
+        }
+    },
+    "acquisitions": [
+            {
+                "schema": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "measurement": {
+                            "type":     "string",
+                            "pattern":  "^[aA]natomical$" }
+                    },
+                    "required": ["measurement"]
+                },
+                "minimum": 2
+            },
+            {
+                "schema": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "measurement": {
+                            "type":     "string",
+                            "pattern":  "^(?i)functional$" }
+                    },
+                    "required": ["measurement"]
+                },
+                "minimum": 1
+            },
+            {
+                "schema": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "measurement": { "enum": ["Localizer"] },
+                        "label":  {
+                            "type": "string",
+                            "pattern": "t1"
+                        }
+                    },
+                    "required": ["label", "measurement"]
+                },
+                "minimum": 1
+            }
+        ]
+}

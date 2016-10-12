@@ -49,9 +49,9 @@ class ContainerHandler(base.RequestHandler):
     # "use_object_id" implies that the container ids are converted to ObjectId
     container_handler_configurations = {
         'projects': {
-            'storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
+            'storage': containerstorage.ProjectStorage(),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('groups', use_object_id=use_object_id['groups']),
+            'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
             'list_projection': {'metadata': 0},
@@ -59,9 +59,9 @@ class ContainerHandler(base.RequestHandler):
             'children_cont': 'sessions'
         },
         'sessions': {
-            'storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
+            'storage': containerstorage.SessionStorage(),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('projects', use_object_id=use_object_id['projects']),
+            'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
             'list_projection': {'metadata': 0},
@@ -69,9 +69,9 @@ class ContainerHandler(base.RequestHandler):
             'children_cont': 'acquisitions'
         },
         'acquisitions': {
-            'storage': containerstorage.ContainerStorage('acquisitions', use_object_id=use_object_id['acquisitions']),
+            'storage': containerstorage.AcquisitionStorage(),
             'permchecker': containerauth.default_container,
-            'parent_storage': containerstorage.ContainerStorage('sessions', use_object_id=use_object_id['sessions']),
+            'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
             'list_projection': {'metadata': 0}
@@ -481,6 +481,36 @@ class ContainerHandler(base.RequestHandler):
         """
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
         return list(config.db.groups.find({'_id': {'$in': group_ids}}, ['name']))
+
+    def set_project_template(self, **kwargs):
+        project_id = kwargs.pop('cid')
+        self.config = self.container_handler_configurations['projects']
+        self.storage = self.config['storage']
+        container = self._get_container(project_id)
+
+        template = self.request.json_body
+        validators.validate_data(template, 'project-template.json', 'input', 'POST')
+        payload = {'template': template}
+        payload['modified'] = datetime.datetime.utcnow()
+
+        permchecker = self._get_permchecker(container)
+        result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload)
+
+        if result.modified_count == 1:
+            sessions = self.storage.get_children(project_id, projection={'_id':1})
+            session_storage = self.container_handler_configurations['sessions']['storage']
+            for s in sessions:
+                session_storage.exec_op('PUT', s['_id'], payload={'project_has_template': True})
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Could not find project {}'.format(project_id))
+
+    def calculate_project_compliance(self, **kwargs):
+        project_id = kwargs.pop('cid', None)
+        log.debug("project_id is {}".format(project_id))
+        self.config = self.container_handler_configurations['projects']
+        self.storage = self.config['storage']
+        return {'sessions_changed': self.storage.recalc_sessions_compliance(project_id=project_id)}
 
     def _get_validators(self):
         mongo_schema_uri = validators.schema_uri('mongo', self.config.get('storage_schema_file'))

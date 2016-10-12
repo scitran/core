@@ -11,7 +11,7 @@ class GroupHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(GroupHandler, self).__init__(request, response)
-        self.storage = containerstorage.GroupStorage('groups', use_object_id=False)
+        self.storage = containerstorage.GroupStorage()
 
     def get(self, _id):
         group = self._get_group(_id)

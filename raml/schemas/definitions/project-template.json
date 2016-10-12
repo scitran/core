@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "A project's session template",
+    "type": "object",
+    "definitions": {
+        "requirement": {
+            "anyOf": [
+                {"required": ["minimum"]},
+                {"required": ["maximum"]}
+            ],
+            "properties": {
+                "schema":   {"$ref": "http://json-schema.org/draft-04/schema"},
+                "minimum":  {"type": "integer", "minimum": 0},
+                "maximum":  {"type": "integer", "minimum": 0}
+            },
+            "required": ["schema"]
+        }
+    },
+    "properties": {
+        "session": {
+            "properties": {
+                "schema":   {"$ref": "http://json-schema.org/draft-04/schema"}
+            },
+            "required": ["schema"]
+        },
+        "acquisitions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"$ref": "#/definitions/requirement"}
+        },
+        "files": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"$ref": "#/definitions/requirement"}
+        }
+    },
+    "additionalProperties": false
+}

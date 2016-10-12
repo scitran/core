@@ -62,7 +62,7 @@ def suggest_container(gear, cont_name, cid):
     Given a container reference, suggest files that would work well for each input on a gear.
     """
 
-    root = ContainerStorage(cont_name, True).get_container(cid, projection={'permissions':0}, get_children=True)
+    root = ContainerStorage.factory(cont_name, True).get_container(cid, projection={'permissions':0}, get_children=True)
     invocation_schema = get_invocation_schema(gear)
 
     schemas = {}

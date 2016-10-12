@@ -3,6 +3,7 @@ import copy
 import datetime
 import dateutil.parser
 import difflib
+from jsonschema import Draft4Validator, ValidationError
 import pymongo
 import re
 
@@ -111,6 +112,63 @@ def propagate_changes(cont_name, _id, query, update):
         config.db.acquisitions.update_many(query, update)
     else:
         raise ValueError('changes can only be propagated from group, project or session level')
+
+def is_session_compliant(session, template):
+    """
+    Given a project-level session template and a session,
+    returns True/False if the session is in compliance with the template
+    """
+    s_requirements = template.get('session')
+    a_requirements = template.get('acquisitions')
+    f_requirements = template.get('files')
+
+    acquisitions = []
+    if a_requirements or f_requirements:
+        acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
+
+    if s_requirements:
+        validator = Draft4Validator(s_requirements.get('schema'))
+        try:
+            validator.validate(session)
+        except ValidationError:
+            return False
+
+    if a_requirements:
+        for req in a_requirements:
+            validator = Draft4Validator(req.get('schema'))
+            min_count = req.get('minimum')
+            count = 0
+            for a in acquisitions:
+                try:
+                    validator.validate(a)
+                except ValidationError:
+                    continue
+                else:
+                    count += 1
+                    if count >= min_count:
+                        break
+            if count < min_count:
+                return False
+
+    if f_requirements:
+        files_ = [f for a in acquisitions for f in a.get('files', [])]
+        for req in f_requirements:
+            validator = Draft4Validator(req.get('schema'))
+            min_count = req.get('minimum')
+            count = 0
+            for f in files_:
+                try:
+                    validator.validate(a)
+                except ValidationError:
+                    continue
+                else:
+                    count += 1
+                    if count >= min_count:
+                        break
+            if count < min_count:
+                return False
+
+    return True
 
 def upsert_fileinfo(cont_name, _id, fileinfo):
     # TODO: make all functions take singular noun
