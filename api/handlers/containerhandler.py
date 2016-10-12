@@ -1,7 +1,6 @@
 import bson
 import datetime
 import dateutil
-import json
 
 from .. import base
 from .. import util
@@ -491,7 +490,7 @@ class ContainerHandler(base.RequestHandler):
 
         template = self.request.json_body
         validators.validate_data(template, 'project-template.json', 'input', 'POST')
-        payload = {'template': json.dumps(template)}
+        payload = {'template': template}
         payload['modified'] = datetime.datetime.utcnow()
 
         permchecker = self._get_permchecker(container)

@@ -63,6 +63,11 @@ class ContainerStorage(object):
         query = {self.cont_name[:-1]: bson.objectid.ObjectId(_id)}
         return self.factory(child_name, use_object_id=True).get_all_el(query, None, projection)
 
+    def _from_mongo(self, cont):
+        return cont
+
+    def _to_mongo(self, payload):
+        return payload
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument
@@ -75,7 +80,7 @@ class ContainerStorage(object):
         data_op = payload or {'_id': _id}
         check(data_op)
         if action == 'GET' and _id:
-            return self.get_el(_id, projection)
+            return self.get_el(_id, projection=projection)
         if action == 'GET':
             return self.get_all_el(query, user, projection)
         if action == 'DELETE':
@@ -88,6 +93,7 @@ class ContainerStorage(object):
 
     def create_el(self, payload):
         log.debug(payload)
+        payload = self._to_mongo(payload)
         try:
             result = self.dbc.insert_one(payload)
         except pymongo.errors.DuplicateKeyError:
@@ -103,6 +109,7 @@ class ContainerStorage(object):
             if payload.get('subject') is not None and payload['subject'].get('metadata') is not None:
                 replace['subject.metadata'] = util.mongo_sanitize_fields(payload['subject'].pop('metadata'))
 
+        payload = self._to_mongo(payload)
         update = {
             '$set': util.mongo_dict(payload)
         }
@@ -132,7 +139,7 @@ class ContainerStorage(object):
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
-        return self.dbc.find_one(_id, projection)
+        return self._from_mongo(self.dbc.find_one(_id, projection))
 
     def get_all_el(self, query, user, projection):
         if user:
@@ -142,8 +149,10 @@ class ContainerStorage(object):
                 query['permissions'] = {'$elemMatch': user}
         log.debug(query)
         log.debug(projection)
-        result = self.dbc.find(query, projection)
-        return list(result)
+        results = list(self.dbc.find(query, projection))
+        for cont in results:
+            cont = self._from_mongo(cont)
+        return results
 
 class GroupStorage(ContainerStorage):
 
@@ -167,6 +176,19 @@ class ProjectStorage(ContainerStorage):
     def __init__(self):
         super(ProjectStorage,self).__init__('projects', use_object_id=True)
 
+    def _from_mongo(self, cont):
+        template = cont.get('template')
+        if template:
+            cont['template'] = json.loads(template)
+        return super(ProjectStorage,self)._from_mongo(cont)
+
+    def _to_mongo(self, payload):
+        template = payload.get('template')
+        if template:
+            payload['template'] = json.dumps(template)
+        return super(ProjectStorage,self)._to_mongo(payload)
+
+
     def recalc_sessions_compliance(self, project_id=None):
         if project_id is None:
             # Recalc all projects
@@ -180,7 +202,7 @@ class ProjectStorage(ContainerStorage):
         changed_sessions = []
 
         for project in projects:
-            template = json.loads(project.get('template',{}))
+            template = project.get('template',{})
             if not template:
                 return
             else:
@@ -198,7 +220,7 @@ class SessionStorage(ContainerStorage):
         super(SessionStorage,self).__init__('sessions', use_object_id=True)
 
     def create_el(self, payload):
-        project = ContainerStorage('projects', use_object_id=True).get_container(payload['project'])
+        project = ProjectStorage().get_container(payload['project'])
         if project.get('template'):
             payload['project_has_template'] = True
             payload['satisfies_template'] = hierarchy.is_session_compliant(payload, project.get('template'))
@@ -209,9 +231,9 @@ class SessionStorage(ContainerStorage):
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(_id))
         if session.get('project_has_template') or payload.get('project_has_template'):
-            project = ContainerStorage('projects', use_object_id=True).get_container(session['project'])
+            project = ProjectStorage().get_container(session['project'])
             session.update(payload)
-            payload['satisfies_template'] = hierarchy.is_session_compliant(session, json.loads(project.get('template')))
+            payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
         return super(SessionStorage, self).update_el(_id, payload, recursive=recursive, r_payload=r_payload, replace_metadata=r_payload)
 
     def recalc_session_compliance(self, session_id, session=None, template=None):
@@ -225,7 +247,7 @@ class SessionStorage(ContainerStorage):
             raise APINotFoundException('Could not find session {}'.format(session_id))
         if session.get('project_has_template'):
             if template is None:
-                template = json.loads(ContainerStorage('projects', use_object_id=True).get_container(session['project']).get('template'))
+                template = ProjectStorage().get_container(session['project']).get('template')
             satisfies_template = hierarchy.is_session_compliant(session, template)
             if session.get('satisfies_template') != satisfies_template:
                 update = {'satisfies_template': satisfies_template}
