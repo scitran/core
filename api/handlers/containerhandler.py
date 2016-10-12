@@ -507,6 +507,7 @@ class ContainerHandler(base.RequestHandler):
 
     def calculate_project_compliance(self, **kwargs):
         project_id = kwargs.pop('cid', None)
+        log.debug("project_id is {}".format(project_id))
         self.config = self.container_handler_configurations['projects']
         self.storage = self.config['storage']
         return {'sessions_changed': self.storage.recalc_sessions_compliance(project_id=project_id)}

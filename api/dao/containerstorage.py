@@ -194,7 +194,7 @@ class ProjectStorage(ContainerStorage):
             # Recalc all projects
             projects = self.get_all_el({'template': {'$exists': True}}, None, None)
         else:
-            project = self.get_container(project_id, get_children=True)
+            project = self.get_container(project_id)
             if project:
                 projects = [project]
             else:
@@ -204,10 +204,11 @@ class ProjectStorage(ContainerStorage):
         for project in projects:
             template = project.get('template',{})
             if not template:
-                return
+                continue
             else:
                 session_storage = SessionStorage()
-                for s in project.get('sessions', []):
+                sessions = session_storage.get_all_el({'project': project['_id']}, None, None)
+                for s in sessions:
                     changed = session_storage.recalc_session_compliance(s['_id'], session=s, template=template)
                     if changed:
                         changed_sessions.append(s['_id'])

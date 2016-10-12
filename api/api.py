@@ -174,7 +174,7 @@ routes = [
     webapp2.Route(r'/api/projects/groups',                                              containerhandler.ContainerHandler, handler_method='get_groups_with_project', methods=['GET']),
     webapp2.Route(r'/api/projects/recalc',                                              containerhandler.ContainerHandler, handler_method='calculate_project_compliance', methods=['POST']),
     webapp2.Route(_format(r'/api/projects/<cid:{cid_re}>/template'),                    containerhandler.ContainerHandler, handler_method='set_project_template', methods=['POST']),
-    webapp2.Route(_format(r'/api/projects/<cid:{cid_re}>/template/recalc'),             containerhandler.ContainerHandler, handler_method='calculate_project_compliance', methods=['POST']),
+    webapp2.Route(_format(r'/api/projects/<cid:{cid_re}>/recalc'),             containerhandler.ContainerHandler, handler_method='calculate_project_compliance', methods=['POST']),
 
     webapp2.Route(_format(r'/api/<par_cont_name:groups>/<par_id:{group_id_re}>/<cont_name:projects>'),          containerhandler.ContainerHandler, name='cont_sublist_groups', handler_method='get_all', methods=['GET']),
     webapp2.Route(_format(r'/api/<par_cont_name:{cont_name_re}>/<par_id:{cid_re}>/<cont_name:{cont_name_re}>'), containerhandler.ContainerHandler, name='cont_sublist', handler_method='get_all', methods=['GET']),
