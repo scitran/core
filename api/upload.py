@@ -147,7 +147,7 @@ class Upload(base.RequestHandler):
             if not user:
                 self.abort(403, 'Uploading requires login')
 
-        context = {'uid': self.uid if not self.superuser_request else None}
+        context = {'uid': self.uid if not self.superuser_request else None, 'site': self.user_site or 'local'}
 
         # TODO: what enum
         if strategy == 'label':
