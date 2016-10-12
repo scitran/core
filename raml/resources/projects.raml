@@ -19,7 +19,19 @@
       404:
         description: Project was not found
 
-/{ProjectId}/template/recalc:
+/recalc:
+  post:
+    description: |
+      Iterates all projects that have a session template.
+      Recalculate if projects' sessions satisfy the template.
+      Returns list of modified session ids.
+    responses:
+      200:
+        description: |
+          Projects' sessions' compliance was recalculated.
+          Returns list of session that were modified.
+
+/{ProjectId}/recalc:
   uriParameters:
     ProjectId:
       type: string
@@ -27,7 +39,7 @@
   post:
     description: |
       Recalculate if sessions in the project satisfy the template.
-      Returns list of modified sessions
+      Returns list of modified session ids.
     responses:
       200:
         description: |
