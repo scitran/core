@@ -220,7 +220,7 @@ def _group_id_fuzzy_match(group_id, project_label):
         group_id = 'unknown'
     return group_id, project_label
 
-def _find_or_create_destination_project(group_id, project_label, timestamp, user):
+def _find_or_create_destination_project(group_id, project_label, timestamp, user, site):
     group_id, project_label = _group_id_fuzzy_match(group_id, project_label)
     group = config.db.groups.find_one({'_id': group_id})
 
@@ -228,13 +228,13 @@ def _find_or_create_destination_project(group_id, project_label, timestamp, user
 
     if project:
         # If the project already exists, check the user's access
-        if user and not has_access(user, project, 'rw'):
+        if user and not has_access(user, project, 'rw', site):
             raise APIPermissionException('User {} does not have read-write access to project {}'.format(user, project['label']))
         return project
 
     else:
         # if the project doesn't exit, check the user's access at the group level
-        if user and not has_access(user, group, 'rw'):
+        if user and not has_access(user, group, 'rw', site):
             raise APIPermissionException('User {} does not have read-write access to group {}'.format(user, group_id))
 
         project = {
@@ -329,7 +329,8 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     return target_containers
 
 
-def find_existing_hierarchy(metadata, user=None):
+def find_existing_hierarchy(metadata, user=None, site=None):
+    #pylint: disable=unused-argument
     project = metadata.get('project', {})
     session = metadata.get('session', {})
     acquisition = metadata.get('acquisition', {})
@@ -364,7 +365,7 @@ def find_existing_hierarchy(metadata, user=None):
     return target_containers
 
 
-def upsert_bottom_up_hierarchy(metadata, user=None):
+def upsert_bottom_up_hierarchy(metadata, user=None, site=None):
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
@@ -383,7 +384,7 @@ def upsert_bottom_up_hierarchy(metadata, user=None):
     session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
     if session_obj: # skip project creation, if session exists
 
-        if user and not has_access(user, session_obj, 'rw'):
+        if user and not has_access(user, session_obj, 'rw', site):
             raise APIPermissionException('User {} does not have read-write access to session {}'.format(user, session_uid))
 
         now = datetime.datetime.utcnow()
@@ -395,10 +396,10 @@ def upsert_bottom_up_hierarchy(metadata, user=None):
         )
         return target_containers
     else:
-        return upsert_top_down_hierarchy(metadata, 'uid', user=user)
+        return upsert_top_down_hierarchy(metadata, 'uid', user=user, site=None)
 
 
-def upsert_top_down_hierarchy(metadata, type_='label', user=None):
+def upsert_top_down_hierarchy(metadata, type_='label', user=None, site=None):
     log.debug('I know my type is {}'.format(type_))
     group = metadata['group']
     project = metadata['project']
@@ -407,7 +408,7 @@ def upsert_top_down_hierarchy(metadata, type_='label', user=None):
 
     now = datetime.datetime.utcnow()
     project_files = dict_fileinfos(project.pop('files', []))
-    project_obj = _find_or_create_destination_project(group['_id'], project['label'], now, user)
+    project_obj = _find_or_create_destination_project(group['_id'], project['label'], now, user, site)
     target_containers = _get_targets(project_obj, session, acquisition, type_, now)
     target_containers.append(
         (TargetContainer(project_obj, 'project'), project_files)
