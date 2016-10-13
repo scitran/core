@@ -3,6 +3,9 @@ dist: trusty
 
 services:
   - mongodb
+env:
+  global:
+    secure: HELJx6WPr+W2S0FV47KkRdlS9NCqlMcdRMK8xWgRqqrEPv24KEvNnHxCy0tRbzITqadYtyvI1MtqtmpG04uty8Gpkc7w6L6LMJ/OuLG0gVX7AnaUovYTlY04m1/L9oyzOrTDXk5J/BKbcyiz7uJtkTc/A8MMZAFfZh7hmhLID78=
 
 install:
   - bin/install-ubuntu.sh
