@@ -124,7 +124,9 @@ def is_session_compliant(session, template):
 
     acquisitions = []
     if a_requirements or f_requirements:
-        acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
+        if session.get('_id'):
+            # Only grab acquisitions when not validating a newly created session
+            acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
 
     if s_requirements:
         validator = Draft4Validator(s_requirements.get('schema'))

@@ -45,6 +45,7 @@ hooks.skip("POST /engine -> 200");
 
 // Skipping until merge with rest of project raml (So we have a ProjectId)
 hooks.skip("POST /projects/{ProjectId}/template -> 200")
+hooks.skip("DELETE /projects/{ProjectId}/template -> 200")
 hooks.skip("POST /projects/{ProjectId}/recalc -> 200")
 
 

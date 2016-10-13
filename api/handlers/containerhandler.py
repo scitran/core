@@ -495,15 +495,21 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker = self._get_permchecker(container)
         result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload)
+        return {'modified': result.modified_count}
 
-        if result.modified_count == 1:
-            sessions = self.storage.get_children(project_id, projection={'_id':1})
-            session_storage = self.container_handler_configurations['sessions']['storage']
-            for s in sessions:
-                session_storage.exec_op('PUT', s['_id'], payload={'project_has_template': True})
-            return {'modified': result.modified_count}
-        else:
-            self.abort(404, 'Could not find project {}'.format(project_id))
+    def delete_project_template(self, **kwargs):
+        project_id = kwargs.pop('cid')
+        self.config = self.container_handler_configurations['projects']
+        self.storage = self.config['storage']
+        container = self._get_container(project_id)
+
+        payload = {'modified': datetime.datetime.utcnow()}
+        unset_payload = {'template': ''}
+
+        permchecker = self._get_permchecker(container)
+        result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload, unset_payload=unset_payload)
+        return {'modified': result.modified_count}
+
 
     def calculate_project_compliance(self, **kwargs):
         project_id = kwargs.pop('cid', None)
