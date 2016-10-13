@@ -71,7 +71,7 @@ class ContainerStorage(object):
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument
-                replace_metadata=False):
+                replace_metadata=False, unset_payload=None):
         """
         Generic method to exec a CRUD operation from a REST verb.
         """
@@ -86,7 +86,7 @@ class ContainerStorage(object):
         if action == 'DELETE':
             return self.delete_el(_id)
         if action == 'PUT':
-            return self.update_el(_id, payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
+            return self.update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
         if action == 'POST':
             return self.create_el(payload)
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
@@ -100,7 +100,7 @@ class ContainerStorage(object):
             raise APIConflictException('Object with id {} already exists.'.format(payload['_id']))
         return result
 
-    def update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
+    def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
         replace = None
         if replace_metadata:
             replace = {}
@@ -109,10 +109,15 @@ class ContainerStorage(object):
             if payload.get('subject') is not None and payload['subject'].get('metadata') is not None:
                 replace['subject.metadata'] = util.mongo_sanitize_fields(payload['subject'].pop('metadata'))
 
-        payload = self._to_mongo(payload)
-        update = {
-            '$set': util.mongo_dict(payload)
-        }
+        update = {}
+
+        if payload is not None:
+            payload = self._to_mongo(payload)
+            update['$set'] = util.mongo_dict(payload)
+
+        if unset_payload is not None:
+            update['$unset'] = util.mongo_dict(unset_payload)
+
         if replace is not None:
             update['$set'].update(replace)
 
@@ -177,17 +182,40 @@ class ProjectStorage(ContainerStorage):
         super(ProjectStorage,self).__init__('projects', use_object_id=True)
 
     def _from_mongo(self, cont):
-        template = cont.get('template')
-        if template:
-            cont['template'] = json.loads(template)
+        if cont:
+            template = cont.get('template')
+            if template:
+                cont['template'] = json.loads(template)
         return super(ProjectStorage,self)._from_mongo(cont)
 
     def _to_mongo(self, payload):
-        template = payload.get('template')
-        if template:
-            payload['template'] = json.dumps(template)
+        if payload:
+            template = payload.get('template')
+            if template:
+                payload['template'] = json.dumps(template)
         return super(ProjectStorage,self)._to_mongo(payload)
 
+    def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
+        result = super(ProjectStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
+
+        if result.modified_count < 1:
+            raise APINotFoundException('Could not find project {}'.format(_id))
+
+        if payload and 'template' in payload:
+            # We are adding/changing the project template, update session compliance
+            sessions = self.get_children(_id, projection={'_id':1})
+            session_storage = SessionStorage()
+            for s in sessions:
+                session_storage.update_el(s['_id'], {'project_has_template': True})
+
+        elif unset_payload and 'template' in unset_payload:
+            # We are removing the project template, remove session compliance
+            sessions = self.get_children(_id, projection={'_id':1})
+            session_storage = SessionStorage()
+            for s in sessions:
+                session_storage.update_el(s['_id'], None, unset_payload={'project_has_template': '', 'satisfies_template': ''})
+
+        return result
 
     def recalc_sessions_compliance(self, project_id=None):
         if project_id is None:
@@ -227,15 +255,21 @@ class SessionStorage(ContainerStorage):
             payload['satisfies_template'] = hierarchy.is_session_compliant(payload, project.get('template'))
         return super(SessionStorage, self).create_el(payload)
 
-    def update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
+    def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
         session = self.get_container(_id)
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(_id))
-        if session.get('project_has_template') or payload.get('project_has_template'):
+
+        # Determine if we need to calc session compliance
+        payload_has_template = (payload and payload.get('project_has_template'))
+        session_has_template = session.get('project_has_template') is not None
+        unset_payload_has_template = (unset_payload and 'project_has_template'in unset_payload)
+
+        if payload_has_template or (session_has_template and not unset_payload_has_template):
             project = ProjectStorage().get_container(session['project'])
             session.update(payload)
             payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
-        return super(SessionStorage, self).update_el(_id, payload, recursive=recursive, r_payload=r_payload, replace_metadata=r_payload)
+        return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=r_payload)
 
     def recalc_session_compliance(self, session_id, session=None, template=None):
         """
@@ -267,8 +301,8 @@ class AcquisitionStorage(ContainerStorage):
         SessionStorage().recalc_session_compliance(payload['session'])
         return result
 
-    def update_el(self, _id, payload, recursive=False, r_payload=None, replace_metadata=False):
-        result = super(AcquisitionStorage, self).update_el(_id, payload, recursive, r_payload, replace_metadata)
+    def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
+        result = super(AcquisitionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
         acquisition = self.get_container(_id)
         if acquisition is None:
             raise APINotFoundException('Could not find acquisition {}'.format(_id))

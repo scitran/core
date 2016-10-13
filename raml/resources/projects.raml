@@ -19,6 +19,18 @@
       404:
         description: Project was not found
 
+  delete:
+    description: Remove the session template for a project
+    responses:
+      200:
+        description: Template was removed
+        body:
+          application/json:
+            example: |
+              {"modified": 1}
+      404:
+        description: Project was not found
+
 /recalc:
   post:
     description: |
