@@ -132,7 +132,7 @@ routes = [
     webapp2.Route(r'/api/rules',             RulesHandler),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, handler_method='get_all', methods=['GET']),
     webapp2.Route(r'/api/groups',                                   grouphandler.GroupHandler, methods=['POST']),
-    webapp2.Route(_format(r'/api/groups/<_id:{group_id_re}>'),      grouphandler.GroupHandler, name='group_details'),
+    webapp2.Route(_format(r'/api/groups/<_id:{group_id_re}>'),      grouphandler.GroupHandler, name='group_details', methods=['GET', 'DELETE', 'PUT']),
 
     webapp2.Route(r'/api/collections/curators',                                         collectionshandler.CollectionsHandler, handler_method='curators', methods=['GET']),
     webapp2.Route(r'/api/collections',                                      collectionshandler.CollectionsHandler, name='colls', handler_method='get_all', methods=['GET']),
@@ -152,22 +152,22 @@ routes = [
 
 
     webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:tags>'),                                      listhandler.TagsListHandler, methods=['POST'], name='tags_post'),
-    webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.TagsListHandler, name='tags'),
+    webapp2.Route(_format(r'/api/<cont_name:groups>/<cid:{group_id_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.TagsListHandler, name='tags', methods=['GET', 'PUT', 'DELETE']),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>'),                                      listhandler.TagsListHandler, methods=['POST'], name='tags_post'),
-    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.TagsListHandler, name='tags'),
+    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:tags>/<value:{tag_re}>'),                     listhandler.TagsListHandler, name='tags', methods=['GET', 'PUT', 'DELETE']),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/packfile-start'),                                     listhandler.FileListHandler, name='packfile-start', handler_method='packfile_start', methods=['POST']),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/packfile'),                                     listhandler.FileListHandler, name='packfile', handler_method='packfile', methods=['POST']),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/packfile-end'),                                     listhandler.FileListHandler, name='packfile-end', handler_method='packfile_end'),
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>'),                                     listhandler.FileListHandler, name='files_post', methods=['POST']),
-    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>/<name:{filename_re}>'),            listhandler.FileListHandler, name='files'),
+    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:files>/<name:{filename_re}>'),            listhandler.FileListHandler, name='files',  methods=['GET', 'DELETE']),
 
     webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>'),                                     listhandler.PermissionsListHandler, name='perms_post', methods=['POST']),
-    webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>/<site:{site_id_re}>/<_id:{user_id_re}>'), listhandler.PermissionsListHandler, name='perms'),
+    webapp2.Route(_format(r'/api/<cont_name:collections|projects>/<cid:{cid_re}>/<list_name:permissions>/<site:{site_id_re}>/<_id:{user_id_re}>'), listhandler.PermissionsListHandler, name='perms', methods=['GET', 'PUT', 'DELETE']),
 
     webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:notes>'),                                     listhandler.NotesListHandler, name='notes_post', methods=['POST']),
-    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:notes>/<_id:{note_id_re}>'),                  listhandler.NotesListHandler, name='notes'),
+    webapp2.Route(_format(r'/api/<cont_name:{cont_name_re}>/<cid:{cid_re}>/<list_name:notes>/<_id:{note_id_re}>'),                  listhandler.NotesListHandler, name='notes', methods=['GET', 'PUT', 'DELETE']),
 
     webapp2.Route(_format(r'/api/users/<uid:{user_id_re}>/<cont_name:{cont_name_re}>'), containerhandler.ContainerHandler, name='user_conts', handler_method='get_all_for_user', methods=['GET']),
 
