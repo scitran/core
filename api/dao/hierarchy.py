@@ -350,7 +350,7 @@ def find_existing_hierarchy(metadata, user=None, site=None):
 
     if session_obj is None:
         raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))
-    if user and not has_access(user, session_obj, 'rw'):
+    if user and not has_access(user, session_obj, 'rw', site):
         raise APIPermissionException('User {} does not have read-write access to session {}'.format(user, session_uid))
 
     a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['_id'])
@@ -383,7 +383,7 @@ def upsert_bottom_up_hierarchy(metadata, user=None, site=None):
         log.error(metadata)
         raise APIStorageException(str(e))
 
-    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
+    session_obj = config.db.sessions.find_one({'uid': session_uid})
     if session_obj: # skip project creation, if session exists
 
         if user and not has_access(user, session_obj, 'rw', site):
@@ -398,7 +398,7 @@ def upsert_bottom_up_hierarchy(metadata, user=None, site=None):
         )
         return target_containers
     else:
-        return upsert_top_down_hierarchy(metadata, 'uid', user=user, site=None)
+        return upsert_top_down_hierarchy(metadata, 'uid', user=user, site=site)
 
 
 def upsert_top_down_hierarchy(metadata, type_='label', user=None, site=None):
