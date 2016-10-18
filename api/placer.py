@@ -16,6 +16,7 @@ from . import validators
 from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .dao import containerutil, hierarchy
 from .jobs import rules
+from .jobs.jobs import Job
 from .types import Origin
 
 
@@ -254,6 +255,11 @@ class EnginePlacer(Placer):
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
             hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+
+        if self.context.get('job_id'):
+            job = Job.get(self.context.get('job_id'))
+            job.outputs = [f['name'] for f in self.saved]
+            job.save()
 
         self.recalc_session_compliance()
         return self.saved
@@ -606,7 +612,15 @@ class AnalysisJobPlacer(Placer):
         if self.saved:
             q = {'analyses._id': str(self.id_)}
             u = {'$push': {'analyses.$.files': {'$each': self.saved}}}
-            if self.context.get('job_id'):
+            job_id = self.context.get('job_id')
+            if job_id:
                 # If the original job failed, update the analysis with the job that succeeded
-                u['$set'] = {'job': self.context['job_id']}
+                u['$set'] = {'job': job_id}
+
+                # Update the job with saved files list
+                job = Job.get(job_id)
+                job.outputs = [f['name'] for f in self.saved]
+                job.save()
+
             config.db.sessions.update_one(q, u)
+            return self.saved
