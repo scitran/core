@@ -192,6 +192,11 @@ def upsert_fileinfo(cont_name, _id, fileinfo):
         return update_fileinfo(cont_name, _id, fileinfo)
 
 def update_fileinfo(cont_name, _id, fileinfo):
+    if fileinfo.get('size') is not None:
+        if type(fileinfo['size']) != int:
+            log.warn('Fileinfo passed with non-integer size')
+            fileinfo['size'] = int(fileinfo['size'])
+
     update_set = {'files.$.modified': datetime.datetime.utcnow()}
     # in this method, we are overriding an existing file.
     # update_set allows to update all the fileinfo like size, hash, etc.
@@ -204,6 +209,11 @@ def update_fileinfo(cont_name, _id, fileinfo):
     )
 
 def add_fileinfo(cont_name, _id, fileinfo):
+    if fileinfo.get('size') is not None:
+        if type(fileinfo['size']) != int:
+            log.warn('Fileinfo passed with non-integer size')
+            fileinfo['size'] = int(fileinfo['size'])
+
     return config.db[cont_name].find_one_and_update(
         {'_id': _id},
         {'$push': {'files': fileinfo}},

@@ -11,7 +11,7 @@ from api import config
 from api.dao import containerutil
 from api.jobs.jobs import Job
 
-CURRENT_DATABASE_VERSION = 15 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 16 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -422,6 +422,41 @@ def upgrade_to_15():
             config.db.sessions.update_one({'_id': a['_id']}, {'$unset': {'timestamp': ''}})
             continue
         config.db.sessions.update_one({'_id': a['_id']}, {'$set': {'timestamp': fixed_timestamp}})
+
+def upgrade_to_16():
+    """
+    Fixes file.size sometimes being a floating-point rather than integer.
+    """
+
+    acquisitions = config.db.acquisitions.find({'files.size': {'$type': 'double'}})
+    for x in acquisitions:
+        for y in x.get('files', []):
+            if y.get('size'):
+                y['size'] = int(y['size'])
+        config.db.acquisitions.update({"_id": x['_id']}, x)
+
+    sessions = config.db.sessions.find({'files.size': {'$type': 'double'}})
+    for x in sessions:
+        for y in x.get('files', []):
+            if y.get('size'):
+                y['size'] = int(y['size'])
+        config.db.sessions.update({"_id": x['_id']}, x)
+
+    projects = config.db.projects.find({'files.size': {'$type': 'double'}})
+    for x in projects:
+        for y in x.get('files', []):
+            if y.get('size'):
+                y['size'] = int(y['size'])
+        config.db.projects.update({"_id": x['_id']}, x)
+
+    sessions = config.db.sessions.find({'analyses.files.size': {'$type': 'double'}})
+    for x in sessions:
+        for y in x.get('analyses', []):
+            for z in y.get('files', []):
+                if z.get('size'):
+                    z['size'] = int(z['size'])
+        config.db.sessions.update({"_id": x['_id']}, x)
+
 
 def upgrade_schema():
     """
