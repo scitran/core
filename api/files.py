@@ -31,21 +31,17 @@ def move_form_file_field_into_cas(file_field):
     cas    = util.path_from_hash(file_field.hash)
     move_file(file_field.path, os.path.join(base, cas))
 
-def hash_file_formatted(path, hash_alg=None):
+def hash_file_formatted(path, hash_alg=None, buffer_size=65536):
     """
     Return the scitran-formatted hash of a file, specified by path.
-
-    REVIEW: if there's an intelligent io-copy in python stdlib, I missed it. This uses an arbitrary buffer size :/
     """
 
     hash_alg = hash_alg or DEFAULT_HASH_ALG
     hasher = hashlib.new(hash_alg)
 
-    BUF_SIZE = 65536
-
     with open(path, 'rb') as f:
         while True:
-            data = f.read(BUF_SIZE)
+            data = f.read(buffer_size)
             if not data:
                 break
             hasher.update(data)
@@ -76,12 +72,20 @@ ParsedFile = collections.namedtuple('ParsedFile', ['info', 'path'])
 
 def process_form(request, hash_alg=None):
     """
-    Some workarounds to make webapp2 process forms in an intelligent way, and hash files we process.
-    Could subsume getHashingFieldStorage.
+    Some workarounds to make webapp2 process forms in an intelligent way,
+    and hash files we process.
+    Normally webapp2.POST would copy the entire request stream
+    into a single file on disk.
+    We pass request.body_file (wrapped wsgi input stream)
+    to our custom subclass of cgi.FieldStorage to write each upload file
+    to a separate file on disk, as it comes in off the network stream from the client.
+    Then we can rename these files to their final destination,
+    without copying the data gain.
 
-    This is a bit arcane, and deals with webapp2 / uwsgi / python complexities. Ask a team member, sorry!
+    Returns (tuple):
+        form: HashingFieldStorage instance
+        tempdir: tempdir the file was stored in.
 
-    Returns the processed form, and the tempdir it was stored in.
     Keep tempdir in scope until you don't need it anymore; it will be deleted on GC.
     """
 
@@ -95,8 +99,11 @@ def process_form(request, hash_alg=None):
     env.setdefault('CONTENT_LENGTH', '0')
     env['QUERY_STRING'] = ''
 
-    # Wall-clock warning: despite its name, getHashingFieldStorage will actually process the entire form to disk. This involves recieving the entire upload stream and storing any files in the tempdir.
-    form = getHashingFieldStorage(tempdir.name, DEFAULT_HASH_ALG)(
+    field_storage_class = getHashingFieldStorage(
+        tempdir.name, DEFAULT_HASH_ALG
+        )
+
+    form = field_storage_class(
         fp=request.body_file, environ=env, keep_blank_values=True
     )
 
