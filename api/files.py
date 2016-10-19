@@ -105,6 +105,12 @@ def process_form(request, hash_alg=None):
 def getHashingFieldStorage(upload_dir, hash_alg):
     # pylint: disable=attribute-defined-outside-init
 
+    # We dynamically create this class because we
+    # can't add arguments to __init__.
+    # This is due to the FieldStorage we create
+    # in turn creating a FieldStorage for different
+    # parts of the form, with a hardcoded set of args
+
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
 
