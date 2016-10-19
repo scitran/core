@@ -117,6 +117,8 @@ def getHashingFieldStorage(upload_dir, hash_alg):
     # This is due to the FieldStorage we create
     # in turn creating a FieldStorage for different
     # parts of the form, with a hardcoded set of args
+    # https://github.com/python/cpython/blob/1e3e162ff5c0cc656559c43914439ab3e5734f00/Lib/cgi.py#L696
+    # https://github.com/python/cpython/blob/1e3e162ff5c0cc656559c43914439ab3e5734f00/Lib/cgi.py#L728
 
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
