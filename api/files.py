@@ -74,8 +74,10 @@ def process_form(request, hash_alg=None):
     """
     Some workarounds to make webapp2 process forms in an intelligent way,
     and hash files we process.
-    Normally webapp2.POST would copy the entire request stream
+    Normally webapp2/WebOb Reqest.POST would copy the entire request stream
     into a single file on disk.
+    https://github.com/Pylons/webob/blob/cb9c0b4f51542a7d0ed5cc5bf0a73f528afbe03e/webob/request.py#L787
+    https://github.com/moraes/webapp-improved/pull/12
     We pass request.body_file (wrapped wsgi input stream)
     to our custom subclass of cgi.FieldStorage to write each upload file
     to a separate file on disk, as it comes in off the network stream from the client.
@@ -94,7 +96,8 @@ def process_form(request, hash_alg=None):
     # Store form file fields in a tempdir
     tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
 
-    # Deep vodoo; docs?
+    # Copied from WebOb source:
+    # https://github.com/Pylons/webob/blob/cb9c0b4f51542a7d0ed5cc5bf0a73f528afbe03e/webob/request.py#L790
     env = request.environ.copy()
     env.setdefault('CONTENT_LENGTH', '0')
     env['QUERY_STRING'] = ''
