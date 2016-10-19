@@ -3,7 +3,6 @@ import cgi
 import json
 import shutil
 import hashlib
-import datetime
 import collections
 
 from . import util
@@ -135,93 +134,6 @@ def getHashingFieldStorage(upload_dir, hash_alg):
             return self.open_file.get_hash()
 
     return HashingFieldStorage
-
-
-class FileStore(object):
-    """This class provides and interface for file uploads.
-    To perform an upload the client of the class should follow these steps:
-
-    1) initialize the request
-    2) save a temporary file
-    3) check identical
-    4) move the temporary file to its destination
-
-    The operations could be safely interleaved with other actions like permission checks or database updates.
-    """
-
-    def __init__(self, request, dest_path, filename=None, hash_alg=DEFAULT_HASH_ALG):
-        self.body = request.body_file
-        self.environ = request.environ.copy()
-        self.environ.setdefault('CONTENT_LENGTH', '0')
-        self.environ['QUERY_STRING'] = ''
-        self.hash_alg = hash_alg
-        start_time = datetime.datetime.utcnow()
-        if request.content_type == 'multipart/form-data':
-            self._save_multipart_file(dest_path, hash_alg)
-            self.payload = request.POST.mixed()
-        else:
-            self.payload = request.POST.mixed()
-            self.filename = filename or self.payload.get('filename')
-            self._save_body_file(dest_path, filename, hash_alg)
-        self.mimetype = util.guess_mimetype(self.filename)
-        self.path = os.path.join(dest_path, self.filename)
-        self.duration = datetime.datetime.utcnow() - start_time
-        # the hash format is:
-        # <version>-<hashing algorithm>-<actual hash>
-        # version will track changes on hash related methods like for example how we check for identical files.
-        self.hash = util.format_hash(hash_alg, self.received_file.get_hash())
-        self.size = os.path.getsize(self.path)
-
-    def _save_multipart_file(self, dest_path, hash_alg):
-        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
-
-        self.received_file = form['file'].file
-        self.filename = os.path.basename(form['file'].filename)
-        self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
-        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
-
-    def _save_body_file(self, dest_path, filename, hash_alg):
-        if not filename:
-            raise FileStoreException('filename is required for body uploads')
-        self.filename = os.path.basename(filename)
-        self.received_file = HashingFile(os.path.join(dest_path, filename), hash_alg)
-        for chunk in iter(lambda: self.body.read(2**20), ''):
-            self.received_file.write(chunk)
-        self.tags = None
-        self.metadata = None
-
-    def move_file(self, target_path):
-        move_file(self.path, target_path)
-        self.path = target_path
-
-# TODO: Hopefully deprecated by unification branch
-class MultiFileStore(object):
-    """This class provides and interface for file uploads.
-    """
-
-    def __init__(self, request, dest_path, hash_alg=DEFAULT_HASH_ALG):
-        self.body = request.body_file
-        self.environ = request.environ.copy()
-        self.environ.setdefault('CONTENT_LENGTH', '0')
-        self.environ['QUERY_STRING'] = ''
-        self.hash_alg = hash_alg
-        self.files = {}
-        self._save_multipart_files(dest_path, hash_alg)
-        self.payload = request.POST.mixed()
-
-    def _save_multipart_files(self, dest_path, hash_alg):
-        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
-        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
-        for field in form:
-            if form[field].filename:
-                filename = os.path.basename(form[field].filename)
-                self.files[filename] = ParsedFile(
-                    {
-                        'hash': util.format_hash(hash_alg, form[field].file.get_hash()),
-                        'size': os.path.getsize(os.path.join(dest_path, filename)),
-                        'mimetype': util.guess_mimetype(filename)
-                    }, os.path.join(dest_path, filename))
-
 
 # File extension --> scitran file type detection hueristics.
 # Listed in precendence order.
