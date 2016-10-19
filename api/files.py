@@ -3,7 +3,6 @@ import cgi
 import json
 import shutil
 import hashlib
-import datetime
 import collections
 
 from . import util
@@ -32,21 +31,17 @@ def move_form_file_field_into_cas(file_field):
     cas    = util.path_from_hash(file_field.hash)
     move_file(file_field.path, os.path.join(base, cas))
 
-def hash_file_formatted(path, hash_alg=None):
+def hash_file_formatted(path, hash_alg=None, buffer_size=65536):
     """
     Return the scitran-formatted hash of a file, specified by path.
-
-    REVIEW: if there's an intelligent io-copy in python stdlib, I missed it. This uses an arbitrary buffer size :/
     """
 
     hash_alg = hash_alg or DEFAULT_HASH_ALG
     hasher = hashlib.new(hash_alg)
 
-    BUF_SIZE = 65536
-
     with open(path, 'rb') as f:
         while True:
-            data = f.read(BUF_SIZE)
+            data = f.read(buffer_size)
             if not data:
                 break
             hasher.update(data)
@@ -77,12 +72,20 @@ ParsedFile = collections.namedtuple('ParsedFile', ['info', 'path'])
 
 def process_form(request, hash_alg=None):
     """
-    Some workarounds to make webapp2 process forms in an intelligent way, and hash files we process.
-    Could subsume getHashingFieldStorage.
+    Some workarounds to make webapp2 process forms in an intelligent way,
+    and hash files we process.
+    Normally webapp2.POST would copy the entire request stream
+    into a single file on disk.
+    We pass request.body_file (wrapped wsgi input stream)
+    to our custom subclass of cgi.FieldStorage to write each upload file
+    to a separate file on disk, as it comes in off the network stream from the client.
+    Then we can rename these files to their final destination,
+    without copying the data gain.
 
-    This is a bit arcane, and deals with webapp2 / uwsgi / python complexities. Ask a team member, sorry!
+    Returns (tuple):
+        form: HashingFieldStorage instance
+        tempdir: tempdir the file was stored in.
 
-    Returns the processed form, and the tempdir it was stored in.
     Keep tempdir in scope until you don't need it anymore; it will be deleted on GC.
     """
 
@@ -96,8 +99,11 @@ def process_form(request, hash_alg=None):
     env.setdefault('CONTENT_LENGTH', '0')
     env['QUERY_STRING'] = ''
 
-    # Wall-clock warning: despite its name, getHashingFieldStorage will actually process the entire form to disk. This involves recieving the entire upload stream and storing any files in the tempdir.
-    form = getHashingFieldStorage(tempdir.name, DEFAULT_HASH_ALG)(
+    field_storage_class = getHashingFieldStorage(
+        tempdir.name, DEFAULT_HASH_ALG
+        )
+
+    form = field_storage_class(
         fp=request.body_file, environ=env, keep_blank_values=True
     )
 
@@ -105,6 +111,12 @@ def process_form(request, hash_alg=None):
 
 def getHashingFieldStorage(upload_dir, hash_alg):
     # pylint: disable=attribute-defined-outside-init
+
+    # We dynamically create this class because we
+    # can't add arguments to __init__.
+    # This is due to the FieldStorage we create
+    # in turn creating a FieldStorage for different
+    # parts of the form, with a hardcoded set of args
 
     class HashingFieldStorage(cgi.FieldStorage):
         bufsize = 2**20
@@ -122,8 +134,7 @@ def getHashingFieldStorage(upload_dir, hash_alg):
         def _FieldStorage__write(self, line):
             # pylint: disable=access-member-before-definition
             if self._FieldStorage__file is not None:
-                # use the make_file method only if the form includes a filename
-                # e.g. do not create a file and a hash for the form metadata.
+                # Always write fields of type "file" to disk for consistent renaming behavior
                 if self.filename:
                     self.file = self.make_file('')
 
@@ -135,93 +146,6 @@ def getHashingFieldStorage(upload_dir, hash_alg):
             return self.open_file.get_hash()
 
     return HashingFieldStorage
-
-
-class FileStore(object):
-    """This class provides and interface for file uploads.
-    To perform an upload the client of the class should follow these steps:
-
-    1) initialize the request
-    2) save a temporary file
-    3) check identical
-    4) move the temporary file to its destination
-
-    The operations could be safely interleaved with other actions like permission checks or database updates.
-    """
-
-    def __init__(self, request, dest_path, filename=None, hash_alg=DEFAULT_HASH_ALG):
-        self.body = request.body_file
-        self.environ = request.environ.copy()
-        self.environ.setdefault('CONTENT_LENGTH', '0')
-        self.environ['QUERY_STRING'] = ''
-        self.hash_alg = hash_alg
-        start_time = datetime.datetime.utcnow()
-        if request.content_type == 'multipart/form-data':
-            self._save_multipart_file(dest_path, hash_alg)
-            self.payload = request.POST.mixed()
-        else:
-            self.payload = request.POST.mixed()
-            self.filename = filename or self.payload.get('filename')
-            self._save_body_file(dest_path, filename, hash_alg)
-        self.mimetype = util.guess_mimetype(self.filename)
-        self.path = os.path.join(dest_path, self.filename)
-        self.duration = datetime.datetime.utcnow() - start_time
-        # the hash format is:
-        # <version>-<hashing algorithm>-<actual hash>
-        # version will track changes on hash related methods like for example how we check for identical files.
-        self.hash = util.format_hash(hash_alg, self.received_file.get_hash())
-        self.size = os.path.getsize(self.path)
-
-    def _save_multipart_file(self, dest_path, hash_alg):
-        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
-
-        self.received_file = form['file'].file
-        self.filename = os.path.basename(form['file'].filename)
-        self.tags = json.loads(form['tags'].file.getvalue()) if 'tags' in form else None
-        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
-
-    def _save_body_file(self, dest_path, filename, hash_alg):
-        if not filename:
-            raise FileStoreException('filename is required for body uploads')
-        self.filename = os.path.basename(filename)
-        self.received_file = HashingFile(os.path.join(dest_path, filename), hash_alg)
-        for chunk in iter(lambda: self.body.read(2**20), ''):
-            self.received_file.write(chunk)
-        self.tags = None
-        self.metadata = None
-
-    def move_file(self, target_path):
-        move_file(self.path, target_path)
-        self.path = target_path
-
-# TODO: Hopefully deprecated by unification branch
-class MultiFileStore(object):
-    """This class provides and interface for file uploads.
-    """
-
-    def __init__(self, request, dest_path, hash_alg=DEFAULT_HASH_ALG):
-        self.body = request.body_file
-        self.environ = request.environ.copy()
-        self.environ.setdefault('CONTENT_LENGTH', '0')
-        self.environ['QUERY_STRING'] = ''
-        self.hash_alg = hash_alg
-        self.files = {}
-        self._save_multipart_files(dest_path, hash_alg)
-        self.payload = request.POST.mixed()
-
-    def _save_multipart_files(self, dest_path, hash_alg):
-        form = getHashingFieldStorage(dest_path, hash_alg)(fp=self.body, environ=self.environ, keep_blank_values=True)
-        self.metadata = json.loads(form['metadata'].file.getvalue()) if 'metadata' in form else None
-        for field in form:
-            if form[field].filename:
-                filename = os.path.basename(form[field].filename)
-                self.files[filename] = ParsedFile(
-                    {
-                        'hash': util.format_hash(hash_alg, form[field].file.get_hash()),
-                        'size': os.path.getsize(os.path.join(dest_path, filename)),
-                        'mimetype': util.guess_mimetype(filename)
-                    }, os.path.join(dest_path, filename))
-
 
 # File extension --> scitran file type detection hueristics.
 # Listed in precendence order.
