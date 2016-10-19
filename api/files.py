@@ -127,8 +127,7 @@ def getHashingFieldStorage(upload_dir, hash_alg):
         def _FieldStorage__write(self, line):
             # pylint: disable=access-member-before-definition
             if self._FieldStorage__file is not None:
-                # use the make_file method only if the form includes a filename
-                # e.g. do not create a file and a hash for the form metadata.
+                # Always write fields of type "file" to disk for consistent renaming behavior
                 if self.filename:
                     self.file = self.make_file('')
 
