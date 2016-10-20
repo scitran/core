@@ -269,7 +269,7 @@ class SessionStorage(ContainerStorage):
             project = ProjectStorage().get_container(session['project'])
             session.update(payload)
             payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
-        return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=r_payload)
+        return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
 
     def recalc_session_compliance(self, session_id, session=None, template=None):
         """
