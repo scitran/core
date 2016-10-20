@@ -11,7 +11,7 @@ from api import config
 from api.dao import containerutil
 from api.jobs.jobs import Job
 
-CURRENT_DATABASE_VERSION = 16 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 17 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -456,6 +456,32 @@ def upgrade_to_16():
                 if z.get('size'):
                     z['size'] = int(z['size'])
         config.db.sessions.update({"_id": x['_id']}, x)
+
+def upgrade_to_17():
+    """
+    scitran/core issue #557
+
+    Reassign subject ids after bug fix in packfile code that did not properly match subjects
+    """
+
+    pipeline = [
+        {'$group' : { '_id' : {'pid': '$project', 'code': '$subject.code'}, 'sids': {'$push': '$_id' }}}
+    ]
+
+    subjects = config.db.command('aggregate', 'sessions', pipeline=pipeline)
+    for subject in subjects['result']:
+
+        # Subjects without a code and sessions without a subject
+        # will be returned grouped together, but all need unique IDs
+        if subject['_id'].get('code') is None:
+            for session_id in subject['sids']:
+                subject_id = bson.ObjectId()
+                config.db.sessions.update_one({'_id': session_id},{'$set': {'subject._id': subject_id}})
+        else:
+            subject_id = bson.ObjectId()
+            query = {'_id': {'$in': subject['sids']}}
+            update = {'$set': {'subject._id': subject_id}}
+            config.db.sessions.update_many(query, update)
 
 
 def upgrade_schema():
