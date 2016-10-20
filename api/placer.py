@@ -101,7 +101,7 @@ class Placer(object):
                 session_id = self.id_
             else:
                 session_id = AcquisitionStorage().get_container(str(self.id_)).get('session')
-            SessionStorage().recalc_session_compliance(session_id)
+            SessionStorage().recalc_session_compliance(session_id, hard=True)
 
 
 class TargetedPlacer(Placer):
@@ -296,7 +296,6 @@ class TokenPlacer(Placer):
         for path in self.paths:
             dest = os.path.join(self.folder, os.path.basename(path))
             shutil.move(path, dest)
-
         self.recalc_session_compliance()
         return self.saved
 
@@ -534,6 +533,11 @@ class PackfilePlacer(Placer):
         self.container	    = acquisition
 
         self.save_file(cgi_field, cgi_info)
+
+        # Set target for session recalc
+        self.container_type = 'session'
+        self.id_            = str(session['_id'])
+        self.container      = session
 
         self.recalc_session_compliance()
 

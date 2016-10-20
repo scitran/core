@@ -237,7 +237,7 @@ class ProjectStorage(ContainerStorage):
                 session_storage = SessionStorage()
                 sessions = session_storage.get_all_el({'project': project['_id']}, None, None)
                 for s in sessions:
-                    changed = session_storage.recalc_session_compliance(s['_id'], session=s, template=template)
+                    changed = session_storage.recalc_session_compliance(s['_id'], session=s, template=template, hard=True)
                     if changed:
                         changed_sessions.append(s['_id'])
         return changed_sessions
@@ -271,7 +271,7 @@ class SessionStorage(ContainerStorage):
             payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
         return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
 
-    def recalc_session_compliance(self, session_id, session=None, template=None):
+    def recalc_session_compliance(self, session_id, session=None, template=None, hard=False):
         """
         Calculates a session's compliance with the project's session template.
         Returns True if the status changed, False otherwise
@@ -280,6 +280,16 @@ class SessionStorage(ContainerStorage):
             session = self.get_container(session_id)
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(session_id))
+        if hard:
+            # A "hard" flag will also recalc if session is tracked by a project template
+            project = ProjectStorage().get_container(session['project'])
+            project_has_template = bool(project.get('template'))
+            if session.get('project_has_template', False) != project_has_template:
+                if project_has_template == True:
+                    self.update_el(session['_id'], {'project_has_template': True})
+                else:
+                    self.update_el(session['_id'], None, unset_payload={'project_has_template': '', 'satisfies_template': ''})
+                return True
         if session.get('project_has_template'):
             if template is None:
                 template = ProjectStorage().get_container(session['project']).get('template')
