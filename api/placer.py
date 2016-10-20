@@ -490,6 +490,8 @@ class PackfilePlacer(Placer):
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['session'])
         insert_map['subject'] = containerutil.add_id_to_subject(insert_map.get('subject'), self.p_id)
+        if 'timestamp' in insert_map:
+            insert_map['timestamp'] = dateutil.parser.parse(insert_map['timestamp'])
 
         session = config.db['session' + 's'].find_one_and_update(
             query, {
