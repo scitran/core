@@ -4,8 +4,11 @@
     "dicom":        [ ".dcm", ".dcm.zip", ".dicom.zip" ],
     "parrec":       [ ".parrec.zip", ".par-rec.zip" ],
     "gephysio":     [ ".gephysio.zip" ],
+    "log":          [ ".log" ],
+    "MATLAB data":  [ ".mat" ],
     "nifti":        [ ".nii.gz", ".nii" ],
     "pfile":        [ ".7.gz", ".7" ],
+    "PsychoPy data":  [ ".psydat" ],
     "qa":           [ ".qa.png", ".qa.json" ],
 
     "archive":      [ ".zip", ".tbz2", ".tar.gz", ".tbz", ".tar.bz2", ".tgz", ".tar", ".txz", ".tar.xz" ],
