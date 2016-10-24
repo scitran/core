@@ -45,8 +45,7 @@ class SearchContainer(object):
                 self.is_target = True
             else:
                 self.child_targets.add(t)
-        if not all_data and user and cont_name == 'projects':
-            self.query = add_filter(self.query, 'permissions._id', user)
+
 
     def get_results(self):
         if self.query is None:
@@ -59,7 +58,18 @@ class SearchContainer(object):
     def _exec_query(self, query):
         # pylint: disable=unexpected-keyword-arg
         # pylint disable can be removed after PyCQA/pylint#258 is fixed
-        q = es_query(query, self.cont_name, _min_score)
+
+
+        if not self.all_data and self.user and self.cont_name == 'projects':
+            # Filter on permissions for searches that do not include all data
+            self.query = add_filter(self.query, 'permissions._id', self.user)
+
+        source_filter = None
+        if self.all_data and self.cont_name == 'sessions':
+            # Filter out firtname and lastname of subjects when searching all data
+            source_filter = { 'exclude': ['subject.firstname', 'subject.lastname', 'subject.firstnamehash', 'subject.lastnamehash']}
+
+        q = es_query(query, self.cont_name, _min_score, source_filter=source_filter)
         results = config.es.search(
             index='scitran',
             doc_type=self.cont_name,
