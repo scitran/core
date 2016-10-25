@@ -66,8 +66,8 @@ class SearchContainer(object):
 
         source_filter = None
         if self.all_data and self.cont_name == 'sessions':
-            # Filter out firtname and lastname of subjects when searching all data
-            source_filter = { 'exclude': ['subject.firstname', 'subject.lastname', 'subject.firstnamehash', 'subject.lastnamehash']}
+            # Filter out firtsname and lastname of subjects when searching all data
+            source_filter = { 'exclude': ['subject.firstname', 'subject.lastname', 'subject.firstname_hash', 'subject.lastname_hash']}
 
         q = es_query(query, self.cont_name, _min_score, source_filter=source_filter)
         results = config.es.search(
