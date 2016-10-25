@@ -1,4 +1,4 @@
-def es_query(input_query, doc_type, min_score=0.5, additional_filter=None):
+def es_query(input_query, doc_type, min_score=0.5, additional_filter=None, source_filter=None):
     """wrap the body to filter by doc_type
     as some full text queries seem to break in ElasticSearch
     if, instead, we pass the doc_type in the URL path."""
@@ -7,6 +7,7 @@ def es_query(input_query, doc_type, min_score=0.5, additional_filter=None):
             'value': doc_type
         }
     }
+
     if additional_filter:
         es_filter = {
             'bool': {
@@ -28,6 +29,10 @@ def es_query(input_query, doc_type, min_score=0.5, additional_filter=None):
             'exclude': ['*.metadata']
         }
     }
+
+    if source_filter:
+        query['_source'] = source_filter
+
     return query
 
 def add_filter_from_list(query, field, list_ids):
