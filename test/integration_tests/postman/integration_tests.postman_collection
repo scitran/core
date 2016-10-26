@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "0cd62962-97a4-0bda-dd64-7c3a79d47345",
+		"_postman_id": "00548165-ad93-9f33-4cbc-ca7721664759",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -234,7 +234,7 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 500ms\"] = responseTime < 500;\n\nvar jsonData = JSON.parse(responseBody);\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
 					}
 				}
 			],
@@ -261,7 +261,8 @@
 							"key": "file",
 							"src": "test/integration_tests/postman/test_files/test-1.dcm",
 							"type": "file",
-							"enabled": true
+							"enabled": true,
+							"value": ""
 						}
 					]
 				}
