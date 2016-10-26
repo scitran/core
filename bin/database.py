@@ -10,8 +10,9 @@ import sys
 from api import config
 from api.dao import containerutil
 from api.jobs.jobs import Job
+from api.jobs import gears
 
-CURRENT_DATABASE_VERSION = 17 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 18 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -22,7 +23,6 @@ def get_db_version():
     if version is None or version.get('database') is None:
         return 0
     return version.get('database')
-
 
 def confirm_schema_match():
     """
@@ -258,7 +258,6 @@ def upgrade_to_8():
             if c in config.db.collection_names():
                 config.db.drop_collection(c)
 
-
 def upgrade_to_9():
     """
     scitran/core issue #292
@@ -482,6 +481,21 @@ def upgrade_to_17():
             query = {'_id': {'$in': subject['sids']}}
             update = {'$set': {'subject._id': subject_id}}
             config.db.sessions.update_many(query, update)
+
+def upgrade_to_18():
+    """
+    scitran/core issue #334
+
+    Move singleton gear doc to its own table
+    """
+
+    gear_list = config.db.singletons.find_one({"_id": "gears"})['gear_list']
+
+    if gear_list is not None:
+        for gear in gear_list:
+            gears.upsert_gear(gear)
+
+        config.db.singletons.remove({"_id": "gears"})
 
 
 def upgrade_schema():

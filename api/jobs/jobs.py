@@ -169,7 +169,7 @@ class Job(object):
         Parameters
         ----------
         gear: map
-            A gear_list map from the singletons.gears table.
+            A gear_list map from the gears table.
         """
 
         r = {
