@@ -491,10 +491,11 @@ def upgrade_to_18():
 
     gear_list = config.db.singletons.find_one({"_id": "gears"})['gear_list']
 
-    for gear in gear_list:
-        gears.upsert_gear(gear)
+    if gear_list is not None:
+        for gear in gear_list:
+            gears.upsert_gear(gear)
 
-    config.db.singletons.remove({"_id": "gears"})
+        config.db.singletons.remove({"_id": "gears"})
 
 
 def upgrade_schema():
