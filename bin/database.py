@@ -489,9 +489,10 @@ def upgrade_to_18():
     Move singleton gear doc to its own table
     """
 
-    gear_list = config.db.singletons.find_one({"_id": "gears"})['gear_list']
+    gear_doc = config.db.singletons.find_one({"_id": "gears"})
 
-    if gear_list is not None:
+    if gear_doc is not None:
+        gear_list = gear_doc.get('gear_list', [])
         for gear in gear_list:
             gears.upsert_gear(gear)
 
