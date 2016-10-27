@@ -48,6 +48,26 @@
       ],
       "additionalProperties":false
     },
+    "origin": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties":false
+    },
+    "outputs": {
+      "type": "array",
+      "items": {"$ref": "../mongo/file.json"}
+    },
     "tags": {
       "type": "array",
       "items": {

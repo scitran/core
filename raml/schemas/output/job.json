@@ -10,6 +10,8 @@
         "name":{},
         "inputs":{},
         "destination":{},
+        "origin": {},
+        "outputs": {},
         "tags":{},
         "state":{},
         "attempt":{},
@@ -31,6 +33,7 @@
   ],
   "required":[
      "id", "name", "inputs", "config",
-     "destination", "tags", "state", "attempt"
+     "destination", "tags", "state", "attempt",
+     "origin", "outputs"
      ]
 }
