@@ -223,17 +223,20 @@ class ContainerHandler(base.RequestHandler):
                     }
                 ]
         """
-
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         if cont_name != 'sessions':
             self.abort(400, 'Can only request jobs at the session level.')
 
         cont = self._get_container(cid, projection={'permissions': 0}, get_children=True)
+
         permchecker = self._get_permchecker(cont)
         permchecker(noop)('GET', cid)
 
         children = cont.get('acquisitions')
+        if not children:
+            return {}
+
         id_array = [str(c['_id']) for c in children]
         cont_array = [containerutil.ContainerReference('acquisition', cid) for cid in id_array]
 

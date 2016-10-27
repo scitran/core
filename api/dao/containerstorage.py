@@ -50,6 +50,8 @@ class ContainerStorage(object):
 
     def get_container(self, _id, projection=None, get_children=False):
         cont = self.get_el(_id, projection=projection)
+        if cont is None:
+            raise APINotFoundException('Could not find {} {}'.format(self.cont_name, _id))
         if get_children:
             children = self.get_children(_id, projection=projection)
             cont[CHILD_MAP[self.cont_name]] = children
