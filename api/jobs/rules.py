@@ -131,6 +131,12 @@ def queue_job_legacy(algorithm_id, input_):
     job = Job(algorithm_id, inputs)
     return job.insert()
 
+def find_type_in_container(container, type_):
+    for c_file in container['files']:
+        if type_ == c_file['type']:
+            return c_file
+    return None
+
 def create_jobs(db, container, container_type, file_):
     """
     Check all rules that apply to this file, and enqueue the jobs that should be run.
@@ -149,9 +155,22 @@ def create_jobs(db, container, container_type, file_):
     for rule in rules:
         if eval_rule(rule, file_, container):
             alg_name = rule['alg']
-            input_ = FileReference(type=container_type, id=str(container['_id']), name=file_['name'])
 
-            queue_job_legacy(alg_name, input_)
+            if rule.get('match') is None:
+                input_ = FileReference(type=container_type, id=str(container['_id']), name=file_['name'])
+                queue_job_legacy(alg_name, input_)
+            else:
+                inputs = { }
+
+                for input_name, match_type in rule['match'].iteritems():
+                    match = find_type_in_container(container, match_type)
+                    if match is None:
+                        raise Exception("No type " + match_type + " found for alg rule " + alg_name + " that should have been satisfied")
+                    inputs[input_name] = FileReference(type=container_type, id=str(container['_id']), name=match['name'])
+
+                job = Job(alg_name, inputs)
+                job.insert()
+
             job_list.append(alg_name)
 
     return job_list

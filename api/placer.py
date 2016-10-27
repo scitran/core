@@ -90,7 +90,7 @@ class Placer(object):
 
         # Update the DB
         if info is not None:
-            hierarchy.upsert_fileinfo(self.container_type, self.id_, info)
+            self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, info)
 
             # Queue any jobs as a result of this upload
             rules.create_jobs(config.db, self.container, self.container_type, info)
