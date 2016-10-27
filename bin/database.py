@@ -497,12 +497,12 @@ def upgrade_to_18():
             try:
                 gears.upsert_gear(gear)
             except Exception as e:
-                logging.error()
+                logging.error("")
                 logging.error("Error upgrading gear:")
                 logging.error(type(e))
                 logging.error("Gear will not be retained. Document follows:")
                 logging.error(gear)
-                logging.error()
+                logging.error("")
 
         config.db.singletons.remove({"_id": "gears"})
 
