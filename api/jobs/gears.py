@@ -83,7 +83,7 @@ def insert_gear(doc):
 
         job = Job(doc['manifest']['name'], {}, destination={}, tags=['prefetch'], request={
             'inputs': [
-                doc['manifest']['input']
+                doc['input']
             ],
             'target': {
                 'command': ['uname', '-a'],
