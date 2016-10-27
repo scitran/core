@@ -79,7 +79,7 @@ def eval_match(match_type, match_param, file_, container):
     # Match the container having any file (including this one) with this type
     elif match_type == 'container.has-type':
         for c_file in container['files']:
-            if match_param in c_file['measurements']:
+            if match_param == c_file['type']:
                 return True
 
         return False
