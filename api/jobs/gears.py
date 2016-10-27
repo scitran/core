@@ -20,7 +20,7 @@ def get_gears(fields=None):
     projection = { }
 
     if fields is None:
-        fields = [ ]
+        return config.db.gears.find()
     else:
         fields.append('name')
 
