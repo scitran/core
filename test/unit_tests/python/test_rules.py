@@ -95,8 +95,8 @@ def test_eval_match_container_measurement():
 
 def test_eval_match_container_has_type():
     part = rulePart(match_type='container.has-type', container={'files': [
-            {'measurements': ['a', 'diffusion', 'b']},
-            {'measurements': ['c', 'other', 'b']},
+            {'type': 'diffusion'},
+            {'type': 'other'},
         ]})
 
     args = part.gen(match_param='other')

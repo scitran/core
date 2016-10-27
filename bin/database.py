@@ -494,7 +494,15 @@ def upgrade_to_18():
     if gear_doc is not None:
         gear_list = gear_doc.get('gear_list', [])
         for gear in gear_list:
-            gears.upsert_gear(gear)
+            try:
+                gears.upsert_gear(gear)
+            except Exception as e:
+                logging.error("")
+                logging.error("Error upgrading gear:")
+                logging.error(type(e))
+                logging.error("Gear will not be retained. Document follows:")
+                logging.error(gear)
+                logging.error("")
 
         config.db.singletons.remove({"_id": "gears"})
 
