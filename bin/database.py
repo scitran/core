@@ -519,7 +519,7 @@ def upgrade_to_19():
             'origin' : {'type': str(Origin.unknown), 'id': None}
         }
     }
-    config.db.jobs.update_many({'origin.': {'$exists': False}}, update)
+    config.db.jobs.update_many({'origin': {'$exists': False}}, update)
 
 
 def upgrade_schema():

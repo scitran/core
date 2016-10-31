@@ -88,7 +88,7 @@ class Job(object):
         self.config          = config_
         self.now             = now
         self.origin          = origin
-        self.outputs         = []
+        self.saved_files     = []
 
     @classmethod
     def load(cls, e):
@@ -176,7 +176,6 @@ class Job(object):
     def save(self):
         self.modified = datetime.datetime.utcnow()
         update = self.mongo()
-        config.log.debug(update)
         job_id = update.pop('id')
         result = config.db.jobs.replace_one({'_id': job_id}, update)
         if result.modified_count != 1:

@@ -64,7 +64,7 @@
       ],
       "additionalProperties":false
     },
-    "outputs": {
+    "saved_files": {
       "type": "array",
       "items": {"$ref": "../mongo/file.json"}
     },

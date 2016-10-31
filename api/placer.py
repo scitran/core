@@ -258,7 +258,7 @@ class EnginePlacer(Placer):
 
         if self.context.get('job_id'):
             job = Job.get(self.context.get('job_id'))
-            job.outputs = [f['name'] for f in self.saved]
+            job.saved_files = [f['name'] for f in self.saved]
             job.save()
 
         self.recalc_session_compliance()
@@ -619,7 +619,7 @@ class AnalysisJobPlacer(Placer):
 
                 # Update the job with saved files list
                 job = Job.get(job_id)
-                job.outputs = [f['name'] for f in self.saved]
+                job.saved_files = [f['name'] for f in self.saved]
                 job.save()
 
             config.db.sessions.update_one(q, u)

@@ -11,7 +11,7 @@
         "inputs":{},
         "destination":{},
         "origin": {},
-        "outputs": {},
+        "saved_files": {},
         "tags":{},
         "state":{},
         "attempt":{},
@@ -34,6 +34,6 @@
   "required":[
      "id", "name", "inputs", "config",
      "destination", "tags", "state", "attempt",
-     "origin", "outputs"
+     "origin", "saved_files"
      ]
 }
