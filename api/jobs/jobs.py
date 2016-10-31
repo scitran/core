@@ -6,13 +6,14 @@ import bson
 import copy
 import datetime
 
+from ..types import Origin
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 from .. import config
 
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None, now=False):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None, now=False, origin=None):
         """
         Creates a job.
 
@@ -65,7 +66,15 @@ class Job(object):
         # Trim tags array to unique members...
         tags = list(set(tags))
 
-        self.name    = name
+        # If no origin, mark as system origin
+        if origin is None:
+            origin = {
+                'type': str(Origin.system),
+                'id': None
+            }
+
+
+        self.name            = name
         self.inputs          = inputs
         self.destination     = destination
         self.tags            = tags
@@ -78,6 +87,8 @@ class Job(object):
         self.id_             = id_
         self.config          = config_
         self.now             = now
+        self.origin          = origin
+        self.saved_files     = []
 
     @classmethod
     def load(cls, e):
@@ -161,6 +172,15 @@ class Job(object):
 
         result = config.db.jobs.insert_one(self.mongo())
         return result.inserted_id
+
+    def save(self):
+        self.modified = datetime.datetime.utcnow()
+        update = self.mongo()
+        job_id = update.pop('id')
+        result = config.db.jobs.replace_one({'_id': job_id}, update)
+        if result.modified_count != 1:
+            raise Exception('Job modification not saved')
+        return {'modified_count': 1}
 
     def generate_request(self, gear):
         """

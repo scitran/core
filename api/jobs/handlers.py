@@ -184,7 +184,7 @@ class JobsHandler(base.RequestHandler):
                     'key': key
                 }
 
-        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id)
+        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
         result = job.insert()
 
         return { "_id": result }

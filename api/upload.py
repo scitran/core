@@ -175,12 +175,11 @@ class Upload(base.RequestHandler):
             self.abort(400, 'container id is required')
         else:
             cid = bson.ObjectId(cid)
-
+        context = {'job_id': self.get_param('job')}
         if level == 'analysis':
-            context = {'job_id': self.get_param('job')}
             return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id_=cid, context=context)
         else:
-            return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin)
+            return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin, context=context)
 
     def clean_packfile_tokens(self):
         """Clean up expired upload tokens and invalid token directories.

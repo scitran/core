@@ -11,8 +11,9 @@ from api import config
 from api.dao import containerutil
 from api.jobs.jobs import Job
 from api.jobs import gears
+from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 18 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 19 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -505,6 +506,20 @@ def upgrade_to_18():
                 logging.error("")
 
         config.db.singletons.remove({"_id": "gears"})
+
+def upgrade_to_19():
+    """
+    scitran/core issue #552
+
+    Add origin information to job object
+    """
+
+    update = {
+        '$set': {
+            'origin' : {'type': str(Origin.unknown), 'id': None}
+        }
+    }
+    config.db.jobs.update_many({'origin': {'$exists': False}}, update)
 
 
 def upgrade_schema():
