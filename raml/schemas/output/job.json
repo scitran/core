@@ -3,6 +3,7 @@
   "type":"object",
   "properties":{
     "id":{"$ref":"../definitions/job.json#/definitions/id"},
+    "origin":{"$ref":"../definitions/job.json#/definitions/origin"},
     "name":{"$ref":"../definitions/job.json#/definitions/name"},
     "inputs":{"$ref":"../definitions/job.json#/definitions/inputs-object"},
     "destination":{"$ref":"../definitions/job.json#/definitions/destination"},

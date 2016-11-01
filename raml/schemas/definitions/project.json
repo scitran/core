@@ -25,7 +25,8 @@
                 "permissions":{
                     "type":"array",
                     "items":{"$ref":"../definitions/permission.json#"}
-                }
+                },
+                "template":{"$ref":"../definitions/project-template.json#"}
             },
             "additionalProperties": false
         }

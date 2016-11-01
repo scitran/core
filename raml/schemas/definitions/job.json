@@ -111,8 +111,13 @@
             },
             "required":["type", "uri", "location"]
           }
-        }
+        },
+        "target":{"type":"object"},
+        "outputs":{"type":"array"}
       }
+    },
+    "saved_files":{
+      "type":"array"
     }
   }
 }

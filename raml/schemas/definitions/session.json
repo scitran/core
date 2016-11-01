@@ -5,6 +5,8 @@
         "uid":          {"type": "string"},
         "timestamp":    {"type": ["string", "null"], "format": "date-time"},
         "timezone":     {"type": "string"},
+        "project_has_template":{"type":"boolean"},
+        "satisfies_template":{"type":"boolean"},
         "session-input":{
             "type": "object",
             "properties": {
@@ -43,7 +45,9 @@
                     "type":"array",
                     "items":{"$ref":"../definitions/permission.json#"}
                 },
-                "group":{"$ref":"../definitions/group.json#/definitions/name"}
+                "group":{"$ref":"../definitions/group.json#/definitions/name"},
+                "project_has_template":{"$ref":"#/definitions/project_has_template"},
+                "satisfies_template":{"$ref":"#/definitions/satisfies_template"}
             },
             "additionalProperties": false
         }

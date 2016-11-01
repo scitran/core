@@ -8,6 +8,7 @@
         "type":"object",
         "properties":{
           "id":{"$ref":"../definitions/job.json#/definitions/id"},
+          "origin":{"$ref":"../definitions/job.json#/definitions/origin"},
           "name":{"$ref":"../definitions/job.json#/definitions/name"},
           "inputs":{"$ref":"../definitions/job.json#/definitions/inputs-object"},
           "destination":{"$ref":"../definitions/job.json#/definitions/destination"},
@@ -17,7 +18,8 @@
           "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
           "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
           "config":{"$ref":"../definitions/job.json#/definitions/config"},
-          "request":{"$ref":"../definitions/job.json#/definitions/request"}
+          "request":{"$ref":"../definitions/job.json#/definitions/request"},
+          "saved_files":{"$ref":"../definitions/job.json#/definitions/saved_files"}
         },
         "additionalProperties":false,
         "required":[

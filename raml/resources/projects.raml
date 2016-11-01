@@ -42,15 +42,11 @@ post:
           description: Template was saved
           body:
             application/json:
-              example: |
-                {"modified": 1}
+              schema: !include ../schemas/output/container-update.json
+              example: !include ../examples/output/container-update.json
         404:
           description: Project was not found
   /recalc:
-    uriParameters:
-      ProjectId:
-        type: string
-        required: true
     post:
       description: |
         Recalculate if sessions in the project satisfy the template.
@@ -60,9 +56,12 @@ post:
           description: |
             Project's sessions' compliance was recalculated.
             Returns list of session that were modified.
+          body:
+            application/json:
+              schema: !include ../schemas/output/session-template-recalc.json
+              example: !include ../examples/output/session-template-recalc.json
         404:
           description: Project was not found
-
   delete:
     description: Remove the session template for a project
     responses:
@@ -70,8 +69,8 @@ post:
         description: Template was removed
         body:
           application/json:
-            example: |
-              {"modified": 1}
+            example: !include ../examples/output/container-delete.json
+            schema: !include ../schemas/output/container-delete.json
       404:
         description: Project was not found
 

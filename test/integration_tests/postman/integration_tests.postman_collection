@@ -1,8 +1,8 @@
 {
 	"variables": [],
 	"info": {
-		"name": "test",
-		"_postman_id": "00548165-ad93-9f33-4cbc-ca7721664759",
+		"name": "test copy",
+		"_postman_id": "3b18b34b-ff24-0bde-72b5-0dd2d8f40eb4",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -234,7 +234,7 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 500ms\"] = responseTime < 500;\n\nvar jsonData = JSON.parse(responseBody);\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
 					}
 				}
 			],
@@ -321,7 +321,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"name\": \"test-case-gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test-case-gear\",\n\t\t\"label\": \"Test Case Gear\",\n\t\t\"version\": \"0\",\n\t\t\n\t\t\"author\": \"Nathaniel Kofalt\",\n\t\t\"description\": \"A gear built to drive test cases\",\n\t\t\n\t\t\"url\":     \"http://none.example\",\n\t\t\"source\":  \"http://none.example\",\n\t\t\"license\": \"MIT\",\n\t\t\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t},\n\t\t\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {}\n}"
+					"raw": "{\n\t\"name\": \"test-case-gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test-case-gear\",\n\t\t\"label\": \"Test Case Gear\",\n\t\t\"version\": \"0\",\n\t\t\n\t\t\"author\": \"Nathaniel Kofalt\",\n\t\t\"description\": \"A gear built to drive test cases\",\n\t\t\n\t\t\"url\":     \"http://none.example\",\n\t\t\"source\":  \"http://none.example\",\n\t\t\"license\": \"MIT\",\n\t\t\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t},\n\t\t\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {\"type\":\"http\", \"uri\":\"http://not-a-real-gear\", \"location\":\"/some/place\"}\n}"
 				},
 				"description": ""
 			},
