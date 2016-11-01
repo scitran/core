@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
-        "_id":              {"type": "string"},
+        "_id":              {"$ref":"../definitions/objectid.json#"},
         "firstname":        { "type": "string", "maxLength": 64 },
         "lastname":         { "type": "string", "maxLength": 64 },
         "firstname_hash":   { "type": ["string", "null"] },
@@ -51,7 +51,13 @@
 
               "code":             {"$ref":"#/definitions/code"},
               "tags":             {"$ref":"#/definitions/tags"},
-              "metadata":         {"$ref":"#/definitions/metadata"}
+              "metadata":         {"$ref":"#/definitions/metadata"},
+              "files":{
+                  "type":"array",
+                  "items":{
+                      "allOf":[{"$ref":"../definitions/file.json#/definitions/file-output"}]
+                  }
+              }
             },
             "additionalProperties": false
         }

@@ -3,8 +3,6 @@
     "definitions":{
         "instrument":   {"type": "string"},
         "measurement":  {"type": "string"},
-        "timestamp":    {"type": ["string", "null"], "format": "date-time"},
-        "timezone":     {"type": "string"},
         "acquisition-input":{
             "type": "object",
             "properties": {
@@ -13,11 +11,11 @@
                 "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "session":      {"$ref":"../definitions/objectid.json#"},
-                "uid":          {"$ref":"../definitions/user.json#/definitions/_id"},
+                "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
                 "instrument":   {"$ref": "#/definitions/instrument"},
                 "measurement":  {"$ref": "#/definitions/measurement"},
-                "timestamp":    {"$ref":"#/definitions/timestamp"},
-                "timezone":     {"$ref":"#/definitions/timezone"}
+                "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"}
             },
             "additionalProperties":false
         },
@@ -28,7 +26,9 @@
               "public": {"$ref": "../definitions/container.json#/definitions/public"},
               "label": {"$ref": "../definitions/container.json#/definitions/label"},
               "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+              "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
               "session":      {"$ref":"../definitions/objectid.json#"},
+              "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
               "collections":{
                   "type":"array",
                   "items":{"$ref":"../definitions/objectid.json#"}
@@ -39,7 +39,8 @@
               },
               "instrument":   {"$ref": "#/definitions/instrument"},
               "measurement":  {"$ref": "#/definitions/measurement"},
-              "timestamp":    {"$ref":"#/definitions/timestamp"},
+              "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
+              "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
               "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
               "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
               "permissions":{

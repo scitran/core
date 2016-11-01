@@ -2,9 +2,6 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
         "project":      {"type": "string"},
-        "uid":          {"type": "string"},
-        "timestamp":    {"type": ["string", "null"], "format": "date-time"},
-        "timezone":     {"type": "string"},
         "project_has_template":{"type":"boolean"},
         "satisfies_template":{"type":"boolean"},
         "session-input":{
@@ -15,9 +12,9 @@
                 "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "project":      {"$ref":"#/definitions/project"},
-                "uid":          {"$ref":"#/definitions/uid"},
-                "timestamp":    {"$ref":"#/definitions/timestamp"},
-                "timezone":     {"$ref":"#/definitions/timezone"},
+                "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
                 "subject":      {
                     "allOf":[{"$ref": "../definitions/subject.json#/definitions/subject-input"}]
                 }
@@ -33,9 +30,9 @@
                 "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "project":      {"$ref":"#/definitions/project"},
-                "uid":          {"$ref":"#/definitions/uid"},
-                "timestamp":    {"$ref":"#/definitions/timestamp"},
-                "timezone":     {"$ref":"#/definitions/timezone"},
+                "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
                 "subject":      {
                     "allOf":[{"$ref": "../definitions/subject.json#/definitions/subject-output"}]
                 },
