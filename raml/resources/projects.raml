@@ -13,6 +13,10 @@ post:
       example: !include ../examples/input/project.json
       schema: !include ../schemas/input/project.json
 /{ProjectId}:
+  uriParameters:
+    ProjectId:
+      type: string
+      required: true
   type: container-item
   uriParameters:
     ProjectId:

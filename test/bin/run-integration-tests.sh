@@ -54,6 +54,10 @@ BASE_URL="$SCITRAN_SITE_API_URL" \
 
 PATH=$(npm bin):$PATH
 
+if [ ! -d $( npm bin ) ]; then
+  npm install test/integration_tests
+fi
+
 # Allow us to require modules from package.json,
 # since abao_test_hooks.js is not being called from the package directory
 integration_test_node_modules="$( pwd )/node_modules/scitran-core-integration-tests/node_modules"
