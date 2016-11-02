@@ -15,8 +15,6 @@ var test_project_1 = null;
 
 // Tests we're skipping, fix these
 
-console.log(process.version);
-
 // Fails only in travis
 hooks.skip("GET /version -> 200");
 

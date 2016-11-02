@@ -59,21 +59,14 @@ fi
 set -u
 
 PATH="$(npm bin):$PATH"
-node --version
-npm || true
 
-if [ ! -d $( npm bin ) ]; then
-  # core/ repo was docker mounted and does not have node_modules folder
-  npm install test/integration_tests
-fi
+npm install test/integration_tests
 
 # Allow us to require modules from package.json,
 # since abao_test_hooks.js is not being called from the package directory
 integration_test_node_modules="$( pwd )/node_modules/scitran-core-integration-tests/node_modules"
 
 newman run test/integration_tests/postman/integration_tests.postman_collection -e test/integration_tests/postman/environments/integration_tests.postman_environment
-
-which abao
 
 # Have to change into definitions directory to resolve
 # relative $ref's in the jsonschema's
