@@ -13,7 +13,7 @@ from .. import config
 
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None, now=False, origin=None):
+    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None, now=False, origin=None, saved_files=None):
         """
         Creates a job.
 
@@ -50,6 +50,8 @@ class Job(object):
 
         if tags is None:
             tags = []
+        if saved_files is None:
+            saved_files = []
         if created is None:
             created = time_now
         if modified is None:
@@ -88,7 +90,7 @@ class Job(object):
         self.config          = config_
         self.now             = now
         self.origin          = origin
-        self.saved_files     = []
+        self.saved_files     = saved_files
 
     @classmethod
     def load(cls, e):
@@ -111,7 +113,19 @@ class Job(object):
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['name'], d.get('inputs', None), destination=d.get('destination', None), tags=d['tags'], attempt=d['attempt'], previous_job_id=d.get('previous_job_id', None), created=d['created'], modified=d['modified'], state=d['state'], request=d.get('request', None), id_=d['_id'], config_=d.get('config', None))
+        return cls(d['name'], d.get('inputs'),
+            destination=d.get('destination'),
+            tags=d['tags'], attempt=d['attempt'],
+            previous_job_id=d.get('previous_job_id'),
+            created=d['created'],
+            modified=d['modified'],
+            state=d['state'],
+            request=d.get('request'),
+            id_=d['_id'],
+            config_=d.get('config'),
+            now=d.get('now', False),
+            origin=d.get('origin'),
+            saved_files=d.get('saved_files'))
 
     @classmethod
     def get(cls, _id):

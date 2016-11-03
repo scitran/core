@@ -247,12 +247,18 @@ class ContainerHandler(base.RequestHandler):
         response = {}
         for j in jobs:
             job  = Job.load(j)
+            acqs = [] # acquisitions referenced by the current job inputs
             for _,v in job.inputs.iteritems():
-                if v.type == 'acquisition' and v.id in id_array:
+                # Add job to the list of jobs for an acquisition if:
+                #  - the input refers to an acquisition on this session
+                #  - the job has not already been added to that acquisition's job array
+                if v.type == 'acquisition' and v.id in id_array and v.id not in acqs:
                     if response.get(v.id) is not None:
                         response[v.id].append(job)
                     else:
                         response[v.id] = [job]
+                    acqs.append(v.id)
+
         return response
 
     def get_all(self, cont_name, par_cont_name=None, par_id=None):
