@@ -7,7 +7,7 @@
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
                 "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
-                "group":{"$ref":"../definitions/group.json#/definitions/name"},
+                "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"}
             },
             "additionalProperties": false
@@ -19,7 +19,7 @@
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
                 "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
-                "group":{"$ref":"../definitions/group.json#/definitions/name"},
+                "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
                 "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
                 "permissions":{

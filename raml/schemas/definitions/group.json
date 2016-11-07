@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
+        "_id":{"$ref":"../definitions/string-id.json#"},
         "name": {
             "maxLength": 64,
             "minLength": 1,
@@ -11,7 +12,7 @@
         "group-input":{
           "type": "object",
           "properties": {
-            "_id":{"$ref":"../definitions/string-id.json#"},
+            "_id":{"$ref":"#/definitions/_id"},
             "name":{"$ref":"#/definitions/name"}
           },
           "additionalProperties": false
@@ -19,7 +20,7 @@
         "group-output":{
           "type": "object",
           "properties": {
-            "_id":{"$ref":"../definitions/string-id.json#"},
+            "_id":{"$ref":"#/definitions/_id"},
             "name":{"$ref":"#/definitions/name"},
             "roles": {
               "type": "array",

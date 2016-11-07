@@ -42,7 +42,7 @@
                     "type":"array",
                     "items":{"$ref":"../definitions/permission.json#"}
                 },
-                "group":{"$ref":"../definitions/group.json#/definitions/name"},
+                "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "project_has_template":{"$ref":"#/definitions/project_has_template"},
                 "satisfies_template":{"$ref":"#/definitions/satisfies_template"}
             },
