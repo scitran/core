@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions":{
+        "project":      {"type": "string"},
+        "project_has_template":{"type":"boolean"},
+        "satisfies_template":{"type":"boolean"},
+        "session-input":{
+            "type": "object",
+            "properties": {
+                "public": {"$ref": "../definitions/container.json#/definitions/public"},
+                "label": {"$ref": "../definitions/container.json#/definitions/label"},
+                "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+                "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
+                "project":      {"$ref":"#/definitions/project"},
+                "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
+                "subject":      {
+                    "allOf":[{"$ref": "../definitions/subject.json#/definitions/subject-input"}]
+                }
+            },
+            "additionalProperties": false
+        },
+        "session-output":{
+            "type": "object",
+            "properties": {
+                "_id": {"$ref":"../definitions/objectid.json#"},
+                "public": {"$ref": "../definitions/container.json#/definitions/public"},
+                "label": {"$ref": "../definitions/container.json#/definitions/label"},
+                "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+                "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
+                "project":      {"$ref":"#/definitions/project"},
+                "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
+                "subject":      {
+                    "allOf":[{"$ref": "../definitions/subject.json#/definitions/subject-output"}]
+                },
+                "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
+                "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
+                "permissions":{
+                    "type":"array",
+                    "items":{"$ref":"../definitions/permission.json#"}
+                },
+                "group":{"$ref":"../definitions/group.json#/definitions/_id"},
+                "project_has_template":{"$ref":"#/definitions/project_has_template"},
+                "satisfies_template":{"$ref":"#/definitions/satisfies_template"}
+            },
+            "additionalProperties": false
+        }
+    }
+}

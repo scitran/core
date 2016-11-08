@@ -1,24 +1,67 @@
-/{ProjectId}/template:
+type: container
+get:
+  responses:
+    200:
+      body:
+        application/json:
+          example: !include ../examples/output/project-list.json
+          schema: !include ../schemas/output/project-list.json
+post:
+  description: Create a project
+  body:
+    application/json:
+      example: !include ../examples/input/project.json
+      schema: !include ../schemas/input/project.json
+/{ProjectId}:
   uriParameters:
     ProjectId:
       type: string
       required: true
-  post:
-    description: Set the session template for a project
-    body:
-      application/json:
-        example: !include ../examples/input/project-template.json
-        schema: !include ../schemas/input/project-template.json
+  type: container-item
+  get:
     responses:
       200:
-        description: Template was saved
         body:
           application/json:
-            example: |
-              {"modified": 1}
-      404:
-        description: Project was not found
-
+            example: !include ../examples/output/project.json
+            schema: !include ../schemas/output/project.json
+  put:
+    body:
+      application/json:
+        example: !include ../examples/input/project-update.json
+        schema: !include ../schemas/input/project-update.json
+  /template:
+    post:
+      description: Set the session template for a project
+      body:
+        application/json:
+          example: !include ../examples/input/project-template.json
+          schema: !include ../schemas/input/project-template.json
+      responses:
+        200:
+          description: Template was saved
+          body:
+            application/json:
+              schema: !include ../schemas/output/container-update.json
+              example: !include ../examples/output/container-update.json
+        404:
+          description: Project was not found
+  /recalc:
+    post:
+      description: |
+        Recalculate if sessions in the project satisfy the template.
+        Returns list of modified session ids.
+      responses:
+        200:
+          description: |
+            Project's sessions' compliance was recalculated.
+            Returns list of session that were modified.
+          body:
+            application/json:
+              schema: !include ../schemas/output/session-template-recalc.json
+              example: !include ../examples/output/session-template-recalc.json
+        404:
+          description: Project was not found
   delete:
     description: Remove the session template for a project
     responses:
@@ -26,8 +69,8 @@
         description: Template was removed
         body:
           application/json:
-            example: |
-              {"modified": 1}
+            example: !include ../examples/output/container-delete.json
+            schema: !include ../schemas/output/container-delete.json
       404:
         description: Project was not found
 
@@ -42,21 +85,3 @@
         description: |
           Projects' sessions' compliance was recalculated.
           Returns list of session that were modified.
-
-/{ProjectId}/recalc:
-  uriParameters:
-    ProjectId:
-      type: string
-      required: true
-  post:
-    description: |
-      Recalculate if sessions in the project satisfy the template.
-      Returns list of modified session ids.
-    responses:
-      200:
-        description: |
-          Project's sessions' compliance was recalculated.
-          Returns list of session that were modified.
-      404:
-        description: Project was not found
-
