@@ -30,16 +30,12 @@ def validate_data(data, schema_json, schema_type, verb, optional=False):
 def _validate_json(json_data, schema, resolver):
     jsonschema.validate(json_data, schema, resolver=resolver, format_checker=jsonschema.FormatChecker())
 
-# We store the resolvers for each base_uri we use, so that we reuse the schemas cached by the resolvers.
-resolvers = {}
 def _resolve_schema(schema_file_uri):
-    if not resolvers.get(schema_file_uri):
-        with open(schema_file_uri) as schema_file:
-            base_uri = os.path.dirname(schema_file_uri)
-            schema = json.load(schema_file)
-            resolver = jsonschema.RefResolver('file://'+base_uri+'/', schema)
-            resolvers[schema_file_uri] = (schema, resolver)
-    return resolvers[schema_file_uri]
+    with open(schema_file_uri) as schema_file:
+        base_uri = os.path.dirname(schema_file_uri)
+        schema = json.load(schema_file)
+        resolver = jsonschema.RefResolver('file://'+base_uri+'/', schema)
+        return (schema, resolver)
 
 def no_op(g, *args): # pylint: disable=unused-argument
     return g
