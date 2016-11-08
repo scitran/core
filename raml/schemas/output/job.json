@@ -19,7 +19,6 @@
   "additionalProperties":false,
   "required":[
      "id", "name", "inputs", "config",
-     "destination", "tags", "state", "attempt",
-     "origin", "saved_files"
+     "destination", "tags", "state", "attempt"
      ]
 }

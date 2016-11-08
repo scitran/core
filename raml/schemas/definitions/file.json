@@ -1,4 +1,5 @@
 {
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
         "name":           { "type": "string" },
         "file-type":           { "type": "string" },
@@ -20,11 +21,12 @@
         "origin":{
             "type":"object",
             "properties":{
-                "_id":{"type":"string"},
+                "id":{"type":"string"},
                 "method":{"type":"string"},
                 "type":{"type":"string"},
                 "name":{"type":"string"}
-            }
+            },
+            "additionalProperties":false
         },
         "hash":{"type":"string", "length":106},
         "size":{"type":"integer"},
@@ -62,7 +64,8 @@
               "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
               "size":{"$ref":"#/definitions/size"}
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "required":["modified", "size"]
         }
     }
 }

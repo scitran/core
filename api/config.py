@@ -120,6 +120,7 @@ expected_input_schemas = set([
     'acquisition.json',
     'acquisition-update.json',
     'analysis.json',
+    'analysis-job.json',
     'avatars.json',
     'collection.json',
     'collection-update.json',

@@ -1,0 +1,19 @@
+uriParameters:
+  AnalysisId:
+    type: string
+get:
+  description: Get an analysis
+  responses:
+    200:
+      body:
+        application/json:
+          example: !include ../examples/output/analysis-item.json
+          schema: !include ../schemas/output/analysis.json
+delete:
+  description: Delete an analysis
+  responses:
+    200:
+      body:
+        application/json:
+          example: !include ../examples/output/container-update.json
+          schema: !include ../schemas/output/container-update.json

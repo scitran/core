@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "8ba45209-3031-7260-9f33-83ff127bdce4",
+		"_postman_id": "c8bd361d-6d58-1838-2cd7-e53938fdfa34",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -36,7 +36,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				}
+				},
+				"description": "List users\n\n"
 			},
 			"response": []
 		},
@@ -69,7 +70,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\", \"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				}
+				},
+				"description": "\n\n"
 			},
 			"response": []
 		},
@@ -111,7 +113,8 @@
 							"enabled": true
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -122,7 +125,7 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\npostman.setGlobalVariable(\"test-group-id\", jsonData._id);"
 					}
 				}
 			],
@@ -139,102 +142,19 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n\"_id\":\"test-group\"\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
 		{
-			"name": "Create test-project",
+			"name": "Upload file to test-project-1/test-session-1/test-acquisition-1",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-project-id\", jsonData._id);"
-					}
-				}
-			],
-			"request": {
-				"url": "{{baseUri}}/projects",
-				"method": "POST",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "scitran-user {{test_user_api_key}}",
-						"description": ""
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "  {\n    \"group\": \"test-group\",\n    \"label\": \"test-project\",\n    \"public\": false\n  }"
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Create test-session-1",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-session-id\", jsonData._id);"
-					}
-				}
-			],
-			"request": {
-				"url": "{{baseUri}}/sessions?root=true",
-				"method": "POST",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "scitran-user {{test_user_api_key}}",
-						"description": ""
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "  {\n    \"subject\": {\n      \"code\": \"test-subject-1\"\n    },\n    \"label\": \"test-session-1\",\n    \"project\": \"{{test-project-id}}\",\n    \"public\": false\n  }"
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Create test-acquisition-1",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-acquisition-id\", jsonData._id);"
-					}
-				}
-			],
-			"request": {
-				"url": "{{baseUri}}/acquisitions?root=true",
-				"method": "POST",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "scitran-user {{test_user_api_key}}",
-						"description": ""
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"label\": \"test-acquisition-1\",\n    \"session\":\"{{test-session-id}}\",\n    \"public\": false\n }"
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Upload file to test-acquisition-1",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
 					}
 				}
 			],
@@ -253,7 +173,7 @@
 					"formdata": [
 						{
 							"key": "metadata",
-							"value": "{\"group\": {\"_id\": \"{{test-group-id}}\"}, \"project\": {\"label\": \"test-project-1\"}, \"session\":{\"label\":\"test-session-1\"}, \"acquisition\":{\"label\":\"test-acquisition-1\", \"files\":[{\"name\":\"test-1.dcm\"}]}}",
+							"value": "{ \t\"group\": { \t\t\"_id\": \"{{test-group-id}}\" \t}, \t\"project\": { \t\t\"label\": \"test-project-1\" \t}, \t\"session\": { \t\t\"label\": \"test-session-1\", \"subject\":{\"age\":25, \"sex\":\"male\", \"firstname\":\"xyz\"} \t}, \t\"acquisition\": { \t\t\"label\": \"test-acquisition-1\", \t\t\"files\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] \t} }",
 							"type": "text",
 							"enabled": true
 						},
@@ -265,7 +185,76 @@
 							"value": ""
 						}
 					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "List sessions",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"test-session-1 is first\"] = jsonData[0].label === \"test-session-1\";\n\npostman.setGlobalVariable(\"test-session-1\", jsonData[0]);\npostman.setGlobalVariable(\"test-session-1-id\", jsonData[0]._id);\npostman.setGlobalVariable(\"test-project-1-id\", jsonData[0].project);\n\n"
+					}
 				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions?root=true",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "List acquisitions for test-session-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"test-acquisition-1 is first\"] = jsonData[0].label === \"test-acquisition-1\";\n\npostman.setGlobalVariable(\"test-acquisition-1\", jsonData[0]);\npostman.setGlobalVariable(\"test-acquisition-1-id\", jsonData[0]._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/acquisitions?root=true",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -321,7 +310,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"name\": \"test-case-gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test-case-gear\",\n\t\t\"label\": \"Test Case Gear\",\n\t\t\"version\": \"0\",\n\t\t\n\t\t\"author\": \"Nathaniel Kofalt\",\n\t\t\"description\": \"A gear built to drive test cases\",\n\t\t\n\t\t\"url\":     \"http://none.example\",\n\t\t\"source\":  \"http://none.example\",\n\t\t\"license\": \"MIT\",\n\t\t\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t},\n\t\t\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {\"type\":\"http\", \"uri\":\"http://not-a-real-gear\", \"location\":\"/some/place\"}\n}"
+					"raw": "{\n\t\"name\": \"test-case-gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test-case-gear\",\n\t\t\"label\": \"Test Case Gear\",\n\t\t\"version\": \"0\",\n\t\t\n\t\t\"author\": \"Nathaniel Kofalt\",\n\t\t\"description\": \"A gear built to drive test cases\",\n\t\t\n\t\t\"url\":     \"http://none.example\",\n\t\t\"source\":  \"http://none.example\",\n\t\t\"license\": \"MIT\",\n\t\t\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t},\n\t\t\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {\n\t\t\"uri\":\"https://somewhere.notarealtopleveldomain/gears/foo.tar.gz\",\n\t\t\"type\":\"http\",\n\t\t\"location\":\"/\",\n\t\t\"vu\": \"vu0:sha384:tXvdI2pspng-YH6lwa2UcLsww0yR6LfEKbLm89eIqEGicLRHW9d1V8bs7gXHTlZ3\"\n\t}\n}"
 				},
 				"description": ""
 			},
@@ -350,7 +339,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"gear\": \"test-case-gear\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"config\": {\n\t\t\"two-digit multiple of ten\": 20\n\t},\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
+					"raw": "{\n    \"gear\": \"test-case-gear\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-1-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"config\": {\n\t\t\"two-digit multiple of ten\": 20\n\t},\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-1-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
 				},
 				"description": ""
 			},
@@ -408,7 +397,44 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"contents\":{\n    \t\"operation\":\"add\",\n    \t\"nodes\":[\n    \t\t{\n    \t\t\t\"level\":\"session\",\n    \t\t\t\"_id\":\"{{test-session-id}}\"\n    \t\t}\n    \t]\n    }\n}"
+					"raw": "{\n    \"contents\":{\n    \t\"operation\":\"add\",\n    \t\"nodes\":[\n    \t\t{\n    \t\t\t\"level\":\"session\",\n    \t\t\t\"_id\":\"{{test-session-1-id}}\"\n    \t\t}\n    \t]\n    }\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Upload file to test-collection-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/collections/{{test-collection-id}}/files",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/notes.txt",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
 				},
 				"description": ""
 			},
@@ -438,6 +464,681 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\":\"test-collection-2\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Upload file to test-project-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects/{{test-project-1-id}}/files",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/notes.txt",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Upload file to test-session-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/files",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/notes.txt",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Notes] add a note to test-project-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects/{{test-project-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Notes] add a note to test-session-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Notes] add a note to test-acquisition-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions/{{test-acquisition-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Notes] Add a note to test-collection-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/collections/{{test-collection-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"text\":\"test note\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create session 1 test-analysis-1 (job)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-session-1-analysis-1-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/analyses?job=true",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"analysis\": {\n        \"label\": \"Test Analysis 1\"\n    },\n    \"job\" : {\n        \"gear\": \"test-case-gear\",\n        \"inputs\": {\n            \"dicom\": {\n                \"type\": \"acquisition\",\n                \"id\": \"{{test-acquisition-1-id}}\",\n                \"name\" : \"test-1.dcm\"\n            }\n        },\n        \"tags\": [\"example\"]\n    }\n}\n"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create session 1 test-analysis (file upload)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-session-1-file-upload-analysis-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Delete session 1 test analysis (file upload)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/analyses/{{test-session-1-file-upload-analysis-id}}",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create acquisition 1 test-analysis (file upload)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-acquisition-1-analysis-1-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions/{{test-acquisition-1-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create acquisition 1 test-analysis 2 (file upload)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions/{{test-acquisition-1-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create collection 1 test-analysis (file upload) ",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-collection-1-analysis-1-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/collections/{{test-collection-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create collection 1 test-analysis 2 (file upload) ",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/collections/{{test-collection-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis 2\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create project 1 test-analysis (file upload)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-project-1-analysis-1-id\", jsonData._id);"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects/{{test-project-1-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] Create project 1 test-analysis 2 (file upload)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects/{{test-project-1-id}}/analyses",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "metadata",
+							"value": "{\"label\":\"test analysis\", \"inputs\": [{ \t\t\t\"name\": \"test-1.dcm\" \t\t}] }",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "file",
+							"src": "test/integration_tests/postman/test_files/test-1.dcm",
+							"type": "file",
+							"enabled": true,
+							"value": ""
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] add a note to test-acquisition-1 test-analysis-1 ",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/acquisitions/{{test-acquisition-1-id}}/analyses/{{test-acquisition-1-analysis-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] add a note to test-collection-1 test-analysis-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/collections/{{test-collection-id}}/analyses/{{test-collection-1-analysis-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] add a note to test-session-1 test-analysis-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/sessions/{{test-session-1-id}}/analyses/{{test-session-1-analysis-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[Analyses] add a note to test-project-1 test-analysis-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n"
+					}
+				}
+			],
+			"request": {
+				"url": "{{baseUri}}/projects/{{test-project-1-id}}/analyses/{{test-project-1-analysis-1-id}}/notes",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "scitran-user {{test_user_api_key}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"text\":\"test note\"}"
 				},
 				"description": ""
 			},
@@ -624,7 +1325,7 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 200ms\"] = responseTime < 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project updated\"] = jsonData.modified == 1;"
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Response time is less than 400ms\"] = responseTime < 400;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project updated\"] = jsonData.modified == 1;"
 					}
 				}
 			],

@@ -99,3 +99,35 @@ post:
     responses:
       307:
         description: Redirects to the image file of the specified user's avatar
+/{UserId}/acquisitions:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/acquisition-list.json
+            schema: !include ../schemas/output/acquisition-list.json
+/{UserId}/collections:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/collection-list.json
+            schema: !include ../schemas/output/collection-list.json
+/{UserId}/projects:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/project-list.json
+            schema: !include ../schemas/output/project-list.json
+/{UserId}/sessions:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/session-list.json
+            schema: !include ../schemas/output/session-list.json

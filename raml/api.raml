@@ -14,6 +14,25 @@ traits:
 resourceTypes:
   - container: !include resourceTypes/container.raml
   - container-item: !include resourceTypes/container-item.raml
+  - container-item-list-property: !include resourceTypes/container-item-list-property.raml
+  - container-item-list-property-append: !include resourceTypes/container-item-list-property-append.raml
+  - tags-list: !include resourceTypes/tags-list.raml
+  - tags-append: !include resourceTypes/tags-append.raml
+  - packfile-start: !include resourceTypes/packfile-start.raml
+  - packfile: !include resourceTypes/packfile.raml
+  - packfile-end: !include resourceTypes/packfile-end.raml
+  - file-list-upload: !include resourceTypes/file-list-upload.raml
+  - file-item: !include resourceTypes/file-item.raml
+  - permissions-list: !include resourceTypes/permissions-list.raml
+  - permissions-item: !include resourceTypes/permissions-item.raml
+  - notes-list: !include resourceTypes/notes-list.raml
+  - notes-item: !include resourceTypes/notes-item.raml
+  - analyses-list: !include resourceTypes/analyses-list.raml
+  - analysis-item: !include resourceTypes/analysis-item.raml
+  - analysis-files: !include resourceTypes/analysis-files.raml
+  - analysis-files-create-ticket-filename: !include resourceTypes/analysis-files-create-ticket-filename.raml
+  - analysis-notes-list: !include resourceTypes/analysis-notes-list.raml
+  - analysis-notes-item: !include resourceTypes/analysis-notes-item.raml
 
 /download: !include resources/download.raml
 /upload/label: !include resources/upload-by-label.raml
@@ -34,3 +53,4 @@ resourceTypes:
 /sessions: !include resources/sessions.raml
 /acquisitions: !include resources/acquisitions.raml
 /projects: !include resources/projects.raml
+/report: !include resources/report.raml

@@ -22,11 +22,26 @@
                 "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
                 "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
+                "template":{"type":"object"},
                 "permissions":{
                     "type":"array",
-                    "items":{"$ref":"../definitions/permission.json#"}
+                    "items":{"$ref":"../definitions/permission.json#/definitions/permission-output-default-required"}
                 },
-                "template":{"type":"object"}
+                "files":{
+                    "type":"array",
+                    "items":{
+                        "allOf":[{"$ref":"../definitions/file.json#/definitions/file-output"}]
+                    }
+                },
+                "notes":{"allOf":[{"$ref":"../definitions/note.json#/definitions/notes-list-output"}]},
+                "tags":{"allOf":[{"$ref":"../definitions/tag.json#/definitions/tag-output-list"}]},
+                "analyses":{
+                    "type":"array",
+                    "items":{
+                        "type":"object",
+                        "allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-output"}]
+                    }
+                }
             },
             "additionalProperties": false
         }
