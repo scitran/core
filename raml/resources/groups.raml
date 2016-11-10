@@ -48,3 +48,47 @@ post:
             example: |
               {"deleted": 1}
             schema: !include ../schemas/output/group-delete.json
+  /roles:
+    type: container-item-list-property-append
+    post:
+      body:
+        application/json:
+          example: !include ../examples/input/group-add-role.json
+          schema: !include ../schemas/input/permission.json
+    /{SiteId}/{UserId}:
+      type: container-item-list-property
+      uriParameters:
+        SiteId:
+          description: Site where permission is granted
+        UserId:
+          description: User which is granted the permission
+      get:
+        responses:
+          200:
+            body:
+              application/json:
+                example: !include ../examples/output/permission.json
+                schema: !include ../schemas/output/permission.json
+      put:
+        description: Update a permission
+        body:
+          application/json:
+            example: !include ../examples/input/permission-update.json
+            schema: !include ../schemas/input/permission.json
+  /tags:
+    type: tags-append
+    post:
+      description: |
+        Add a tag to a group.
+        Progates changes to projects, sessions and acquisitions
+    /{TagValue}:
+      type: tags-list
+  /projects:
+    get:
+      description: Get projects in a group
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include ../examples/output/project-list.json
+              schema: !include ../schemas/output/project-list.json

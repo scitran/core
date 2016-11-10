@@ -7,7 +7,6 @@
         "required":[
             "_id", "public", "label", "session",
             "created", "modified", "permissions"
-
         ]
     }
 }

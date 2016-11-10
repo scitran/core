@@ -19,6 +19,15 @@ post:
         application/json:
           example: !include ../examples/output/collection-new.json
           schema: !include ../schemas/output/collection-new.json
+/curators:
+  get:
+    description: List all curators of collections
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/collection-curators-list.json
+            schema: !include ../schemas/output/collection-curators-list.json
 /{CollectionId}:
   uriParameters:
     CollectionId:
@@ -64,12 +73,37 @@ post:
             application/json:
               example: !include ../examples/output/acquisition-list.json
               schema: !include ../schemas/output/acquisition-list.json
-/curators:
-  get:
-    description: List all curators of collections
-    responses:
-      200:
-        body:
-          application/json:
-            example: !include ../examples/output/collection-curators-list.json
-            schema: !include ../schemas/output/collection-curators-list.json
+  /tags:
+    type: tags-append
+    /{TagValue}:
+      type: tags-list
+  /packfile-start:
+    type: packfile-start
+  /packfile:
+    type: packfile
+  /packfile-end:
+    type: packfile-end
+  /files:
+    type: file-list-upload
+    /{FileName}:
+      type: file-item
+  /permissions:
+    type: permissions-list
+    /{SiteId}/{UserId}:
+      type: permissions-item
+  /notes:
+    type: notes-list
+    /{NoteId}:
+      type: notes-item
+  /analyses:
+    type: analyses-list
+    /{AnalysisId}:
+      type: analysis-item
+      /files:
+        type: analysis-files
+        /{Filename}:
+          type: analysis-files-create-ticket-filename
+      /notes:
+        type: analysis-notes-list
+        /{NoteId}:
+          type: analysis-notes-item

@@ -1,0 +1,23 @@
+/site:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/report-site.json
+            schema: !include ../schemas/output/report-site.json
+/project:
+  get:
+    queryParameters:
+      projects:
+        description: Specify multiple times to include projects in the report
+      start_date:
+        description: Report start date
+      end_date:
+        description: Report end date
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/report-project.json
+            schema: !include ../schemas/output/report-project.json

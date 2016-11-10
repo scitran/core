@@ -117,7 +117,10 @@
       }
     },
     "saved_files":{
-      "type":"array"
+      "type":"array",
+      "items":{
+        "type":"object"
+      }
     }
   }
 }

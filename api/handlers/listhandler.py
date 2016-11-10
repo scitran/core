@@ -610,62 +610,13 @@ class AnalysesHandler(ListHandler):
 
     def post(self, cont_name, list_name, **kwargs):
         """
-        .. http:post:: /api/(cont_name)/(cid)/analyses
-
-            Default behavior:
-                Creates an analysis object and uploads supplied input
-                and output files.
-            When param ``job`` is true:
-                Creates an analysis object and job object that reference
-                each other via ``job`` and ``destination`` fields. Job based
-                analyses are only allowed at the session level.
-
-            :param cont_name: one of ``projects``, ``sessions``, ``collections``
-            :type cont_name: string
-
-            :param cid: Container ID
-            :type cid: string
-
-            :query boolean job: a flag specifying the type of analysis
-
-            :statuscode 200: no error
-            :statuscode 400: Job-based analyses must be at the session level
-            :statuscode 400: Job-based analyses must have ``job`` and ``analysis`` maps in JSON body
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                POST /api/sessions/57081d06b386a6dc79ca383c/analyses HTTP/1.1
-
-                {
-                    "analysis": {
-                        "label": "Test Analysis 1"
-                    },
-                    "job" : {
-                        "gear": "dcm_convert",
-                        "inputs": {
-                            "dicom": {
-                                "type": "acquisition",
-                                "id": "57081d06b386a6dc79ca386b",
-                                "name" : "test_acquisition_dicom.zip"
-                            }
-                        },
-                        "tags": ["example"]
-                    }
-                }
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                {
-                    "_id": "573cb66b135d87002660597c"
-                }
-
+        Default behavior:
+            Creates an analysis object and uploads supplied input
+            and output files.
+        When param ``job`` is true:
+            Creates an analysis object and job object that reference
+            each other via ``job`` and ``destination`` fields. Job based
+            analyses are only allowed at the session level.
         """
         _id = kwargs.pop('cid')
         permchecker, storage, _, payload_validator, _ = self._initialize_request(cont_name, list_name, _id)

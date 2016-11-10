@@ -1,0 +1,89 @@
+{
+    "files": [{
+        "origin": {
+            "type": "job",
+            "id": "58063f24e5dc5b001657a87f"
+        },
+        "mimetype": "application/octet-stream",
+        "hash": "v0-sha384-12188e00a26650b2baa3f0195337dcf504f4362bb2136eef0cdbefb57159356b1355a0402fca0ab5ab081f21c305e5c2",
+        "name": "cortical_surface_right_hemisphere.obj",
+        "tags": [],
+        "measurements": [],
+        "modified": "2016-10-18T15:26:35.701000+00:00",
+        "instrument": null,
+        "input": true,
+        "size": 21804112,
+        "type": "None",
+        "metadata": {}
+    }, {
+        "origin": {
+            "type": "job",
+            "id": "58065fa7e5dc5b001457a882"
+        },
+        "mimetype": "application/octet-stream",
+        "hash": "v0-sha384-12188e00a26650b2baa3f0195337dcf504f4362bb2136eef0cdbefb57159356b1355a0402fca0ab5ab081f21c305e5c2",
+        "name": "cortical_surface_right_hemisphere.obj",
+        "tags": [],
+        "measurements": [],
+        "modified": "2016-10-18T17:45:17.776000+00:00",
+        "instrument": null,
+        "output": true,
+        "metadata": {},
+        "type": "None",
+        "size": 21804112
+    }],
+    "created": "2016-10-18T17:45:11.778000+00:00",
+    "modified": "2016-10-18T17:45:11.778000+00:00",
+    "label": "cortex-demo 10/18/2016 13:45:5",
+    "job": {
+        "inputs": {
+            "anatomy": {
+                "type": "analysis",
+                "id": "58063f24e5dc5b001657a87e",
+                "name": "cortical_surface_right_hemisphere.obj"
+            }
+        },
+        "attempt": 1,
+        "name": "cortex-demo",
+        "tags": ["ad-hoc", "cortex-demo", "analysis"],
+        "destination": {
+            "type": "analysis",
+            "id": "58065fa7e5dc5b001457a881"
+        },
+        "request": {
+            "inputs": [{
+                "location": "/",
+                "type": "http",
+                "uri": "https://storage.googleapis.com/flywheel/gears/v1/scitran/cortex-demo/cortex-demo_manifest-labels_20160725T031837.331720Z.tar.gz",
+                "vu": "vu0:sha384:ssx5VWyFg7r8IBoOIphq7GaB_CymInQ1NxTV2WTDzglJLJ1-ktEbjLIHVABRzesV"
+            }, {
+                "type": "scitran",
+                "uri": "/jobs/58065fa7e5dc5b001457a882/config.json",
+                "location": "/flywheel/v0"
+            }, {
+                "type": "scitran",
+                "uri": "/sessions/58063e7ed213ed776045b320/analyses/58063f24e5dc5b001657a87e/files/cortical_surface_right_hemisphere.obj",
+                "location": "/flywheel/v0/input/anatomy"
+            }],
+            "target": {
+                "command": ["bash", "-c", "rm -rf output; mkdir -p output; ./run; echo \"Exit was $?\""],
+                "env": {
+                    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                },
+                "dir": "/flywheel/v0"
+            },
+            "outputs": [{
+                "type": "scitran",
+                "uri": "/engine?level=analysis&id=58065fa7e5dc5b001457a881&job=58065fa7e5dc5b001457a882",
+                "location": "/flywheel/v0/output"
+            }]
+        },
+        "modified": "2016-10-18T17:45:21.344000+00:00",
+        "created": "2016-10-18T17:45:11.816000+00:00",
+        "state": "complete",
+        "config": {},
+        "id": "58065fa7e5dc5b001457a882"
+    },
+    "user": "canakgun@flywheel.io",
+    "_id": "58065fa7e5dc5b001457a881"
+}

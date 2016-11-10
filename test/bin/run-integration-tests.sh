@@ -53,6 +53,7 @@ BASE_URL="$SCITRAN_SITE_API_URL" \
     py.test test/integration_tests/python
 
 set +u
+# If no VIRTUAL_ENV, make sure /usr/local/bin is in the path
 if [ -z "$VIRTUAL_ENV" ]; then
   PATH="/usr/local/bin:$PATH"
 fi

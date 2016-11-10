@@ -12,6 +12,15 @@ post:
     application/json:
       example: !include ../examples/input/project.json
       schema: !include ../schemas/input/project.json
+/groups:
+  get:
+    description: List all groups which have a project in them
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include ../schemas/output/groups-list.json
+            example: !include ../examples/output/groups-list.json
 /{ProjectId}:
   uriParameters:
     ProjectId:
@@ -30,6 +39,56 @@ post:
       application/json:
         example: !include ../examples/input/project-update.json
         schema: !include ../schemas/input/project-update.json
+  /tags:
+    type: tags-append
+    /{TagValue}:
+      type: tags-list
+  /packfile-start:
+    type: packfile-start
+  /packfile:
+    type: packfile
+  /packfile-end:
+    type: packfile-end
+  /files:
+    type: file-list-upload
+    /{FileName}:
+      type: file-item
+  /permissions:
+    type: permissions-list
+    /{SiteId}/{UserId}:
+      type: permissions-item
+  /notes:
+    type: notes-list
+    /{NoteId}:
+      type: notes-item
+  /sessions:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include ../examples/output/session-list.json
+              schema: !include ../schemas/output/session-list.json
+  /acquisitions:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include ../examples/output/acquisition-list.json
+              schema: !include ../schemas/output/acquisition-list.json
+  /analyses:
+    type: analyses-list
+    /{AnalysisId}:
+      type: analysis-item
+      /files:
+        type: analysis-files
+        /{Filename}:
+          type: analysis-files-create-ticket-filename
+      /notes:
+        type: analysis-notes-list
+        /{NoteId}:
+          type: analysis-notes-item
   /template:
     post:
       description: Set the session template for a project
@@ -44,6 +103,17 @@ post:
             application/json:
               schema: !include ../schemas/output/container-update.json
               example: !include ../examples/output/container-update.json
+        404:
+          description: Project was not found
+    delete:
+      description: Remove the session template for a project
+      responses:
+        200:
+          description: Template was removed
+          body:
+            application/json:
+              example: !include ../examples/output/container-delete.json
+              schema: !include ../schemas/output/container-delete.json
         404:
           description: Project was not found
   /recalc:
@@ -62,18 +132,6 @@ post:
               example: !include ../examples/output/session-template-recalc.json
         404:
           description: Project was not found
-  delete:
-    description: Remove the session template for a project
-    responses:
-      200:
-        description: Template was removed
-        body:
-          application/json:
-            example: !include ../examples/output/container-delete.json
-            schema: !include ../schemas/output/container-delete.json
-      404:
-        description: Project was not found
-
 /recalc:
   post:
     description: |

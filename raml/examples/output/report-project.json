@@ -1,0 +1,165 @@
+{
+  "projects": [
+    {
+      "demographics_grid": {
+        "Black or African American": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "Unknown or Not Reported": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 1,
+          "Unknown or Not Reported": {
+            "Male": 1,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "American Indian or Alaska Native": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "Asian": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "White": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "Total": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 1,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "Native Hawaiian or Other Pacific Islander": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        },
+        "More Than One Race": {
+          "Not Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Total": 0,
+          "Unknown or Not Reported": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          },
+          "Hispanic or Latino": {
+            "Male": 0,
+            "Unknown or Not Reported": 0,
+            "Female": 0
+          }
+        }
+      },
+      "male_count": 1,
+      "group_name": "test-group",
+      "over_18_count": 1,
+      "under_18_count": 0,
+      "female_count": 0,
+      "subjects_count": 1,
+      "other_count": 0,
+      "name": "test-project-1",
+      "session_count": 1,
+      "admins": [
+        "Colton LW"
+      ],
+      "demographics_total": 1
+    }
+  ]
+}

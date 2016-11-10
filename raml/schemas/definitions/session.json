@@ -34,17 +34,33 @@
                 "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
                 "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
                 "subject":      {
-                    "allOf":[{"$ref": "../definitions/subject.json#/definitions/subject-output"}]
+                    "type":"object",
+                    "allOf":[{"$ref": "../definitions/subject.json#/definitions/subject-output-default-required"}]
                 },
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
                 "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
                 "permissions":{
                     "type":"array",
-                    "items":{"$ref":"../definitions/permission.json#"}
+                    "items":{"$ref":"../definitions/permission.json#/definitions/permission-output-default-required"}
                 },
                 "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "project_has_template":{"$ref":"#/definitions/project_has_template"},
-                "satisfies_template":{"$ref":"#/definitions/satisfies_template"}
+                "satisfies_template":{"$ref":"#/definitions/satisfies_template"},
+                "files":{
+                    "type":"array",
+                    "items":{
+                        "allOf":[{"$ref":"../definitions/file.json#/definitions/file-output"}]
+                    }
+                },
+                "notes":{"allOf":[{"$ref":"../definitions/note.json#/definitions/notes-list-output"}]},
+                "tags":{"allOf":[{"$ref":"../definitions/tag.json#/definitions/tag-output-list"}]},
+                "analyses":{
+                    "type":"array",
+                    "items":{
+                        "type":"object",
+                        "allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-output"}]
+                    }
+                }
             },
             "additionalProperties": false
         }

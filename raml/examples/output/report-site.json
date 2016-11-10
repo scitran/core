@@ -1,0 +1,25 @@
+{
+  "group_count": 4,
+  "groups": [
+    {
+      "project_count": 0,
+      "name": "Unknown",
+      "session_count": 0
+    },
+    {
+      "project_count": 0,
+      "name": "Scientific Transparency",
+      "session_count": 0
+    },
+    {
+      "project_count": 0,
+      "name": "Test Group",
+      "session_count": 0
+    },
+    {
+      "project_count": 1,
+      "name": null,
+      "session_count": 1
+    }
+  ]
+}

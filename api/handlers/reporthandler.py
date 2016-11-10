@@ -58,7 +58,7 @@ def _get_result_list(output):
     throws APIReportException
     """
 
-    if output.get('ok', 0) is not 1.0:
+    if output.get('ok') == 1.0:
         result = output.get('result')
         if result is not None and len(result) > 0:
             return result

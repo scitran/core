@@ -1,12 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "properties": {
+  "definitions": {
     "_id":            { "type": "string" },
     "access":         { "enum": ["ro", "rw", "admin"] },
-    "site":           { "type": "string" }
-  },
-  "required": ["_id", "access"],
-  "key_fields": ["_id", "site"],
-  "additionalProperties": false
+    "site":           { "type": "string" },
+    "permission":{
+      "type":"object",
+      "properties":{
+        "_id":{"$ref":"#/definitions/_id"},
+        "access":{"$ref":"#/definitions/access"},
+        "site":{"$ref":"#/definitions/site"}
+      },
+      "additionalProperties": false
+    },
+    "permission-output-default-required":{
+      "allOf":[{"$ref":"#/definitions/permission"}],
+      "required":["_id", "access", "site"]
+    }
+  }
 }

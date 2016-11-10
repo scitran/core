@@ -1,0 +1,12 @@
+uriParameters:
+  NoteId:
+    type: string
+    required: true
+delete:
+  description: Remove a note
+  responses:
+    200:
+      body:
+        application/json:
+          schema: !include ../schemas/output/container-update.json
+          example: !include ../examples/output/container-update.json

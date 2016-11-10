@@ -1,0 +1,22 @@
+description: Download a file
+uriParameters:
+  FileName:
+    type: string
+get:
+  queryParameters:
+    ticket:
+      type: string
+      description: ticket id of the file to download
+  description: |
+    If "ticket" is specified by empty, a download ticket will be created
+    If "ticket" is not specified, the file will be download
+    If "ticket" is specified and not empty, the file will be downloaded
+  responses:
+    200:
+      body:
+        application/json:
+          schema: !include ../schemas/output/file-download.json
+          example: !include ../examples/output/file-download.json
+        application/octet-stream:
+post:
+  description: Replace a file

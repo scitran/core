@@ -1,0 +1,12 @@
+type: analysis-files
+uriParameters:
+  Filename:
+    type: string
+    description: regex to select files for download
+get:
+  queryParameters:
+    ticket:
+      type: string
+      description: |
+        Must specify and set to empty if you wish to create a ticket.
+        Otherwise file is downloaded directly
