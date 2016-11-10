@@ -5,7 +5,7 @@
             "properties": {
                 "label": {
                     "type":     "string",
-                    "pattern":  "^(?i)test_pattern$" }
+                    "pattern":  "^test_pattern$" }
             }
         }
     },
@@ -30,7 +30,7 @@
                     "properties": {
                         "measurement": {
                             "type":     "string",
-                            "pattern":  "^(?i)functional$" }
+                            "pattern":  "^functional$" }
                     },
                     "required": ["measurement"]
                 },
