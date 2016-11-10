@@ -16,7 +16,6 @@
 						},
 		"notes":        {"type": "array",  "items": {"$ref": "note.json"}},
 		"description" : {"type": "string"},
-        "job":			{"type": "string"},
         "label":    	{"type": "string", "minLength": 1, "maxLength": 256},
         "user":     	{"type": "string"},
 		"analysis-input":{
@@ -26,7 +25,7 @@
 				"outputs":{"$ref":"#/definitions/outputs"},
 				"notes":{"$ref":"#/definitions/notes"},
 				"description":{"$ref":"#/definitions/description"},
-				"job":{"$ref":"#/definitions/job"},
+				"job":{"$ref":"../definitions/job.json#/definitions/_id"},
 				"label":{"$ref":"#/definitions/label"},
 				"user":{"$ref":"#/definitions/user"}
 			},
