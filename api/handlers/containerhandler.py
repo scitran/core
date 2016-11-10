@@ -64,7 +64,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
-            'list_projection': {'info': 0},
+            'list_projection': {'info': 0, 'analyses': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -74,7 +74,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
-            'list_projection': {'info': 0}
+            'list_projection': {'info': 0, 'collections': 0}
         }
     }
 
@@ -82,30 +82,6 @@ class ContainerHandler(base.RequestHandler):
         super(ContainerHandler, self).__init__(request, response)
         self.storage = None
         self.config = None
-
-    def _fill_required_fields(self, cont, cont_name):
-        """
-        Fills in any missing container fields required for GET requests
-        """
-
-        base_cont = {
-            '_id':          None,
-            'created':      None,
-            'modified':     None,
-            'views':        None,
-            'downloads':    None,
-            'notes':        [],
-            'files':        [],
-            'analyses':     [],
-            'permissions':  [],
-            'tags':         [],
-            'info':         {}
-        }
-        base_cont.update(cont)
-        if cont_name == 'sessions':
-            if base_cont.get('subject', None) is None:
-                base_cont['subject'] = {}
-        return base_cont
 
     def get(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -130,7 +106,7 @@ class ContainerHandler(base.RequestHandler):
 
         if cont_name == 'sessions':
             result = self.handle_analyses(result)
-        return self._fill_required_fields(self.handle_origin(result), cont_name)
+        return self.handle_origin(result)
 
     def handle_origin(self, result):
         """
@@ -252,8 +228,8 @@ class ContainerHandler(base.RequestHandler):
         self.storage = self.config['storage']
 
         projection = self.config['list_projection']
-        if self.is_true('metadata'):
-            projection.pop('metadata')
+        if self.is_true('info'):
+            projection.pop('info')
             if not projection:
                 projection = None
 
@@ -295,7 +271,7 @@ class ContainerHandler(base.RequestHandler):
                 result = self.handle_analyses(result)
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, cont_name)
-            result = self._fill_required_fields(self.handle_origin(result), cont_name)
+            result = self.handle_origin(result)
             modified_results.append(result)
 
         return modified_results
