@@ -1,8 +1,13 @@
-import pytest
+import os.path
+import sys
 
 from mock import Mock, patch
+import pytest
 
-from bin import database
+bin_path = os.path.join(os.getcwd(), "bin")
+sys.path.insert(0, bin_path)
+import database
+
 from api import config
 
 CDV = database.CURRENT_DATABASE_VERSION
@@ -29,7 +34,7 @@ def database_mock_setup():
         script_name = 'upgrade_to_{}'.format(i)
         setattr(database, script_name, Mock())
 
-@patch('bin.database.get_db_version', Mock(return_value=0))
+@patch('database.get_db_version', Mock(return_value=0))
 def test_all_upgrade_scripts_ran(database_mock_setup):
     with pytest.raises(SystemExit):
         database.upgrade_schema()
@@ -37,7 +42,7 @@ def test_all_upgrade_scripts_ran(database_mock_setup):
         script_name = 'upgrade_to_{}'.format(i)
         assert getattr(database, script_name).called
 
-@patch('bin.database.get_db_version', Mock(return_value=CDV-4))
+@patch('database.get_db_version', Mock(return_value=CDV-4))
 def test_necessary_upgrade_scripts_ran(database_mock_setup):
     with pytest.raises(SystemExit):
         database.upgrade_schema()
