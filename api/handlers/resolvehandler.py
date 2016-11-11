@@ -3,7 +3,6 @@ API request handlers for the jobs module
 """
 
 from .. import base
-from .. import config
 from ..resolver import Resolver
 
 class ResolveHandler(base.RequestHandler):

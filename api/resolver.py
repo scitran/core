@@ -3,7 +3,6 @@ Resolve an ambiguous path through the data hierarchy.
 """
 
 from . import config
-from . import util
 
 class Node(object):
 
@@ -67,9 +66,6 @@ def _get_docs(table, label, match):
         y.update({'node_type': label})
     return results
 
-
-class CollectionsLiteralNode(Node):
-    pass
 
 class FileNode(Node):
     @staticmethod
@@ -167,7 +163,7 @@ class Resolver(object):
     """
 
     @staticmethod
-    def resolve(path, uid=None):
+    def resolve(path):
 
         if not isinstance(path, list):
             raise Exception("Path must be an array of strings")
