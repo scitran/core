@@ -235,7 +235,7 @@ def get_config():
         __config['modified'] = now
 
         r = db.singletons.replace_one({'_id': 'config'}, __config, upsert=True)
-        __config_persisted = bool(r.modified_count)
+        __config_persisted = True
         __last_update = now
     elif now - __last_update > datetime.timedelta(seconds=120):
         log.debug('Refreshing configuration from database')
