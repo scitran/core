@@ -7,7 +7,7 @@ import elasticsearch
 import json
 import logging
 
-from api import config
+from api import config, encoder
 
 es = config.es
 db = config.db
@@ -90,7 +90,11 @@ if __name__ == '__main__':
         },
         'mappings': {
             'dicom': {
-                'properties': mappings
+                'properties': {
+                    'dicom_header': {
+                        'properties': mappings
+                    }
+                }
             }
         }
     }
@@ -99,11 +103,36 @@ if __name__ == '__main__':
     res = es.indices.create(index=DICOM_INDEX, body=request)
     print 'response: {}'.format(res)
 
-    acquisitions = db.acquisitions.find({'files.type': 'dicom'})
-    for a in acquisitions:
-        dicom_data = a.get('metadata')
-        if dicom_data:
-            for s in SKIPPED:
-                dicom_data.pop(s, None)
-            es.index(index=DICOM_INDEX, doc_type='dicom', body=dicom_data)
+    groups = db.groups.find({})
+    for g in groups:
+        g.pop('roles', None)
+        projects = db.projects.find({'group': g['_id']})
+        for p in projects:
+            p.pop('permissions', None)
+            sessions = db.sessions.find({'project': p['_id']})
+            for s in sessions:
+                s.pop('permissions', None)
+                acquisitions = db.acquisitions.find({'session': s['_id'], 'files.type': 'dicom'})
+                for a in acquisitions:
+
+                    dicom_data = a.get('metadata')
+                    if dicom_data:
+                        for s in SKIPPED:
+                            dicom_data.pop(s, None)
+
+                        permissions = a['permissions']
+
+                        doc = {
+                            'dicom_header':         dicom_data,
+                            'base_container_type': 'acquisition',
+                            'acquisition':          a,
+                            'session':              s,
+                            'project':              p,
+                            'group':                g,
+                            'permissions':          a['permissions']
+
+                        }
+
+                        doc = json.dumps(doc, default=encoder.custom_json_serializer)
+                        es.index(index=DICOM_INDEX, doc_type='dicom', body=doc)
 
