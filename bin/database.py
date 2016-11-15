@@ -542,38 +542,64 @@ def upgrade_to_21():
     Acquisition fields `instrument` and `measurement` removed
     """
 
+
+
+
+    # def update_project_template(template):
+    #     for a in template.get('acquisitions', []):
+    #         properties = a['schema']['properties']
+    #         if 'measurement' in properties:
+    #             m_req = properties.pop('measurement')
+    #             a['files']['schema']
+
+    #     return template
+
     def dm_v2_updates(cont_list, cont_name):
         for container in cont_list:
 
             query = {'_id': container['_id']}
             update = {'$rename': {'metadata': 'info'}}
 
+            if cont_name == 'projects' and container.get('template'):
+                pass
+
             if cont_name == 'sessions':
                 update['$rename'].update({'subject.metadata': 'subject.info'})
 
+            measurement = None
             if cont_name == 'acquisitions':
-                update['$unset'] = {'instrument': '', 'measurements': ''}
+                measurement = container.get('measurement', None)
+                update['$unset'] = {'instrument': '', 'measurement': ''}
 
             # From mongo docs: '$rename does not work if these fields are in array elements.'
             files = container.get('files')
             if files is not None:
                 updated_files = []
                 for file_ in files:
-                    if file_.get('metadata') is not None:
-                        file_['info'] = file_.pop('metadata')
-                    if file_.get('instrument') is not None:
-                        file_['modality'] = file_.pop('instrument')
+                    if 'metadata' in file_:
+                        file_['info'] = file_.pop('metadata', None)
+                    if 'instrument' in file_:
+                        file_['modality'] = file_.pop('instrument', None)
+                    if measurement:
+                        # Add the acquisition
+                        if file_.get('measurements'):
+                            file_['measurements'].append(measurement)
+                        else:
+                            file_['measurements'] = [measurement]
                     updated_files.append(file_)
                 update['$set'] = {'files': updated_files}
 
             result = config.db[cont_name].update_one(query, update)
 
     query = {'$or':[{'files': { '$exists': True}},
-                    {'subject': { '$exists': True}},
                     {'metadata': { '$exists': True}}]}
 
     dm_v2_updates(config.db.collections.find(query), 'collections')
+
+    query['$or'].append({'template': { '$exists': True}})
     dm_v2_updates(config.db.projects.find(query), 'projects')
+
+    query['$or'].append({'subject': { '$exists': True}})
     dm_v2_updates(config.db.sessions.find(query), 'sessions')
 
     query['$or'].append({'instrument': { '$exists': True}})
