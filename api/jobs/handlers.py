@@ -71,7 +71,7 @@ class GearHandler(base.RequestHandler):
 
         doc = self.request.json
 
-        if _id != doc.get('name', ''):
+        if _id != doc.get('gear', {}).get('name', ''):
             self.abort(400, 'Name key must be present and match URL')
 
         try:

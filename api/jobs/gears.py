@@ -22,7 +22,7 @@ def get_gears(fields=None):
     if fields is None:
         return config.db.gears.find()
     else:
-        fields.append('name')
+        fields.append('gear.name')
 
     for f in fields:
         projection[f] = 1
@@ -32,7 +32,7 @@ def get_gears(fields=None):
 def get_gear_by_name(name):
 
     # Find a gear from the list by name
-    gear_doc = config.db.gears.find_one({'name': name})
+    gear_doc = config.db.gears.find_one({'gear.name': name})
 
     if gear_doc is None:
         raise Exception('Unknown gear ' + name)
@@ -40,7 +40,7 @@ def get_gear_by_name(name):
     return gear_doc
 
 def get_invocation_schema(gear):
-    return gear_tools.derive_invocation_schema(gear['manifest'])
+    return gear_tools.derive_invocation_schema(gear['gear'])
 
 def suggest_container(gear, cont_name, cid):
     """
@@ -51,7 +51,7 @@ def suggest_container(gear, cont_name, cid):
     invocation_schema = get_invocation_schema(gear)
 
     schemas = {}
-    for x in gear['manifest']['inputs']:
+    for x in gear['gear']['inputs']:
         schema = gear_tools.isolate_file_invocation(invocation_schema, x)
         schemas[x] = Draft4Validator(schema)
 
@@ -74,16 +74,24 @@ def suggest_container(gear, cont_name, cid):
     return root
 
 def insert_gear(doc):
-    gear_tools.validate_manifest(doc['manifest'])
+    gear_tools.validate_manifest(doc['gear'])
+
+    # This can be mongo-escaped and re-used later
+    if doc.get("invocation-schema"):
+        del(doc["invocation-schema"])
 
     config.db.gears.insert(doc)
 
     if config.get_item('queue', 'prefetch'):
         log.info('Queuing prefetch job for gear ' + doc['name'])
 
-        job = Job(doc['manifest']['name'], {}, destination={}, tags=['prefetch'], request={
+        job = Job(doc['gear']['name'], {}, destination={}, tags=['prefetch'], request={
             'inputs': [
-                doc['input']
+                {
+                    'type': 'http',
+                    'uri': doc['exchange']['rootfs-url'],
+                    'vu': 'vu0:x-' + doc['exchange']['rootfs-hash']
+                }
             ],
             'target': {
                 'command': ['uname', '-a'],
@@ -96,10 +104,10 @@ def insert_gear(doc):
         return job.insert()
 
 def remove_gear(name):
-    config.db.gears.remove({"name": name})
+    config.db.gears.remove({'gear.name': name})
 
 def upsert_gear(doc):
-    gear_tools.validate_manifest(doc['manifest'])
+    gear_tools.validate_manifest(doc['gear'])
 
-    remove_gear(doc['name'])
+    remove_gear(doc['gear']['name'])
     insert_gear(doc)

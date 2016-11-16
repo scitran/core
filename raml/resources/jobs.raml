@@ -26,12 +26,7 @@ get:
   description: Used by the engine
   get:
     description: Get the next job in the queue
-    responses:
-      200:
-        body:
-          application/json:
-            example: !include ../examples/output/job-next.json
-            schema: !include ../schemas/output/job-next.json
+
 /stats:
   description: Job stats
   get:
