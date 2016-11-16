@@ -86,7 +86,9 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     # Browsers, when sending a multipart upload, will send files with field name "file" (if sinuglar)
     # or "file1", "file2", etc (if multiple). Following this convention is probably a good idea.
     # Here, we accept any
-    file_fields = [x for x in form if form[x].filename is not None]
+
+    # Non-file form fields may have an empty string as filename, check for 'falsy' values
+    file_fields = [x for x in form if form[x].filename]
 
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
