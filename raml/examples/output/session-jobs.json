@@ -1,60 +1,106 @@
 {
-    "57ebe5adf0a2c90027d2bd44": [
-        {
-            "inputs": {
-                "dicom": {
-                    "type": "acquisition",
-                    "id": "57ebe5adf0a2c90027d2bd44",
-                    "name": "1_1_dicom.zip"
-                }
-            },
-            "attempt": 1,
-            "name": "dcm_convert",
-            "tags": [
-                "dcm_convert",
-                "spectroscopy"
-            ],
-            "destination": {
-                "type": "acquisition",
-                "id": "57ebe5adf0a2c90027d2bd44"
-            },
-            "request": {
-                "inputs": [
-                    {
-                        "type": "scitran",
-                        "uri": "/jobs/57ebe5adf0a2c90027d2bd48/config.json",
-                        "location": "/flywheel/v0"
-                    },
-                    {
-                        "type": "scitran",
-                        "uri": "/acquisitions/57ebe5adf0a2c90027d2bd44/files/1_1_dicom.zip",
-                        "location": "/flywheel/v0/input/dicom"
-                    }
-                ],
-                "target": {
-                    "command": [
-                        "bash",
-                        "-c",
-                        "rm -rf output; mkdir -p output; ./run; echo \"Exit was $?\""
-                    ],
-                    "env": {
-                        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-                    },
-                    "dir": "/flywheel/v0"
-                },
-                "outputs": [
-                    {
-                        "type": "scitran",
-                        "uri": "/engine?level=acquisition&id=57ebe5adf0a2c90027d2bd44&job=57ebe5adf0a2c90027d2bd48",
-                        "location": "/flywheel/v0/output"
-                    }
-                ]
-            },
-            "modified": "2016-09-28T15:45:52.607000+00:00",
-            "created": "2016-09-28T15:45:49.975000+00:00",
-            "state": "running",
-            "config": {},
-            "id": "57ebe5adf0a2c90027d2bd48"
+  "jobs": [
+    {
+      "origin": {
+        "type": "system",
+        "id": null
+      },
+      "inputs": {
+        "dcm2niix": {
+          "type": "acquisition",
+          "id": "582cbe5a5740eb00162cf3d2",
+          "name": "6879_1_2_localizer.dicom.zip"
         }
-    ]
+      },
+      "attempt": 1,
+      "name": "dcm2niix",
+      "tags": [
+        "dcm2niix"
+      ],
+      "destination": {
+        "type": "acquisition",
+        "id": "582cbe5a5740eb00162cf3d2"
+      },
+      "modified": "2016-11-16T20:15:22.742000+00:00",
+      "created": "2016-11-16T20:15:22.742000+00:00",
+      "saved_files": [],
+      "state": "pending",
+      "config": null,
+      "id": "582cbe5a5740eb00162cf3d3"
+    },
+    {
+      "origin": {
+        "type": "system",
+        "id": null
+      },
+      "inputs": {
+        "dicom": {
+          "type": "acquisition",
+          "id": "582cbe5a5740eb00162cf3d2",
+          "name": "6879_1_2_localizer.dicom.zip"
+        }
+      },
+      "attempt": 1,
+      "name": "dicom-mr-classifier",
+      "tags": [
+        "dicom-mr-classifier"
+      ],
+      "destination": {
+        "type": "acquisition",
+        "id": "582cbe5a5740eb00162cf3d2"
+      },
+      "modified": "2016-11-16T20:15:22.756000+00:00",
+      "created": "2016-11-16T20:15:22.756000+00:00",
+      "saved_files": [],
+      "state": "pending",
+      "config": null,
+      "id": "582cbe5a5740eb00162cf3d4"
+    },
+    {
+      "origin": {
+        "type": "system",
+        "id": null
+      },
+      "inputs": {
+        "dcm2niix": {
+          "type": "acquisition",
+          "id": "582cbe5d5740eb00132cf3d6",
+          "name": "6879_3_1_t1.dicom.zip"
+        }
+      },
+      "attempt": 1,
+      "name": "dcm2niix",
+      "tags": [
+        "dcm2niix"
+      ],
+      "destination": {
+        "type": "acquisition",
+        "id": "582cbe5d5740eb00132cf3d6"
+      },
+      "modified": "2016-11-16T20:15:25.899000+00:00",
+      "created": "2016-11-16T20:15:25.899000+00:00",
+      "saved_files": [],
+      "state": "pending",
+      "config": null,
+      "id": "582cbe5d5740eb00132cf3d7"
+    }
+  ],
+  "containers": {
+    "582cbe5a5740eb00162cf3d2": {
+      "created": "2016-11-16T20:15:22.629000+00:00",
+      "modified": "2016-11-16T20:15:22.629000+00:00",
+      "label": "6879_1_2_localizer",
+      "session": "582cbe5a5740eb00162cf3d1",
+      "_id": "582cbe5a5740eb00162cf3d2",
+      "public": false
+    },
+    "582cbe5d5740eb00132cf3d6": {
+      "created": "2016-11-16T20:15:25.858000+00:00",
+      "modified": "2016-11-16T20:15:25.858000+00:00",
+      "label": "6879_3_1_t1",
+      "session": "582cbe5a5740eb00162cf3d1",
+      "_id": "582cbe5d5740eb00132cf3d6",
+      "public": false
+    }
+  }
 }
