@@ -176,36 +176,51 @@ class ContainerHandler(base.RequestHandler):
         # Only enabled for sessions container type per url rule in api.py
         self.config = self.container_handler_configurations["sessions"]
         self.storage = self.config['storage']
-        cont = self._get_container(cid, projection={'permissions': 0}, get_children=True)
+        cont = self._get_container(cid, projection={'permissions': 0, 'files': 0, 'metadata': 0}, get_children=True)
 
         permchecker = self._get_permchecker(cont)
         permchecker(noop)('GET', cid)
 
-        children = cont.get('acquisitions')
-        if not children:
-            return {}
+        analyses = cont.get('analyses', [])
+        acquisitions = cont.get('acquisitions', [])
 
-        id_array = [str(c['_id']) for c in children]
-        cont_array = [containerutil.ContainerReference('acquisition', cid) for cid in id_array]
+        results = []
+        if not acquisitions and not analyses:
+            # no jobs
+            return {'jobs': results}
 
-        states = self.request.GET.getall('states')
-        tags   = self.request.GET.getall('tags')
-        jobs = Queue.search(cont_array, states=states, tags=tags)
+        # Get query params
+        states      = self.request.GET.getall('states')
+        tags        = self.request.GET.getall('tags')
+        join_cont   = 'containers' in self.request.params.getall('join')
 
-        response = {}
-        for j in jobs:
-            job  = Job.load(j)
-            acqs = [] # acquisitions referenced by the current job inputs
-            for _,v in job.inputs.iteritems():
-                # Add job to the list of jobs for an acquisition if:
-                #  - the input refers to an acquisition on this session
-                #  - the job has not already been added to that acquisition's job array
-                if v.type == 'acquisition' and v.id in id_array and v.id not in acqs:
-                    if response.get(v.id) is not None:
-                        response[v.id].append(job)
-                    else:
-                        response[v.id] = [job]
-                    acqs.append(v.id)
+        # search for jobs
+        if acquisitions:
+            id_array = [str(c['_id']) for c in acquisitions]
+            cont_array = [containerutil.ContainerReference('acquisition', cid) for cid in id_array]
+            results += Queue.search(cont_array, states=states, tags=tags)
+
+        if analyses:
+            id_array = [str(c['_id']) for c in analyses]
+            cont_array = [containerutil.ContainerReference('analysis', cid) for cid in id_array]
+            results += Queue.search(cont_array, states=states, tags=tags)
+
+        # Ensure job uniqueness
+        seen_jobs = []
+        jobs = []
+        for j in results:
+            if j['_id'] not in seen_jobs:
+                job  = Job.load(j)
+                jobs.append(job)
+                seen_jobs.append(job.id_)
+
+        jobs.sort(key=lambda j: j.created)
+
+        response = {'jobs': jobs}
+        if join_cont:
+            # create a map of analyses and acquisitions by _id
+            containers = dict((str(c['_id']), c) for c in analyses+acquisitions)
+            response['containers'] = containers
 
         return response
 
