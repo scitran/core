@@ -21,6 +21,7 @@ from .handlers import userhandler
 from .handlers import grouphandler
 from .handlers import containerhandler
 from .handlers import collectionshandler
+from .handlers import resolvehandler
 from .handlers import searchhandler
 from .handlers import schemahandler
 from .handlers import reporthandler
@@ -99,6 +100,7 @@ routes = [
         webapp2.Route(r'/engine',           upload.Upload, handler_method='engine', methods=['POST']),
         webapp2.Route(r'/sites',            centralclient.CentralClient, handler_method='sites', methods=['GET']),
         webapp2.Route(r'/register',         centralclient.CentralClient, handler_method='register', methods=['POST']),
+        webapp2.Route(r'/resolve',         resolvehandler.ResolveHandler, handler_method='resolve', methods=['POST']),
         webapp2.Route(r'/config',           Config, methods=['GET']),
         webapp2.Route(r'/config.js',        Config, handler_method='get_js', methods=['GET']),
         webapp2.Route(r'/version',          Version, methods=['GET']),
