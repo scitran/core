@@ -13,7 +13,7 @@ echo "Checking for files with windows-style newlines:"
 
 echo "Running pylint ..."
 # TODO: Enable Refactor and Convention reports
-pylint --reports=no --disable=C,R api
+pylint --reports=no --disable=C,R,W0312 api
 
 #echo
 #

@@ -7,6 +7,14 @@ import pymongo
 import requests
 
 
+# Pytest considers fixtures to be provided by "plugins", which are generally provided by
+# files called conftest.py. This prevents us from placing module-level fixture logic in
+# well-organized files. To fix this, we simply star-import from files that we need.
+#
+# Ref: http://pytest.org/2.2.4/plugins.html
+from basics import *
+from states import *
+
 @pytest.fixture(scope="session")
 def bunch():
     class BunchFactory:
