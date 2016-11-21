@@ -133,7 +133,12 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.debug('looked up remote token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
             # Cache the token for future requests
-            config.db.authtokens.replace_one({'_id': access_token}, {'uid': uid, 'timestamp': timestamp}, upsert=True)
+            update = {
+                'uid': uid,
+                'timestamp': timestamp,
+                'auth_type': config.get_item('auth', 'auth_type')
+            }
+            config.db.authtokens.replace_one({'_id': access_token}, update, upsert=True)
 
         return uid
 
@@ -144,7 +149,17 @@ class RequestHandler(webapp2.RequestHandler):
         Returns the user's UID.
         """
 
-        r = requests.get(config.get_item('auth', 'id_endpoint'), headers={'Authorization': 'Bearer ' + access_token})
+        id_endpoint = config.get_item('auth', 'id_endpoint')
+        auth_type = config.get_item('auth', 'auth_type')
+
+        # If we start supporting more than google and ldap, break into classes inherited from abstract class
+        if auth_type == 'google':
+            r = requests.get(id_endpoint, headers={'Authorization': 'Bearer ' + access_token})
+        elif auth_type == 'ldap':
+            p = {'token': access_token}
+            r = requests.post(id_endpoint, data=p)
+        else:
+            raise self.abort(401, 'Auth not configured.')
 
         if not r.ok:
             # Oauth authN failed; for now assume it was an invalid token. Could be more accurate in the future.
@@ -155,7 +170,8 @@ class RequestHandler(webapp2.RequestHandler):
             self.abort(401, err_msg, headers=headers)
 
         identity = json.loads(r.content)
-        uid = identity.get('email')
+        email_key = 'email' if auth_type == 'google' else 'mail'
+        uid = identity.get(email_key)
 
         if not uid:
             self.abort(400, 'OAuth2 token resolution did not return email address')
@@ -168,7 +184,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         # Set user's auth provider avatar
         # TODO: switch on auth.provider rather than manually comparing endpoint URL.
-        if config.get_item('auth', 'id_endpoint') == 'https://www.googleapis.com/plus/v1/people/me/openIdConnect':
+        if auth_type == 'google':
             # A google-specific avatar URL is provided in the identity return.
             provider_avatar = identity.get('picture', '')
 
