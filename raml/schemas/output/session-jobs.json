@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "patternProperties": {
-    "^[a-fA-F0-9]{24}$":{
+  "properties":{
+    "jobs":{
       "type":"array",
       "items":{
         "type":"object",
@@ -26,6 +26,13 @@
            "id", "name", "inputs", "config",
            "destination", "tags", "state", "attempt"
         ]
+      }
+    },
+    "containers":{
+       "patternProperties": {
+        "^[a-fA-F0-9]{24}$":{
+          "type": "object"
+        }
       }
     }
   },

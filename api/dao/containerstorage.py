@@ -63,6 +63,8 @@ class ContainerStorage(object):
         except KeyError:
             raise APINotFoundException('Children cannot be listed from the {0} level'.format(self.cont_name))
         query = {self.cont_name[:-1]: bson.objectid.ObjectId(_id)}
+        if not projection:
+            projection = {'metadata': 0, 'files.metadata': 0, 'subject': 0}
         return self.factory(child_name, use_object_id=True).get_all_el(query, None, projection)
 
     def _from_mongo(self, cont):
