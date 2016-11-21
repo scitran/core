@@ -42,6 +42,7 @@ DEFAULT_CONFIG = {
         'prefetch': False
     },
     'auth': {
+        'auth_type': 'google',
         'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
         'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
         'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
