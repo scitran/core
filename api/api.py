@@ -25,6 +25,7 @@ from .handlers import resolvehandler
 from .handlers import searchhandler
 from .handlers import schemahandler
 from .handlers import reporthandler
+from .handlers import devicehandler
 from .request import SciTranRequest
 
 log = config.log
@@ -114,6 +115,13 @@ routes = [
         webapp2.Route(_format(r'/<_id:{user_id_re}>'),          userhandler.UserHandler, name='user'),
         webapp2.Route(_format(r'/<uid:{user_id_re}>/groups'),   grouphandler.GroupHandler, handler_method='get_all', methods=['GET'], name='groups'),
         webapp2.Route(_format(r'/<uid:{user_id_re}>/avatar'),   userhandler.UserHandler, handler_method='avatar', methods=['GET'], name='avatar'),
+    ]),
+    webapp2.Route(r'/api/devices',                              devicehandler.DeviceHandler, name='device_list', handler_method='get_all', methods=['GET']),
+    webapp2.Route(r'/api/devices',                              devicehandler.DeviceHandler, methods=['POST']),
+    webapp2_extras.routes.PathPrefixRoute(r'/api/devices', [
+        webapp2.Route(r'/status',                               devicehandler.DeviceHandler, handler_method='get_status', methods=['GET']),
+        webapp2.Route(r'/self',                                 devicehandler.DeviceHandler, handler_method='get_self', methods=['GET']),
+        webapp2.Route(_format(r'/<device_id:[^/]+>'),           devicehandler.DeviceHandler, name='device_details', methods=['GET']),
     ]),
     webapp2.Route(r'/api/jobs',             JobsHandler),
     webapp2_extras.routes.PathPrefixRoute(r'/api/jobs', [
