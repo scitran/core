@@ -1,0 +1,13 @@
+{
+  "info": {
+    "basic": "info"
+  },
+  "errors": [
+    "An Error"
+  ],
+  "name": "example_drone",
+  "interval": 400,
+  "_id": "test_method_megans_drone",
+  "method": "test_method",
+  "last_seen": "2016-11-28T23:14:06.004000+00:00"
+}
