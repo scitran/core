@@ -1,3 +1,6 @@
+from ..dao import APIPermissionException
+from ..types import Origin
+
 ROLES = [
     {
         'rid': 'ro',
@@ -31,3 +34,42 @@ def always_ok(exec_op):
     It is used as permissions checker when the request is a superuser_request
     """
     return exec_op
+
+def require_login(handler_method):
+    """
+    A decorator to ensure the request is not a public request.
+
+    Accepts superuser and non-superuser requests.
+    Accepts drone and user requests.
+    """
+    def check_login(self, *args, **kwargs):
+        if self.public_request:
+            raise APIPermissionException('Login required.')
+        return handler_method(self, *args, **kwargs)
+    return check_login
+
+def require_superuser(handler_method):
+    """
+    A decorator to ensure the request is made as superuser.
+
+    Accepts drone and user requests.
+    """
+    def check_superuser(self, *args, **kwargs):
+        if not self.superuser_request:
+            raise APIPermissionException('Superuser required.')
+        return handler_method(self, *args, **kwargs)
+    return check_superuser
+
+def require_drone(handler_method):
+    """
+    A decorator to ensure the request is made as a drone.
+
+    Will also ensure superuser, which is implied with a drone request.
+    """
+    def check_drone(self, *args, **kwargs):
+        if self.origin.get('type', '') != Origin.device:
+            raise APIPermissionException('Drone request required.')
+        if not self.superuser_request:
+            raise APIPermissionException('Superuser required.')
+        return handler_method(self, *args, **kwargs)
+    return check_drone

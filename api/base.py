@@ -241,9 +241,10 @@ class RequestHandler(webapp2.RequestHandler):
                 }, {
                     '$set': {
                         '_id': self.origin['id'],
-                        'last-seen': datetime.datetime.utcnow(),
+                        'last_seen': datetime.datetime.utcnow(),
                         'method': self.origin['method'],
-                        'name': self.origin['name']
+                        'name': self.origin['name'],
+                        'errors': [] # Reset errors list if device checks in
                     }
                 },
                 upsert=True,

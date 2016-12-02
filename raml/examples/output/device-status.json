@@ -1,0 +1,25 @@
+{
+  "bootstrapper_Bootstrapper": {
+    "status": "ok",
+    "last_seen": "2016-11-28T18:54:11.880000+00:00"
+  },
+  "test_method_example_drone": {
+    "status": "error",
+    "errors": [
+      "An Error"
+    ],
+    "last_seen": "2016-11-28T23:14:06.004000+00:00"
+  },
+  "gear-register_flywheel-utility": {
+    "status": "ok",
+    "last_seen": "2016-11-29T18:51:39.836000+00:00"
+  },
+  "cron_Cron": {
+    "status": "ok",
+    "last_seen": "2016-11-28T23:17:01.261000+00:00"
+  },
+  "importer_admin_import": {
+    "status": "unknown",
+    "last_seen": "2016-11-28T18:57:27.104000+00:00"
+  }
+}

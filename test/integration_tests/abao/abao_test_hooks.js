@@ -22,6 +22,7 @@ var example_acquisition_id = '';
 var test_project_1 = null;
 var test_project_tag = 'test-project-tag';
 var delete_project_id = '';
+var device_id = 'bootstrapper_Bootstrapper'
 
 // Tests we're skipping, fix these
 
@@ -45,6 +46,10 @@ hooks.skip("POST /jobs/{JobId}/retry -> 200");
 // https://github.com/cybertk/abao/issues/160
 hooks.skip("GET /users/self/avatar -> 307");
 hooks.skip("GET /users/{UserId}/avatar -> 307");
+
+// drones currently use shared secret, allow when using API keys
+hooks.skip("POST /devices -> 200")
+hooks.skip("GET /devices/self -> 200")
 
 // Tests that are skipped because we do them in postman or python
 
@@ -1459,5 +1464,15 @@ hooks.before("DELETE /projects/{ProjectId}/analyses/{AnalysisId}/notes/{NoteId} 
         AnalysisId: test_project_1.analyses[0]._id,
         NoteId: test_project_1.analyses[0].notes[0]._id
     };
+    done();
+});
+
+hooks.before("GET /devices/{DeviceId} -> 200", function(test, done) {
+    test.request.params.DeviceId = device_id;
+    done();
+});
+
+hooks.before("GET /devices/{DeviceId} -> 404", function(test, done) {
+    test.request.params.DeviceId = 'bad_device_id';
     done();
 });
