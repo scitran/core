@@ -13,8 +13,7 @@
     "interval": {"type": "integer"},
     "id": {"type": "string"},
     "method": {"type": "string"},
-    "last_seen": {"type": ["string", "null"], "format": "date-time"}
-  },
+    "last_seen": {"type": ["string", "null"], "format": "date-time"},
     "device-input":{
         "type": "object",
         "properties": {
@@ -24,4 +23,5 @@
         },
         "additionalProperties": false
     }
+  }
 }

@@ -244,7 +244,7 @@ class RequestHandler(webapp2.RequestHandler):
                         'last_seen': datetime.datetime.utcnow(),
                         'method': self.origin['method'],
                         'name': self.origin['name'],
-                        'errors': None # Reset errors list if device checks in
+                        'errors': [] # Reset errors list if device checks in
                     }
                 },
                 upsert=True,

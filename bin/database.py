@@ -13,7 +13,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 19 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 20 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -520,6 +520,18 @@ def upgrade_to_19():
         }
     }
     config.db.jobs.update_many({'origin': {'$exists': False}}, update)
+
+def upgrade_to_20():
+    """
+    scitran/core issue #602
+
+    Change dash to underscore for consistency
+    """
+
+    query = {'last-seen': {'$exists': True}}
+    update = {'$rename': {'last-seen':'last_seen' }}
+
+    config.db.devices.update_many(query, update)
 
 
 def upgrade_schema():
