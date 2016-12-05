@@ -24,7 +24,11 @@ def default_container(handler, container=None, target_parent_container=None):
                         'subject.lastname' : 0
                     }
             elif method == 'POST':
-                has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
+                required_perm = 'rw'
+                if target_parent_container.get('roles'):
+                    # Create project on group, require admin
+                    required_perm = 'admin'
+                has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES[required_perm]
             elif method == 'DELETE':
                 if target_parent_container:
                     has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
