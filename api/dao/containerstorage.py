@@ -1,6 +1,5 @@
 import bson.errors
 import bson.objectid
-import json
 import pymongo.errors
 
 from .. import util
@@ -221,20 +220,6 @@ class ProjectStorage(ContainerStorage):
 
     def __init__(self):
         super(ProjectStorage,self).__init__('projects', use_object_id=True)
-
-    def _from_mongo(self, cont):
-        if cont:
-            template = cont.get('template')
-            if template:
-                cont['template'] = json.loads(template)
-        return super(ProjectStorage,self)._from_mongo(cont)
-
-    def _to_mongo(self, payload):
-        if payload:
-            template = payload.get('template')
-            if template:
-                payload['template'] = json.dumps(template)
-        return super(ProjectStorage,self)._to_mongo(payload)
 
     def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
         result = super(ProjectStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)

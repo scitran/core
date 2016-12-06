@@ -542,17 +542,20 @@ def upgrade_to_21():
     Acquisition fields `instrument` and `measurement` removed
     """
 
+    def update_project_template(template):
+        new_template = {'acquisitions': []}
+        for a in template.get('acquisitions', []):
+            new_a = {'minimum': a['minimum']}
+            properties = a['schema']['properties']
+            if 'measurement' in properties:
+                m_req = properties.pop('measurement')
+                new_a['files']=[{'measurement':  m_req['pattern'], 'minimum': 1}]
+            if 'label' in properties:
+                l_req = properties.pop('label')
+                new_a['label'] = l_req['pattern']
+            new_template['acquisitions'].append(new_a)
 
-
-
-    # def update_project_template(template):
-    #     for a in template.get('acquisitions', []):
-    #         properties = a['schema']['properties']
-    #         if 'measurement' in properties:
-    #             m_req = properties.pop('measurement')
-    #             a['files']['schema']
-
-    #     return template
+        return new_template
 
     def dm_v2_updates(cont_list, cont_name):
         for container in cont_list:
@@ -561,7 +564,9 @@ def upgrade_to_21():
             update = {'$rename': {'metadata': 'info'}}
 
             if cont_name == 'projects' and container.get('template'):
-                pass
+                new_template = update_project_template(json.loads(container.get('template')))
+                update['$set'] = {'template': new_template}
+
 
             if cont_name == 'sessions':
                 update['$rename'].update({'subject.metadata': 'subject.info'})
@@ -597,7 +602,7 @@ def upgrade_to_21():
     dm_v2_updates(config.db.collections.find(query), 'collections')
 
     query['$or'].append({'template': { '$exists': True}})
-    dm_v2_updates(config.db.projects.find(query), 'projects')
+    dm_v2_updates(config.db.projects.find({}), 'projects')
 
     query['$or'].append({'subject': { '$exists': True}})
     dm_v2_updates(config.db.sessions.find(query), 'sessions')
