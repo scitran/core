@@ -235,6 +235,29 @@ class EnginePlacer(Placer):
         if self.metadata is not None:
             validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
 
+            ###
+            # Remove when switch to dmv2 is complete across all gears
+            if self.context.get('job_id') and self.metadata.get(self.container_type):
+                job = Job.get(self.context.get('job_id'))
+                input_names = [{'name': v.name} for k,v in job.inputs.iteritems()]
+
+                measurement = self.metadata.get(self.container_type, {}).pop('measurement', None)
+                info = self.metadata.get(self.container_type,{}).pop('metadata', None)
+                modality = self.metadata.get(self.container_type, {}).pop('instrument', None)
+                if measurement or info or modality:
+                    files = self.metadata[self.container_type].get('files', [])
+                    files += input_names
+                    for f in files:
+                        if measurement:
+                            f['measurements'] = [measurement]
+                        if info:
+                            f['info'] = info
+                        if modality:
+                            f['modality'] = modality
+
+                    self.metadata[self.container_type]['files'] = files
+            ###
+
 
     def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
@@ -254,6 +277,13 @@ class EnginePlacer(Placer):
         if self.metadata is not None:
             bid = bson.ObjectId(self.id_)
 
+            file_mds = self.metadata.get(self.container_type, {}).get('files', [])
+            saved_file_names = [x.get('name') for x in self.saved]
+            for file_md in file_mds:
+                if file_md['name'] not in saved_file_names:
+                    # Updating file that already exists
+                    hierarchy.update_fileinfo(self.container_type, self.id_, file_md)
+
             # Remove file metadata as it was already updated in process_file_field
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
@@ -262,6 +292,7 @@ class EnginePlacer(Placer):
         if self.context.get('job_id'):
             job = Job.get(self.context.get('job_id'))
             job.saved_files = [f['name'] for f in self.saved]
+            job.produced_metadata = self.metadata
             job.save()
 
         self.recalc_session_compliance()
