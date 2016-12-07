@@ -83,7 +83,7 @@ def insert_gear(doc):
     config.db.gears.insert(doc)
 
     if config.get_item('queue', 'prefetch'):
-        log.info('Queuing prefetch job for gear ' + doc['name'])
+        log.info('Queuing prefetch job for gear ' + doc['gear']['name'])
 
         job = Job(doc['gear']['name'], {}, destination={}, tags=['prefetch'], request={
             'inputs': [
