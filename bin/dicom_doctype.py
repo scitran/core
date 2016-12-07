@@ -66,12 +66,81 @@ def create_mappings():
         field_name = v[4]
         vr_mapping = VR_TYPES.get(vr_type)
         if vr_mapping:
-            field_mappings[field_name] = {'type': vr_mapping[0]}
+            field_type = vr_mapping[0]
+            if field_type == 'string' and vr_type not in ['UT', 'LT', 'ST']:
+                config.log
+                field_mappings[field_name+'_term'] = {'type': 'string', 'index': 'not_analyzed'}
+            field_mappings[field_name] = {'type': field_type}
         else:
             pass
             #logging.warn('Skipping field {} of VR type {}'.format(field_name, vr_type))
 
     return field_mappings
+
+def cast_date(dcm_date):
+    """
+    Cast DICOM date string (YYYYMMDD) into ElasticSearch pre-defined strict_date format (yyyy-MM-dd)
+    """
+    return dcm_date[:4] + '-' + dcm_date[4:6] + '-' + dcm_date[6:]
+
+def cast_time(dcm_time):
+    """
+    Cast DICOM time string (HHMMSS.FRAC)
+    into ElasticSearch pre-defined strict_time format (HH:mm:ss.SSSZZ)
+    """
+    # TODO: this fxn needs to be tested on real data
+    if len(dcm_time) < 6:
+        return None
+    hours = dcm_time[:2]
+    minutes = dcm_time[2:4]
+    seconds = dcm_time[4:6]
+    if len(dcm_time) > 7:
+        fraction_str = dcm_time[7:]
+        fraction = float(dcm_time[7:])/10^(len(fraction_str))
+        fraction = int(fraction*1000)
+    else:
+        fraction = 0
+    return '%s:%s:%s.%03d00' % (hours, minutes, seconds, fraction)
+
+def cast_datetime(dcm_datetime):
+    """
+    Cast DICOM datetime string (YYYYMMDDHHMMSS.FFFFFF)
+    into ElasticSearch pre-defined basic_date_time format (yyyyMMdd'T'HHmmss.SSSZ)
+    """
+    # TODO: this fxn needs to be tested on real data
+    year = dcm_datetime[:4]
+    month = dcm_datetime[4:6]
+    day = dcm_datetime[6:8]
+    if len(dcm_datetime) > 8:
+        hours = dcm_datetime[8:10]
+        minutes = dcm_datetime[10:12]
+        seconds = dcm_datetime[12:14]
+    else:
+        hours = '00'
+        minutes = '00'
+        seconds = '00'
+    if len(dcm_datetime) > 15:
+        fraction_str = dcm_datetime[15:]
+        fraction = float(dcm_datetime[15:])/10^(len(fraction_str))
+        fraction = int(fraction*1000)
+    else:
+        fraction = 0
+    return '%s%s%sT%s%s%s.%03d0' % (year, month, day, hours, minutes, seconds, fraction)
+
+def cast_age(dcm_age):
+    """ Cast DICOM age string into seconds"""
+    # TODO: this fxn needs to be tested on real data
+    unit = dcm_age[-1]
+    if unit not in ['D', 'W', 'M', 'Y']:
+        return None
+    multipliers = dict(D=60*60*24,
+                       W=60*60*24*7,
+                       M=60*60*24*30,
+                       Y=60*60*24*365)
+    value = int(dcm_age[:-1])
+    seconds = multipliers[unit]*value
+    return seconds
+
 
 
 if __name__ == '__main__':
@@ -103,6 +172,9 @@ if __name__ == '__main__':
     res = es.indices.create(index=DICOM_INDEX, body=request)
     print 'response: {}'.format(res)
 
+    mappings = es.indices.get_mapping(index=DICOM_INDEX, doc_type='dicom')
+    dicom_mappings = mappings['dicom_store']['mappings']['dicom']['properties']['dicom_header']['properties']
+
     groups = db.groups.find({})
     for g in groups:
         g.pop('roles', None)
@@ -117,8 +189,24 @@ if __name__ == '__main__':
 
                     dicom_data = a.get('metadata')
                     if dicom_data:
+                        term_fields = {}
                         for s in SKIPPED:
                             dicom_data.pop(s, None)
+                        for k,v in dicom_data.iteritems():
+                            if 'datetime' in k.lower():
+                                config.log.debug('called for {}'.format(k))
+                                v = cast_datetime(str(v))
+                            elif 'date' in k.lower():
+                                config.log.debug('called for {}'.format(k))
+                                v = cast_date(str(v))
+                            elif 'time' in k.lower():
+                                config.log.debug('called for {}'.format(k))
+                                v = cast_time(str(v))
+
+                            term_field_name = k+'_term'
+                            if term_field_name in dicom_mappings:
+                                term_fields[k+'_term'] = str(v)
+                        dicom_data.update(term_fields)
 
                         permissions = a['permissions']
 
