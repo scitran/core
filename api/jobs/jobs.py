@@ -207,7 +207,13 @@ class Job(object):
         """
 
         r = {
-            'inputs': [ ],
+            'inputs': [
+                {
+                    'type': 'http',
+                    'uri': gear['exchange']['rootfs-url'],
+                    'vu': 'vu0:x-' + gear['exchange']['rootfs-hash']
+                }
+            ],
             'target': {
                 'command': ['bash', '-c', 'rm -rf output; mkdir -p output; ./run; echo "Exit was $?"'],
                 'env': {
@@ -223,9 +229,6 @@ class Job(object):
                 },
             ],
         }
-
-        # Add the gear
-        r['inputs'].append(gear['input'])
 
         # Map destination to upload URI
         r['outputs'][0]['uri'] = '/engine?level=' + self.destination.type + '&id=' + self.destination.id

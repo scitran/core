@@ -119,10 +119,10 @@ def queue_job_legacy(algorithm_id, input_):
 
     gear = gears.get_gear_by_name(algorithm_id)
 
-    if len(gear['manifest']['inputs']) != 1:
+    if len(gear['gear']['inputs']) != 1:
         raise Exception("Legacy gear enqueue attempt of " + algorithm_id + " failed: must have exactly 1 input in manifest")
 
-    input_name = gear['manifest']['inputs'].keys()[0]
+    input_name = gear['gear']['inputs'].keys()[0]
 
     inputs = {
         input_name: input_

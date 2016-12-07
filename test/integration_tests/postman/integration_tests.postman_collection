@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "6d49872e-3762-3a9a-3cd1-e2f72b9a8128",
+		"_postman_id": "03089f3b-3670-9613-0c41-6b3b6927e9ea",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -14,7 +14,9 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+						]
 					}
 				}
 			],
@@ -48,7 +50,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 400\"] = responseCode.code === 400;\n\ntests[\"Body has validation error message\"] = responseBody.has(\"'firstname' is a required property\");"
+						"exec": [
+							"tests[\"Status code is 400\"] = responseCode.code === 400;",
+							"",
+							"tests[\"Body has validation error message\"] = responseBody.has(\"'firstname' is a required property\");"
+						]
 					}
 				}
 			],
@@ -82,7 +88,9 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+						]
 					}
 				}
 			],
@@ -125,7 +133,12 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\nvar jsonData = JSON.parse(responseBody);\npostman.setGlobalVariable(\"test-group-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200 or 201\"] = (responseCode.code === 200 || responseCode.code === 201);",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"postman.setGlobalVariable(\"test-group-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -154,7 +167,16 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"if (jsonData && jsonData[0]) {",
+							"    tests[\"Upload complte\"] = jsonData[0].name === \"test-1.dcm\";",
+							"}"
+						]
 					}
 				}
 			],
@@ -197,7 +219,19 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"test-session-1 is first\"] = jsonData[0].label === \"test-session-1\";\n\npostman.setGlobalVariable(\"test-session-1\", jsonData[0]);\npostman.setGlobalVariable(\"test-session-1-id\", jsonData[0]._id);\npostman.setGlobalVariable(\"test-project-1-id\", jsonData[0].project);\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"test-session-1 is first\"] = jsonData[0].label === \"test-session-1\";",
+							"",
+							"postman.setGlobalVariable(\"test-session-1\", jsonData[0]);",
+							"postman.setGlobalVariable(\"test-session-1-id\", jsonData[0]._id);",
+							"postman.setGlobalVariable(\"test-project-1-id\", jsonData[0].project);",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -231,7 +265,16 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"test-acquisition-1 is first\"] = jsonData[0].label === \"test-acquisition-1\";\n\npostman.setGlobalVariable(\"test-acquisition-1\", jsonData[0]);\npostman.setGlobalVariable(\"test-acquisition-1-id\", jsonData[0]._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"test-acquisition-1 is first\"] = jsonData[0].label === \"test-acquisition-1\";",
+							"",
+							"postman.setGlobalVariable(\"test-acquisition-1\", jsonData[0]);",
+							"postman.setGlobalVariable(\"test-acquisition-1-id\", jsonData[0]._id);"
+						]
 					}
 				}
 			],
@@ -265,7 +308,9 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 400\"] = responseCode.code === 400;"
+						"exec": [
+							"tests[\"Status code is 400\"] = responseCode.code === 400;"
+						]
 					}
 				}
 			],
@@ -294,7 +339,9 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+						]
 					}
 				}
 			],
@@ -310,7 +357,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"name\": \"test-case-gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test-case-gear\",\n\t\t\"label\": \"Test Case Gear\",\n\t\t\"version\": \"0\",\n\t\t\n\t\t\"author\": \"Nathaniel Kofalt\",\n\t\t\"description\": \"A gear built to drive test cases\",\n\t\t\n\t\t\"url\":     \"http://none.example\",\n\t\t\"source\":  \"http://none.example\",\n\t\t\"license\": \"MIT\",\n\t\t\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t},\n\t\t\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t},\n\t\"input\": {\n\t\t\"uri\":\"https://somewhere.notarealtopleveldomain/gears/foo.tar.gz\",\n\t\t\"type\":\"http\",\n\t\t\"location\":\"/\",\n\t\t\"vu\": \"vu0:sha384:tXvdI2pspng-YH6lwa2UcLsww0yR6LfEKbLm89eIqEGicLRHW9d1V8bs7gXHTlZ3\"\n\t}\n}"
+					"raw": "{\n    \"category\" : \"converter\",\n    \"gear\" : {\n        \"inputs\" : {\n            \"wat\" : {\n                \"base\" : \"file\",\n                \"type\" : {\n                    \"enum\" : [ \n                        \"wat\"\n                    ]\n                }\n            }\n        },\n        \"maintainer\" : \"Example\",\n        \"description\" : \"Example\",\n        \"license\" : \"BSD-2-Clause\",\n        \"author\" : \"Example\",\n        \"url\" : \"https://example.example\",\n        \"label\" : \"wat\",\n        \"flywheel\" : \"0\",\n        \"source\" : \"https://example.example\",\n        \"version\" : \"0.0.1\",\n        \"config\" : {},\n        \"name\" : \"test-case-gear\"\n    },\n    \"exchange\" : {\n        \"git-commit\" : \"aex\",\n        \"rootfs-hash\" : \"sha384:oy\",\n        \"rootfs-url\" : \"https://example.example\"\n    }\n}"
 				},
 				"description": ""
 			},
@@ -323,7 +370,9 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+						]
 					}
 				}
 			],
@@ -352,7 +401,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-collection-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"test-collection-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -381,7 +437,10 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							""
+						]
 					}
 				}
 			],
@@ -410,7 +469,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\nvar jsonData = JSON.parse(responseBody);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"var jsonData = JSON.parse(responseBody);"
+						]
 					}
 				}
 			],
@@ -447,7 +510,10 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							""
+						]
 					}
 				}
 			],
@@ -476,7 +542,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -513,7 +583,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -550,7 +624,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -579,7 +657,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -608,7 +690,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -637,7 +723,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -666,7 +756,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-session-1-analysis-1-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"test-session-1-analysis-1-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -700,7 +797,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-session-1-file-upload-analysis-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"test-session-1-file-upload-analysis-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -743,7 +847,12 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -777,7 +886,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-acquisition-1-analysis-1-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"test-acquisition-1-analysis-1-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -820,7 +936,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -863,7 +983,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-collection-1-analysis-1-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"test-collection-1-analysis-1-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -906,7 +1033,12 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);"
+						]
 					}
 				}
 			],
@@ -949,7 +1081,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"test-project-1-analysis-1-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"test-project-1-analysis-1-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -992,7 +1131,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -1035,7 +1178,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -1064,7 +1211,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -1093,7 +1244,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -1122,7 +1277,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -1151,7 +1310,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-project-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-project-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1180,7 +1346,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-compliant-session-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-compliant-session-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1209,7 +1382,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-noncompliant-session-id\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-noncompliant-session-id\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1238,7 +1418,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-cs-acquisition-1\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-cs-acquisition-1\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1267,7 +1454,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-cs-acquisition-2\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-cs-acquisition-2\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1296,7 +1490,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-ncs-acquisition-1\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-ncs-acquisition-1\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1325,7 +1526,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project updated\"] = jsonData.modified == 1;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"Project updated\"] = jsonData.modified == 1;"
+						]
 					}
 				}
 			],
@@ -1354,7 +1562,16 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === true;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"Project has template marked\"] = jsonData.project_has_template === true;",
+							"",
+							"tests[\"Session marked as compliant\"] = jsonData.satisfies_template === true;"
+						]
 					}
 				}
 			],
@@ -1383,7 +1600,16 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === false;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"Project has template marked\"] = jsonData.project_has_template === true;",
+							"",
+							"tests[\"Session marked as compliant\"] = jsonData.satisfies_template === false;"
+						]
 					}
 				}
 			],
@@ -1412,7 +1638,14 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\npostman.setGlobalVariable(\"ST-ncs-acquisition-2\", jsonData._id);"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"ST-ncs-acquisition-2\", jsonData._id);"
+						]
 					}
 				}
 			],
@@ -1441,7 +1674,16 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === true;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"Project has template marked\"] = jsonData.project_has_template === true;",
+							"",
+							"tests[\"Session marked as compliant\"] = jsonData.satisfies_template === true;"
+						]
 					}
 				}
 			],
@@ -1470,7 +1712,11 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							""
+						]
 					}
 				}
 			],
@@ -1499,7 +1745,16 @@
 					"listen": "test",
 					"script": {
 						"type": "text/javascript",
-						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\n\nvar jsonData = JSON.parse(responseBody);\n\ntests[\"Project has template marked\"] = jsonData.project_has_template === true;\n\ntests[\"Session marked as compliant\"] = jsonData.satisfies_template === false;"
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"Project has template marked\"] = jsonData.project_has_template === true;",
+							"",
+							"tests[\"Session marked as compliant\"] = jsonData.satisfies_template === false;"
+						]
 					}
 				}
 			],
