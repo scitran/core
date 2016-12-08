@@ -237,7 +237,8 @@ class EnginePlacer(Placer):
 
             ###
             # Remove when switch to dmv2 is complete across all gears
-            if self.context.get('job_id') and self.metadata.get(self.container_type):
+            c_metadata = self.metadata.get(self.container_type, {})
+            if self.context.get('job_id') and c_metadata and not c_metadata.get('files', []):
                 job = Job.get(self.context.get('job_id'))
                 input_names = [{'name': v.name} for k,v in job.inputs.iteritems()]
 
@@ -281,8 +282,7 @@ class EnginePlacer(Placer):
             saved_file_names = [x.get('name') for x in self.saved]
             for file_md in file_mds:
                 if file_md['name'] not in saved_file_names:
-                    # Updating file that already exists
-                    hierarchy.update_fileinfo(self.container_type, self.id_, file_md)
+                    hierarchy.update_fileinfo(self.container_type+'s', bid, file_md)
 
             # Remove file metadata as it was already updated in process_file_field
             for k in self.metadata.keys():

@@ -150,22 +150,24 @@ def is_session_compliant(session, template):
         Return True if container satisfies requirements.
         Return False otherwise.
         """
+        log.debug('entering with {} {}'.format(cont, reqs))
 
         for req_k, req_v in reqs.iteritems():
             if req_k == 'files':
-                file_reqs = req_v
-                min_count = file_reqs.pop('minimum')
-                count = 0
-                for f in cont.get('files', []):
-                    if not check_cont(f, req_v):
-                        # Didn't find a match, on to the next one
-                        continue
-                    else:
-                        count += 1
-                        if count >= min_count:
-                            break
-                if count < min_count:
-                    return False
+                for fr in req_v:
+                    fr_temp = fr.copy() #so subsequent calls don't have their minimum missing
+                    min_count = fr_temp.pop('minimum')
+                    count = 0
+                    for f in cont.get('files', []):
+                        if not check_cont(f, fr_temp):
+                            # Didn't find a match, on to the next one
+                            continue
+                        else:
+                            count += 1
+                            if count >= min_count:
+                                break
+                    if count < min_count:
+                        return False
 
             else:
                 if not check_req(cont, req_k, req_v):
