@@ -571,33 +571,49 @@ def upgrade_to_21():
             if cont_name == 'sessions':
                 update['$rename'].update({'subject.metadata': 'subject.info'})
 
+
             measurement = None
+            modality = None
+            info = None
             if cont_name == 'acquisitions':
-                measurement = container.get('measurement', None)
                 update['$unset'] = {'instrument': '', 'measurement': ''}
+                measurement = container.get('measurement', None)
+                modality = container.get('instrument', None)
+                info = container.get('metadata', None)
 
             # From mongo docs: '$rename does not work if these fields are in array elements.'
             files = container.get('files')
             if files is not None:
                 updated_files = []
                 for file_ in files:
+                    file_['info'] = {}
                     if 'metadata' in file_:
                         file_['info'] = file_.pop('metadata', None)
                     if 'instrument' in file_:
                         file_['modality'] = file_.pop('instrument', None)
                     if measurement:
-                        # Add the acquisition
+                        # Move the acquisition's measurement to all files
                         if file_.get('measurements'):
                             file_['measurements'].append(measurement)
                         else:
                             file_['measurements'] = [measurement]
+                    logging.warn('the info is {} and the file type is {}'.format(info, file_.get('type')))
+                    if info and file_.get('type', '') == 'dicom':
+                        # This is going to be the dicom header info
+                        updated_info = info
+                        updated_info.update(file_['info'])
+                        file_['info'] = updated_info
+                    if modality and not file_.get('modality'):
+                        file_['modality'] = modality
+
                     updated_files.append(file_)
                 update['$set'] = {'files': updated_files}
 
             result = config.db[cont_name].update_one(query, update)
 
-    query = {'$or':[{'files': { '$exists': True}},
-                    {'metadata': { '$exists': True}}]}
+    query = {'$or':[{'files.metadata': { '$exists': True}},
+                    {'metadata': { '$exists': True}},
+                    {'files.instrument': { '$exists': True}}]}
 
     dm_v2_updates(config.db.collections.find(query), 'collections')
 
