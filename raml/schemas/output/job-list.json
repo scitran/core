@@ -16,7 +16,8 @@
       "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
       "config":{"$ref":"../definitions/job.json#/definitions/config"},
       "request":{"$ref":"../definitions/job.json#/definitions/request"},
-      "saved_files":{"$ref":"../definitions/job.json#/definitions/saved_files"}
+      "saved_files":{"$ref":"../definitions/job.json#/definitions/saved_files"},
+      "produced_metadata":{"$ref":"../definitions/job.json#/definitions/produced_metadata"}
     },
     "additionalProperties":false,
     "required":[

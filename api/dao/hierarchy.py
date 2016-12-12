@@ -131,14 +131,14 @@ def is_session_compliant(session, template):
             elif isinstance(cont_v, list):
                 found_in_list = False
                 for v in cont_v:
-                    if bool(re.match(req_v, cont_v)):
+                    if re.search(req_v, cont_v, re.IGNORECASE):
                         found_in_list = True
                         break
                 if not found_in_list:
                     return False
             else:
                 # Assume regex for now
-                if not bool(re.match(req_v, cont_v)):
+                if not re.search(req_v, cont_v, re.IGNORECASE):
                     return False
         else:
             return False
@@ -150,8 +150,6 @@ def is_session_compliant(session, template):
         Return True if container satisfies requirements.
         Return False otherwise.
         """
-        log.debug('entering with {} {}'.format(cont, reqs))
-
         for req_k, req_v in reqs.iteritems():
             if req_k == 'files':
                 for fr in req_v:

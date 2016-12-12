@@ -8,7 +8,7 @@
                 "_id":{"$ref":"../definitions/objectid.json#"},
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+                "info": {"$ref": "../definitions/container.json#/definitions/info"},
                 "curator": {"$ref":"#/definitions/curator"},
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
                 "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},

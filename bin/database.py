@@ -597,7 +597,6 @@ def upgrade_to_21():
                             file_['measurements'].append(measurement)
                         else:
                             file_['measurements'] = [measurement]
-                    logging.warn('the info is {} and the file type is {}'.format(info, file_.get('type')))
                     if info and file_.get('type', '') == 'dicom':
                         # This is going to be the dicom header info
                         updated_info = info

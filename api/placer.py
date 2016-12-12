@@ -240,15 +240,15 @@ class EnginePlacer(Placer):
             c_metadata = self.metadata.get(self.container_type, {})
             if self.context.get('job_id') and c_metadata and not c_metadata.get('files', []):
                 job = Job.get(self.context.get('job_id'))
-                input_names = [{'name': v.name} for k,v in job.inputs.iteritems()]
+                input_names = [{'name': v.name} for v in job.inputs.itervalues()]
 
                 measurement = self.metadata.get(self.container_type, {}).pop('measurement', None)
                 info = self.metadata.get(self.container_type,{}).pop('metadata', None)
                 modality = self.metadata.get(self.container_type, {}).pop('instrument', None)
                 if measurement or info or modality:
-                    files = self.metadata[self.container_type].get('files', [])
-                    files += input_names
-                    for f in files:
+                    files_ = self.metadata[self.container_type].get('files', [])
+                    files_ += input_names
+                    for f in files_:
                         if measurement:
                             f['measurements'] = [measurement]
                         if info:
@@ -256,7 +256,7 @@ class EnginePlacer(Placer):
                         if modality:
                             f['modality'] = modality
 
-                    self.metadata[self.container_type]['files'] = files
+                    self.metadata[self.container_type]['files'] = files_
             ###
 
 
