@@ -107,9 +107,9 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
         field.mimetype = util.guess_mimetype(field.filename) # TODO: does not honor metadata's mime type if any
         field.modified = timestamp
 
-        # create a file-info map commonly used elsewhere in the codebase.
+        # create a file-attribute map commonly used elsewhere in the codebase.
         # Stands in for a dedicated object... for now.
-        info = {
+        file_attrs = {
             'name':	 field.filename,
             'modified': field.modified, #
             'size':	 field.size,
@@ -118,15 +118,14 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
             'origin': origin,
 
             'type': None,
-            'instrument': None,
+            'modality': None,
             'measurements': [],
             'tags': [],
-            'metadata': {}
+            'info': {}
         }
 
-        info['type'] = files.guess_type_from_filename(info['name'])
-
-        placer.process_file_field(field, info)
+        file_attrs['type'] = files.guess_type_from_filename(file_attrs['name'])
+        placer.process_file_field(field, file_attrs)
 
     # Respond either with Server-Sent Events or a standard json map
     if placer.sse and not response:

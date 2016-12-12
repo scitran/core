@@ -13,7 +13,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 20 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 21 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -533,6 +533,104 @@ def upgrade_to_20():
 
     config.db.devices.update_many(query, update)
 
+def upgrade_to_21():
+    """
+    scitran/core issue #189 - Data Model v2
+
+    Field `metadata` renamed to `info`
+    Field `file.instrument` renamed to `file.modality`
+    Acquisition fields `instrument` and `measurement` removed
+    """
+
+    def update_project_template(template):
+        new_template = {'acquisitions': []}
+        for a in template.get('acquisitions', []):
+            new_a = {'minimum': a['minimum']}
+            properties = a['schema']['properties']
+            if 'measurement' in properties:
+                m_req = properties.pop('measurement')
+                new_a['files']=[{'measurement':  m_req['pattern'], 'minimum': 1}]
+            if 'label' in properties:
+                l_req = properties.pop('label')
+                new_a['label'] = l_req['pattern']
+            new_template['acquisitions'].append(new_a)
+
+        return new_template
+
+    def dm_v2_updates(cont_list, cont_name):
+        for container in cont_list:
+
+            query = {'_id': container['_id']}
+            update = {'$rename': {'metadata': 'info'}}
+
+            if cont_name == 'projects' and container.get('template'):
+                new_template = update_project_template(json.loads(container.get('template')))
+                update['$set'] = {'template': new_template}
+
+
+            if cont_name == 'sessions':
+                update['$rename'].update({'subject.metadata': 'subject.info'})
+
+
+            measurement = None
+            modality = None
+            info = None
+            if cont_name == 'acquisitions':
+                update['$unset'] = {'instrument': '', 'measurement': ''}
+                measurement = container.get('measurement', None)
+                modality = container.get('instrument', None)
+                info = container.get('metadata', None)
+                if info:
+                    config.db.acquisitions.update_one(query, {'$set': {'metadata': {}}})
+
+
+            # From mongo docs: '$rename does not work if these fields are in array elements.'
+            files = container.get('files')
+            if files is not None:
+                updated_files = []
+                for file_ in files:
+                    file_['info'] = {}
+                    if 'metadata' in file_:
+                        file_['info'] = file_.pop('metadata', None)
+                    if 'instrument' in file_:
+                        file_['modality'] = file_.pop('instrument', None)
+                    if measurement:
+                        # Move the acquisition's measurement to all files
+                        if file_.get('measurements'):
+                            file_['measurements'].append(measurement)
+                        else:
+                            file_['measurements'] = [measurement]
+                    if info and file_.get('type', '') == 'dicom':
+                        # This is going to be the dicom header info
+                        updated_info = info
+                        updated_info.update(file_['info'])
+                        file_['info'] = updated_info
+                    if modality and not file_.get('modality'):
+                        file_['modality'] = modality
+
+                    updated_files.append(file_)
+                if update.get('$set'):
+                    update['$set']['files': updated_files]
+                else:
+                    update['$set'] = {'files': updated_files}
+
+            result = config.db[cont_name].update_one(query, update)
+
+    query = {'$or':[{'files.metadata': { '$exists': True}},
+                    {'metadata': { '$exists': True}},
+                    {'files.instrument': { '$exists': True}}]}
+
+    dm_v2_updates(config.db.collections.find(query), 'collections')
+
+    query['$or'].append({'template': { '$exists': True}})
+    dm_v2_updates(config.db.projects.find({}), 'projects')
+
+    query['$or'].append({'subject': { '$exists': True}})
+    dm_v2_updates(config.db.sessions.find(query), 'sessions')
+
+    query['$or'].append({'instrument': { '$exists': True}})
+    query['$or'].append({'measurement': { '$exists': True}})
+    dm_v2_updates(config.db.acquisitions.find(query), 'acquisitions')
 
 def upgrade_schema():
     """
@@ -542,7 +640,6 @@ def upgrade_schema():
     """
 
     db_version = get_db_version()
-
     try:
         while db_version < CURRENT_DATABASE_VERSION:
             db_version += 1

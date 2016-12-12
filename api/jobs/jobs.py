@@ -13,7 +13,11 @@ from .. import config
 
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None, attempt=1, previous_job_id=None, created=None, modified=None, state='pending', request=None, id_=None, config_=None, now=False, origin=None, saved_files=None):
+    def __init__(self, name, inputs, destination=None, tags=None,
+                 attempt=1, previous_job_id=None, created=None,
+                 modified=None, state='pending', request=None,
+                 id_=None, config_=None, now=False, origin=None,
+                 saved_files=None, produced_metadata=None):
         """
         Creates a job.
 
@@ -52,6 +56,8 @@ class Job(object):
             tags = []
         if saved_files is None:
             saved_files = []
+        if produced_metadata is None:
+            produced_metadata = {}
         if created is None:
             created = time_now
         if modified is None:
@@ -76,21 +82,22 @@ class Job(object):
             }
 
 
-        self.name            = name
-        self.inputs          = inputs
-        self.destination     = destination
-        self.tags            = tags
-        self.attempt         = attempt
-        self.previous_job_id = previous_job_id
-        self.created         = created
-        self.modified        = modified
-        self.state           = state
-        self.request         = request
-        self.id_             = id_
-        self.config          = config_
-        self.now             = now
-        self.origin          = origin
-        self.saved_files     = saved_files
+        self.name               = name
+        self.inputs             = inputs
+        self.destination        = destination
+        self.tags               = tags
+        self.attempt            = attempt
+        self.previous_job_id    = previous_job_id
+        self.created            = created
+        self.modified           = modified
+        self.state              = state
+        self.request            = request
+        self.id_                = id_
+        self.config             = config_
+        self.now                = now
+        self.origin             = origin
+        self.saved_files        = saved_files
+        self.produced_metadata  = produced_metadata
 
     @classmethod
     def load(cls, e):
@@ -125,7 +132,8 @@ class Job(object):
             config_=d.get('config'),
             now=d.get('now', False),
             origin=d.get('origin'),
-            saved_files=d.get('saved_files'))
+            saved_files=d.get('saved_files'),
+            produced_metadata=d.get('produced_metadata'))
 
     @classmethod
     def get(cls, _id):

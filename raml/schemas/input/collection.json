@@ -5,7 +5,7 @@
     "properties": {
         "public": {"$ref": "../definitions/container.json#/definitions/public"},
         "label": {"$ref": "../definitions/container.json#/definitions/label"},
-        "metadata": {"$ref": "../definitions/container.json#/definitions/metadata"},
+        "info": {"$ref": "../definitions/container.json#/definitions/info"},
         "curator": {"$ref": "../definitions/collection.json#/definitions/curator"}
     },
     "required": ["label"],

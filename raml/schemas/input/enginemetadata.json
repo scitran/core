@@ -8,7 +8,7 @@
             "properties": {
                 "public":       {"type": ["boolean", "null"]},
                 "label":        {"type": ["string", "null"]},
-                "metadata":     {"type": ["object", "null"]},
+                "info":     {"type": ["object", "null"]},
                 "files":        {
                     "type": ["array", "null"],
                     "items": {"$ref": "file.json"}
@@ -21,7 +21,7 @@
             "properties": {
                 "public":       {"type": ["boolean", "null"]},
                 "label":        {"type": ["string", "null"]},
-                "metadata":     {"type": ["object", "null"]},
+                "info":         {"type": ["object", "null"]},
                 "operator":     {"type": ["string", "null"]},
                 "uid":          {"type": ["string", "null"]},
                 "timestamp":    {"type": ["string", "null"], "format": "date-time"},
@@ -39,10 +39,11 @@
             "properties": {
                 "public":       {"type": ["boolean", "null"]},
                 "label":        {"type": ["string", "null"]},
+                "info":         {"type": ["object", "null"]},
                 "metadata":     {"type": ["object", "null"]},
-                "uid":          {"type": ["string", "null"]},
-                "instrument":   {"type": ["string", "null"]},
                 "measurement":  {"type": ["string", "null"]},
+                "instrument":   {"type": ["string", "null"]},
+                "uid":          {"type": ["string", "null"]},
                 "timestamp":    {"type": ["string", "null"], "format": "date-time"},
                 "timezone":     {"type": ["string", "null"]},
                 "files":        {

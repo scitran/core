@@ -3,7 +3,6 @@ import copy
 import datetime
 import dateutil.parser
 import difflib
-from jsonschema import Draft4Validator, ValidationError
 import pymongo
 import re
 
@@ -118,32 +117,77 @@ def is_session_compliant(session, template):
     Given a project-level session template and a session,
     returns True/False if the session is in compliance with the template
     """
+
+    def check_req(cont, req_k, req_v):
+        """
+        Return True if container satisfies specific requirement.
+        """
+        cont_v = cont.get(req_k)
+        if cont_v:
+            if isinstance(req_v, dict):
+                for k,v in req_v.iteritems():
+                    if not check_req(cont_v, k, v):
+                        return False
+            elif isinstance(cont_v, list):
+                found_in_list = False
+                for v in cont_v:
+                    if re.search(req_v, cont_v, re.IGNORECASE):
+                        found_in_list = True
+                        break
+                if not found_in_list:
+                    return False
+            else:
+                # Assume regex for now
+                if not re.search(req_v, cont_v, re.IGNORECASE):
+                    return False
+        else:
+            return False
+        return True
+
+
+    def check_cont(cont, reqs):
+        """
+        Return True if container satisfies requirements.
+        Return False otherwise.
+        """
+        for req_k, req_v in reqs.iteritems():
+            if req_k == 'files':
+                for fr in req_v:
+                    fr_temp = fr.copy() #so subsequent calls don't have their minimum missing
+                    min_count = fr_temp.pop('minimum')
+                    count = 0
+                    for f in cont.get('files', []):
+                        if not check_cont(f, fr_temp):
+                            # Didn't find a match, on to the next one
+                            continue
+                        else:
+                            count += 1
+                            if count >= min_count:
+                                break
+                    if count < min_count:
+                        return False
+
+            else:
+                if not check_req(cont, req_k, req_v):
+                    return False
+        return True
+
+
     s_requirements = template.get('session')
     a_requirements = template.get('acquisitions')
-    f_requirements = template.get('files')
-
-    acquisitions = []
-    if a_requirements or f_requirements:
-        if session.get('_id'):
-            # Only grab acquisitions when not validating a newly created session
-            acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
 
     if s_requirements:
-        validator = Draft4Validator(s_requirements.get('schema'))
-        try:
-            validator.validate(session)
-        except ValidationError:
+        if not check_cont(session, s_requirements):
             return False
 
     if a_requirements:
+        acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
         for req in a_requirements:
-            validator = Draft4Validator(req.get('schema'))
-            min_count = req.get('minimum')
+            min_count = req.pop('minimum')
             count = 0
             for a in acquisitions:
-                try:
-                    validator.validate(a)
-                except ValidationError:
+                if not check_cont(a, req):
+                    # Didn't find a match, on to the next one
                     continue
                 else:
                     count += 1
@@ -151,25 +195,6 @@ def is_session_compliant(session, template):
                         break
             if count < min_count:
                 return False
-
-    if f_requirements:
-        files_ = [f for a in acquisitions for f in a.get('files', [])]
-        for req in f_requirements:
-            validator = Draft4Validator(req.get('schema'))
-            min_count = req.get('minimum')
-            count = 0
-            for f in files_:
-                try:
-                    validator.validate(a)
-                except ValidationError:
-                    continue
-                else:
-                    count += 1
-                    if count >= min_count:
-                        break
-            if count < min_count:
-                return False
-
     return True
 
 def upsert_fileinfo(cont_name, _id, fileinfo):
@@ -412,7 +437,6 @@ def upsert_bottom_up_hierarchy(metadata, user=None, site=None):
 
 
 def upsert_top_down_hierarchy(metadata, type_='label', user=None, site=None):
-    log.debug('I know my type is {}'.format(type_))
     group = metadata['group']
     project = metadata['project']
     session = metadata.get('session')
@@ -491,7 +515,6 @@ def _update_container_nulls(base_query, update, container_type):
         q.update(base_query)
         q['$or'] = [{k: {'$exists': False}}, {k: None}]
         u = {'$set': {k: v}}
-        log.debug('the query is {} and the update is {}'.format(q,u))
         bulk.find(q).update_one(u)
     bulk.execute()
     return config.db[coll_name].find_one(base_query)

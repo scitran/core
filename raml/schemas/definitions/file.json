@@ -2,9 +2,9 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
         "name":           { "type": "string" },
-        "file-type":           { "type": "string" },
+        "file-type":      { "type": "string" },
         "mimetype":       { "type": "string" },
-        "instrument":     { "type": "string" },
+        "modality":       { "type": "string" },
         "measurements": {
           "items": { "type": "string"},
           "type": "array",
@@ -15,7 +15,7 @@
           "type": "array",
           "uniqueItems": true
         },
-        "metadata": {
+        "info": {
           "type": "object"
         },
         "origin":{
@@ -36,10 +36,10 @@
               "name":           {"$ref":"#/definitions/name"},
               "type":           {"$ref":"#/definitions/file-type"},
               "mimetype":       {"$ref":"#/definitions/mimetype"},
-              "instrument":     {"$ref":"#/definitions/instrument"},
-              "measurements": {"$ref":"#/definitions/measurements"},
+              "modality":       {"$ref":"#/definitions/modality"},
+              "measurements":   {"$ref":"#/definitions/measurements"},
               "tags": {"$ref":"#/definitions/tags"},
-              "metadata": {"$ref":"#/definitions/metadata"}
+              "info": {"$ref":"#/definitions/info"}
           },
           "additionalProperties": false
         },
@@ -49,15 +49,15 @@
               "name":           {"$ref":"#/definitions/name"},
               "type":           {"$ref":"#/definitions/file-type"},
               "mimetype":       {"$ref":"#/definitions/mimetype"},
-              "instrument":     {
+              "modality":       {
                   "oneOf":[
-                      {"$ref":"#/definitions/instrument"},
+                      {"$ref":"#/definitions/modality"},
                       {"type":"null"}
                   ]
               },
               "measurements": {"$ref":"#/definitions/measurements"},
               "tags": {"$ref":"#/definitions/tags"},
-              "metadata": {"$ref":"#/definitions/metadata"},
+              "info": {"$ref":"#/definitions/info"},
               "origin":{"$ref":"#/definitions/origin"},
               "hash":{"$ref":"#/definitions/hash"},
               "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},

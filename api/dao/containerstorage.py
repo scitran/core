@@ -1,6 +1,5 @@
 import bson.errors
 import bson.objectid
-import json
 import pymongo.errors
 
 from .. import util
@@ -18,6 +17,23 @@ CHILD_MAP = {
     'sessions': 'acquisitions'
 }
 
+# All "containers" are required to return these fields
+# 'All' includes users
+BASE_DEFAULTS = {
+    '_id':      None,
+    'created':  None,
+    'modified': None
+}
+
+# All containers that inherit from 'container' in the DM
+CONTAINER_DEFAULTS = {
+    'permissions':  [],
+    'files':        [],
+    'notes':        [],
+    'tags':         [],
+    'info':         {}
+}
+
 class ContainerStorage(object):
     """
     This class provides access to mongodb collection elements (called containers).
@@ -29,7 +45,6 @@ class ContainerStorage(object):
         self.cont_name = cont_name
         self.use_object_id = use_object_id
         self.dbc = config.db[cont_name]
-
 
     @staticmethod
     def factory(cont_name, use_object_id = False):
@@ -47,6 +62,15 @@ class ContainerStorage(object):
             return AcquisitionStorage()
         else:
             return ContainerStorage(cont_name, use_object_id)
+
+    def _fill_default_values(self, cont):
+        if cont:
+            defaults = BASE_DEFAULTS.copy()
+            if self.cont_name not in ['groups', 'users']:
+                defaults.update(CONTAINER_DEFAULTS)
+            defaults.update(cont)
+            cont = defaults
+        return cont
 
     def get_container(self, _id, projection=None, get_children=False):
         cont = self.get_el(_id, projection=projection)
@@ -84,9 +108,9 @@ class ContainerStorage(object):
         data_op = payload or {'_id': _id}
         check(data_op)
         if action == 'GET' and _id:
-            return self.get_el(_id, projection=projection)
+            return self.get_el(_id, projection=projection, fill_defaults=True)
         if action == 'GET':
-            return self.get_all_el(query, user, projection)
+            return self.get_all_el(query, user, projection, fill_defaults=True)
         if action == 'DELETE':
             return self.delete_el(_id)
         if action == 'PUT':
@@ -142,15 +166,18 @@ class ContainerStorage(object):
                 raise APIStorageException(e.message)
         return self.dbc.delete_one({'_id':_id})
 
-    def get_el(self, _id, projection=None):
+    def get_el(self, _id, projection=None, fill_defaults=False):
         if self.use_object_id:
             try:
                 _id = bson.objectid.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
-        return self._from_mongo(self.dbc.find_one(_id, projection))
+        cont = self._from_mongo(self.dbc.find_one(_id, projection))
+        if fill_defaults:
+            cont =  self._fill_default_values(cont)
+        return cont
 
-    def get_all_el(self, query, user, projection):
+    def get_all_el(self, query, user, projection, fill_defaults=False):
         if user:
             if query.get('permissions'):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
@@ -161,12 +188,21 @@ class ContainerStorage(object):
         results = list(self.dbc.find(query, projection))
         for cont in results:
             cont = self._from_mongo(cont)
+            if fill_defaults:
+                cont =  self._fill_default_values(cont)
         return results
 
 class GroupStorage(ContainerStorage):
 
     def __init__(self):
         super(GroupStorage,self).__init__('groups', use_object_id=False)
+
+    def _fill_default_values(self, cont):
+        cont = super(GroupStorage,self)._fill_default_values(cont)
+        if cont:
+            if 'roles' not in cont:
+                cont['roles'] = []
+        return cont
 
     def create_el(self, payload):
         log.debug(payload)
@@ -184,20 +220,6 @@ class ProjectStorage(ContainerStorage):
 
     def __init__(self):
         super(ProjectStorage,self).__init__('projects', use_object_id=True)
-
-    def _from_mongo(self, cont):
-        if cont:
-            template = cont.get('template')
-            if template:
-                cont['template'] = json.loads(template)
-        return super(ProjectStorage,self)._from_mongo(cont)
-
-    def _to_mongo(self, payload):
-        if payload:
-            template = payload.get('template')
-            if template:
-                payload['template'] = json.dumps(template)
-        return super(ProjectStorage,self)._to_mongo(payload)
 
     def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
         result = super(ProjectStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
@@ -251,6 +273,14 @@ class SessionStorage(ContainerStorage):
 
     def __init__(self):
         super(SessionStorage,self).__init__('sessions', use_object_id=True)
+
+    def _fill_default_values(self, cont):
+        cont = super(SessionStorage,self)._fill_default_values(cont)
+        if cont:
+            s_defaults = {'analyses': [], 'subject':{}}
+            s_defaults.update(cont)
+            cont = s_defaults
+        return cont
 
     def create_el(self, payload):
         project = ProjectStorage().get_container(payload['project'])

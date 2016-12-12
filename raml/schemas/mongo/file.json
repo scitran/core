@@ -9,7 +9,7 @@
     "mimetype":       { "type": "string" },
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },
-    "instrument":     { "type": "string" },
+    "modality":       { "type": "string" },
     "measurements": {
       "items": { "type": "string"},
       "type": "array",
@@ -20,7 +20,7 @@
       "type": "array",
       "uniqueItems": true
     },
-    "metadata": {
+    "info": {
       "type": "object"
     }
   },

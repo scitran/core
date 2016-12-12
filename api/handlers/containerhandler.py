@@ -54,7 +54,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
-            'list_projection': {'metadata': 0},
+            'list_projection': {'info': 0},
             'propagated_properties': ['archived', 'public'],
             'children_cont': 'sessions'
         },
@@ -64,7 +64,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
-            'list_projection': {'metadata': 0},
+            'list_projection': {'info': 0, 'analyses': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -74,7 +74,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
-            'list_projection': {'metadata': 0}
+            'list_projection': {'info': 0, 'collections': 0}
         }
     }
 
@@ -106,7 +106,6 @@ class ContainerHandler(base.RequestHandler):
 
         if cont_name == 'sessions':
             result = self.handle_analyses(result)
-
         return self.handle_origin(result)
 
     def handle_origin(self, result):
@@ -229,8 +228,8 @@ class ContainerHandler(base.RequestHandler):
         self.storage = self.config['storage']
 
         projection = self.config['list_projection']
-        if self.is_true('metadata'):
-            projection.pop('metadata')
+        if self.is_true('info'):
+            projection.pop('info')
             if not projection:
                 projection = None
 
@@ -260,7 +259,8 @@ class ContainerHandler(base.RequestHandler):
         if results is None:
             self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
         # return only permissions of the current user
-        self._filter_all_permissions(results, self.uid, self.user_site)
+        if not self.superuser_request:
+            self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
         if self.is_true('counts'):
             self._add_results_counts(results, cont_name)
@@ -269,14 +269,16 @@ class ContainerHandler(base.RequestHandler):
         if cont_name == 'sessions' and self.is_true('measurements'):
             self._add_session_measurements(results)
 
+        modified_results = []
         for result in results:
-            result = self.handle_origin(result)
             if cont_name == 'sessions':
                 result = self.handle_analyses(result)
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, cont_name)
+            result = self.handle_origin(result)
+            modified_results.append(result)
 
-        return results
+        return modified_results
 
     def _filter_all_permissions(self, results, uid, site):
         for result in results:
@@ -295,15 +297,6 @@ class ContainerHandler(base.RequestHandler):
         counts = {elem['_id']: elem['count'] for elem in counts}
         for elem in results:
             elem[dbc_name[:-1] + '_count'] = counts.get(elem['_id'], 0)
-
-    def _add_session_measurements(self, results):
-        session_measurements = config.db.acquisitions.aggregate([
-            {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
-            {'$group': {'_id': '$session', 'measurements': {'$addToSet': '$measurement'}}}
-            ])
-        session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
-        for sess in results:
-            sess['measurements'] = session_measurements.get(sess['_id'], None)
 
     def get_all_for_user(self, cont_name, uid):
         self.config = self.container_handler_configurations[cont_name]
@@ -496,6 +489,19 @@ class ContainerHandler(base.RequestHandler):
         payload_schema_uri = validators.schema_uri('input', self.config.get('payload_schema_file'))
         payload_validator = validators.from_schema_path(payload_schema_uri)
         return mongo_validator, payload_validator
+
+    def _add_session_measurements(self, results):
+        session_measurements = config.db.acquisitions.aggregate([
+            {'$match': {'session': {'$in': [sess['_id'] for sess in results]}}},
+            {'$project': { '_id': '$session', 'files':1 }},
+            {'$unwind': '$files'},
+            {'$project': { '_id': '$_id', 'files.measurements': 1}},
+            {'$unwind': '$files.measurements'},
+            {'$group': {'_id': '$_id', 'measurements': {'$addToSet': '$files.measurements'}}}
+        ])
+        session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
+        for sess in results:
+            sess['measurements'] = session_measurements.get(sess['_id'], None)
 
     def _get_parent_container(self, payload):
         if not self.config.get('parent_storage'):

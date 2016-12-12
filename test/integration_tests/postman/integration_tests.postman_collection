@@ -38,8 +38,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				},
-				"description": "List users\n\n"
+				}
 			},
 			"response": []
 		},
@@ -76,8 +75,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\", \"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				},
-				"description": "\n\n"
+				}
 			},
 			"response": []
 		},
@@ -121,8 +119,7 @@
 							"enabled": true
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -155,8 +152,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n\"_id\":\"test-group\"\n}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -207,8 +203,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -253,8 +248,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -296,8 +290,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -327,8 +320,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n\t\"category\": \"converter\",\n\t\"input\": { },\n\t\"name\": \"test_gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test_gear\",\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t},\n\t\t\"description\": \"A gear to test the API\",\n\t\t\"license\": \"Other\",\n\t\t\"author\": \"\",\n\t\t\"url\": \"https://unknown.example\",\n\t\t\"label\": \"An exported gear\",\n\t\t\"source\": \"https://unknown.example\",\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t}\n\t}\n}"
-				},
-				"description": "Create or update a gear.\n\"Name\" field of gear must match \"GearName\" uri parameter\nIf no existing gear is found, one will be created\nOtherwise, the specified gear will be updated\n\n\nParameters:\n\nGearName: Name of the gear to interact with\n\n"
+				}
 			},
 			"response": []
 		},
@@ -389,8 +381,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"gear\": \"test-case-gear\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-1-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"config\": {\n\t\t\"two-digit multiple of ten\": 20\n\t},\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-1-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -425,8 +416,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\":\"test-collection-1\"\n}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -457,8 +447,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"contents\":{\n    \t\"operation\":\"add\",\n    \t\"nodes\":[\n    \t\t{\n    \t\t\t\"level\":\"session\",\n    \t\t\t\"_id\":\"{{test-session-1-id}}\"\n    \t\t}\n    \t]\n    }\n}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -498,8 +487,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -530,8 +518,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\":\"test-collection-2\"\n}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -571,8 +558,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -612,8 +598,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -645,8 +630,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -678,8 +662,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -711,8 +694,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -744,8 +726,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"text\":\"test note\"\n}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -785,8 +766,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"analysis\": {\n        \"label\": \"Test Analysis 1\"\n    },\n    \"job\" : {\n        \"gear\": \"test-case-gear\",\n        \"inputs\": {\n            \"dicom\": {\n                \"type\": \"acquisition\",\n                \"id\": \"{{test-acquisition-1-id}}\",\n                \"name\" : \"test-1.dcm\"\n            }\n        },\n        \"tags\": [\"example\"]\n    }\n}\n"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -835,8 +815,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -874,8 +853,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -924,8 +902,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -971,8 +948,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1021,8 +997,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1069,8 +1044,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1119,8 +1093,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1166,8 +1139,7 @@
 							"value": ""
 						}
 					]
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1199,8 +1171,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1232,8 +1203,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1265,8 +1235,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1298,8 +1267,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1334,8 +1302,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"group\": \"test-group\",\n    \"label\": \"Project with template\",\n    \"public\": false\n  }"
-				},
-				"description": "Create the project for testing session templates"
+				}
 			},
 			"response": []
 		},
@@ -1370,8 +1337,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"ex8945\"\n    },\n    \"label\": \"Compliant Session\",\n    \"project\": \"{{ST-project-id}}\",\n    \"public\": false\n  }"
-				},
-				"description": "Create a session that will be compliant with the project-level session template"
+				}
 			},
 			"response": []
 		},
@@ -1406,8 +1372,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"ex9849\"\n    },\n    \"label\": \"Non-compliant Session\",\n    \"project\": \"{{ST-project-id}}\",\n    \"public\": false\n  }"
-				},
-				"description": "Create a session that will NOT be compliant with the project-level session template"
+				}
 			},
 			"response": []
 		},
@@ -1441,9 +1406,8 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"label\": \"c-acquisition-1-t1\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
-				},
-				"description": "Create an acquisition for the compliant session"
+					"raw": "{\n    \"label\": \"c-acquisition-1-t1\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false\n}"
+				}
 			},
 			"response": []
 		},
@@ -1477,9 +1441,8 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"label\": \"c-acquisition-2\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
-				},
-				"description": "Create an acquisition for the compliant session"
+					"raw": "{\n    \"label\": \"c-acquisition-2-t1\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false\n}"
+				}
 			},
 			"response": []
 		},
@@ -1513,9 +1476,8 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"label\": \"nc-acquisition-1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
-				},
-				"description": "Create an acquisition for the noncompliant session"
+					"raw": "{\n    \"label\": \"nc-acquisition-1-t1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false\n}"
+				}
 			},
 			"response": []
 		},
@@ -1545,13 +1507,17 @@
 						"key": "Authorization",
 						"value": "scitran-user {{test_user_api_key}}",
 						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
 					}
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"session\": {\n        \"schema\": {\n            \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n            \"properties\": {\n                \"subject\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"code\": {\n                            \"type\":     \"string\",\n                            \"pattern\":  \"^ex\" \n                        }\n                    },\n                    \"required\": [\"code\"]\n                }\n            },\n            \"required\": [\"subject\"]\n        }\n    },\n    \"acquisitions\": [\n        {\n            \"schema\": {\n                \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n                \"type\": \"object\",\n                \"properties\": {\n                    \"measurement\": {\n                        \"type\":     \"string\",\n                        \"pattern\":  \"^(?i)localizer$\" \n                    }\n                },\n                \"required\": [\"measurement\"]\n            },\n            \"minimum\": 2\n        },\n        {\n            \"schema\": {\n                \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n                \"type\": \"object\",\n                \"properties\": {\n                    \"measurement\": {\n                        \"type\":     \"string\",\n                        \"pattern\":  \"^(?i)localizer$\" \n                    },\n                    \"label\":  {\n                        \"type\": \"string\",\n                        \"pattern\": \"t1\"\n                    }\n                },\n                \"required\": [\"label\", \"measurement\"]\n            },\n            \"minimum\": 1\n        }\n    ]\n}"
-				},
-				"description": "Should modify project and it's sessions. Both sessions should have a \"project-has-template\" flag as \"true\" and the session setup to be compliant should have \"compliant\" flag set to True."
+					"raw": "{\n    \"session\": {\n        \"subject\": {\n            \"code\" : \"^ex\"\n        }\n    },\n    \"acquisitions\": [\n        {\n            \"label\": \"t1\",\n            \"minimum\": 2\n        }\n    ]\n}"
+				}
 			},
 			"response": []
 		},
@@ -1588,8 +1554,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1626,8 +1591,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1657,13 +1621,17 @@
 						"key": "Authorization",
 						"value": "scitran-user {{test_user_api_key}}",
 						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
 					}
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"label\": \"nc-acquisition-2-t1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false,\n    \"measurement\": \"localizer\"\n}"
-				},
-				"description": "This should make the session compliant"
+					"raw": "{\n    \"label\": \"nc-acquisition-2-t1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false\n}"
+				}
 			},
 			"response": []
 		},
@@ -1700,8 +1668,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		},
@@ -1728,13 +1695,17 @@
 						"key": "Authorization",
 						"value": "scitran-user {{test_user_api_key}}",
 						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
 					}
 				],
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"bad-subject-code\"\n    }\n  }"
-				},
-				"description": "Create a session that will NOT be compliant with the project-level session template"
+				}
 			},
 			"response": []
 		},
@@ -1771,8 +1742,7 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				},
-				"description": ""
+				}
 			},
 			"response": []
 		}

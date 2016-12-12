@@ -165,27 +165,27 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     metadata = {
         'project':{
             'label': 'engine project',
-            'metadata': {'test': 'p'}
+            'info': {'test': 'p'}
         },
         'session':{
             'label': 'engine session',
             'subject': {'code': 'engine subject'},
-            'metadata': {'test': 's'}
+            'info': {'test': 's'}
         },
         'acquisition':{
             'label': 'engine acquisition',
             'timestamp': '2016-06-20T21:57:36+00:00',
-            'metadata': {'test': 'a'},
+            'info': {'test': 'a'},
             'files':[
                 {
                     'name': 'one.csv',
                     'type': 'engine type 0',
-                    'metadata': {'test': 'f0'}
+                    'info': {'test': 'f0'}
                 },
                 {
                     'name': 'two.csv',
                     'type': 'engine type 1',
-                    'metadata': {'test': 'f1'}
+                    'info': {'test': 'f1'}
                 }
             ]
         }
@@ -200,14 +200,14 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
-    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+    assert cmp(p['info'], metadata['project']['info']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert s['label'] != metadata['session']['label']
-    assert cmp(s['metadata'], metadata['session']['metadata']) == 0
+    assert cmp(s['info'], metadata['session']['info']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
@@ -218,13 +218,13 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     a_timestamp = dateutil.parser.parse(a['timestamp'])
     m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
     assert a_timestamp == m_timestamp
-    assert cmp(a['metadata'], metadata['acquisition']['metadata']) == 0
+    assert cmp(a['info'], metadata['acquisition']['info']) == 0
 
     for f in a['files']:
         mf = find_file_in_array(f['name'], metadata['acquisition']['files'])
         assert mf is not None
         assert f['type'] == mf['type']
-        assert cmp(f['metadata'], mf['metadata']) == 0
+        assert cmp(f['info'], mf['info']) == 0
 
 def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
 
@@ -232,23 +232,23 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     metadata = {
         'project':{
             'label': 'engine project',
-            'metadata': {'test': 'p'}
+            'info': {'test': 'p'}
         },
         'session':{
             'label': 'engine session',
             'subject': {'code': 'engine subject'},
             'timestamp': '2016-06-20T21:57:36+00:00',
-            'metadata': {'test': 's'},
+            'info': {'test': 's'},
             'files': [
                 {
                     'name': 'one.csv',
                     'type': 'engine type 0',
-                    'metadata': {'test': 'f0'}
+                    'info': {'test': 'f0'}
                 },
                 {
                     'name': 'two.csv',
                     'type': 'engine type 1',
-                    'metadata': {'test': 'f1'}
+                    'info': {'test': 'f1'}
                 }
             ]
         }
@@ -263,14 +263,15 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
-    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+    assert cmp(p['info'], metadata['project']['info']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert s['label'] != metadata['session']['label']
-    assert cmp(s['metadata'], metadata['session']['metadata']) == 0
+    assert cmp(s['info'], metadata['session']['info']) == 0
+
     assert s['subject']['code'] == metadata['session']['subject']['code']
     s_timestamp = dateutil.parser.parse(s['timestamp'])
     m_timestamp = dateutil.parser.parse(metadata['session']['timestamp'])
@@ -280,7 +281,7 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
         mf = find_file_in_array(f['name'], metadata['session']['files'])
         assert mf is not None
         assert f['type'] == mf['type']
-        assert cmp(f['metadata'], mf['metadata']) == 0
+        assert cmp(f['info'], mf['info']) == 0
 
 def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
 
@@ -288,17 +289,17 @@ def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     metadata = {
         'project':{
             'label': 'engine project',
-            'metadata': {'test': 'p'},
+            'info': {'test': 'p'},
             'files': [
                 {
                     'name': 'one.csv',
                     'type': 'engine type 0',
-                    'metadata': {'test': 'f0'}
+                    'info': {'test': 'f0'}
                 },
                 {
                     'name': 'two.csv',
                     'type': 'engine type 1',
-                    'metadata': {'test': 'f1'}
+                    'info': {'test': 'f1'}
                 }
             ]
         }
@@ -313,13 +314,13 @@ def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
-    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+    assert cmp(p['info'], metadata['project']['info']) == 0
 
     for f in p['files']:
         mf = find_file_in_array(f['name'], metadata['project']['files'])
         assert mf is not None
         assert f['type'] == mf['type']
-        assert cmp(f['metadata'], mf['metadata']) == 0
+        assert cmp(f['info'], mf['info']) == 0
 
 def test_acquisition_file_only_engine_upload(with_hierarchy_and_file_data, api_as_admin):
 
@@ -348,7 +349,7 @@ def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data,
                 {
                     'name': 'file-one.csv',
                     'type': 'engine type 1',
-                    'metadata': {'test': 'f1'}
+                    'info': {'test': 'f1'}
                 }
             ]
         }
@@ -372,7 +373,7 @@ def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data,
                 {
                     'name': 'file-two.csv',
                     'type': 'engine type 1',
-                    'metadata': {'test': 'f1'}
+                    'info': {'test': 'f1'}
                 }
             ]
         }
@@ -397,17 +398,17 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     metadata = {
         'project':{
             'label': 'engine project',
-            'metadata': {'test': 'p'}
+            'info': {'test': 'p'}
         },
         'session':{
             'label': 'engine session',
             'subject': {'code': 'engine subject'},
-            'metadata': {'test': 's'}
+            'info': {'test': 's'}
         },
         'acquisition':{
             'label': 'engine acquisition',
             'timestamp': '2016-06-20T21:57:36+00:00',
-            'metadata': {'test': 'a'}
+            'info': {'test': 'a'}
         }
     }
     data.files = {}
@@ -421,14 +422,14 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
-    assert cmp(p['metadata'], metadata['project']['metadata']) == 0
+    assert cmp(p['info'], metadata['project']['info']) == 0
 
     r = api_as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert s['label'] != metadata['session']['label']
-    assert cmp(s['metadata'], metadata['session']['metadata']) == 0
+    assert cmp(s['info'], metadata['session']['info']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
 
     r = api_as_admin.get('/acquisitions/' + data.acquisition)
@@ -439,4 +440,4 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     a_timestamp = dateutil.parser.parse(a['timestamp'])
     m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
     assert a_timestamp == m_timestamp
-    assert cmp(a['metadata'], metadata['acquisition']['metadata']) == 0
+    assert cmp(a['info'], metadata['acquisition']['info']) == 0

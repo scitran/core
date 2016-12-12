@@ -73,6 +73,9 @@
       "type": "array",
       "items": {"$ref": "../mongo/file.json"}
     },
+    "produced_metadata": {
+      "type": "object"
+    },
     "tags": {
       "type": "array",
       "items": {
@@ -114,12 +117,6 @@
         },
         "target":{"type":"object"},
         "outputs":{"type":"array"}
-      }
-    },
-    "saved_files":{
-      "type":"array",
-      "items":{
-        "type":"object"
       }
     }
   }
