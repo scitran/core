@@ -580,6 +580,9 @@ def upgrade_to_21():
                 measurement = container.get('measurement', None)
                 modality = container.get('instrument', None)
                 info = container.get('metadata', None)
+                if info:
+                    config.db.acquisitions.update_one(query, {'$set': {'metadata': {}}})
+
 
             # From mongo docs: '$rename does not work if these fields are in array elements.'
             files = container.get('files')
@@ -606,7 +609,10 @@ def upgrade_to_21():
                         file_['modality'] = modality
 
                     updated_files.append(file_)
-                update['$set'] = {'files': updated_files}
+                if update.get('$set'):
+                    update['$set']['files': updated_files]
+                else:
+                    update['$set'] = {'files': updated_files}
 
             result = config.db[cont_name].update_one(query, update)
 

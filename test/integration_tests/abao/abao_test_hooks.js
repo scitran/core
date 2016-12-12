@@ -680,6 +680,12 @@ hooks.before("GET /sessions/{SessionId} -> 200", function(test, done) {
     done();
 });
 
+hooks.after("GET /sessions/{SessionId} -> 200", function(test, done) {
+    test_session_1 = test.response.body;
+    assert.equal(test_session_1.label, "test-session-1");
+    done();
+});
+
 hooks.before("POST /sessions -> 200", function(test, done) {
     test.request.body.project = test_session_1.project;
     done();
