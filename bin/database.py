@@ -610,7 +610,7 @@ def upgrade_to_21():
 
                     updated_files.append(file_)
                 if update.get('$set'):
-                    update['$set']['files': updated_files]
+                    update['$set']['files'] =  updated_files
                 else:
                     update['$set'] = {'files': updated_files}
 
