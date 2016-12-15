@@ -175,9 +175,10 @@ class ContainerHandler(base.RequestHandler):
         # Only enabled for sessions container type per url rule in api.py
         self.config = self.container_handler_configurations["sessions"]
         self.storage = self.config['storage']
-        cont = self._get_container(cid, projection={'permissions': 0, 'files': 0, 'metadata': 0}, get_children=True)
+        cont = self._get_container(cid, projection={'files': 0, 'metadata': 0}, get_children=True)
 
         permchecker = self._get_permchecker(cont)
+
         permchecker(noop)('GET', cid)
 
         analyses = cont.get('analyses', [])
@@ -219,6 +220,9 @@ class ContainerHandler(base.RequestHandler):
         if join_cont:
             # create a map of analyses and acquisitions by _id
             containers = dict((str(c['_id']), c) for c in analyses+acquisitions)
+            for c in containers:
+                # No need to return perm arrays
+                c.pop('permissions', None)
             response['containers'] = containers
 
         return response
@@ -427,6 +431,10 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container= self._get_container(_id)
+        if self.config.get('children_cont'):
+            container['has_children'] = bool(self.storage.get_children(_id))
+        else:
+            container['has_children'] = False
         target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
