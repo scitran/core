@@ -14,6 +14,109 @@ db = config.db
 
 DICOM_INDEX = 'dicom_store'
 
+ANALYSIS = {
+            'analyzer' : {
+                'str_search_analyzer' : {
+                    'tokenizer' : 'keyword',
+                    'filter' : ['lowercase']
+                },
+
+                'str_index_analyzer' : {
+                    'tokenizer' : 'keyword',
+                    'filter' : ['lowercase', 'substring']
+                }
+            },
+            'filter' : {
+                'substring': {
+                    'type': 'nGram',
+                    'min_gram': 2,
+                    'max_gram': 50,
+                    'token_chars': []
+                }
+            }
+        }
+
+DYNAMIC_TEMPLATES = [{
+                '_id': {
+                    'match': '_id',
+                    'match_mapping_type' : 'string',
+                    'mapping': {
+                       'type': 'string',
+                       'index': 'not_analyzed'
+                    }
+                }
+            },
+        {
+                'long_fields' : {
+                    'match_mapping_type' : 'long',
+                    'mapping' : {
+                        'ignore_malformed': True
+                    }
+                }
+            },
+        {
+                'integer_fields' : {
+                    'match_mapping_type' : 'integer',
+                    'mapping' : {
+                        'ignore_malformed': True
+                    }
+                }
+            },
+        {
+                'double_fields' : {
+                    'match_mapping_type' : 'double',
+                    'mapping' : {
+                        'ignore_malformed': True
+                    }
+                }
+            },
+        {
+                'float_fields' : {
+                    'match_mapping_type' : 'float',
+                    'mapping' : {
+                        'ignore_malformed': True
+                    }
+                }
+            },
+        {
+                'short_fields' : {
+                    'match_mapping_type' : 'short',
+                    'mapping' : {
+                        'ignore_malformed': True
+                    }
+                }
+            },
+        {
+                'byte_fields' : {
+                    'match_mapping_type' : 'byte',
+                    'mapping' : {
+                        'ignore_malformed': True
+                    }
+                }
+            },
+            {
+                'hash': {
+                    'match': 'hash',
+                    'match_mapping_type' : 'string',
+                    'mapping': {
+                       'type': 'string',
+                       'index': 'not_analyzed'
+                    }
+                }
+            },
+            {
+                'string_fields' : {
+                    'match': '*',
+                    'match_mapping_type' : 'string',
+                    'mapping' : {
+                        'type': 'string',
+                        'search_analyzer': 'str_search_analyzer',
+                        'index_analyzer': 'str_index_analyzer',
+                        'ignore_above': 10922
+                    }
+                }
+            }]
+
 def datetime(str_datetime):
     pass
 
@@ -155,10 +258,19 @@ if __name__ == '__main__':
     request = {
         'settings': {
             'number_of_shards': 1,
-            'number_of_replicas': 0
+            'number_of_replicas': 0,
+            'analysis' : ANALYSIS
         },
         'mappings': {
+            '_default_' : {
+                '_all' : {'enabled' : True},
+                'dynamic_templates': DYNAMIC_TEMPLATES
+            },
+            'acquisition': {},
             'dicom': {
+                '_parent': {
+                    'type': 'acquisition'
+                },
                 'properties': {
                     'dicom_header': {
                         'properties': mappings
@@ -181,46 +293,55 @@ if __name__ == '__main__':
         projects = db.projects.find({'group': g['_id']})
         for p in projects:
             p.pop('permissions', None)
+            logging.warn('the project is {}'.format(p['label']))
             sessions = db.sessions.find({'project': p['_id']})
             for s in sessions:
                 s.pop('permissions', None)
                 acquisitions = db.acquisitions.find({'session': s['_id'], 'files.type': 'dicom'})
                 for a in acquisitions:
 
-                    dicom_data = a.get('metadata')
-                    if dicom_data:
-                        term_fields = {}
-                        for s in SKIPPED:
-                            dicom_data.pop(s, None)
-                        for k,v in dicom_data.iteritems():
-                            if 'datetime' in k.lower():
-                                config.log.debug('called for {}'.format(k))
-                                v = cast_datetime(str(v))
-                            elif 'date' in k.lower():
-                                config.log.debug('called for {}'.format(k))
-                                v = cast_date(str(v))
-                            elif 'time' in k.lower():
-                                config.log.debug('called for {}'.format(k))
-                                v = cast_time(str(v))
+                    permissions = a.pop('permissions', [])
+                    files = a.pop('files', [])
+                    doc = {
+                        'acquisition':          a,
+                        'session':              s,
+                        'project':              p,
+                        'group':                g,
+                        'permissions':          permissions
 
-                            term_field_name = k+'_term'
-                            if term_field_name in dicom_mappings:
-                                term_fields[k+'_term'] = str(v)
-                        dicom_data.update(term_fields)
+                    }
 
-                        permissions = a['permissions']
+                    doc = json.dumps(doc, default=encoder.custom_json_serializer)
+                    es.index(index=DICOM_INDEX, id=a['_id'], doc_type='acquisition', body=doc)
 
-                        doc = {
-                            'dicom_header':         dicom_data,
-                            'base_container_type': 'acquisition',
-                            'acquisition':          a,
-                            'session':              s,
-                            'project':              p,
-                            'group':                g,
-                            'permissions':          a['permissions']
 
-                        }
+                    for f in files:
+                        if f.get('type', '') == 'dicom' and f.get('info'):
+                            dicom_data = f.pop('info')
+                            term_fields = {}
+                            for skipped in SKIPPED:
+                                dicom_data.pop(skipped, None)
+                            for k,v in dicom_data.iteritems():
+                                if 'datetime' in k.lower():
+                                    config.log.debug('called for {}'.format(k))
+                                    v = cast_datetime(str(v))
+                                elif 'date' in k.lower():
+                                    config.log.debug('called for {}'.format(k))
+                                    v = cast_date(str(v))
+                                elif 'time' in k.lower():
+                                    config.log.debug('called for {}'.format(k))
+                                    v = cast_time(str(v))
 
-                        doc = json.dumps(doc, default=encoder.custom_json_serializer)
-                        es.index(index=DICOM_INDEX, doc_type='dicom', body=doc)
+                                term_field_name = k+'_term'
+                                if term_field_name in dicom_mappings:
+                                    term_fields[k+'_term'] = str(v)
+                            dicom_data.update(term_fields)
+                            doc = {
+                                'file':         f,
+                                'dicom_header': dicom_data
+                            }
+                            doc = json.dumps(doc, default=encoder.custom_json_serializer)
+                            es.index(index=DICOM_INDEX, id=f['name'], parent=a['_id'], doc_type='dicom', body=doc)
+
+
 

@@ -1,24 +1,27 @@
 import webapp2
 import webapp2_extras.routes
 
-from .centralclient               import CentralClient
-from .download                    import Download
-from .handlers.collectionshandler import CollectionsHandler
-from .handlers.confighandler      import Config, Version
-from .handlers.containerhandler   import ContainerHandler
-from .handlers.devicehandler      import DeviceHandler
-from .handlers.grouphandler       import GroupHandler
-from .handlers.listhandler        import AnalysesHandler, ListHandler, FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
-from .handlers.reporthandler      import ReportHandler
-from .handlers.resolvehandler     import ResolveHandler
-from .handlers.roothandler        import RootHandler
-from .handlers.schemahandler      import SchemaHandler
-from .handlers.searchhandler      import SearchHandler
-from .handlers.userhandler        import UserHandler
-from .jobs.handlers               import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler, RuleHandler
-from .upload                      import Upload
-from .web.base                    import RequestHandler
+from .centralclient                 import CentralClient
+from .download                      import Download
+from .handlers.collectionshandler   import CollectionsHandler
+from .handlers.confighandler        import Config, Version
+from .handlers.containerhandler     import ContainerHandler
+from .handlers.dataexplorerhandler  import DataExplorerHandler
+from .handlers.devicehandler        import DeviceHandler
+from .handlers.grouphandler         import GroupHandler
+from .handlers.listhandler          import AnalysesHandler, ListHandler, FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
+from .handlers.reporthandler        import ReportHandler
+from .handlers.resolvehandler       import ResolveHandler
+from .handlers.roothandler          import RootHandler
+from .handlers.schemahandler        import SchemaHandler
+from .handlers.searchhandler        import SearchHandler
+from .handlers.userhandler          import UserHandler
+from .jobs.handlers                 import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler, RuleHandler
+from .upload                        import Upload
+from .web.base                      import RequestHandler
 from . import config
+
+
 log = config.log
 
 routing_regexes = {
@@ -50,6 +53,7 @@ routing_regexes = {
     # Schema path
     'schema': r'[^/.]{3,60}/[^/.]{3,60}\.json'
 }
+
 
 def route(path, target, h=None, m=None, name=None):
 
@@ -101,10 +105,12 @@ endpoints = [
 
         # Search
 
-        route('/search',                     SearchHandler, h='advanced_search',        m=['POST']),
-        route('/search/field',               SearchHandler, h='get_terms_for_field',    m=['POST']),
-        route('/search/files',               SearchHandler, h='get_datatree',           m=['GET']),
-        route('/search/<cont_name:{cname}>', SearchHandler,                             m=['GET']),
+        route('/search',                     SearchHandler,         h='advanced_search',        m=['POST']),
+        route('/search/field',               SearchHandler,         h='get_terms_for_field',    m=['POST']),
+        route('/search/files',               SearchHandler,         h='get_datatree',           m=['GET']),
+        route('/search/<cont_name:{cname}>', SearchHandler,                                     m=['GET']),
+        route('/dataexplorer/facets',        DataExplorerHandler,   h='search',                 m=['POST']),
+        route('/dataexplorer/search>',       DataExplorerHandler,   h='get_facets',             m=['GET']),
 
 
         # Users
@@ -146,7 +152,6 @@ endpoints = [
             route('/<:[^/]+>/invocation',                GearHandler, h='get_invocation'),
             route('/<:[^/]+>/suggest/<:[^/]+>/<:[^/]+>', GearHandler, h='suggest'),
         ]),
-
 
         # Batch jobs
 
