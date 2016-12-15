@@ -14,15 +14,11 @@ def default_container(handler, container=None, target_parent_container=None):
     def g(exec_op):
         def f(method, _id=None, payload=None, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
             projection = None
+            additional_error_msg = None
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = True
-                if not _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['ro']:
-                    projection = {
-                        'subject.firstname': 0,
-                        'subject.lastname' : 0
-                    }
+                has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['ro']
             elif method == 'POST':
                 required_perm = 'rw'
                 if target_parent_container.get('roles'):
@@ -30,10 +26,15 @@ def default_container(handler, container=None, target_parent_container=None):
                     required_perm = 'admin'
                 has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES[required_perm]
             elif method == 'DELETE':
+                required_perm = 'rw'
+                if container.get('has_children') is True or container.get('files'):
+                    # If the container has children or files, admin is required to delete
+                    required_perm = 'admin'
+                    additional_error_msg = 'Container is not empty.'
                 if target_parent_container:
-                    has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES['admin']
+                    has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES[required_perm]
                 else:
-                    has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['admin']
+                    has_access = _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES[required_perm]
             elif method == 'PUT' and target_parent_container is not None:
                 has_access = (
                     _get_access(handler.uid, handler.user_site, container) >= INTEGER_ROLES['admin'] and
@@ -50,7 +51,10 @@ def default_container(handler, container=None, target_parent_container=None):
             if has_access:
                 return exec_op(method, _id=_id, payload=payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata, projection=projection)
             else:
-                handler.abort(403, 'user not authorized to perform a {} operation on the container'.format(method))
+                error_msg = 'user not authorized to perform a {} operation on the container.'.format(method)
+                if additional_error_msg:
+                    error_msg += ' '+additional_error_msg
+                handler.abort(403, error_msg)
         return f
     return g
 
