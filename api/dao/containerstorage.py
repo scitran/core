@@ -52,13 +52,13 @@ class ContainerStorage(object):
         Factory method to aid in the creation of a ContainerStorage instance
         when cont_name is dynamic.
         """
-        if cont_name == 'groups':
+        if cont_name in ['group', 'groups']:
             return GroupStorage()
-        elif cont_name == 'projects':
+        elif cont_name in ['project', 'projects']:
             return ProjectStorage()
-        elif cont_name == 'sessions':
+        elif cont_name in ['session', 'sessions']:
             return SessionStorage()
-        elif cont_name == 'acquisitions':
+        elif cont_name in ['acquisition', 'acquisitions']:
             return AcquisitionStorage()
         else:
             return ContainerStorage(cont_name, use_object_id)
@@ -179,6 +179,7 @@ class ContainerStorage(object):
 
     def get_all_el(self, query, user, projection, fill_defaults=False):
         if user:
+            log.debug('user is {}'.format(user))
             if query.get('permissions'):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
             else:

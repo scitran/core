@@ -73,6 +73,25 @@ def suggest_container(gear, cont_name, cid):
 
     return root
 
+def suggest_for_files(gear, files):
+
+    invocation_schema = get_invocation_schema(gear)
+    schemas = {}
+    for x in gear['gear']['inputs']:
+        schema = gear_tools.isolate_file_invocation(invocation_schema, x)
+        schemas[x] = Draft4Validator(schema)
+
+    suggested_files = {}
+    log.debug(schemas)
+    for input_name, schema in schemas.iteritems():
+        suggested_files[input_name] = []
+        for f in files:
+            if schema.is_valid(f):
+                suggested_files[input_name].append(f.get('name'))
+
+    return suggested_files
+
+
 def insert_gear(doc):
     gear_tools.validate_manifest(doc['gear'])
 

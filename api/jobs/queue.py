@@ -18,6 +18,7 @@ JOB_STATES = [
     'running',  # Job has been handed to an engine and is being processed
     'failed',   # Job has an expired heartbeat (orphaned) or has suffered an error
     'complete', # Job has successfully completed
+    'cancelled' # Job has been cancelled (via a bulk job cancellation)
 ]
 
 JOB_STATES_ALLOWED_MUTATE = [
@@ -27,6 +28,7 @@ JOB_STATES_ALLOWED_MUTATE = [
 
 JOB_TRANSITIONS = [
     'pending --> running',
+    'pending --> cancelled',
     'running --> failed',
     'running --> complete',
 ]

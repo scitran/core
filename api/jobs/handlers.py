@@ -1,15 +1,19 @@
 """
 API request handlers for the jobs module
 """
-
+import bson
 import json
 import StringIO
 import gear_tools
 from jsonschema import Draft4Validator, ValidationError
 
+from ..auth import require_login
+from ..dao import APIPermissionException
+from ..dao.containerstorage import ContainerStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from ..web import base
 from .. import config
+from . import batch
 
 from .gears import get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job
@@ -271,3 +275,126 @@ class JobHandler(base.RequestHandler):
 
         new_id = Queue.retry(j, force=True)
         return { "_id": new_id }
+
+class BatchHandler(base.RequestHandler):
+
+    @require_login
+    def get_all(self):
+        """
+        Get a list of batch jobs user has created.
+        Make a superuser request to see all batch jobs.
+        """
+
+        if self.superuser_request:
+            # Don't enforce permissions for superuser requests or drone requests
+            query = {}
+        else:
+            query = {'origin.id': self.uid}
+        return batch.get_all(query, {'proposed_inputs':0})
+
+    @require_login
+    def get(self, _id):
+        """
+        Get a batch job by id.
+        Use param jobs=true to replace job id list with job objects.
+        """
+
+        get_jobs = self.is_true('jobs')
+        batch_job = batch.get(_id, projection={'proposed_inputs':0}, get_jobs=get_jobs)
+        self._check_permission(batch_job)
+        return batch_job
+
+    @require_login
+    def post(self):
+        """
+        Create a batch job proposal, insert as 'pending'.
+        """
+
+        if self.superuser_request:
+            # Don't enforce permissions for superuser requests
+            user = None
+        else:
+            user = {'_id': self.uid, 'site': self.user_site}
+
+        payload = self.request.json
+        gear_name = payload.get('gear')
+        targets = payload.get('targets')
+
+        if not gear_name or not targets:
+            self.abort(400, 'A gear name and list of target containers is required.')
+        gear = get_gear_by_name(gear_name)
+
+        container_ids = []
+        container_type = None
+
+        for t in targets:
+            if not container_type:
+                container_type = t.get('type')
+            else:
+                # Ensure all targets are of same type, may change in future
+                if container_type != t.get('type'):
+                    self.abort(400, 'targets must all be of same type.')
+            container_ids.append(t.get('id'))
+
+        objectIds = [bson.ObjectId(x) for x in container_ids]
+        containers = ContainerStorage.factory(container_type).get_all_el({'_id': {'$in':objectIds}}, user, {'permissions': 0})
+
+        if len(containers) != len(container_ids):
+            # TODO: Break this out into individual errors, requires more work to determine difference
+            self.abort(404, 'Not all target containers exist or user does not have access to all containers.')
+
+
+        results = batch.find_matching_conts(gear, containers, container_type)
+
+        matched = results['matched']
+        if not matched:
+            self.abort(400, 'No target containers matched gear input spec.')
+
+        batch_proposal = {
+            '_id': bson.ObjectId(),
+            'gear': gear_name,
+            'config': payload.get('config', {}),
+            'state': 'pending',
+            'origin': self.origin,
+            'proposed_inputs': [c.pop('inputs') for c in matched]
+        }
+
+        batch.insert(batch_proposal)
+        batch_proposal.pop('proposed_inputs')
+        batch_proposal['not_matched'] = results['not_matched'],
+        batch_proposal['ambiguous'] = results['ambiguous'],
+        batch_proposal['matched'] = matched
+
+        return batch_proposal
+
+    @require_login
+    def run(self, _id):
+        """
+        Creates jobs from proposed inputs, returns jobs enqueued.
+        Moves 'pending' batch job to 'launched'.
+        """
+
+        batch_job = batch.get(_id)
+        self._check_permission(batch_job)
+        if batch_job.get('state') != 'pending':
+            self.abort(400, 'Can only run pending batch jobs.')
+        return batch.run(batch_job)
+
+    @require_login
+    def cancel(self, _id):
+        """
+        Cancels jobs that are still pending, returns number of jobs cancelled.
+        Moves a 'launched' batch job to 'cancelled'.
+        """
+
+        batch_job = batch.get(_id)
+        self._check_permission(batch_job)
+        if batch_job.get('state') != 'launched':
+            self.abort(400, 'Can only cancel started batch jobs.')
+        return {'number_cancelled': batch.cancel(batch_job)}
+
+    def _check_permission(self, batch_job):
+        if not self.superuser_request:
+            if batch_job['origin'].get('id') != self.uid:
+                raise APIPermissionException('User does not have permission to access batch {}'.format(batch_job.get('_id')))
+

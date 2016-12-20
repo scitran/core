@@ -66,7 +66,8 @@ class Job(object):
         if destination is None and inputs is not None:
             # Grab an arbitrary input's container
             key = inputs.keys()[0]
-            destination = create_containerreference_from_filereference(inputs[key])
+            fr = inputs[key]
+            destination = create_containerreference_from_filereference(fr)
 
         # A job is always tagged with the name of the gear
         tags.append(name)
@@ -149,6 +150,14 @@ class Job(object):
         """
 
         # Don't modify the job obj
+        # test = self.__dict__
+        # for k, v in test.iteritems():
+        #     config.log.debug('the k is {} and the type of the v is {}'.format(k, type(v)))
+
+        # raise Exception
+
+
+
         d = copy.deepcopy(self.__dict__)
 
         d['id'] = d.pop('id_', None)

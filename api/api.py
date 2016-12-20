@@ -15,9 +15,8 @@ from .handlers.roothandler        import RootHandler
 from .handlers.schemahandler      import SchemaHandler
 from .handlers.searchhandler      import SearchHandler
 from .handlers.userhandler        import UserHandler
-from .jobs.handlers               import JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
+from .jobs.handlers               import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
 from .upload                      import Upload
-
 from . import config
 log = config.log
 
@@ -133,7 +132,6 @@ endpoints = [
             route('/<:[^/]+>/config.json', JobHandler,  h='get_config'),
             route('/<:[^/]+>/retry',       JobHandler,  h='retry',      m=['POST']),
         ]),
-
         route('/gears',                                  GearsHandler),
         prefix('/gears', [
             route('/<:[^/]+>',                           GearHandler),
@@ -142,6 +140,18 @@ endpoints = [
         ]),
 
         route('/rules', RulesHandler),
+
+
+        # Batch jobs
+
+        route('/batch',                 BatchHandler,   h='get_all',    m=['GET']),
+        route('/batch',                 BatchHandler,                   m=['POST']),
+        prefix('/batch', [
+            route('/<:[^/]+>',          BatchHandler,   h='get',        m=['GET']),
+            route('/<:[^/]+>/run',      BatchHandler,   h='run',        m=['POST']),
+            route('/<:[^/]+>/cancel',   BatchHandler,   h='cancel',     m=['POST']),
+            route('/<:[^/]+>/jobs',     BatchHandler,   h='get_jobs',   m=['GET'])
+        ]),
 
 
         # Devices
