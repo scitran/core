@@ -1,0 +1,69 @@
+description: Batch Run Jobs
+get:
+  description: |
+    Get a list of batch jobs user has created.
+    Requires login.
+  responses:
+    200:
+      body:
+        application/json:
+          example: !include ../examples/output/batch-list.json
+          schema: !include ../schemas/output/batch-list.json
+post:
+  description: Create a batch job proposal, insert as 'pending'.
+  body:
+    application/json:
+      example: !include ../examples/input/batch-insert.json
+      schema: !include ../schemas/input/batch-insert.json
+  responses:
+    200:
+      body:
+        application/json:
+          example: !include ../examples/output/batch-insert.json
+
+/{BatchId}:
+  description: Perform actions with a specific batch job
+  uriParameters:
+    BatchId:
+      type: string
+  get:
+    description: Get batch job details
+    queryParameters:
+      jobs:
+        type: boolean
+        required: false
+        description: If true, return job objects instead of job ids
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ../examples/output/batch.json
+            schema: !include ../schemas/output/batch.json
+      404:
+        description: BatchId not found
+  /run:
+    description: Launch a Job
+    post:
+      description: |
+        Creates jobs from proposed inputs, returns jobs enqueued.
+        Moves 'pending' batch job to 'launched'.
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include ../examples/output/job-list.json
+              schema: !include ../schemas/output/job-list.json
+  /cancel:
+    description: Cancel a Job
+    post:
+      description: |
+        Cancels jobs that are still pending, returns number of jobs cancelled.
+        Moves a 'launched' batch job to 'cancelled'.
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {
+                  "cancelled_jobs": "4"
+                }
