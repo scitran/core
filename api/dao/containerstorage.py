@@ -179,7 +179,6 @@ class ContainerStorage(object):
 
     def get_all_el(self, query, user, projection, fill_defaults=False):
         if user:
-            log.debug('user is {}'.format(user))
             if query.get('permissions'):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
             else:

@@ -3,11 +3,12 @@ Gears
 """
 
 # import jsonschema
-from jsonschema import Draft4Validator
+from jsonschema import Draft4Validator, ValidationError
 import gear_tools
 
 from .. import config
 from .jobs import Job
+from ..dao import APIValidationException
 from ..dao.containerstorage import ContainerStorage
 
 log = config.log
@@ -91,6 +92,25 @@ def suggest_for_files(gear, files):
 
     return suggested_files
 
+def validate_gear_config(gear, config_):
+    if len(gear.get('manifest', {}).get('config', {})) > 0:
+        invocation = gear_tools.derive_invocation_schema(gear['manifest'])
+        ci = gear_tools.isolate_config_invocation(invocation)
+        validator = Draft4Validator(ci)
+
+        try:
+            validator.validate(config_)
+        except ValidationError as err:
+            key = None
+            if len(err.relative_path) > 0:
+                key = err.relative_path[0]
+
+            raise APIValidationException({
+                'reason': 'config did not match manifest',
+                'error': err.message.replace("u'", "'"),
+                'key': key
+            })
+    return True
 
 def insert_gear(doc):
     gear_tools.validate_manifest(doc['gear'])

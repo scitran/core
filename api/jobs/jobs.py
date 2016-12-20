@@ -150,14 +150,6 @@ class Job(object):
         """
 
         # Don't modify the job obj
-        # test = self.__dict__
-        # for k, v in test.iteritems():
-        #     config.log.debug('the k is {} and the type of the v is {}'.format(k, type(v)))
-
-        # raise Exception
-
-
-
         d = copy.deepcopy(self.__dict__)
 
         d['id'] = d.pop('id_', None)

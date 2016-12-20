@@ -8,12 +8,13 @@ import urllib
 import urlparse
 import webapp2
 
-from .. import util
-from .. import files
-from .. import config
-from ..types import Origin
-from .. import validators
-from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException
+from . import util
+from . import files
+from . import config
+from .types import Origin
+from . import validators
+from .dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+
 
 class RequestHandler(webapp2.RequestHandler):
 
@@ -294,6 +295,9 @@ class RequestHandler(webapp2.RequestHandler):
             code = 404
         elif isinstance(exception, APIConflictException):
             code = 409
+        elif isinstance(exception, APIValidationException):
+            util.send_custom_json_http_exception(self.response, exception.errors, 422)
+            return
         elif isinstance(exception, files.FileStoreException):
             code = 400
         else:

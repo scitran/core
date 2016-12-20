@@ -4,8 +4,7 @@ API request handlers for the jobs module
 import bson
 import json
 import StringIO
-import gear_tools
-from jsonschema import Draft4Validator, ValidationError
+from jsonschema import ValidationError
 
 from ..auth import require_login
 from ..dao import APIPermissionException
@@ -15,7 +14,7 @@ from ..web import base
 from .. import config
 from . import batch
 
-from .gears import get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container
+from .gears import validate_gear_config, get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job
 from .queue import Queue
 
@@ -168,25 +167,7 @@ class JobsHandler(base.RequestHandler):
 
         # Config manifest check
         gear = get_gear_by_name(gear_name)
-        if len(gear.get('manifest', {}).get('config', {})) > 0:
-
-            invocation = gear_tools.derive_invocation_schema(gear['manifest'])
-            ci = gear_tools.isolate_config_invocation(invocation)
-            validator = Draft4Validator(ci)
-
-            try:
-                validator.validate(config_)
-            except ValidationError as err:
-                key = None
-                if len(err.relative_path) > 0:
-                    key = err.relative_path[0]
-
-                self.response.set_status(422)
-                return {
-                    'reason': 'config did not match manifest',
-                    'error': err.message.replace("u'", "'"),
-                    'key': key
-                }
+        validate_gear_config(gear, config_)
 
         job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
         result = job.insert()
@@ -319,10 +300,12 @@ class BatchHandler(base.RequestHandler):
         payload = self.request.json
         gear_name = payload.get('gear')
         targets = payload.get('targets')
+        config_ = payload.get('config', {})
 
         if not gear_name or not targets:
             self.abort(400, 'A gear name and list of target containers is required.')
         gear = get_gear_by_name(gear_name)
+        validate_gear_config(gear, config_)
 
         container_ids = []
         container_type = None
@@ -353,7 +336,7 @@ class BatchHandler(base.RequestHandler):
         batch_proposal = {
             '_id': bson.ObjectId(),
             'gear': gear_name,
-            'config': payload.get('config', {}),
+            'config': config_,
             'state': 'pending',
             'origin': self.origin,
             'proposed_inputs': [c.pop('inputs') for c in matched]

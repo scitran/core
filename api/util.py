@@ -171,6 +171,12 @@ def send_json_http_exception(response, message, code):
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.write(content)
 
+def send_custom_json_http_exception(response, errors, code):
+    response.set_status(code)
+    content = json.dumps({errors})
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
+    response.write(content)
+
 
 class Enum(baseEnum.Enum):
     # Enum strings are prefixed by their class: "Category.classifier".
