@@ -8,7 +8,7 @@ from jsonschema import ValidationError
 
 from ..auth import require_login
 from ..dao import APIPermissionException
-from ..dao.containerstorage import ContainerStorage
+from ..dao.containerstorage import ContainerStorage, AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from ..web import base
 from .. import config
@@ -320,14 +320,13 @@ class BatchHandler(base.RequestHandler):
             container_ids.append(t.get('id'))
 
         objectIds = [bson.ObjectId(x) for x in container_ids]
-        containers = ContainerStorage.factory(container_type).get_all_el({'_id': {'$in':objectIds}}, user, {'permissions': 0})
+        containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds, user=user, projection={'permissions': 0})
 
-        if len(containers) != len(container_ids):
-            # TODO: Break this out into individual errors, requires more work to determine difference
-            self.abort(404, 'Not all target containers exist or user does not have access to all containers.')
+        if not containers:
+            self.abort(404, 'Could not find specified targets, targets have no acquisitions, or user does not have access to targets.')
 
 
-        results = batch.find_matching_conts(gear, containers, container_type)
+        results = batch.find_matching_conts(gear, containers, 'acquisition')
 
         matched = results['matched']
         if not matched:
