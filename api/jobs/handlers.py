@@ -228,17 +228,24 @@ class JobHandler(base.RequestHandler):
         encoded = json.dumps({"config": c}, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
         self.response.app_iter = StringIO.StringIO(encoded)
 
+    @require_login
     def put(self, _id):
         """
         Update a job. Updates timestamp.
         Enforces a valid state machine transition, if any.
         Rejects any change to a job that is not currently in 'pending' or 'running' state.
         """
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
-
         j = Job.get(_id)
-        Queue.mutate(j, self.request.json)
+        mutation = self.request.json
+
+        # If user is not superuser, can only cancel jobs they spawned
+        if not self.superuser_request:
+            if j.origin.get('id') != self.uid:
+                raise APIPermissionException('User does not have permission to access job {}'.format(_id))
+            if mutation != {'state': 'cancelled'}:
+                raise APIPermissionException('User can only cancel jobs.')
+
+        Queue.mutate(j, mutation)
 
     def retry(self, _id):
         """ Retry a job.
