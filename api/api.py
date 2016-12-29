@@ -1,7 +1,6 @@
 import webapp2
 import webapp2_extras.routes
 
-from .                            import root
 from .centralclient               import CentralClient
 from .download                    import Download
 from .handlers.collectionshandler import CollectionsHandler
@@ -12,6 +11,7 @@ from .handlers.grouphandler       import GroupHandler
 from .handlers.listhandler        import AnalysesHandler, ListHandler, FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
 from .handlers.reporthandler      import ReportHandler
 from .handlers.resolvehandler     import ResolveHandler
+from .handlers.roothandler        import RootHandler
 from .handlers.schemahandler      import SchemaHandler
 from .handlers.searchhandler      import SearchHandler
 from .handlers.userhandler        import UserHandler
@@ -72,7 +72,7 @@ def prefix(path, routes):
     )
 
 endpoints = [
-    route('/api',                  root.Root),
+    route('/api',                  RootHandler),
     prefix('/api', [
 
         # System configuration
