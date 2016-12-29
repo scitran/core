@@ -15,7 +15,6 @@ from .types import Origin
 from . import validators
 from .dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException
 
-
 class RequestHandler(webapp2.RequestHandler):
 
     json_schema = None
