@@ -181,6 +181,9 @@ def is_session_compliant(session, template):
             return False
 
     if a_requirements:
+        if not session.get('_id'):
+            # New session, won't have any acquisitions. Compliance check fails
+            return False
         acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
         for req in a_requirements:
             min_count = req.pop('minimum')
