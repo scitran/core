@@ -131,7 +131,7 @@ def is_session_compliant(session, template):
             elif isinstance(cont_v, list):
                 found_in_list = False
                 for v in cont_v:
-                    if re.search(req_v, cont_v, re.IGNORECASE):
+                    if re.search(req_v, v, re.IGNORECASE):
                         found_in_list = True
                         break
                 if not found_in_list:
@@ -181,6 +181,9 @@ def is_session_compliant(session, template):
             return False
 
     if a_requirements:
+        if not session.get('_id'):
+            # New session, won't have any acquisitions. Compliance check fails
+            return False
         acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
         for req in a_requirements:
             min_count = req.pop('minimum')

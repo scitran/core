@@ -5,6 +5,7 @@ import copy
 import dateutil.parser
 import json
 import logging
+import re
 import sys
 
 from api import config
@@ -548,11 +549,13 @@ def upgrade_to_21():
             new_a = {'minimum': a['minimum']}
             properties = a['schema']['properties']
             if 'measurement' in properties:
-                m_req = properties.pop('measurement')
+                m_req = properties['measurement']['pattern']
+                m_req = re.sub('^\(\?i\)', '', m_req)
                 new_a['files']=[{'measurement':  m_req['pattern'], 'minimum': 1}]
             if 'label' in properties:
-                l_req = properties.pop('label')
-                new_a['label'] = l_req['pattern']
+                l_req = properties['label']['pattern']
+                l_req = re.sub('^\(\?i\)', '', m_req)
+                new_a['label'] = l_req
             new_template['acquisitions'].append(new_a)
 
         return new_template
