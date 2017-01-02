@@ -375,7 +375,7 @@ class AcquisitionStorage(ContainerStorage):
         # If target_type is 'acquisitions', it just wraps self.get_all_el with a query containing
         # all acquisition ids.
         if target_type in ['acquisition', 'acquisitions']:
-            return self.get_all_el({'_id': {'$in':objectIds}}, user, projection)
+            return self.get_all_el({'_id': {'$in':target_ids}}, user, projection)
 
         session_ids = None
         if target_type in ['project', 'projects']:

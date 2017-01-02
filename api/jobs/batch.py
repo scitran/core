@@ -18,6 +18,7 @@ BATCH_JOB_TRANSITIONS = {
     'cancelled':    'launched'
 }
 
+
 def get_all(query, projection=None):
     """
     Fetch batch objects from the database

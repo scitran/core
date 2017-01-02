@@ -16,7 +16,7 @@ class APIPermissionException(Exception):
 class APIValidationException(Exception):
     def __init__(self, errors):
 
-        super(APIValidationException, self).__init__('API Validation Error.')
+        super(APIValidationException, self).__init__('Validation Error.')
         self.errors = errors
 
 def noop(*args, **kwargs): # pylint: disable=unused-argument

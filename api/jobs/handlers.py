@@ -8,7 +8,7 @@ from jsonschema import ValidationError
 
 from ..auth import require_login
 from ..dao import APIPermissionException
-from ..dao.containerstorage import ContainerStorage, AcquisitionStorage
+from ..dao.containerstorage import AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from ..web import base
 from .. import config
