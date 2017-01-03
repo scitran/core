@@ -5,6 +5,7 @@
     "parrec":       [ ".parrec.zip", ".par-rec.zip" ],
     "gephysio":     [ ".gephysio.zip" ],
     "MATLAB data":  [ ".mat" ],
+    "MGH data":     [ ".mgh", ".mgz", ".mgh.gz" ],
     "nifti":        [ ".nii.gz", ".nii" ],
     "pfile":        [ ".7.gz", ".7" ],
     "PsychoPy data":  [ ".psydat" ],
