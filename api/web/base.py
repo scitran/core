@@ -8,12 +8,12 @@ import urllib
 import urlparse
 import webapp2
 
-from . import util
-from . import files
-from . import config
-from .types import Origin
-from . import validators
-from .dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException
+from .. import util
+from .. import files
+from .. import config
+from ..types import Origin
+from .. import validators
+from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException
 
 class RequestHandler(webapp2.RequestHandler):
 

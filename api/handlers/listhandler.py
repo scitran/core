@@ -7,7 +7,7 @@ import json
 import uuid
 import zipfile
 
-from .. import base
+from ..web import base
 from .. import config
 from ..jobs.jobs import Job
 from .. import upload

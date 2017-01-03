@@ -5,10 +5,10 @@ import sys
 import traceback
 import webapp2
 
-from .api import endpoints
-from . import config
+from ..api import endpoints
+from .. import config
 from . import encoder
-from . import util
+from .. import util
 from .request import SciTranRequest
 
 try:

@@ -1,7 +1,7 @@
 import re
 import markdown
 
-from .. import base
+from ..web import base
 
 class RootHandler(base.RequestHandler):
 

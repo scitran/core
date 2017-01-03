@@ -8,7 +8,7 @@ import gear_tools
 from jsonschema import Draft4Validator, ValidationError
 
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
-from .. import base
+from ..web import base
 from .. import config
 
 from .gears import get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container

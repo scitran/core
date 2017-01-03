@@ -6,7 +6,7 @@ import tarfile
 import datetime
 import cStringIO
 
-from . import base
+from .web import base
 from . import config
 from . import util
 from . import validators

@@ -4,7 +4,7 @@ import datetime
 import json
 import pytz
 
-from .jobs.jobs import Job
+from ..jobs.jobs import Job
 
 def custom_json_serializer(obj):
     if isinstance(obj, bson.objectid.ObjectId):

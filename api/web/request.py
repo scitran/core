@@ -4,7 +4,7 @@ import uuid
 
 from webob.request import Request
 
-from . import config
+from .. import config
 
 class SciTranRequest(Request):
     """Extends webob.request.Request"""

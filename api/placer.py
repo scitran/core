@@ -8,7 +8,7 @@ import shutil
 import zipfile
 
 from . import config
-from . import encoder
+from .web import encoder
 from . import files
 from . import tempdir as tempfile
 from . import util

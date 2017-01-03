@@ -1,7 +1,7 @@
 import json
 
-from .. import encoder
-from .. import base
+from ..web import encoder
+from ..web import base
 from .. import config
 
 class Config(base.RequestHandler):

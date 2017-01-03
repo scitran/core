@@ -1,7 +1,7 @@
 import os
 import json
 
-from .. import base
+from ..web import base
 from .. import config
 
 
