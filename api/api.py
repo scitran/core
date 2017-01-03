@@ -106,8 +106,8 @@ endpoints = [
 
         # Users
 
-        route( '/users',                   UserHandler, 'get_all', m=['GET']),
-        route( '/users',                   UserHandler,            m=['POST']),
+        route( '/users',                   UserHandler, h='get_all', m=['GET']),
+        route( '/users',                   UserHandler,              m=['POST']),
         prefix('/users', [
             route('/self',                 UserHandler, h='self',            m=['GET']),
             route('/self/avatar',          UserHandler, h='self_avatar',     m=['GET']),
