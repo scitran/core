@@ -1,4 +1,4 @@
 # vim: filetype=python
-from api import api
+from api.web import start
 
-application = api.app_factory()
+application = start.app_factory()

@@ -2,7 +2,7 @@
 API request handlers for the jobs module
 """
 
-from .. import base
+from ..web import base
 from ..resolver import Resolver
 
 class ResolveHandler(base.RequestHandler):

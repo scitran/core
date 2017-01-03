@@ -1,9 +1,9 @@
 import re
 import markdown
 
-from . import base
+from ..web import base
 
-class Root(base.RequestHandler):
+class RootHandler(base.RequestHandler):
 
     def head(self):
         """

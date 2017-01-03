@@ -1,7 +1,7 @@
 import bson
 import elasticsearch
 
-from .. import base
+from ..web import base
 from .. import config
 from .. import util
 from ..search import pathparser, queryprocessor, es_query

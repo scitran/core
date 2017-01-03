@@ -11,7 +11,7 @@ import re
 import json
 import requests
 
-from . import base
+from .web import base
 from . import config
 
 log = config.log

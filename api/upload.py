@@ -4,7 +4,7 @@ import json
 import os.path
 import shutil
 
-from . import base
+from .web import base
 from . import config
 from . import files
 from . import placer as pl
