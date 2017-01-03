@@ -1,10 +1,12 @@
 import bson.errors
 import bson.objectid
+import datetime
 
 from .. import config
 from . import consistencychecker, containerutil
 from . import APIStorageException, APIConflictException
 from .containerstorage import SessionStorage, AcquisitionStorage
+from .containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 from ..jobs.jobs import Job
 
 log = config.log
@@ -237,6 +239,63 @@ class AnalysesStorage(ListStorage):
             }
         }
         return self.dbc.update_one(query, update)
+
+    @staticmethod
+    def default_analysis(origin):
+        analysis_obj = {}
+        analysis_obj['_id'] = str(bson.objectid.ObjectId())
+        analysis_obj['created'] = datetime.datetime.utcnow()
+        analysis_obj['modified'] = datetime.datetime.utcnow()
+        analysis_obj['user'] = origin.get('id')
+
+        return analysis_obj
+
+
+    def create_job_and_analysis(self, cont_name, cid, analysis, job, origin):
+        """
+        Create and insert job and analysis.
+        """
+
+        cid = bson.objectid.ObjectId(cid)
+
+        default = self.default_analysis(origin)
+        default.update(analysis)
+        analysis = default
+
+        # Save inputs to analysis and job
+        inputs = {} # For Job object (map of FileReferences)
+        files = [] # For Analysis object (list of file objects)
+        for x in job['inputs'].keys():
+            input_map = job['inputs'][x]
+            fileref = create_filereference_from_dictionary(input_map)
+            inputs[x] = fileref
+
+            contref = create_containerreference_from_filereference(fileref)
+            file_ = contref.find_file(fileref.name)
+            if file_:
+                file_.pop('output', None) # If file was from an analysis
+                file_['input'] = True
+                files.append(file_)
+        analysis['files'] = files
+
+        result = self._create_el(cid, analysis, None)
+        if result.modified_count != 1:
+            raise APIStorageException('Element not added in list analyses of container {} {}'.format(cont_name, cid))
+
+        # Prepare job
+        tags = job.get('tags', [])
+        if 'analysis' not in tags:
+            tags.append('analysis')
+
+        gear_name = job['gear']
+
+        destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
+        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=origin)
+        job_id = job.insert()
+        if not job_id:
+            raise APIStorageException(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
+        result = self._update_el(cid, {'_id': analysis['_id']}, {'job': job_id}, None)
+        return { 'analysis': analysis, 'job_id':job_id, 'job': job}
 
     @staticmethod
     def inflate_job_info(analysis):

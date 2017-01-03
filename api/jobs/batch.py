@@ -2,10 +2,13 @@
 Batch
 """
 import bson
+import datetime
 
 from .. import config
 from ..dao import APINotFoundException
+from ..dao.containerstorage import AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_filereference
+from ..dao.liststorage import AnalysesStorage
 from .jobs import Job
 from .queue import Queue
 from . import gears
@@ -100,6 +103,10 @@ def insert(batch_proposal):
     """
     Simple database insert given a batch proposal.
     """
+
+    time_now = datetime.datetime.utcnow()
+    batch_proposal['created'] = time_now
+    batch_proposal['modified'] = time_now
     return config.db.batch.insert(batch_proposal)
 
 def update(batch_id, payload):
@@ -107,8 +114,10 @@ def update(batch_id, payload):
     Updates a batch job, being mindful of state flow.
     """
 
+    time_now = datetime.datetime.utcnow()
     bid = bson.ObjectId(batch_id)
     query = {'_id': bid}
+    payload['modified'] = time_now
     if payload.get('state'):
         # Require that the batch job has the previous state
         query['state'] = BATCH_JOB_TRANSITIONS[payload.get('state')]
@@ -123,18 +132,46 @@ def run(batch_job):
 
     proposed_inputs = batch_job.get('proposed_inputs', [])
     gear_name = batch_job.get('gear')
+    gear = gears.get_gear_by_name(gear_name)
     config_ = batch_job.get('config')
     origin = batch_job.get('origin')
+
+    if gear.get('category') == 'analysis':
+        an_storage = AnalysesStorage('sessions', 'analyses', use_object_id = True)
+        acq_storage = AcquisitionStorage()
+        time_now = datetime.datetime.utcnow()
 
     jobs = []
     job_ids = []
     for inputs in proposed_inputs:
-        for input_name, fr in inputs.iteritems():
-            inputs[input_name] = create_filereference_from_dictionary(fr)
-        # TODO support analysis gears (will have to create analyses here)
-        destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
-        job = Job(gear_name, inputs, destination=destination, tags=['batch'], config_=config_, origin=origin)
-        job_id = job.insert()
+        if gear.get('category') == 'analysis':
+
+            # Analysis gear, must create analysis on session
+
+            # Create job and analysis proposal objects:
+            analysis = {'label': '{} {}'.format(gear_name, time_now)}
+            job = {
+                'config':   config_,
+                'gear':     gear_name,
+                'inputs':   inputs
+            }
+
+            # Create analysis
+            acquisition_id = inputs.values()[0].get('id')
+            session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
+            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job, origin)
+            job = result.get('job')
+            job_id = result.get('job_id')
+
+        else:
+
+            # Non-analysis gear, destination is acquisition
+            for input_name, fr in inputs.iteritems():
+                inputs[input_name] = create_filereference_from_dictionary(fr)
+            destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
+            job = Job(gear_name, inputs, destination=destination, tags=['batch'], config_=config_, origin=origin)
+            job_id = job.insert()
+
         jobs.append(job)
         job_ids.append(job_id)
 
