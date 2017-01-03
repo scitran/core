@@ -140,6 +140,8 @@ class CollectionsHandler(ContainerHandler):
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
+        if not self.is_true('archived'):
+            query['archived'] = {'$ne': True}
         projection = self.container_handler_configurations['sessions']['list_projection']
         log.debug(query)
         log.debug(projection)
@@ -159,6 +161,8 @@ class CollectionsHandler(ContainerHandler):
         if not self.storage.dbc.find_one({'_id': _id}):
             self.abort(404, 'no such Collection')
         query = {'collections': _id}
+        if not self.is_true('archived'):
+            query['archived'] = {'$ne': True}
         sid = self.get_param('session', '')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
