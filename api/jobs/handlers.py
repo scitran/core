@@ -278,7 +278,7 @@ class BatchHandler(base.RequestHandler):
             query = {}
         else:
             query = {'origin.id': self.uid}
-        return batch.get_all(query, {'proposed_inputs':0})
+        return batch.get_all(query, {'proposal':0})
 
     @require_login
     def get(self, _id):
@@ -288,7 +288,7 @@ class BatchHandler(base.RequestHandler):
         """
 
         get_jobs = self.is_true('jobs')
-        batch_job = batch.get(_id, projection={'proposed_inputs':0}, get_jobs=get_jobs)
+        batch_job = batch.get(_id, projection={'proposal':0}, get_jobs=get_jobs)
         self._check_permission(batch_job)
         return batch_job
 
@@ -308,6 +308,8 @@ class BatchHandler(base.RequestHandler):
         gear_name = payload.get('gear')
         targets = payload.get('targets')
         config_ = payload.get('config', {})
+        analysis_data = payload.get('analysis', {})
+        tags = payload.get('tags', [])
 
         if not gear_name or not targets:
             self.abort(400, 'A gear name and list of target containers is required.')
@@ -345,11 +347,15 @@ class BatchHandler(base.RequestHandler):
             'config': config_,
             'state': 'pending',
             'origin': self.origin,
-            'proposed_inputs': [c.pop('inputs') for c in matched]
+            'proposal': {
+                'inputs': [c.pop('inputs') for c in matched],
+                'analysis': analysis_data,
+                'tags': tags
+            }
         }
 
         batch.insert(batch_proposal)
-        batch_proposal.pop('proposed_inputs')
+        batch_proposal.pop('proposal')
         batch_proposal['not_matched'] = results['not_matched'],
         batch_proposal['ambiguous'] = results['ambiguous'],
         batch_proposal['matched'] = matched
