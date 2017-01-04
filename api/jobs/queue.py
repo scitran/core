@@ -18,6 +18,7 @@ JOB_STATES = [
     'running',  # Job has been handed to an engine and is being processed
     'failed',   # Job has an expired heartbeat (orphaned) or has suffered an error
     'complete', # Job has successfully completed
+    'cancelled' # Job has been cancelled (via a bulk job cancellation)
 ]
 
 JOB_STATES_ALLOWED_MUTATE = [
@@ -27,6 +28,7 @@ JOB_STATES_ALLOWED_MUTATE = [
 
 JOB_TRANSITIONS = [
     'pending --> running',
+    'pending --> cancelled',
     'running --> failed',
     'running --> complete',
 ]
@@ -110,6 +112,14 @@ class Queue(object):
 
         new_id = new_job.insert()
         log.info('respawned job %s as %s (attempt %d)', job.id_, new_id, new_job.attempt)
+
+        # If job is part of batch job run, update batch jobs list
+        result = config.db.batch.update_one(
+            {'jobs': job.id_},
+            {'$pull': {'jobs': job.id_}, '$push': {'jobs': new_id}}
+        )
+        if result.modified_count == 1:
+            log.info('updated batch job list, replacing {} with {}'.format(job.id_, new_id))
 
         return new_id
 

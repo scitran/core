@@ -9,7 +9,6 @@ import zipfile
 
 from ..web import base
 from .. import config
-from ..jobs.jobs import Job
 from .. import upload
 from .. import download
 from .. import util
@@ -19,7 +18,6 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 from ..dao import hierarchy
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 
 def initialize_list_configurations():
@@ -600,14 +598,6 @@ class AnalysesHandler(ListHandler):
     def put(self, *args, **kwargs):
         raise NotImplementedError("an analysis can't be modified")
 
-    def _default_analysis(self):
-        analysis_obj = {}
-        analysis_obj['_id'] = str(bson.objectid.ObjectId())
-        analysis_obj['created'] = datetime.datetime.utcnow()
-        analysis_obj['modified'] = datetime.datetime.utcnow()
-        analysis_obj['user'] = self.uid
-        return analysis_obj
-
     def post(self, cont_name, list_name, **kwargs):
         """
         Default behavior:
@@ -626,63 +616,23 @@ class AnalysesHandler(ListHandler):
             if cont_name == 'sessions':
                 payload = self.request.json_body
                 payload_validator(payload.get('analysis',{}), 'POST')
-                return self._create_job_and_analysis(cont_name, _id, storage, payload)
+                analysis = payload.get('analysis')
+                job = payload.get('job')
+                if job is None or analysis is None:
+                    self.abort(400, 'JSON body must contain map for "analysis" and "job"')
+                result = storage.create_job_and_analysis(cont_name, _id, analysis, job, self.origin)
+                return {'_id': result['analysis']['_id']}
             else:
                 self.abort(400, 'Analysis created via a job must be at the session level')
 
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        analysis = self._default_analysis()
+        analysis = storage.default_analysis(self.origin)
         analysis.update(payload)
         result = storage.exec_op('POST', _id=_id, payload=analysis)
         if result.modified_count == 1:
             return {'_id': analysis['_id']}
         else:
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
-
-    def _create_job_and_analysis(self, cont_name, cid, storage, payload):
-        analysis = payload.get('analysis')
-        job = payload.get('job')
-        if job is None or analysis is None:
-            self.abort(400, 'JSON body must contain map for "analysis" and "job"')
-
-        default = self._default_analysis()
-        default.update(analysis)
-        analysis = default
-
-        # Save inputs to analysis and job
-        inputs = {} # For Job object (map of FileReferences)
-        files = [] # For Analysis object (list of file objects)
-        for x in job['inputs'].keys():
-            input_map = job['inputs'][x]
-            fileref = create_filereference_from_dictionary(input_map)
-            inputs[x] = fileref
-
-            contref = create_containerreference_from_filereference(fileref)
-            file_ = contref.find_file(fileref.name)
-            if file_:
-                file_.pop('output', None) # If file was from an analysis
-                file_['input'] = True
-                files.append(file_)
-        analysis['files'] = files
-
-        result = storage.exec_op('POST', _id=cid, payload=analysis)
-        if result.modified_count != 1:
-            self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, cid))
-
-        # Prepare job
-        tags = job.get('tags', [])
-        if 'analysis' not in tags:
-            tags.append('analysis')
-
-        gear_name = job['gear']
-
-        destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
-        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=self.origin)
-        job_id = job.insert()
-        if not job_id:
-            self.abort(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
-        result = storage.exec_op('PUT', _id=cid, query_params={'_id': analysis['_id']}, payload={'job': job_id})
-        return { '_id': analysis['_id']}
 
 
 

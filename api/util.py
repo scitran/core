@@ -162,14 +162,18 @@ def format_hash(hash_alg, hash_):
     return '-'.join(('v0', hash_alg, hash_))
 
 
-def send_json_http_exception(response, message, code):
+def send_json_http_exception(response, message, code, custom=None):
     response.set_status(code)
-    content = json.dumps({
+    content = {
         'message': message,
         'status_code': code
-    })
+    }
+    if custom:
+        content.update(custom)
+
+    json_content = json.dumps(content)
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
-    response.write(content)
+    response.write(json_content)
 
 
 class Enum(baseEnum.Enum):

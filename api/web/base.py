@@ -13,7 +13,8 @@ from .. import files
 from .. import config
 from ..types import Origin
 from .. import validators
-from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException
+from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+
 
 class RequestHandler(webapp2.RequestHandler):
 
@@ -281,6 +282,7 @@ class RequestHandler(webapp2.RequestHandler):
         For HTTP and other known exceptions, use its error code
         For all others use a generic 500 error code and log the stack trace
         """
+        custom_errors = None
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
         elif isinstance(exception, validators.InputValidationException):
@@ -294,6 +296,9 @@ class RequestHandler(webapp2.RequestHandler):
             code = 404
         elif isinstance(exception, APIConflictException):
             code = 409
+        elif isinstance(exception, APIValidationException):
+            code = 422
+            custom_errors = exception.errors
         elif isinstance(exception, files.FileStoreException):
             code = 400
         else:
@@ -303,7 +308,7 @@ class RequestHandler(webapp2.RequestHandler):
             tb = traceback.format_exc()
             self.request.logger.error(tb)
 
-        util.send_json_http_exception(self.response, str(exception), code)
+        util.send_json_http_exception(self.response, str(exception), code, custom=custom_errors)
 
     def dispatch(self):
         """dispatching and request forwarding"""

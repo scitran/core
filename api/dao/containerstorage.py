@@ -52,13 +52,13 @@ class ContainerStorage(object):
         Factory method to aid in the creation of a ContainerStorage instance
         when cont_name is dynamic.
         """
-        if cont_name == 'groups':
+        if cont_name in ['group', 'groups']:
             return GroupStorage()
-        elif cont_name == 'projects':
+        elif cont_name in ['project', 'projects']:
             return ProjectStorage()
-        elif cont_name == 'sessions':
+        elif cont_name in ['session', 'sessions']:
             return SessionStorage()
-        elif cont_name == 'acquisitions':
+        elif cont_name in ['acquisition', 'acquisitions']:
             return AcquisitionStorage()
         else:
             return ContainerStorage(cont_name, use_object_id)
@@ -361,3 +361,29 @@ class AcquisitionStorage(ContainerStorage):
         SessionStorage().recalc_session_compliance(acquisition['session'])
         return result
 
+    def get_all_for_targets(self, target_type, target_ids, user=None, projection=None):
+        """
+        Given a container type and list of ids, get all acquisitions that are in those hierarchies.
+
+        For example, if target_type='projects' and target_ids=['id1', 'id2'], this method will return
+        all acquisitions that are in sessions in project id1 and project id2.
+
+        If user is supplied, will only return acquisitions with user in its perms list.
+        If projection is supplied, it will be applied to the acquisition query.
+        """
+
+        # If target_type is 'acquisitions', it just wraps self.get_all_el with a query containing
+        # all acquisition ids.
+        if target_type in ['acquisition', 'acquisitions']:
+            return self.get_all_el({'_id': {'$in':target_ids}}, user, projection)
+
+        session_ids = None
+        if target_type in ['project', 'projects']:
+            query = {'project': {'$in':target_ids}}
+            session_ids = [s['_id'] for s in SessionStorage().get_all_el(query, user, {'_id':1})]
+        elif target_type in ['session', 'sessions']:
+            session_ids = target_ids
+        else:
+            raise ValueError('Target type must be of type project, session or acquisition.')
+
+        return self.get_all_el({'session': {'$in':session_ids}}, user, projection)
