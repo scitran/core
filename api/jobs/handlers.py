@@ -298,12 +298,6 @@ class BatchHandler(base.RequestHandler):
         Create a batch job proposal, insert as 'pending' if there are matched containers
         """
 
-        if self.superuser_request:
-            # Don't enforce permissions for superuser requests
-            user = None
-        else:
-            user = {'_id': self.uid, 'site': self.user_site}
-
         payload = self.request.json
         gear_name = payload.get('gear')
         targets = payload.get('targets')
@@ -347,7 +341,7 @@ class BatchHandler(base.RequestHandler):
 
         # Make sure user has read-write access, add those to acquisition list
         for c in containers:
-            if has_access(self.uid, c, 'rw'):
+            if self.superuser_request or has_access(self.uid, c, 'rw'):
                 c.pop('permissions')
                 acquisitions.append(c)
             else:
