@@ -6,7 +6,7 @@ import json
 import StringIO
 from jsonschema import ValidationError
 
-from ..auth import require_login
+from ..auth import require_login, has_access
 from ..dao import APIPermissionException
 from ..dao.containerstorage import AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
@@ -295,7 +295,7 @@ class BatchHandler(base.RequestHandler):
     @require_login
     def post(self):
         """
-        Create a batch job proposal, insert as 'pending'.
+        Create a batch job proposal, insert as 'pending' if there are matched containers
         """
 
         if self.superuser_request:
@@ -311,6 +311,11 @@ class BatchHandler(base.RequestHandler):
         analysis_data = payload.get('analysis', {})
         tags = payload.get('tags', [])
 
+        # Request might specify a collection context
+        collection_id = payload.get('target_context', {}).get('id', None)
+        if collection_id:
+            collection_id = bson.ObjectId(collection_id)
+
         if not gear_name or not targets:
             self.abort(400, 'A gear name and list of target containers is required.')
         gear = get_gear_by_name(gear_name)
@@ -319,6 +324,7 @@ class BatchHandler(base.RequestHandler):
         container_ids = []
         container_type = None
 
+        # Get list of container ids from target list
         for t in targets:
             if not container_type:
                 container_type = t.get('type')
@@ -328,37 +334,57 @@ class BatchHandler(base.RequestHandler):
                     self.abort(400, 'targets must all be of same type.')
             container_ids.append(t.get('id'))
 
+        # Get Acquisitions associated with targets
         objectIds = [bson.ObjectId(x) for x in container_ids]
-        containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds, user=user, projection={'permissions': 0})
+        containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
+            collection_id=collection_id, include_archived=False)
 
         if not containers:
-            self.abort(404, 'Could not find specified targets, targets have no acquisitions, or user does not have access to targets.')
+            self.abort(404, 'Could not find acquisitions from targets.')
 
+        improper_permissions = []
+        acquisitions = []
 
-        results = batch.find_matching_conts(gear, containers, 'acquisition')
+        # Make sure user has read-write access, add those to acquisition list
+        for c in containers:
+            if has_access(self.uid, c, 'rw'):
+                c.pop('permissions')
+                acquisitions.append(c)
+            else:
+                improper_permissions.append(c['_id'])
+
+        if not acquisitions:
+            self.abort(403, 'User does not have write access to targets.')
+
+        results = batch.find_matching_conts(gear, acquisitions, 'acquisition')
 
         matched = results['matched']
-        if not matched:
-            self.abort(400, 'No target containers matched gear input spec.')
+        batch_proposal = {}
 
-        batch_proposal = {
-            '_id': bson.ObjectId(),
-            'gear': gear_name,
-            'config': config_,
-            'state': 'pending',
-            'origin': self.origin,
-            'proposal': {
-                'inputs': [c.pop('inputs') for c in matched],
-                'analysis': analysis_data,
-                'tags': tags
+        # If there are matches, create a batch job object and insert it
+        if matched:
+
+            batch_proposal = {
+                '_id': bson.ObjectId(),
+                'gear': gear_name,
+                'config': config_,
+                'state': 'pending',
+                'origin': self.origin,
+                'proposal': {
+                    'inputs': [c.pop('inputs') for c in matched],
+                    'analysis': analysis_data,
+                    'tags': tags
+                }
             }
-        }
 
-        batch.insert(batch_proposal)
-        batch_proposal.pop('proposal')
+            batch.insert(batch_proposal)
+            batch_proposal.pop('proposal')
+
+        # Either way, return information about the status of the containers
         batch_proposal['not_matched'] = results['not_matched'],
         batch_proposal['ambiguous'] = results['ambiguous'],
         batch_proposal['matched'] = matched
+        batch_proposal['improper_permissions'] = improper_permissions
 
         return batch_proposal
 
