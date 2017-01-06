@@ -310,6 +310,7 @@ class BatchHandler(base.RequestHandler):
         if collection_id:
             collection_id = bson.ObjectId(collection_id)
 
+        # Validate the config against the gear manifest
         if not gear_name or not targets:
             self.abort(400, 'A gear name and list of target containers is required.')
         gear = get_gear_by_name(gear_name)
@@ -328,7 +329,7 @@ class BatchHandler(base.RequestHandler):
                     self.abort(400, 'targets must all be of same type.')
             container_ids.append(t.get('id'))
 
-        # Get Acquisitions associated with targets
+        # Get acquisitions associated with targets
         objectIds = [bson.ObjectId(x) for x in container_ids]
         containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
             collection_id=collection_id, include_archived=False)
@@ -375,8 +376,8 @@ class BatchHandler(base.RequestHandler):
             batch_proposal.pop('proposal')
 
         # Either way, return information about the status of the containers
-        batch_proposal['not_matched'] = results['not_matched'],
-        batch_proposal['ambiguous'] = results['ambiguous'],
+        batch_proposal['not_matched'] = results['not_matched']
+        batch_proposal['ambiguous'] = results['ambiguous']
         batch_proposal['matched'] = matched
         batch_proposal['improper_permissions'] = improper_permissions
 
