@@ -5,7 +5,7 @@ import bson
 import datetime
 
 from .. import config
-from ..dao import APINotFoundException
+from ..dao import APINotFoundException, APIStorageException
 from ..dao.containerstorage import AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_filereference
 from ..dao.liststorage import AnalysesStorage
@@ -130,16 +130,24 @@ def run(batch_job):
     Creates jobs from proposed inputs, returns jobs enqueued.
     """
 
-    proposed_inputs = batch_job.get('proposed_inputs', [])
+    proposal = batch_job.get('proposal')
+    if not proposal:
+        raise APIStorageException('The batch job is not formatted correctly.')
+    proposed_inputs = proposal.get('inputs', [])
     gear_name = batch_job.get('gear')
     gear = gears.get_gear_by_name(gear_name)
     config_ = batch_job.get('config')
     origin = batch_job.get('origin')
+    tags = proposal.get('tags', [])
+    tags.append('batch')
 
     if gear.get('category') == 'analysis':
+        analysis = proposal.get('analysis', {})
+        if not analysis.get('label'):
+            time_now = datetime.datetime.utcnow()
+            analysis['label'] = {'label': '{} {}'.format(gear_name, time_now)}
         an_storage = AnalysesStorage('sessions', 'analyses', use_object_id = True)
         acq_storage = AcquisitionStorage()
-        time_now = datetime.datetime.utcnow()
 
     jobs = []
     job_ids = []
@@ -147,13 +155,11 @@ def run(batch_job):
         if gear.get('category') == 'analysis':
 
             # Analysis gear, must create analysis on session
-
-            # Create job and analysis proposal objects:
-            analysis = {'label': '{} {}'.format(gear_name, time_now)}
             job = {
                 'config':   config_,
                 'gear':     gear_name,
-                'inputs':   inputs
+                'inputs':   inputs,
+                'tags':     tags
             }
 
             # Create analysis
@@ -169,7 +175,7 @@ def run(batch_job):
             for input_name, fr in inputs.iteritems():
                 inputs[input_name] = create_filereference_from_dictionary(fr)
             destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
-            job = Job(gear_name, inputs, destination=destination, tags=['batch'], config_=config_, origin=origin)
+            job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, origin=origin)
             job_id = job.insert()
 
         jobs.append(job)
