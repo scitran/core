@@ -342,7 +342,7 @@ class BatchHandler(base.RequestHandler):
 
         # Make sure user has read-write access, add those to acquisition list
         for c in containers:
-            if self.superuser_request or has_access(self.uid, c, 'rw'):
+            if self.superuser_request or has_access(self.uid, c, 'rw', self.user_site):
                 c.pop('permissions')
                 acquisitions.append(c)
             else:
