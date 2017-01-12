@@ -551,10 +551,10 @@ def upgrade_to_21():
             if 'measurement' in properties:
                 m_req = properties['measurement']['pattern']
                 m_req = re.sub('^\(\?i\)', '', m_req)
-                new_a['files']=[{'measurement':  m_req['pattern'], 'minimum': 1}]
+                new_a['files']=[{'measurement':  m_req, 'minimum': 1}]
             if 'label' in properties:
                 l_req = properties['label']['pattern']
-                l_req = re.sub('^\(\?i\)', '', m_req)
+                l_req = re.sub('^\(\?i\)', '', l_req)
                 new_a['label'] = l_req
             new_template['acquisitions'].append(new_a)
 
