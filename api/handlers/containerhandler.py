@@ -54,7 +54,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
-            'list_projection': {'info': 0, 'file.info': 0},
+            'list_projection': {'info': 0},
             'propagated_properties': ['archived', 'public'],
             'children_cont': 'sessions'
         },
@@ -64,7 +64,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
-            'list_projection': {'info': 0, 'file.info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0, 'subject.age': 0, 'subject.info': 0},
+            'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -74,7 +74,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
-            'list_projection': {'info': 0, 'collections': 0, 'file.info': 0}
+            'list_projection': {'info': 0, 'collections': 0}
         }
     }
 
