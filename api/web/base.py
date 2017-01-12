@@ -208,6 +208,19 @@ class RequestHandler(webapp2.RequestHandler):
 
         return uid
 
+
+    def log_out(self):
+        """
+        Remove all cached auth tokens associated with caller's uid.
+        """
+
+        if not self.uid:
+            self.abort(400, 'Only users may log out.')
+
+        result = config.db.authtokens.delete_many({'uid': self.uid})
+        return {'auth_tokens_removed': result.deleted_count}
+
+
     def set_origin(self, drone_request):
         """
         Add an origin to the request object. Used later in request handler logic.

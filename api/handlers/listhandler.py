@@ -458,6 +458,9 @@ class FileListHandler(ListHandler):
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
+    def get_info(self, cont_name, list_name, **kwargs):
+        return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
+
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
 

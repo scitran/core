@@ -54,7 +54,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
-            'list_projection': {'info': 0},
+            'list_projection': {'info': 0, 'file.info': 0},
             'propagated_properties': ['archived', 'public'],
             'children_cont': 'sessions'
         },
@@ -64,7 +64,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
-            'list_projection': {'info': 0, 'analyses': 0},
+            'list_projection': {'info': 0, 'file.info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0, 'subject.age': 0, 'subject.info': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -74,7 +74,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
-            'list_projection': {'info': 0, 'collections': 0}
+            'list_projection': {'info': 0, 'collections': 0, 'file.info': 0}
         }
     }
 
@@ -170,6 +170,16 @@ class ContainerHandler(base.RequestHandler):
         user_perm = util.user_perm(result.get('permissions', []), uid, site)
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
+
+    def get_subject(self, cid):
+        self.config = self.container_handler_configurations['sessions']
+        self.storage = self.config['storage']
+        container= self._get_container(cid)
+
+        permchecker = self._get_permchecker(container)
+        result = permchecker(self.storage.exec_op)('GET', cid)
+        return result.get('subject', {})
+
 
     def get_jobs(self, cid):
         # Only enabled for sessions container type per url rule in api.py
