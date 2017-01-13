@@ -1,6 +1,7 @@
 {
     "bval":         [ ".bval", ".bvals" ],
     "bvec":         [ ".bvec", ".bvecs" ],
+    "data":         [ ".dat", ".data" ],
     "dicom":        [ ".dcm", ".dcm.zip", ".dicom.zip" ],
     "parrec":       [ ".parrec.zip", ".par-rec.zip" ],
     "gephysio":     [ ".gephysio.zip" ],
