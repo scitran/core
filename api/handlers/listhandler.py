@@ -18,6 +18,7 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 from ..dao import hierarchy
+from ..web.request import log_access, AccessType
 
 
 def initialize_list_configurations():
@@ -360,6 +361,7 @@ class FileListHandler(ListHandler):
 
             return info
 
+    @log_access(AccessType.download_file)
     def get(self, cont_name, list_name, **kwargs):
         """
         .. http:get:: /api/(cont_name)/(cid)/files/(file_name)
@@ -458,6 +460,7 @@ class FileListHandler(ListHandler):
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
+    @log_access(AccessType.view_file)
     def get_info(self, cont_name, list_name, **kwargs):
         return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
 
@@ -476,6 +479,10 @@ class FileListHandler(ListHandler):
         permchecker(noop)('POST', _id=_id)
 
         return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
+
+    @log_access(AccessType.delete_file)
+    def delete(self, cont_name, list_name, **kwargs):
+        return super(FileListHandler,self).delete(cont_name, list_name, **kwargs)
 
     def _check_packfile_token(self, project_id, token_id, check_user=True):
         """
@@ -638,7 +645,7 @@ class AnalysesHandler(ListHandler):
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
 
 
-
+    @log_access(AccessType.download_file)
     def download(self, cont_name, list_name, **kwargs):
         """
         .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)

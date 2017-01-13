@@ -12,6 +12,7 @@ from ..dao.liststorage import AnalysesStorage
 from ..types import Origin
 from ..jobs.queue import Queue
 from ..jobs.jobs import Job
+from ..web.request import log_access, AccessType
 
 log = config.log
 
@@ -83,8 +84,9 @@ class ContainerHandler(base.RequestHandler):
         self.storage = None
         self.config = None
 
+    @log_access(AccessType.view_container)
     def get(self, cont_name, **kwargs):
-        _id = kwargs.pop('cid')
+        _id = kwargs.get('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container= self._get_container(_id)

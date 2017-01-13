@@ -14,6 +14,7 @@ from .. import config
 from ..types import Origin
 from .. import validators
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+from ..web.request import log_access, AccessType
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -209,6 +210,22 @@ class RequestHandler(webapp2.RequestHandler):
         return uid
 
 
+    @log_access(AccessType.user_login)
+    def log_in(self):
+        """
+        Return succcess boolean if user successfully authenticates.
+
+        Used for access logging.
+        Not required to use system as logged in user.
+        """
+
+        if not self.uid:
+            self.abort(400, 'Only users may log in.')
+
+        return {'success': True}
+
+
+    @log_access(AccessType.user_logout)
     def log_out(self):
         """
         Remove all cached auth tokens associated with caller's uid.
