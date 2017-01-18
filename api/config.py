@@ -25,6 +25,8 @@ DEFAULT_CONFIG = {
     'core': {
         'debug': False,
         'log_level': 'info',
+        'access_log_enabled': True,
+        'access_log_path': os.path.join(os.path.dirname(__file__), '../logs/user_access.log'),
         'newrelic': None,
         'drone_secret': None,
     },
