@@ -184,8 +184,14 @@ class PreparedSearch(object):
         # If one of the conditions is true, we include the container in the search
         # the index of the last relevant container is saved
         #
+        # The only exception is when there is a query on the 'collections' container.
+        # In this case all containers are relevant (also the 'acquisitions' container).
+        #
         # Please note that the containers are checked in reverse order so the index is
         # from the end of the container list.
+
+        if self.queries.get('collections'):
+            last_relevant_container = 0
         for i, cont_name in enumerate(self.containers[::-1]):
             query = self.queries.get(cont_name)
             targets = self.target_lists.get(cont_name, [])
