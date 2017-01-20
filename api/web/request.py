@@ -1,6 +1,4 @@
-import datetime
 import logging
-import json
 import time
 import uuid
 
@@ -9,8 +7,6 @@ from pymongo.errors import ServerSelectionTimeoutError
 
 from .. import config
 from .. import util
-from ..dao.hierarchy import get_parent_tree
-from .encoder import custom_json_serializer
 
 AccessType = util.Enum('AccessType', {
     'view_container':   'view_container',
@@ -18,6 +14,7 @@ AccessType = util.Enum('AccessType', {
     'view_file':        'view_file',
     'download_file':    'download_file',
     'delete_file':      'delete_file',
+    'delete_analysis':  'delete_analysis',
     'user_login':       'user_login',
     'user_logout':      'user_logout'
 })
@@ -65,7 +62,7 @@ def log_access(access_type, cont_kwarg='cont_name', cont_id_kwarg='cid'):
     A decorator to log a user or drone's access to an endpoint
     """
     def log_access_decorator(handler_method):
-        def log_user_access(self, *args, **kwargs):
+        def log_user_access_from_request(self, *args, **kwargs):
             result = handler_method(self, *args, **kwargs)
 
             cont_name = None
@@ -80,34 +77,9 @@ def log_access(access_type, cont_kwarg='cont_name', cont_id_kwarg='cid'):
                 if access_type is AccessType.view_container and cont_name not in ['sessions', 'session']:
                     return result
 
-            log_map = {
-                'access_type':      access_type.value,
-                'request_method':   self.request.method,
-                'request_path':     self.request.path,
-                'origin':           self.origin,
-                'timestamp':        datetime.datetime.utcnow()
-            }
+            self.log_user_access(access_type, cont_name, cont_id)
 
-            if access_type not in [AccessType.user_login, AccessType.user_logout]:
-
-                # Create a context tree for the container
-                context = {}
-
-                if cont_name in ['collection', 'collections']:
-                    context['collection'] = {'id': cont_id}
-                else:
-                    tree = get_parent_tree(cont_name, cont_id)
-
-                    for k,v in tree.iteritems():
-                        context[k] = {'id': v['_id'], 'label': v.get('label')}
-                        if k == 'group':
-                            context[k]['label'] = v.get('name')
-                log_map['context'] = context
-
-            access_log.info(json.dumps(log_map, sort_keys=True, default=custom_json_serializer))
             return result
-        return log_user_access
+        return log_user_access_from_request
     return log_access_decorator
-
-
 

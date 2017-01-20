@@ -14,7 +14,9 @@ from .. import config
 from ..types import Origin
 from .. import validators
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
-from ..web.request import log_access, AccessType
+from ..dao.hierarchy import get_parent_tree
+from ..web.encoder import custom_json_serializer
+from ..web.request import log_access, AccessType, access_log
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -339,6 +341,34 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.error(tb)
 
         util.send_json_http_exception(self.response, str(exception), code, custom=custom_errors)
+
+    def log_user_access(self, access_type, cont_name=None, cont_id=None):
+
+        log_map = {
+            'access_type':      access_type.value,
+            'request_method':   self.request.method,
+            'request_path':     self.request.path,
+            'origin':           self.origin,
+            'timestamp':        datetime.datetime.utcnow()
+        }
+
+        if access_type not in [AccessType.user_login, AccessType.user_logout]:
+
+            # Create a context tree for the container
+            context = {}
+
+            if cont_name in ['collection', 'collections']:
+                context['collection'] = {'id': cont_id}
+            else:
+                tree = get_parent_tree(cont_name, cont_id)
+
+                for k,v in tree.iteritems():
+                    context[k] = {'id': v['_id'], 'label': v.get('label')}
+                    if k == 'group':
+                        context[k]['label'] = v.get('name')
+            log_map['context'] = context
+
+        access_log.info(json.dumps(log_map, sort_keys=True, default=custom_json_serializer))
 
     def dispatch(self):
         """dispatching and request forwarding"""

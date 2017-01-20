@@ -361,7 +361,6 @@ class FileListHandler(ListHandler):
 
             return info
 
-    @log_access(AccessType.download_file)
     def get(self, cont_name, list_name, **kwargs):
         """
         .. http:get:: /api/(cont_name)/(cid)/files/(file_name)
@@ -449,6 +448,8 @@ class FileListHandler(ListHandler):
                 self.abort(400, 'not a zip file')
             except KeyError:
                 self.abort(400, 'zip file contains no such member')
+            # log download
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
 
         # Authenticated or ticketed download request
         else:
@@ -459,6 +460,9 @@ class FileListHandler(ListHandler):
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+            # log download
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+
 
     @log_access(AccessType.view_file)
     def get_info(self, cont_name, list_name, **kwargs):
@@ -791,6 +795,10 @@ class AnalysesHandler(ListHandler):
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
+
+    @log_access(AccessType.delete_analysis)
+    def delete(self, cont_name, list_name, **kwargs):
+        return super(AnalysesHandler,self).delete(cont_name, list_name, **kwargs)
 
     def _prepare_batch(self, fileinfo):
         ## duplicated code from download.py
