@@ -17,22 +17,7 @@ AccessType = util.Enum('AccessType', {
     'user_logout':      'user_logout'
 })
 
-<<<<<<< Updated upstream
-access_log  = logging.getLogger('scitran.access')
-formatter   = logging.Formatter('%(message)s')
-try:
-    access_log_filename = config.get_item('core', 'access_log_path')
-except ServerSelectionTimeoutError:
-    access_log_filename = config.DEFAULT_CONFIG['core']['access_log_path']
 
-handler     = logging.FileHandler(access_log_filename)
-
-handler.setFormatter(formatter)
-access_log.addHandler(handler)
-access_log.setLevel(logging.INFO)
-
-=======
->>>>>>> Stashed changes
 class SciTranRequest(Request):
     """Extends webob.request.Request"""
     def __init__(self, *args, **kwargs):
@@ -83,4 +68,3 @@ def log_access(access_type, cont_kwarg='cont_name', cont_id_kwarg='cid'):
             return result
         return log_user_access_from_request
     return log_access_decorator
-

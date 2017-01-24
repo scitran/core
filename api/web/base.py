@@ -366,17 +366,13 @@ class RequestHandler(webapp2.RequestHandler):
                     if k == 'group':
                         context[k]['label'] = v.get('name')
             log_map['context'] = context
-<<<<<<< Updated upstream
 
-        access_log.info(json.dumps(log_map, sort_keys=True, default=custom_json_serializer))
-=======
         try:
             config.log_db.access_log.insert_one(log_map)
         except Exception as e:
             config.log.exception(e)
             self.abort(500, 'Unable to log access.')
 
->>>>>>> Stashed changes
 
     def dispatch(self):
         """dispatching and request forwarding"""
