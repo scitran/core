@@ -26,7 +26,6 @@ DEFAULT_CONFIG = {
         'debug': False,
         'log_level': 'info',
         'access_log_enabled': True,
-        'access_log_path': os.path.join(os.path.dirname(__file__), '../logs/user_access.log'),
         'newrelic': None,
         'drone_secret': None,
     },
@@ -52,6 +51,7 @@ DEFAULT_CONFIG = {
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
+        'db_log_uri': 'mongodb://localhost:9001/logs',
         'db_connect_timeout': '2000',
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
@@ -97,6 +97,15 @@ db = pymongo.MongoClient(
     connect=False, # Connect on first operation to avoid multi-threading related errors
 ).get_default_database()
 log.debug(str(db))
+
+log_db = pymongo.MongoClient(
+    __config['persistent']['db_log_uri'],
+    j=True, # Requests only return once write has hit the DB journal
+    connectTimeoutMS=__config['persistent']['db_connect_timeout'],
+    serverSelectionTimeoutMS=__config['persistent']['db_server_selection_timeout'],
+    connect=False, # Connect on first operation to avoid multi-threading related errors
+).get_default_database()
+log.debug(str(log_db))
 
 es = elasticsearch.Elasticsearch([__config['persistent']['elasticsearch_host']])
 
@@ -213,6 +222,8 @@ def initialize_db():
         },
         upsert=True
     )
+
+    log_db.access_log.create_index('origin.id')
 
     create_or_recreate_ttl_index('authtokens', 'timestamp', 604800)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)

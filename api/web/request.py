@@ -1,9 +1,7 @@
 import logging
 import time
 import uuid
-
 from webob.request import Request
-from pymongo.errors import ServerSelectionTimeoutError
 
 from .. import config
 from .. import util
@@ -19,6 +17,7 @@ AccessType = util.Enum('AccessType', {
     'user_logout':      'user_logout'
 })
 
+<<<<<<< Updated upstream
 access_log  = logging.getLogger('scitran.access')
 formatter   = logging.Formatter('%(message)s')
 try:
@@ -32,6 +31,8 @@ handler.setFormatter(formatter)
 access_log.addHandler(handler)
 access_log.setLevel(logging.INFO)
 
+=======
+>>>>>>> Stashed changes
 class SciTranRequest(Request):
     """Extends webob.request.Request"""
     def __init__(self, *args, **kwargs):

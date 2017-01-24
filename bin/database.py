@@ -643,9 +643,9 @@ def upgrade_to_22():
     Add access logging
     """
     config.db.singletons.find_one_and_update(
-        {'_id': 'config', 'core.access_log_path': {'$exists': False}},
+        {'_id': 'config', 'persistent.db_log_uri': {'$exists': False}},
         {'$set': {
-            'core.access_log_path': config.get_item('core', 'access_log_path'),
+            'persistent.db_log_uri': config.get_item('persistent', 'db_log_uri'),
             'core.access_log_enabled': config.get_item('core', 'access_log_enabled')
         }})
 

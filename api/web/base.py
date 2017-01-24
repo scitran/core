@@ -15,8 +15,7 @@ from ..types import Origin
 from .. import validators
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from ..dao.hierarchy import get_parent_tree
-from ..web.encoder import custom_json_serializer
-from ..web.request import log_access, AccessType, access_log
+from ..web.request import log_access, AccessType
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -363,12 +362,21 @@ class RequestHandler(webapp2.RequestHandler):
                 tree = get_parent_tree(cont_name, cont_id)
 
                 for k,v in tree.iteritems():
-                    context[k] = {'id': v['_id'], 'label': v.get('label')}
+                    context[k] = {'id': str(v['_id']), 'label': v.get('label')}
                     if k == 'group':
                         context[k]['label'] = v.get('name')
             log_map['context'] = context
+<<<<<<< Updated upstream
 
         access_log.info(json.dumps(log_map, sort_keys=True, default=custom_json_serializer))
+=======
+        try:
+            config.log_db.access_log.insert_one(log_map)
+        except Exception as e:
+            config.log.exception(e)
+            self.abort(500, 'Unable to log access.')
+
+>>>>>>> Stashed changes
 
     def dispatch(self):
         """dispatching and request forwarding"""
