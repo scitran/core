@@ -484,9 +484,21 @@ class FileListHandler(ListHandler):
 
         return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
 
-    @log_access(AccessType.delete_file)
     def delete(self, cont_name, list_name, **kwargs):
-        return super(FileListHandler,self).delete(cont_name, list_name, **kwargs)
+        # Overriding base class delete to audit action before completion
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+        try:
+            result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
     def _check_packfile_token(self, project_id, token_id, check_user=True):
         """
@@ -798,7 +810,20 @@ class AnalysesHandler(ListHandler):
 
     @log_access(AccessType.delete_analysis)
     def delete(self, cont_name, list_name, **kwargs):
-        return super(AnalysesHandler,self).delete(cont_name, list_name, **kwargs)
+        # Overriding base class delete to audit action before completion
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+        try:
+            result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
     def _prepare_batch(self, fileinfo):
         ## duplicated code from download.py
