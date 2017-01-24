@@ -25,7 +25,7 @@ DEFAULT_CONFIG = {
     'core': {
         'debug': False,
         'log_level': 'info',
-        'access_log_enabled': True,
+        'access_log_enabled': False,
         'newrelic': None,
         'drone_secret': None,
     },
