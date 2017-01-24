@@ -369,7 +369,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         try:
             config.log_db.access_log.insert_one(log_map)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             config.log.exception(e)
             self.abort(500, 'Unable to log access.')
 
