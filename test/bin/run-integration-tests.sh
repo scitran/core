@@ -48,6 +48,7 @@ PYTHONPATH="$( pwd )" \
     python test/bin/inject_api_key.py admin@user.com \
     "XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
 
+PYTHONPATH="$( pwd )" \
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
     py.test test/integration_tests/python

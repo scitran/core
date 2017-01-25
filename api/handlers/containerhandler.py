@@ -180,6 +180,7 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker = self._get_permchecker(container)
         result = permchecker(self.storage.exec_op)('GET', cid)
+        self.log_user_access(AccessType.view_subject, cont_name='sessions', cont_id=cid)
         return result.get('subject', {})
 
 
