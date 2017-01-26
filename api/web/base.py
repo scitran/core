@@ -343,6 +343,9 @@ class RequestHandler(webapp2.RequestHandler):
 
     def log_user_access(self, access_type, cont_name=None, cont_id=None):
 
+        if not config.get_item('core', 'access_log_enabled'):
+            return
+
         log_map = {
             'access_type':      access_type.value,
             'request_method':   self.request.method,
