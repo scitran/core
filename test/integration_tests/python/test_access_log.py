@@ -40,7 +40,7 @@ def with_session_and_file_data(api_as_admin, bunch, request, data_builder):
     return fixture_data
 
 @pytest.fixture()
-def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data_builder):
+def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data_builder, access_log_db):
     group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)
@@ -51,10 +51,10 @@ def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data
         files['file' + str(i+1)] = (name, 'some,data,to,send\nanother,row,to,send\n')
 
     ###
+    # Force inserts into the access log collection to fail
+    ###
+    access_log_db.command("collMod", "access_log", validator={ "$and": [ { "foo": { "$exists": True } } ] }, validationLevel="strict")
 
-    # Ryan place change to cause db failure here
-
-    ####
 
     def teardown_db():
         data_builder.delete_session(session)
@@ -62,10 +62,10 @@ def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data
         data_builder.delete_group(group)
 
         ###
+        # Remove validator forcing failures
+        ###
+        access_log_db.command("collMod", "access_log", validator={}, validationLevel="strict")
 
-        # Ryan place change to fix db failure here
-
-        ####
 
     request.addfinalizer(teardown_db)
 
@@ -225,5 +225,3 @@ def test_access_log_fails(with_session_and_file_data_and_db_failure, api_as_user
     assert r.ok
     project = json.loads(r.content)
     assert len(project.get('files', [])) == 1
-
-
