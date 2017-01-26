@@ -9,6 +9,7 @@ set -a
 SCITRAN_RUNTIME_PATH=${SCITRAN_RUNTIME_PATH:-"$( pwd )/runtime"}
 SCITRAN_PERSISTENT_DB_PORT=9003
 SCITRAN_PERSISTENT_DB_URI="mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/integration-tests"
+SCITRAN_PERSISTENT_DB_LOG_URI=${SCITRAN_PERSISTENT_DB_LOG_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/logs"}
 SCITRAN_PERSISTENT_PATH="$( mktemp -d )"
 SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-$( openssl rand -base64 32 )}
 
@@ -43,4 +44,5 @@ API_PID=$!
 ./test/bin/run-integration-tests.sh \
     "http://localhost:8081/api" \
     "$SCITRAN_PERSISTENT_DB_URI" \
+    "$SCITRAN_PERSISTENT_DB_LOG_URI" \
     "$SCITRAN_CORE_DRONE_SECRET"

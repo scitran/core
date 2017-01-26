@@ -6,9 +6,7 @@ import time
 import pytest
 import logging
 
-from api import config
 from api.web.request import AccessType
-access_log_db = config.log_db
 
 log = logging.getLogger(__name__)
 sh = logging.StreamHandler()
@@ -79,7 +77,7 @@ def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data
     return fixture_data
 
 
-def test_access_log_succeeds(with_session_and_file_data, api_as_user):
+def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log_db):
     data = with_session_and_file_data
 
     ###
@@ -209,7 +207,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user):
 
 
 
-def test_access_log_fails(with_session_and_file_data_and_db_failure, api_as_user):
+def test_access_log_fails(with_session_and_file_data_and_db_failure, api_as_user, access_log_db):
     data = with_session_and_file_data_and_db_failure
 
     # Upload files

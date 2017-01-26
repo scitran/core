@@ -52,4 +52,5 @@ API_PID=$!
 ./test/bin/run-integration-tests.sh \
     "$API_BASE_URL" \
     "$SCITRAN_PERSISTENT_DB_URI" \
+    "$SCITRAN_PERSISTENT_DB_LOG_URI" \
     "$SCITRAN_CORE_DRONE_SECRET"
