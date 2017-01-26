@@ -1,4 +1,19 @@
 #!/usr/bin/env bash
+#
+# Run all scripted tests from ubuntu 14.04 or later
+#
+# Assumes mongo db instance is accessible at localhost, unless
+#   SCITRAN_PERSISTENT_DB_URI or SCITRAN_PERSISTENT_DB_LOG_URI specify otherwise.
+#
+# Forces SCITRAN_CORE_ACCESS_LOG_ENABLED=true
+#
+# Variables:
+#   - See sample.config for options.
+#   - SCITRAN_PERSISTENT_DB_URI will cause SCITRAN_PERSISTENT_DB_PORT to be
+#     ignored.
+#   - SCITRAN_PERSISTENT_DB_LOG_URI will cause SCITRAN_PERSISTENT_DB_PORT to be
+#     ignored.
+
 set -e
 
 unset CDPATH
