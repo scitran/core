@@ -72,8 +72,10 @@ docker run --name "$CONTAINER_NAME_MONGO" -d "$IMAGE_NAME_MONGO"
 
 # Execute tests
 docker run \
+  -it \
   --name "$CONTAINER_NAME_SCITRAN_CORE"\
   -e "SCITRAN_PERSISTENT_DB_URI=mongodb://$CONTAINER_NAME_MONGO:27017/scitran" \
+  -e "SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://$CONTAINER_NAME_MONGO:27017/logs" \
   -e "SCITRAN_RUN_LINT=$SCITRAN_RUN_LINT" \
   --link "$CONTAINER_NAME_MONGO" \
   -v $(pwd):/var/scitran/code/api \
