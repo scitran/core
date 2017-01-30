@@ -346,6 +346,9 @@ class RequestHandler(webapp2.RequestHandler):
         if not config.get_item('core', 'access_log_enabled'):
             return
 
+        if not isinstance(access_type, AccessType):
+            raise Exception('Unknown access type.')
+
         log_map = {
             'access_type':      access_type.value,
             'request_method':   self.request.method,
@@ -357,8 +360,7 @@ class RequestHandler(webapp2.RequestHandler):
         if access_type not in [AccessType.user_login, AccessType.user_logout]:
 
             if cont_name is None or cont_id is None:
-                config.log.warn('log_user_access called without proper container information.')
-                self.abort(500, 'Unable to log access.')
+                raise Exception('Container information not available.')
 
             # Create a context tree for the container
             context = {}
