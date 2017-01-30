@@ -17,6 +17,7 @@ from .handlers.searchhandler      import SearchHandler
 from .handlers.userhandler        import UserHandler
 from .jobs.handlers               import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
 from .upload                      import Upload
+from .web.base                    import RequestHandler
 from . import config
 log = config.log
 
@@ -91,9 +92,11 @@ endpoints = [
 
         # Top-level endpoints
 
-        route('/resolve',                           ResolveHandler, h='resolve', m=['POST']),
-        route('/schemas/<schema:{schema}>',         SchemaHandler,               m=['GET']),
-        route('/report/<report_type:site|project>', ReportHandler,               m=['GET']),
+        route('/login',                             RequestHandler, h='log_in',   m=['POST']),
+        route('/logout',                            RequestHandler, h='log_out',  m=['POST']),
+        route('/resolve',                           ResolveHandler, h='resolve',  m=['POST']),
+        route('/schemas/<schema:{schema}>',         SchemaHandler,                m=['GET']),
+        route('/report/<report_type:site|project>', ReportHandler,                m=['GET']),
 
 
         # Search
@@ -193,6 +196,12 @@ endpoints = [
 
         # Sessions
 
+        prefix('/sessions', [
+            route('/<cid:{cid}>/jobs',          ContainerHandler, h='get_jobs',     m=['GET']),
+            route('/<cid:{cid}>/subject',       ContainerHandler, h='get_subject',  m=['GET']),
+        ]),
+
+        route('/sessions/<cid:{cid}>/jobs',    ContainerHandler, h='get_jobs', m=['GET']),
         route('/sessions/<cid:{cid}>/jobs',    ContainerHandler, h='get_jobs', m=['GET']),
 
 
@@ -228,14 +237,15 @@ endpoints = [
 
             prefix('/<cid:{cid}>', [
 
-                route('/<list_name:tags>',                 TagsListHandler,                     m=['POST']),
-                route('/<list_name:tags>/<value:{tag}>',   TagsListHandler,                     m=['GET', 'PUT', 'DELETE']),
+                route('/<list_name:tags>',                      TagsListHandler,                     m=['POST']),
+                route('/<list_name:tags>/<value:{tag}>',        TagsListHandler,                     m=['GET', 'PUT', 'DELETE']),
 
-                route('/packfile-start',                   FileListHandler, h='packfile_start', m=['POST']),
-                route('/packfile',                         FileListHandler, h='packfile',       m=['POST']),
-                route('/packfile-end',                     FileListHandler, h='packfile_end'),
-                route('/<list_name:files>',                FileListHandler,                     m=['POST']),
-                route('/<list_name:files>/<name:{fname}>', FileListHandler,                     m=['GET', 'DELETE']),
+                route('/packfile-start',                        FileListHandler, h='packfile_start', m=['POST']),
+                route('/packfile',                              FileListHandler, h='packfile',       m=['POST']),
+                route('/packfile-end',                          FileListHandler, h='packfile_end'),
+                route('/<list_name:files>',                     FileListHandler,                     m=['POST']),
+                route('/<list_name:files>/<name:{fname}>',      FileListHandler,                     m=['GET', 'DELETE']),
+                route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
 
 
                 route('/<list_name:analyses>', AnalysesHandler, m=['POST']),

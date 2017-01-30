@@ -18,6 +18,7 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
 from ..dao import hierarchy
+from ..web.request import log_access, AccessType
 
 
 def initialize_list_configurations():
@@ -447,6 +448,8 @@ class FileListHandler(ListHandler):
                 self.abort(400, 'not a zip file')
             except KeyError:
                 self.abort(400, 'zip file contains no such member')
+            # log download
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
 
         # Authenticated or ticketed download request
         else:
@@ -457,6 +460,13 @@ class FileListHandler(ListHandler):
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+            # log download
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+
+
+    @log_access(AccessType.view_file)
+    def get_info(self, cont_name, list_name, **kwargs):
+        return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -473,6 +483,22 @@ class FileListHandler(ListHandler):
         permchecker(noop)('POST', _id=_id)
 
         return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
+
+    def delete(self, cont_name, list_name, **kwargs):
+        # Overriding base class delete to audit action before completion
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+        try:
+            result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
     def _check_packfile_token(self, project_id, token_id, check_user=True):
         """
@@ -635,7 +661,7 @@ class AnalysesHandler(ListHandler):
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
 
 
-
+    @log_access(AccessType.download_file)
     def download(self, cont_name, list_name, **kwargs):
         """
         .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
@@ -781,6 +807,23 @@ class AnalysesHandler(ListHandler):
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
+
+    @log_access(AccessType.delete_analysis)
+    def delete(self, cont_name, list_name, **kwargs):
+        # Overriding base class delete to audit action before completion
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+        try:
+            result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
     def _prepare_batch(self, fileinfo):
         ## duplicated code from download.py

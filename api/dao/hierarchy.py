@@ -67,11 +67,57 @@ class TargetContainer(object):
 # TODO: already in code elsewhere? Location?
 def get_container(cont_name, _id):
     cont_name += 's'
-    _id = bson.ObjectId(_id)
+    if cont_name != 'groups':
+        _id = bson.ObjectId(_id)
 
     return config.db[cont_name].find_one({
         '_id': _id,
     })
+
+def get_parent_tree(cont_name, _id):
+    """
+    Given a contanier and an id, returns that container and its parent tree.
+
+    For example, given `sessions`, `<session_id>`, it will return:
+    {
+        'session':  <session>,
+        'project':  <project>,
+        'group':    <group>
+    }
+    """
+    if cont_name not in ['acquisitions', 'acquisition', 'sessions', 'session', 'projects', 'project', 'groups', 'group']:
+        raise ValueError('Can only construct tree from group, project, session or acquisition level')
+
+    acquisition_id  = None
+    session_id      = None
+    project_id      = None
+    group_id        = None
+    tree            = {}
+
+    if cont_name in ['acquisition', 'acquisitions']:
+        acquisition_id = bson.ObjectId(_id)
+        acquisition = get_container('acquisition', acquisition_id)
+        tree['acquisition'] = acquisition
+        session_id = acquisition['session']
+    if cont_name in ['session', 'sessions'] or session_id:
+        if not session_id:
+            session_id = bson.ObjectId(_id)
+        session = get_container('session', session_id)
+        tree['session'] = session
+        project_id = session['project']
+    if cont_name in ['project', 'projects'] or project_id:
+        if not project_id:
+            project_id = bson.ObjectId(_id)
+        project = get_container('project', project_id)
+        tree['project'] = project
+        group_id = project['group']
+    if cont_name in ['group', 'groups'] or group_id:
+        if not group_id:
+            group_id = _id
+        tree['group'] = get_container('group', group_id)
+
+    return tree
+
 
 def propagate_changes(cont_name, _id, query, update):
     """

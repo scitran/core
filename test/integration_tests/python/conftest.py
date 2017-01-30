@@ -30,6 +30,11 @@ def db():
     mongo_path = os.environ.get('MONGO_PATH', 'mongodb://localhost:9001/scitran')
     return pymongo.MongoClient(mongo_path).get_default_database()
 
+@pytest.fixture(scope="module")
+def access_log_db():
+    mongo_path = os.environ.get('ACCESS_LOG_MONGO_PATH', 'mongodb://localhost:9001/logs')
+    return pymongo.MongoClient(mongo_path).get_default_database()
+
 
 @pytest.fixture(scope="module")
 def base_url():

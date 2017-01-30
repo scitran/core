@@ -14,6 +14,8 @@ from .. import config
 from ..types import Origin
 from .. import validators
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+from ..dao.hierarchy import get_parent_tree
+from ..web.request import log_access, AccessType
 
 
 class RequestHandler(webapp2.RequestHandler):
@@ -208,6 +210,35 @@ class RequestHandler(webapp2.RequestHandler):
 
         return uid
 
+
+    @log_access(AccessType.user_login)
+    def log_in(self):
+        """
+        Return succcess boolean if user successfully authenticates.
+
+        Used for access logging.
+        Not required to use system as logged in user.
+        """
+
+        if not self.uid:
+            self.abort(400, 'Only users may log in.')
+
+        return {'success': True}
+
+
+    @log_access(AccessType.user_logout)
+    def log_out(self):
+        """
+        Remove all cached auth tokens associated with caller's uid.
+        """
+
+        if not self.uid:
+            self.abort(400, 'Only users may log out.')
+
+        result = config.db.authtokens.delete_many({'uid': self.uid})
+        return {'auth_tokens_removed': result.deleted_count}
+
+
     def set_origin(self, drone_request):
         """
         Add an origin to the request object. Used later in request handler logic.
@@ -309,6 +340,48 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.error(tb)
 
         util.send_json_http_exception(self.response, str(exception), code, custom=custom_errors)
+
+    def log_user_access(self, access_type, cont_name=None, cont_id=None):
+
+        if not config.get_item('core', 'access_log_enabled'):
+            return
+
+        if not isinstance(access_type, AccessType):
+            raise Exception('Unknown access type.')
+
+        log_map = {
+            'access_type':      access_type.value,
+            'request_method':   self.request.method,
+            'request_path':     self.request.path,
+            'origin':           self.origin,
+            'timestamp':        datetime.datetime.utcnow()
+        }
+
+        if access_type not in [AccessType.user_login, AccessType.user_logout]:
+
+            if cont_name is None or cont_id is None:
+                raise Exception('Container information not available.')
+
+            # Create a context tree for the container
+            context = {}
+
+            if cont_name in ['collection', 'collections']:
+                context['collection'] = {'id': cont_id}
+            else:
+                tree = get_parent_tree(cont_name, cont_id)
+
+                for k,v in tree.iteritems():
+                    context[k] = {'id': str(v['_id']), 'label': v.get('label')}
+                    if k == 'group':
+                        context[k]['label'] = v.get('name')
+            log_map['context'] = context
+
+        try:
+            config.log_db.access_log.insert_one(log_map)
+        except Exception as e:  # pylint: disable=broad-except
+            config.log.exception(e)
+            self.abort(500, 'Unable to log access.')
+
 
     def dispatch(self):
         """dispatching and request forwarding"""

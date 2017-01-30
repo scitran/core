@@ -12,6 +12,7 @@ from ..dao.liststorage import AnalysesStorage
 from ..types import Origin
 from ..jobs.queue import Queue
 from ..jobs.jobs import Job
+from ..web.request import log_access, AccessType
 
 log = config.log
 
@@ -64,7 +65,8 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
-            'list_projection': {'info': 0, 'analyses': 0},
+            # Remove subject first/last from list view to better log access to this information
+            'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -83,8 +85,9 @@ class ContainerHandler(base.RequestHandler):
         self.storage = None
         self.config = None
 
+    @log_access(AccessType.view_container)
     def get(self, cont_name, **kwargs):
-        _id = kwargs.pop('cid')
+        _id = kwargs.get('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container= self._get_container(_id)
@@ -170,6 +173,17 @@ class ContainerHandler(base.RequestHandler):
         user_perm = util.user_perm(result.get('permissions', []), uid, site)
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
+
+    def get_subject(self, cid):
+        self.config = self.container_handler_configurations['sessions']
+        self.storage = self.config['storage']
+        container= self._get_container(cid)
+
+        permchecker = self._get_permchecker(container)
+        result = permchecker(self.storage.exec_op)('GET', cid)
+        self.log_user_access(AccessType.view_subject, cont_name='sessions', cont_id=cid)
+        return result.get('subject', {})
+
 
     def get_jobs(self, cid):
         # Only enabled for sessions container type per url rule in api.py

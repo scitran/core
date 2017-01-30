@@ -635,6 +635,7 @@ def upgrade_to_21():
     query['$or'].append({'measurement': { '$exists': True}})
     dm_v2_updates(config.db.acquisitions.find(query), 'acquisitions')
 
+
 def upgrade_schema():
     """
     Upgrades db to the current schema version

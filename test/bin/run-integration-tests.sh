@@ -12,10 +12,11 @@ USAGE="
     \n
 "
 
-if [ "$#" -eq 3 ]; then
+if [ "$#" -eq 4 ]; then
   SCITRAN_SITE_API_URL=$1
   MONGODB_URI=$2
-  SCITRAN_CORE_DRONE_SECRET=$3
+  ACCESS_LOG_MONGODB_URI=$3
+  SCITRAN_CORE_DRONE_SECRET=$4
 else
     echo "Wrong number of positional arguments"
     echo $USAGE >&2
@@ -48,8 +49,10 @@ PYTHONPATH="$( pwd )" \
     python test/bin/inject_api_key.py admin@user.com \
     "XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
 
+PYTHONPATH="$( pwd )" \
 BASE_URL="$SCITRAN_SITE_API_URL" \
     MONGO_PATH="$MONGODB_URI" \
+    ACCESS_LOG_MONGO_PATH="$ACCESS_LOG_MONGODB_URI" \
     py.test test/integration_tests/python
 
 set +u
