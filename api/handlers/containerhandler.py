@@ -65,6 +65,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.ProjectStorage(),
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
+            # Remove subject first/last from list view to better log access to this information
             'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'

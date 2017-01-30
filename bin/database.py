@@ -14,7 +14,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 22 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 21 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -634,20 +634,6 @@ def upgrade_to_21():
     query['$or'].append({'instrument': { '$exists': True}})
     query['$or'].append({'measurement': { '$exists': True}})
     dm_v2_updates(config.db.acquisitions.find(query), 'acquisitions')
-
-
-def upgrade_to_22():
-    """
-    scitran/core PR #397
-
-    Add access logging
-    """
-    config.db.singletons.find_one_and_update(
-        {'_id': 'config', 'persistent.db_log_uri': {'$exists': False}},
-        {'$set': {
-            'persistent.db_log_uri': config.get_item('persistent', 'db_log_uri'),
-            'core.access_log_enabled': config.get_item('core', 'access_log_enabled')
-        }})
 
 
 def upgrade_schema():

@@ -223,8 +223,6 @@ def initialize_db():
         upsert=True
     )
 
-    log_db.access_log.create_index('origin.id')
-
     create_or_recreate_ttl_index('authtokens', 'timestamp', 604800)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
     create_or_recreate_ttl_index('downloads', 'timestamp', 60)
