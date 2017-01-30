@@ -356,6 +356,10 @@ class RequestHandler(webapp2.RequestHandler):
 
         if access_type not in [AccessType.user_login, AccessType.user_logout]:
 
+            if cont_name is None or cont_id is None:
+                config.log.warn('log_user_access called without proper container information.')
+                self.abort(500, 'Unable to log access.')
+
             # Create a context tree for the container
             context = {}
 

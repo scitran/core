@@ -76,7 +76,7 @@ def get_container(cont_name, _id):
 
 def get_parent_tree(cont_name, _id):
     """
-    Give a contanier and an id, returns that container and its parent tree.
+    Given a contanier and an id, returns that container and its parent tree.
 
     For example, given `sessions`, `<session_id>`, it will return:
     {
