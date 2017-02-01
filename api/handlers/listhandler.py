@@ -407,8 +407,12 @@ class FileListHandler(ListHandler):
 
         # Check ticket id and skip permissions check if it clears
         ticket_id = self.get_param('ticket')
+        ticket = None
         if ticket_id:
             ticket = self._check_ticket(ticket_id, _id, filename)
+            if not self.origin.get('id'):
+                # If we don't have an origin with this request, use the ticket's origin
+                self.origin = ticket.get('origin')
             permchecker = always_ok
 
         # Grab fileinfo from db
@@ -426,7 +430,7 @@ class FileListHandler(ListHandler):
 
         # Request for download ticket
         if self.get_param('ticket') == '':
-            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'])
+            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'], origin=self.origin)
             return {'ticket': config.db.downloads.insert_one(ticket).inserted_id}
 
         # Request for info about zipfile
@@ -448,8 +452,13 @@ class FileListHandler(ListHandler):
                 self.abort(400, 'not a zip file')
             except KeyError:
                 self.abort(400, 'zip file contains no such member')
-            # log download
-            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+            # log download if we haven't already for this ticket
+            if ticket:
+                if not ticket.get('logged', False):
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
+            else:
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
 
         # Authenticated or ticketed download request
         else:
@@ -460,8 +469,14 @@ class FileListHandler(ListHandler):
             else:
                 self.response.headers['Content-Type'] = 'application/octet-stream'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
-            # log download
-            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+
+            # log download if we haven't already for this ticket
+            if ticket:
+                if not ticket.get('logged', False):
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
+            else:
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
 
 
     @log_access(AccessType.view_file)
@@ -661,7 +676,6 @@ class AnalysesHandler(ListHandler):
             self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
 
 
-    @log_access(AccessType.download_file)
     def download(self, cont_name, list_name, **kwargs):
         """
         .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
@@ -766,6 +780,8 @@ class AnalysesHandler(ListHandler):
             permchecker(noop)('GET', _id=_id)
         elif ticket_id != '':
             ticket = self._check_ticket(ticket_id, _id, filename)
+            if not self.origin.get('id'):
+                self.origin = ticket.get('origin')
         analysis_id = kwargs.get('_id')
         fileinfo = storage.get_fileinfo(_id, analysis_id, filename)
         if fileinfo is None:
@@ -777,11 +793,11 @@ class AnalysesHandler(ListHandler):
             if filename:
                 total_size = fileinfo[0]['size']
                 file_cnt = 1
-                ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, total_size)
+                ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, total_size, origin=self.origin)
             else:
                 targets, total_size, file_cnt = self._prepare_batch(fileinfo)
                 filename = 'analysis_' + analysis_id + '.tar'
-                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
+                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
             return {
                 'ticket': config.db.downloads.insert_one(ticket).inserted_id,
                 'size': total_size,
@@ -791,22 +807,30 @@ class AnalysesHandler(ListHandler):
         else:
             if not filename:
                 self._send_batch(ticket)
-                return
-            if not fileinfo:
+            elif not fileinfo:
                 self.abort(404, '{} doesn''t exist'.format(filename))
-            fileinfo = fileinfo[0]
-            filepath = os.path.join(
-                config.get_item('persistent', 'data_path'),
-                util.path_from_hash(fileinfo['hash'])
-            )
-            filename = fileinfo['name']
-            self.response.app_iter = open(filepath, 'rb')
-            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-            if self.is_true('view'):
-                self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
             else:
-                self.response.headers['Content-Type'] = 'application/octet-stream'
-                self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
+                fileinfo = fileinfo[0]
+                filepath = os.path.join(
+                    config.get_item('persistent', 'data_path'),
+                    util.path_from_hash(fileinfo['hash'])
+                )
+                filename = fileinfo['name']
+                self.response.app_iter = open(filepath, 'rb')
+                self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
+                if self.is_true('view'):
+                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+                else:
+                    self.response.headers['Content-Type'] = 'application/octet-stream'
+                    self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
+
+            # log download if we haven't already for this ticket
+            if ticket:
+                if not ticket.get('logged', False):
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
+            else:
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
 
     @log_access(AccessType.delete_analysis)
     def delete(self, cont_name, list_name, **kwargs):

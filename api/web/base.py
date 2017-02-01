@@ -95,6 +95,7 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
+        self.origin = None
         self.set_origin(drone_request)
 
     def initialize(self, request, response):
