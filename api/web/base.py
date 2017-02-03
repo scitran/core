@@ -134,7 +134,7 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
         else:
             auth_type, token = access_token.split(' ', 1)
-            uid = self.validate_oauth_token(auth_type, access_token, timestamp)
+            uid = self.validate_oauth_token(auth_type, token, timestamp)
             self.request.logger.debug('looked up remote token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
             # Cache the token for future requests
