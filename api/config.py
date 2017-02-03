@@ -43,11 +43,12 @@ DEFAULT_CONFIG = {
         'prefetch': False
     },
     'auth': {
-        'auth_type': 'google',
-        'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
-        'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
-        'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
-        'verify_endpoint': 'https://www.googleapis.com/oauth2/v1/tokeninfo',
+        'google': {
+            'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
+            'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
+            'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
+            'verify_endpoint': 'https://www.googleapis.com/oauth2/v1/tokeninfo'
+        }
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
@@ -61,7 +62,20 @@ DEFAULT_CONFIG = {
 
 def apply_env_variables(config):
     # Overwrite default config values with SCITRAN env variables if available
+
+    # Load auth config from file if available
+    if 'SCITRAN_AUTH_CONFIG_FILE' in os.environ:
+        auth_config = config['auth']
+        file_path = os.environ['SCITRAN_AUTH_CONFIG_FILE']
+        with open(file_path) as config_file:
+            environ_config = json.load(config_file)
+        auth_config.update(environ_config)
+        config['auth'] = auth_config
+
     for outer_key, scoped_config in config.iteritems():
+        if outer_key == 'auth':
+            # Auth is loaded via file
+            continue
         try:
             for inner_key in scoped_config:
                 key = 'SCITRAN_' + outer_key.upper() + '_' + inner_key.upper()
@@ -289,3 +303,6 @@ def mongo_pipeline(table, pipeline):
         raise Exception()
 
     return result
+
+def get_auth(auth_type):
+    return get_config()['auth'][auth_type]

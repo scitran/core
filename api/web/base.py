@@ -13,7 +13,7 @@ from .. import files
 from .. import config
 from ..types import Origin
 from .. import validators
-from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException, dbutil
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
 
@@ -51,7 +51,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(401, 'Drone API keys are not yet supported')
             else:
                 # User (oAuth) authentication
-                self.uid = self.authenticate_user(access_token)
+                self.uid = self.authenticate_user_token(access_token)
 
         # Drone shared secret authentication
         elif drone_secret is not None:
@@ -102,6 +102,7 @@ class RequestHandler(webapp2.RequestHandler):
         super(RequestHandler, self).initialize(request, response)
         request.logger.info("Initialized request")
 
+
     def authenticate_user_api_key(self, key):
         """
         AuthN for user accounts via api key. Calls self.abort on failure.
@@ -117,7 +118,7 @@ class RequestHandler(webapp2.RequestHandler):
             self.abort(401, 'Invalid scitran-user API key')
 
 
-    def authenticate_user(self, access_token):
+    def authenticate_user_token(self, access_token):
         """
         AuthN for user accounts. Calls self.abort on failure.
 
@@ -132,28 +133,29 @@ class RequestHandler(webapp2.RequestHandler):
             uid = cached_token['uid']
             self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
         else:
-            uid = self.validate_oauth_token(access_token, timestamp)
+            auth_type, token = access_token.split(' ', 1)
+            uid = self.validate_oauth_token(auth_type, access_token, timestamp)
             self.request.logger.debug('looked up remote token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
             # Cache the token for future requests
             update = {
                 'uid': uid,
                 'timestamp': timestamp,
-                'auth_type': config.get_item('auth', 'auth_type')
+                'auth_type': auth_type
             }
-            config.db.authtokens.replace_one({'_id': access_token}, update, upsert=True)
+            dbutil.fault_tolerant_replace_one('authtokens', {'_id': access_token}, update, upsert=False)
 
         return uid
 
-    def validate_oauth_token(self, access_token, timestamp):
+    def validate_oauth_token(self, auth_type, access_token, timestamp):
         """
         Validates a token assertion against the configured ID endpoint. Calls self.abort on failure.
 
         Returns the user's UID.
         """
 
-        id_endpoint = config.get_item('auth', 'id_endpoint')
-        auth_type = config.get_item('auth', 'auth_type')
+        auth_config = config.get_auth(auth_type)
+        id_endpoint = auth_config.get('id_endpoint')
 
         # If we start supporting more than google and ldap, break into classes inherited from abstract class
         if auth_type == 'google':
