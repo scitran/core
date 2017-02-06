@@ -214,6 +214,9 @@ def initialize_db():
     db.gears.create_index('name')
     db.batch.create_index('jobs')
 
+    if __config['core']['access_log_enabled']:
+        log_db.access_log.create_index('ticket_id')
+
     # Must be kept in sync with jobs/rules.py
     db.singletons.update({"_id" : "rules"}, {
             '$setOnInsert': {

@@ -377,11 +377,26 @@ class RequestHandler(webapp2.RequestHandler):
                         context[k]['label'] = v.get('name')
             log_map['context'] = context
 
-        try:
-            config.log_db.access_log.insert_one(log_map)
-        except Exception as e:  # pylint: disable=broad-except
-            config.log.exception(e)
-            self.abort(500, 'Unable to log access.')
+        if access_type is AccessType.download_file and self.get_param('ticket'):
+            # If this is a ticket download, log only once per ticket
+            ticket_id = self.get_param('ticket')
+            log_map['ticket_id'] = ticket_id
+            try:
+                config.log_db.access_log.update(
+                    {'ticket_id': ticket_id},
+                    {'$setOnInsert': log_map},
+                    upsert=True
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                config.log.exception(e)
+                self.abort(500, 'Unable to log access.')
+
+        else:
+            try:
+                config.log_db.access_log.insert_one(log_map)
+            except Exception as e:  # pylint: disable=broad-except
+                config.log.exception(e)
+                self.abort(500, 'Unable to log access.')
 
 
     def dispatch(self):
