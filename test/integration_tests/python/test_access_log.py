@@ -131,6 +131,17 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
 
     ###
+    # Add subject info
+    ###
+
+    subject = {'subject': {'code': 'Test subject code'}}
+    subject_update = json.dumps(subject)
+
+    r = api_as_user.put('/sessions/' + data.session, data=subject_update)
+    assert r.ok
+
+
+    ###
     # Test subject access is logged
     ###
 
@@ -145,6 +156,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
 
     assert most_recent_log['context']['session']['id'] == str(data.session)
+    assert most_recent_log['context']['subject']['label'] == subject['subject']['code']
     assert most_recent_log['access_type'] == AccessType.view_subject.value
 
 
@@ -169,6 +181,30 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     assert most_recent_log['context']['project']['id'] == str(data.project)
     assert most_recent_log['access_type'] == AccessType.download_file.value
+
+
+    ###
+    # Test file ticket download is logged once
+    ###
+
+    log_records_count_before = access_log_db.access_log.count({})
+
+    r = api_as_user.get('/projects/' + data.project + '/files/one.csv?ticket=')
+    assert r.ok
+
+    ticket_id = json.loads(r.content)['ticket']
+
+    r = api_as_user.get('/projects/' + data.project + '/files/one.csv?ticket=' + ticket_id)
+    assert r.ok
+
+    log_records_count_after = access_log_db.access_log.count({})
+    assert log_records_count_before+1 == log_records_count_after
+
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+
+    assert most_recent_log['context']['project']['id'] == str(data.project)
+    assert most_recent_log['access_type'] == AccessType.download_file.value
+
 
     ###
     # Test file info access is logged
