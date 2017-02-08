@@ -92,7 +92,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
     assert most_recent_log['access_type'] == AccessType.user_login.value
 
 
@@ -108,7 +108,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
     assert most_recent_log['access_type'] == AccessType.user_logout.value
 
 
@@ -124,7 +124,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['session']['id'] == str(data.session)
     assert most_recent_log['access_type'] == AccessType.view_container.value
@@ -153,7 +153,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['session']['id'] == str(data.session)
     assert most_recent_log['context']['subject']['label'] == subject['subject']['code']
@@ -174,10 +174,13 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     r = api_as_user.get('/projects/' + data.project + '/files/one.csv')
     assert r.ok
 
+    file_ = r.raw.read(10)
+    time.sleep(1)
+
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['project']['id'] == str(data.project)
     assert most_recent_log['access_type'] == AccessType.download_file.value
@@ -197,12 +200,16 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     r = api_as_user.get('/projects/' + data.project + '/files/one.csv?ticket=' + ticket_id)
     assert r.ok
 
+    file_ = r.raw.read(10)
+    time.sleep(1)
+
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['project']['id'] == str(data.project)
+    assert most_recent_log['context']['ticket_id'] == ticket_id
     assert most_recent_log['access_type'] == AccessType.download_file.value
 
 
@@ -214,11 +221,13 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     r = api_as_user.get('/projects/' + data.project + '/files/one.csv/info')
     assert r.ok
+    file_info = json.loads(r.content)
+    assert file_info['name'] == 'one.csv'
 
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['project']['id'] == str(data.project)
     assert most_recent_log['access_type'] == AccessType.view_file.value
@@ -236,7 +245,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     log_records_count_after = access_log_db.access_log.count({})
     assert log_records_count_before+1 == log_records_count_after
 
-    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)])[0]
+    most_recent_log = access_log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['project']['id'] == str(data.project)
     assert most_recent_log['access_type'] == AccessType.delete_file.value

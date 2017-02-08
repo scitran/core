@@ -383,9 +383,10 @@ class RequestHandler(webapp2.RequestHandler):
             # If this is a ticket download, log only once per ticket
             ticket_id = self.get_param('ticket')
             log_map['context']['ticket_id'] = ticket_id
+            config.log.debug('the context is {} and the ticket is {}'.format(log_map['context'], ticket_id))
             try:
                 config.log_db.access_log.update(
-                    {'ticket_id': ticket_id},
+                    {'context.ticket_id': ticket_id},
                     {'$setOnInsert': log_map},
                     upsert=True
                 )
