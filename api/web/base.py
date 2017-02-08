@@ -95,6 +95,7 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 self.superuser_request = False
 
+        self.origin = None
         self.set_origin(drone_request)
 
     def initialize(self, request, response):
@@ -374,13 +375,31 @@ class RequestHandler(webapp2.RequestHandler):
                     context[k] = {'id': str(v['_id']), 'label': v.get('label')}
                     if k == 'group':
                         context[k]['label'] = v.get('name')
+                    if k == 'subject':
+                        context[k]['label'] = v.get('code')
             log_map['context'] = context
 
-        try:
-            config.log_db.access_log.insert_one(log_map)
-        except Exception as e:  # pylint: disable=broad-except
-            config.log.exception(e)
-            self.abort(500, 'Unable to log access.')
+        if access_type is AccessType.download_file and self.get_param('ticket'):
+            # If this is a ticket download, log only once per ticket
+            ticket_id = self.get_param('ticket')
+            log_map['context']['ticket_id'] = ticket_id
+            config.log.debug('the context is {} and the ticket is {}'.format(log_map['context'], ticket_id))
+            try:
+                config.log_db.access_log.update(
+                    {'context.ticket_id': ticket_id},
+                    {'$setOnInsert': log_map},
+                    upsert=True
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                config.log.exception(e)
+                self.abort(500, 'Unable to log access.')
+
+        else:
+            try:
+                config.log_db.access_log.insert_one(log_map)
+            except Exception as e:  # pylint: disable=broad-except
+                config.log.exception(e)
+                self.abort(500, 'Unable to log access.')
 
 
     def dispatch(self):

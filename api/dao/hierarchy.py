@@ -104,6 +104,9 @@ def get_parent_tree(cont_name, _id):
             session_id = bson.ObjectId(_id)
         session = get_container('session', session_id)
         tree['session'] = session
+        subject = session.get('subject')
+        if subject:
+            tree['subject'] = subject
         project_id = session['project']
     if cont_name in ['project', 'projects'] or project_id:
         if not project_id:
