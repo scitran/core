@@ -2,9 +2,7 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
     "_id":              {
-                          "maxLength": 64,
-                          "minLength": 2,
-                          "pattern": "^[0-9a-z.@_-]*$",
+                          "format": "email",
                           "title": "ID",
                           "type": "string"
                         },

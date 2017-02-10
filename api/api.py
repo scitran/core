@@ -33,7 +33,7 @@ routing_regexes = {
     'sid': '[0-9a-z_]{0,24}',
 
     # User ID: any length, [0-9a-z.@_-]
-    'uid': '[0-9a-z.@_-]*',
+    'uid': '[0-9a-zA-Z.@_-]*',
 
     # Container name
     'cname': 'projects|sessions|acquisitions|collections',
