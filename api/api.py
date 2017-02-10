@@ -101,9 +101,10 @@ endpoints = [
 
         # Search
 
-        route('/search',                     SearchHandler, h='advanced_search', m=['POST']),
-        route('/search/files',               SearchHandler, h='get_datatree',    m=['GET']),
-        route('/search/<cont_name:{cname}>', SearchHandler,                      m=['GET']),
+        route('/search',                     SearchHandler, h='advanced_search',        m=['POST']),
+        route('/search/field',               SearchHandler, h='get_terms_for_field',    m=['POST']),
+        route('/search/files',               SearchHandler, h='get_datatree',           m=['GET']),
+        route('/search/<cont_name:{cname}>', SearchHandler,                             m=['GET']),
 
 
         # Users

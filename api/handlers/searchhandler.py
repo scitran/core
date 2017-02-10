@@ -4,7 +4,7 @@ import elasticsearch
 from ..web import base
 from .. import config
 from .. import util
-from ..search import pathparser, queryprocessor, es_query
+from ..search import pathparser, queryprocessor, es_query, es_aggs
 
 log = config.log
 
@@ -97,6 +97,7 @@ class SearchHandler(base.RequestHandler):
             container_name = result_type
         result['_source'].update(self._get_parents(container, container_name))
 
+
     def _strip_other_permissions(self, container, cont_name):
         perm_list = container.pop('roles', None) if cont_name == 'groups' else container.pop('permissions', None)
         if perm_list:
@@ -168,3 +169,22 @@ class SearchHandler(base.RequestHandler):
         except elasticsearch.exceptions.ConnectionError:
             self.abort(503, 'elasticsearch is not available')
         return results
+
+    def get_terms_for_field(self):
+        if self.public_request:
+            self.abort(403, 'search is available only for authenticated users.')
+        payload = self.request.json_body
+        doc_type = payload.get('doc_type')
+        field_name = payload.get('field')
+        if not doc_type or not field_name:
+            self.abort(400, 'Must supply doc_type and field name.')
+        query = es_aggs(doc_type, field_name)
+        try:
+            # pylint disable can be removed after PyCQA/pylint#258 is fixed
+            es_results = config.es.search(index='scitran', body=query) # pylint: disable=unexpected-keyword-arg
+            ## elastic search results are wrapped in subkey ['hits']['hits']
+            results = es_results['aggregations'][field_name]['buckets']
+        except elasticsearch.exceptions.ConnectionError:
+            self.abort(503, 'elasticsearch is not available')
+        return results
+

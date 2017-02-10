@@ -26,12 +26,26 @@ def es_query(input_query, doc_type, min_score=0.5, additional_filter=None, sourc
         },
         'min_score': min_score,
         '_source': {
-            'exclude': ['*.metadata']
+            'exclude': ['*.info']
         }
     }
 
     if source_filter:
         query['_source'] = source_filter
+
+    return query
+
+def es_aggs(doc_type, field_name):
+    query = {
+      "size": 0,
+      "aggs": {}
+    }
+
+    query['aggs'][field_name] = {
+        "terms": {
+            "field": '.'.join((doc_type, field_name, 'exact_'+field_name))
+        }
+    }
 
     return query
 
