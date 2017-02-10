@@ -75,6 +75,14 @@ class SearchHandler(base.RequestHandler):
         queries = self.request.json_body
         path = queries.pop('path')
         all_data = self.is_true('all_data')
+        limit = self.get_param('limit')
+        if limit:
+            try:
+                limit = int(limit)
+                if limit < 1:
+                    raise Exception
+            except Exception: # pylint: disable=broad-except
+                self.abort(400, 'Limit must be int')
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
             queries['collections'] = queries.get('collections', {"match_all": {}})
@@ -83,6 +91,8 @@ class SearchHandler(base.RequestHandler):
         results = search.process_search()
         self.search_containers = search.search_containers
         for result_type, results_for_type in results.iteritems():
+            if limit and len(results_for_type) > limit:
+                results_for_type[:limit]
             for result in results_for_type:
                 self._augment_result(result, result_type)
         return results
