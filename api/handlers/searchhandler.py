@@ -14,6 +14,13 @@ parent_container_dict = {
     'projects': 'groups',
 }
 
+allowable_subject_agg_fields = [
+    'code',
+    'sex',
+    'race',
+    'ethnicity'
+]
+
 class SearchHandler(base.RequestHandler):
     """This class allows to proxy queries to elasticsearch
     The get method just wraps the body in a convenient elasticsearch query.
@@ -80,8 +87,8 @@ class SearchHandler(base.RequestHandler):
             try:
                 limit = int(limit)
                 if limit < 1:
-                    raise Exception
-            except Exception: # pylint: disable=broad-except
+                    raise ValueError
+            except ValueError:
                 self.abort(400, 'Limit must be int')
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
@@ -92,7 +99,7 @@ class SearchHandler(base.RequestHandler):
         self.search_containers = search.search_containers
         for result_type, results_for_type in results.iteritems():
             if limit and len(results_for_type) > limit:
-                results_for_type[:limit]
+                results[result_type] = results_for_type = results_for_type[:limit]
             for result in results_for_type:
                 self._augment_result(result, result_type)
         return results
@@ -186,8 +193,19 @@ class SearchHandler(base.RequestHandler):
         payload = self.request.json_body
         doc_type = payload.get('doc_type')
         field_name = payload.get('field')
+
+        # Confirm reasonable inputs
+        # Policy descisions around potential PHI:
+        #   - term lists for info fields are not allowed
+        #   - subject fields with term lists are whitelisted
+
         if not doc_type or not field_name:
             self.abort(400, 'Must supply doc_type and field name.')
+        if field_name.startswith('info'):
+            self.abort(400, 'Terms for info fields are not supported.')
+        if doc_type == 'subject' and field_name not in allowable_subject_agg_fields:
+            self.abort(400, 'Allowable fields for subject doc_type: {}.'.format(allowable_subject_agg_fields))
+
         query = es_aggs(doc_type, field_name)
         try:
             # pylint disable can be removed after PyCQA/pylint#258 is fixed
