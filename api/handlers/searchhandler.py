@@ -4,7 +4,7 @@ import elasticsearch
 from ..web import base
 from .. import config
 from .. import util
-from ..search import pathparser, queryprocessor, es_query
+from ..search import pathparser, queryprocessor, es_query, es_aggs
 
 log = config.log
 
@@ -13,6 +13,13 @@ parent_container_dict = {
     'sessions': 'projects',
     'projects': 'groups',
 }
+
+allowable_subject_agg_fields = [
+    'code',
+    'sex',
+    'race',
+    'ethnicity'
+]
 
 class SearchHandler(base.RequestHandler):
     """This class allows to proxy queries to elasticsearch
@@ -75,6 +82,14 @@ class SearchHandler(base.RequestHandler):
         queries = self.request.json_body
         path = queries.pop('path')
         all_data = self.is_true('all_data')
+        limit = self.get_param('limit')
+        if limit:
+            try:
+                limit = int(limit)
+                if limit < 1:
+                    raise ValueError
+            except ValueError:
+                self.abort(400, 'Limit must be int')
         # if the path starts with collections force the targets to exists within a collection
         if path.startswith('collections'):
             queries['collections'] = queries.get('collections', {"match_all": {}})
@@ -83,6 +98,8 @@ class SearchHandler(base.RequestHandler):
         results = search.process_search()
         self.search_containers = search.search_containers
         for result_type, results_for_type in results.iteritems():
+            if limit and len(results_for_type) > limit:
+                results[result_type] = results_for_type = results_for_type[:limit]
             for result in results_for_type:
                 self._augment_result(result, result_type)
         return results
@@ -96,6 +113,7 @@ class SearchHandler(base.RequestHandler):
             container = result['_source']
             container_name = result_type
         result['_source'].update(self._get_parents(container, container_name))
+
 
     def _strip_other_permissions(self, container, cont_name):
         perm_list = container.pop('roles', None) if cont_name == 'groups' else container.pop('permissions', None)
@@ -168,3 +186,33 @@ class SearchHandler(base.RequestHandler):
         except elasticsearch.exceptions.ConnectionError:
             self.abort(503, 'elasticsearch is not available')
         return results
+
+    def get_terms_for_field(self):
+        if self.public_request:
+            self.abort(403, 'search is available only for authenticated users.')
+        payload = self.request.json_body
+        doc_type = payload.get('doc_type')
+        field_name = payload.get('field')
+
+        # Confirm reasonable inputs
+        # Policy descisions around potential PHI:
+        #   - term lists for info fields are not allowed
+        #   - subject fields with term lists are whitelisted
+
+        if not doc_type or not field_name:
+            self.abort(400, 'Must supply doc_type and field name.')
+        if field_name.startswith('info'):
+            self.abort(400, 'Terms for info fields are not supported.')
+        if doc_type == 'subject' and field_name not in allowable_subject_agg_fields:
+            self.abort(400, 'Allowable fields for subject doc_type: {}.'.format(allowable_subject_agg_fields))
+
+        query = es_aggs(doc_type, field_name)
+        try:
+            # pylint disable can be removed after PyCQA/pylint#258 is fixed
+            es_results = config.es.search(index='scitran', body=query) # pylint: disable=unexpected-keyword-arg
+            ## elastic search results are wrapped in subkey ['hits']['hits']
+            results = es_results['aggregations'][field_name]['buckets']
+        except elasticsearch.exceptions.ConnectionError:
+            self.abort(503, 'elasticsearch is not available')
+        return results
+

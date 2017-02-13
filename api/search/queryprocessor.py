@@ -60,9 +60,9 @@ class SearchContainer(object):
         # pylint disable can be removed after PyCQA/pylint#258 is fixed
 
 
-        if not self.all_data and self.user and self.cont_name == 'projects':
+        if not self.all_data and self.user:
             # Filter on permissions for searches that do not include all data
-            self.query = add_filter(self.query, 'permissions._id', self.user)
+            query = add_filter(query, 'permissions._id', self.user)
 
         source_filter = None
         if self.all_data and self.cont_name == 'sessions':
@@ -126,14 +126,19 @@ class SearchContainer(object):
 
 class TargetProperty(object):
 
-    def __init__(self, name, query):
+    def __init__(self, name, query, all_data=False, user=None):
         self.name = name
         self.query = query
+        self.all_data = all_data
+        self.user = user
 
     def _get_results(self, parent_name, parent_results):
         if self.query is None:
             self.query = {"match_all": {}}
         self.query = add_filter(self.query, 'container_name', parent_name)
+        if not self.all_data and self.user:
+            # Filter on permissions for searches that do not include all data
+            self.query = add_filter(self.query, 'container.permissions._id', self.user)
         if parent_results is not None:
             parent_ids = parent_results.keys()
             self.query = add_filter_from_list(self.query, 'container._id', parent_ids)
@@ -157,9 +162,9 @@ class TargetProperty(object):
 
 class TargetInAnalysis(TargetProperty):
 
-    def __init__(self, name, query, analyses_query):
+    def __init__(self, name, query, analyses_query, all_data=False, user=None):
         super(TargetInAnalysis, self).__init__(name, query)
-        self.target_analysys = TargetProperty('analyses', analyses_query)
+        self.target_analysys = TargetProperty('analyses', analyses_query, all_data=all_data, user=user)
 
     def get_results(self, parent_name, parent_results):
         analysis_list = self.target_analysys.get_results(parent_name, parent_results)
@@ -172,6 +177,8 @@ class PreparedSearch(object):
         self.containers = ['groups', 'projects', 'sessions', 'collections', 'acquisitions']
         self.queries = queries
         self.target_lists = {}
+        self.all_data = all_data
+        self.user = user
         for path in target_paths:
             targets = self._get_targets(path)
             self._merge_into(targets, self.target_lists)
@@ -212,10 +219,10 @@ class PreparedSearch(object):
             if len(path_parts) >= 2 and path_parts[-2] == 'analyses':
                 min_length = 2
                 analyses_query = self.queries.get('analyses')
-                target = TargetInAnalysis(path_parts[-1], query, analyses_query)
+                target = TargetInAnalysis(path_parts[-1], query, analyses_query, all_data=self.all_data, user=self.user)
             else:
                 min_length = 1
-                target = TargetProperty(path_parts[-1], query)
+                target = TargetProperty(path_parts[-1], query, all_data=self.all_data, user=self.user)
             if len(path_parts) == min_length:
                 return {
                     c: [copy.deepcopy(target)] for c in self.containers
