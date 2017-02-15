@@ -1,5 +1,5 @@
 {
-	"gear": "test-case-gear",
+	"gear_id": "aex",
 	"inputs": {
 		"dicom": {
 			"type": "acquisition",

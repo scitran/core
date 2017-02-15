@@ -1,25 +1,16 @@
 description: Data processing algorithms
 get:
   description: List all gears
-  queryParameters:
-    fields:
-      description: |
-        Which fields to return.  Defaults to "name".
-        Specify "all" for all fields.
-        This parameter may be specified multiple times.
-      type: string
-      default: name
 
 /{GearName}:
   description: Interact with a specific gear
   uriParameters:
     GearName:
       type: string
-      description: Name of the gear to interact with
+      description: Id of the gear to interact with
   post:
     description: |
       Create or update a gear.
-      "Name" field of gear must match "GearName" uri parameter
       If no existing gear is found, one will be created
       Otherwise, the specified gear will be updated
   get:
