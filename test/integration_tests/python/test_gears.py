@@ -181,3 +181,41 @@ def test_gear_add_versioning(as_admin):
     assert r.ok
     matched = filter(lambda x: x['gear']['name'] == 'multi-version', r.json())
     assert len(matched) == 1
+
+
+def test_gear_add_invalid(as_admin):
+    # Try to add invalid gear
+    r = as_admin.post('/gears/test_gear', json={
+        "category": "converter",
+        "input": { },
+        "name": "test_gear",
+        "manifest": {
+            "name": "test_gear",
+            "inputs": {
+                "any text file <= 100 KB": {
+                    "base": "file",
+                    "name": {
+                        "pattern": "^.*.txt$"
+                    },
+                    "size": {
+                        "maximum": 100000
+                    }
+                }
+            },
+            "description": "A gear to test the API",
+            "license": "Other",
+            "author": "",
+            "url": "https://unknown.example",
+            "label": "An exported gear",
+            "source": "https://unknown.example",
+            "config": {
+                "two-digit multiple of ten": {
+                    "exclusiveMaximum": True,
+                    "type": "number",
+                    "multipleOf": 10,
+                    "maximum": 100
+                }
+            }
+        }
+    })
+    assert r.status_code == 400

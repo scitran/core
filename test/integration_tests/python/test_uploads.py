@@ -45,32 +45,45 @@ def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
     return fixture_data
 
 @pytest.fixture()
-def with_hierarchy_and_file_data(api_as_admin, bunch, request, data_builder):
-    group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
-    project =       data_builder.create_project(group)
-    session =       data_builder.create_session(project)
-    acquisition =   data_builder.create_acquisition(session)
-
-    file_names = ['one.csv', 'two.csv']
-    files = {}
-    for i, name in enumerate(file_names):
-        files['file' + str(i+1)] = (name, 'some,data,to,send\nanother,row,to,send\n')
+def with_gear(as_admin, request):
+    gear_name = 'test-gear'
+    r = as_admin.post('/gears/' + gear_name, json={
+        'category': 'converter',
+        'gear': {
+            'inputs': {
+                'wat': {
+                    'base': 'file',
+                    'type': { 'enum': [ 'wat' ] }
+                }
+            },
+            'maintainer': 'Example',
+            'description': 'Example',
+            'license': 'BSD-2-Clause',
+            'author': 'Example',
+            'url': 'https://example.example',
+            'label': 'wat',
+            'flywheel': '0',
+            'source': 'https://example.example',
+            'version': '0.0.1',
+            'config': {},
+            'name': gear_name
+        },
+        'exchange': {
+            'git-commit': 'aex',
+            'rootfs-hash': 'sha384:oy',
+            'rootfs-url': 'https://example.example'
+        }
+    })
+    assert r.ok
+    gear_id = r.json()['_id']
 
     def teardown_db():
-        data_builder.delete_acquisition(acquisition)
-        data_builder.delete_session(session)
-        data_builder.delete_project(project)
-        data_builder.delete_group(group)
+        r = as_admin.delete('/gears/' + gear_id)
+        assert r.ok
 
     request.addfinalizer(teardown_db)
 
-    fixture_data = bunch.create()
-    fixture_data.group = group
-    fixture_data.project = project
-    fixture_data.session = session
-    fixture_data.acquisition = acquisition
-    fixture_data.files = files
-    return fixture_data
+    return gear_id
 
 
 def test_uid_upload(with_group_and_file_data, api_as_admin):
@@ -149,10 +162,32 @@ def test_label_upload(with_group_and_file_data, api_as_admin):
 
     r = api_as_admin.post('/upload/label', files=data.files)
     assert r.ok
+    assert r.json() == []
 
     data.files['metadata'] = metadata
     r = api_as_admin.post('/upload/label', files=data.files)
     assert r.status_code == 400
+
+    # NOTE this adds api/placer.py coverage for lines 177-185
+    # need info on why that wasn't covered with 1st request in this test
+    single_file_data = {
+        'file': ('acq.csv', 'some,data,to,send\nanother,row,to,send\n'),
+        'metadata': ('', json.dumps({
+            'group': {'_id': data.group_id},
+            'project': {'label': 'test_project'},
+            'session': {
+                'label': 'test_session',
+                'subject': {'code': 'test_subject'}
+            },
+            'acquisition': {
+                'label': 'test_acquisition',
+                'files': [{'name': 'acq.csv'}]
+            }
+        }))
+    }
+    r = api_as_admin.post('/upload/label', files=single_file_data)
+    assert r.ok
+
 
 def find_file_in_array(filename, files):
     for f in files:
@@ -441,3 +476,88 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
     assert a_timestamp == m_timestamp
     assert cmp(a['info'], metadata['acquisition']['info']) == 0
+
+
+def test_analysis_upload(with_gear, with_hierarchy, as_user):
+    gear = with_gear
+    data = with_hierarchy
+    file_data = {
+        'file': ('test-1.dcm', open('test/integration_tests/python/test_files/test-1.dcm', 'rb').read()),
+        'metadata': ('', json.dumps({
+            'label': 'test analysis',
+            'inputs': [ { 'name': 'test-1.dcm' } ]
+        }))
+    }
+
+    # create session analysis
+    r = as_user.post('/sessions/' + data.session + '/analyses', files=file_data)
+    assert r.ok
+    session_analysis_upload = r.json()['_id']
+
+    # delete session analysis
+    r = as_user.delete('/sessions/' + data.session + '/analyses/' + session_analysis_upload)
+    assert r.ok
+
+    # create acquisition analysis
+    r = as_user.post('/acquisitions/' + data.acquisition + '/analyses', files=file_data)
+    assert r.ok
+    acquisition_analysis_upload = r.json()['_id']
+
+    # delete acquisition analysis
+    r = as_user.delete('/acquisitions/' + data.acquisition + '/analyses/' + acquisition_analysis_upload)
+    assert r.ok
+
+    # create acquisition file (for the fixture acquisition)
+    r = as_user.post('/acquisitions/' + data.acquisition + '/files', files={
+        'file': file_data['file']
+    })
+    assert r.ok
+
+    # create session analysis (job) using acquisition's file as input
+    r = as_user.post('/sessions/' + data.session + '/analyses?job=true', json={
+        'analysis': { 'label': 'test analysis job' },
+        'job': {
+            'gear_id': gear,
+            'inputs': {
+                'dicom': {
+                    'type': 'acquisition',
+                    'id': data.acquisition,
+                    'name': 'test-1.dcm'
+                }
+            },
+            'tags': ['example']
+        }
+    })
+    assert r.ok
+    session_analysis_job = r.json()['_id']
+
+    # delete session analysis (job)
+    r = as_user.delete('/sessions/' + data.session + '/analyses/' + session_analysis_job)
+    assert r.ok
+
+
+def test_analysis_engine_upload(with_hierarchy_and_file_data, as_admin):
+    data = with_hierarchy_and_file_data
+    data.files['metadata'] = ('', json.dumps({
+        'label': 'test analysis',
+        'inputs': [{'name': 'one.csv'}, {'name': 'two.csv'}]
+    }))
+
+    # create acquisition analysis
+    r = as_admin.post('/acquisitions/' + data.acquisition + '/analyses', files=data.files)
+    assert r.ok
+    acquisition_analysis_upload = r.json()['_id']
+
+    r = as_admin.post('/engine?level=analysis&id=' + data.acquisition, files={
+        'file': ('engine-analysis.txt', 'test analysis output content\n'),
+        'metadata': ('', json.dumps({
+            'value': {'label': 'test'},
+            'type': 'text',
+            'enabled': True
+        }))
+    })
+    assert r.ok
+
+    # delete acquisition analysis
+    r = as_admin.delete('/acquisitions/' + data.acquisition + '/analyses/' + acquisition_analysis_upload)
+    assert r.ok

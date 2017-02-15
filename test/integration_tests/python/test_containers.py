@@ -85,3 +85,44 @@ def test_switching_acquisition_between_projects(with_two_groups, data_builder, a
     data_builder.delete_session(session_1_id)
     data_builder.delete_session(session_2_id)
     data_builder.delete_project(project_id)
+
+
+def test_project_template(with_hierarchy, data_builder, as_user):
+    data = with_hierarchy
+
+    # create template for the project
+    r = as_user.post('/projects/' + data.project + '/template', json={
+        'session': { 'subject': { 'code' : '^testing' } },
+        'acquisitions': [{ 'label': '_testing$', 'minimum': 2 }]
+    })
+    assert r.ok
+    assert r.json()['modified'] == 1
+
+    # test non-compliant session (wrong subject.code and #acquisitions)
+    r = as_user.get('/sessions/' + data.session)
+    assert r.ok
+    assert r.json()['project_has_template'] == True
+    assert r.json()['satisfies_template'] == False
+
+    # make session compliant and test it
+    r = as_user.put('/sessions/' + data.session, json={
+        'subject': { 'code': 'testing' }
+    })
+    assert r.ok
+    acquisition_id = data_builder.create_acquisition(data.session)
+
+    r = as_user.get('/sessions/' + data.session)
+    assert r.ok
+    assert r.json()['satisfies_template'] == True
+
+    # make session non-compliant again and test it
+    r = as_user.put('/sessions/' + data.session, json={
+        'subject': { 'code': 'invalid' }
+    })
+    assert r.ok
+
+    r = as_user.get('/sessions/' + data.session)
+    assert r.ok
+    assert r.json()['satisfies_template'] == False
+
+    data_builder.delete_acquisition(acquisition_id)
