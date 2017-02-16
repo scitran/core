@@ -287,13 +287,16 @@ class AnalysesStorage(ListStorage):
         if 'analysis' not in tags:
             tags.append('analysis')
 
-        gear_name = job['gear']
+        gear_id = job['gear_id']
 
         destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
-        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=origin)
+
+        job = Job(gear_id, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=origin)
         job_id = job.insert()
+
         if not job_id:
             raise APIStorageException(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
+
         result = self._update_el(cid, {'_id': analysis['_id']}, {'job': job_id}, None)
         return { 'analysis': analysis, 'job_id':job_id, 'job': job}
 

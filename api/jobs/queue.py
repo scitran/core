@@ -9,7 +9,7 @@ import datetime
 
 from .. import config
 from .jobs import Job
-from .gears import get_gear_by_name
+from .gears import get_gear
 
 log = config.log
 
@@ -176,7 +176,7 @@ class Queue(object):
             return result
 
         # Generate, save, and return a job request.
-        request = job.generate_request(get_gear_by_name(job.name))
+        request = job.generate_request(get_gear(job.gear_id))
         result = config.db.jobs.find_one_and_update(
             {
                 '_id': bson.ObjectId(job.id_)

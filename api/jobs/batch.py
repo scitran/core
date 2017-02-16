@@ -134,8 +134,11 @@ def run(batch_job):
     if not proposal:
         raise APIStorageException('The batch job is not formatted correctly.')
     proposed_inputs = proposal.get('inputs', [])
-    gear_name = batch_job.get('gear')
-    gear = gears.get_gear_by_name(gear_name)
+
+    gear_id = batch_job['gear_id']
+    gear = gears.get_gear(gear_id)
+    gear_name = gear['gear']['name']
+
     config_ = batch_job.get('config')
     origin = batch_job.get('origin')
     tags = proposal.get('tags', [])
@@ -155,9 +158,9 @@ def run(batch_job):
         if gear.get('category') == 'analysis':
 
             # Analysis gear, must create analysis on session
-            job = {
+            job_map = {
                 'config':   config_,
-                'gear':     gear_name,
+                'gear_id':  gear_id,
                 'inputs':   inputs,
                 'tags':     tags
             }
@@ -165,7 +168,7 @@ def run(batch_job):
             # Create analysis
             acquisition_id = inputs.values()[0].get('id')
             session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
-            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job, origin)
+            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin)
             job = result.get('job')
             job_id = result.get('job_id')
 
@@ -175,7 +178,8 @@ def run(batch_job):
             for input_name, fr in inputs.iteritems():
                 inputs[input_name] = create_filereference_from_dictionary(fr)
             destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
-            job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, origin=origin)
+
+            job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, origin=origin)
             job_id = job.insert()
 
         jobs.append(job)

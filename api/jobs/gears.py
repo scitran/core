@@ -2,9 +2,11 @@
 Gears
 """
 
-# import jsonschema
+import bson.objectid
+import datetime
 from jsonschema import Draft4Validator, ValidationError
 import gear_tools
+import pymongo
 
 from .. import config
 from .jobs import Job
@@ -13,32 +15,38 @@ from ..dao.containerstorage import ContainerStorage
 
 log = config.log
 
-def get_gears(fields=None):
+def get_gears():
     """
     Fetch the install-global gears from the database
     """
 
-    projection = { }
+    pipe = [
+        {'$sort': {
+            'gear.name': 1,
+            'created': -1,
+        }},
+        {'$group': {
+            '_id': { 'name': '$gear.name' },
+            'original': { '$first': '$$CURRENT' }
+        }}
+    ]
 
-    if fields is None:
-        return config.db.gears.find()
-    else:
-        fields.append('gear.name')
+    cursor = config.mongo_pipeline('gears', pipe)
 
-    for f in fields:
-        projection[f] = 1
+    return map(lambda x: x['original'], cursor)
 
-    return config.db.gears.find({}, projection)
+def get_gear(_id):
+    return config.db.gears.find_one({'_id': bson.ObjectId(_id)})
 
 def get_gear_by_name(name):
 
     # Find a gear from the list by name
-    gear_doc = config.db.gears.find_one({'gear.name': name})
+    gear_doc = list(config.db.gears.find({'gear.name': name}).sort('created', pymongo.DESCENDING))
 
-    if gear_doc is None:
+    if len(gear_doc) == 0 :
         raise Exception('Unknown gear ' + name)
 
-    return gear_doc
+    return gear_doc[0]
 
 def get_invocation_schema(gear):
     return gear_tools.derive_invocation_schema(gear['gear'])
@@ -119,12 +127,17 @@ def insert_gear(doc):
     if doc.get("invocation-schema"):
         del(doc["invocation-schema"])
 
-    config.db.gears.insert(doc)
+    now = datetime.datetime.utcnow()
+
+    doc['created']  = now
+    doc['modified'] = now
+
+    result = config.db.gears.insert(doc)
 
     if config.get_item('queue', 'prefetch'):
         log.info('Queuing prefetch job for gear ' + doc['gear']['name'])
 
-        job = Job(doc['gear']['name'], {}, destination={}, tags=['prefetch'], request={
+        job = Job(str(doc['_id']), {}, destination={}, tags=['prefetch'], request={
             'inputs': [
                 {
                     'type': 'http',
@@ -140,13 +153,25 @@ def insert_gear(doc):
             },
             'outputs': [ ],
         })
-        return job.insert()
+        job.insert()
 
-def remove_gear(name):
-    config.db.gears.remove({'gear.name': name})
+    return result
+
+
+def remove_gear(_id):
+    config.db.gears.delete_one({"_id": _id})
 
 def upsert_gear(doc):
     gear_tools.validate_manifest(doc['gear'])
 
-    remove_gear(doc['gear']['name'])
-    insert_gear(doc)
+    # Remove previous gear if name & version combo already exists
+
+    conflict = config.db.gears.find_one({
+        'gear.name': doc['gear']['name'],
+        'gear.version': doc['gear']['version']
+    })
+
+    if conflict is not None:
+        raise Exception('Gear ' + doc['gear']['name'] + ' ' + doc['gear']['version'] + ' already exists')
+
+    return insert_gear(doc)

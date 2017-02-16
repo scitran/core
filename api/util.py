@@ -18,7 +18,6 @@ MIMETYPES = [
 for mt in MIMETYPES:
     mimetypes.types_map.update({mt[0]: mt[1] + '/' + mt[2]})
 
-
 def hrsize(size):
     if size < 1000:
         return '%d%s' % (size, 'B')

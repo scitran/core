@@ -14,7 +14,7 @@ from ..web import base
 from .. import config
 from . import batch
 
-from .gears import validate_gear_config, get_gears, get_gear_by_name, get_invocation_schema, remove_gear, upsert_gear, suggest_container
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job
 from .queue import Queue
 
@@ -29,11 +29,7 @@ class GearsHandler(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'Request requires login')
 
-        fields = self.request.GET.getall('fields')
-        if 'all' in fields:
-            fields = None
-
-        return get_gears(fields)
+        return get_gears()
 
 class GearHandler(base.RequestHandler):
     """Provide /gears/x API routes."""
@@ -44,14 +40,14 @@ class GearHandler(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'Request requires login')
 
-        return get_gear_by_name(_id)
+        return get_gear(_id)
 
     def get_invocation(self, _id):
 
         if self.public_request:
             self.abort(403, 'Request requires login')
 
-        gear = get_gear_by_name(_id)
+        gear = get_gear(_id)
         return get_invocation_schema(gear)
 
     def suggest(self, _id, cont_name, cid):
@@ -63,7 +59,7 @@ class GearHandler(base.RequestHandler):
         if not self.superuser_request:
             cr.check_access(self.uid, 'ro')
 
-        gear = get_gear_by_name(_id)
+        gear = get_gear(_id)
         return suggest_container(gear, cont_name+'s', cid)
 
     def post(self, _id):
@@ -78,7 +74,9 @@ class GearHandler(base.RequestHandler):
             self.abort(400, 'Name key must be present and match URL')
 
         try:
-            upsert_gear(self.request.json)
+            result = upsert_gear(self.request.json)
+            return { '_id': str(result) }
+
         except ValidationError as err:
             key = None
             if len(err.relative_path) > 0:
@@ -91,7 +89,7 @@ class GearHandler(base.RequestHandler):
                 'key': key
             }
 
-        return { 'name': _id }
+
 
     def delete(self, _id):
         """Delete a gear. Generally not recommended."""
@@ -135,7 +133,7 @@ class JobsHandler(base.RequestHandler):
         """Add a job to the queue."""
         submit = self.request.json
 
-        gear_name = submit['gear']
+        gear_id = str(submit['gear_id'])
 
         # Translate maps to FileReferences
         inputs = {}
@@ -166,10 +164,10 @@ class JobsHandler(base.RequestHandler):
             now_flag = False # Only superuser requests are allowed to set "now" flag
 
         # Config manifest check
-        gear = get_gear_by_name(gear_name)
+        gear = get_gear(gear_id)
         validate_gear_config(gear, config_)
 
-        job = Job(gear_name, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
+        job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
         result = job.insert()
 
         return { "_id": result }
@@ -299,7 +297,7 @@ class BatchHandler(base.RequestHandler):
         """
 
         payload = self.request.json
-        gear_name = payload.get('gear')
+        gear_id = payload.get('gear_id')
         targets = payload.get('targets')
         config_ = payload.get('config', {})
         analysis_data = payload.get('analysis', {})
@@ -311,9 +309,9 @@ class BatchHandler(base.RequestHandler):
             collection_id = bson.ObjectId(collection_id)
 
         # Validate the config against the gear manifest
-        if not gear_name or not targets:
+        if not gear_id or not targets:
             self.abort(400, 'A gear name and list of target containers is required.')
-        gear = get_gear_by_name(gear_name)
+        gear = get_gear(gear_id)
         validate_gear_config(gear, config_)
 
         container_ids = []
@@ -361,7 +359,7 @@ class BatchHandler(base.RequestHandler):
 
             batch_proposal = {
                 '_id': bson.ObjectId(),
-                'gear': gear_name,
+                'gear_id': gear_id,
                 'config': config_,
                 'state': 'pending',
                 'origin': self.origin,

@@ -2,7 +2,7 @@
 	"variables": [],
 	"info": {
 		"name": "test",
-		"_postman_id": "03089f3b-3670-9613-0c41-6b3b6927e9ea",
+		"_postman_id": "0978c47f-84e7-c74d-27e7-1cabbd0ba042",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -38,7 +38,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -75,7 +76,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\", \"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -119,7 +121,8 @@
 							"enabled": true
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -152,7 +155,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n\"_id\":\"test-group\"\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -203,7 +207,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -248,7 +253,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -290,7 +296,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"_id\":\"jane.doe@gmail.com\",\"firstname\":\"Jane\",\"lastname\":\"Doe\",\"email\":\"jane.doe@gmail.com\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -320,7 +327,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n\t\"category\": \"converter\",\n\t\"input\": { },\n\t\"name\": \"test_gear\",\n\t\"manifest\": {\n\t\t\"name\": \"test_gear\",\n\t\t\"inputs\": {\n\t\t\t\"any text file <= 100 KB\": {\n\t\t\t\t\"base\": \"file\",\n\t\t\t\t\"name\": {\n\t\t\t\t\t\"pattern\": \"^.*.txt$\"\n\t\t\t\t},\n\t\t\t\t\"size\": {\n\t\t\t\t\t\"maximum\": 100000\n\t\t\t\t}\n\t\t\t}\n\t\t},\n\t\t\"description\": \"A gear to test the API\",\n\t\t\"license\": \"Other\",\n\t\t\"author\": \"\",\n\t\t\"url\": \"https://unknown.example\",\n\t\t\"label\": \"An exported gear\",\n\t\t\"source\": \"https://unknown.example\",\n\t\t\"config\": {\n\t\t\t\"two-digit multiple of ten\": {\n\t\t\t\t\"exclusiveMaximum\": true,\n\t\t\t\t\"type\": \"number\",\n\t\t\t\t\"multipleOf\": 10,\n\t\t\t\t\"maximum\": 100\n\t\t\t}\n\t\t}\n\t}\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -332,7 +340,11 @@
 					"script": {
 						"type": "text/javascript",
 						"exec": [
-							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"",
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"postman.setGlobalVariable(\"workaround_gear_id\", jsonData._id);"
 						]
 					}
 				}
@@ -352,36 +364,6 @@
 					"raw": "{\n    \"category\" : \"converter\",\n    \"gear\" : {\n        \"inputs\" : {\n            \"wat\" : {\n                \"base\" : \"file\",\n                \"type\" : {\n                    \"enum\" : [ \n                        \"wat\"\n                    ]\n                }\n            }\n        },\n        \"maintainer\" : \"Example\",\n        \"description\" : \"Example\",\n        \"license\" : \"BSD-2-Clause\",\n        \"author\" : \"Example\",\n        \"url\" : \"https://example.example\",\n        \"label\" : \"wat\",\n        \"flywheel\" : \"0\",\n        \"source\" : \"https://example.example\",\n        \"version\" : \"0.0.1\",\n        \"config\" : {},\n        \"name\" : \"test-case-gear\"\n    },\n    \"exchange\" : {\n        \"git-commit\" : \"aex\",\n        \"rootfs-hash\" : \"sha384:oy\",\n        \"rootfs-url\" : \"https://example.example\"\n    }\n}"
 				},
 				"description": ""
-			},
-			"response": []
-		},
-		{
-			"name": "Add job",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							"tests[\"Status code is 200\"] = responseCode.code === 200;"
-						]
-					}
-				}
-			],
-			"request": {
-				"url": "{{baseUri}}/jobs/add",
-				"method": "POST",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "scitran-user {{test_user_api_key}}",
-						"description": ""
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"gear\": \"test-case-gear\",\n    \"inputs\": {\n        \"dicom\": {\n            \"type\": \"acquisition\",\n            \"id\": \"{{test-acquisition-1-id}}\",\n            \"name\" : \"1_1_dicom.zip\"\n        }\n    },\n    \"config\": {\n\t\t\"two-digit multiple of ten\": 20\n\t},\n    \"destination\": {\n        \"type\": \"acquisition\",\n        \"id\": \"{{test-acquisition-1-id}}\"\n    },\n    \"tags\": [\n        \"ad-hoc\"\n    ]\n}\n"
-				}
 			},
 			"response": []
 		},
@@ -416,7 +398,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\":\"test-collection-1\"\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -447,7 +430,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"contents\":{\n    \t\"operation\":\"add\",\n    \t\"nodes\":[\n    \t\t{\n    \t\t\t\"level\":\"session\",\n    \t\t\t\"_id\":\"{{test-session-1-id}}\"\n    \t\t}\n    \t]\n    }\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -487,7 +471,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -518,7 +503,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\":\"test-collection-2\"\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -558,7 +544,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -598,7 +585,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -630,7 +618,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -662,7 +651,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -694,7 +684,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -726,7 +717,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"text\":\"test note\"\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -765,8 +757,9 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"analysis\": {\n        \"label\": \"Test Analysis 1\"\n    },\n    \"job\" : {\n        \"gear\": \"test-case-gear\",\n        \"inputs\": {\n            \"dicom\": {\n                \"type\": \"acquisition\",\n                \"id\": \"{{test-acquisition-1-id}}\",\n                \"name\" : \"test-1.dcm\"\n            }\n        },\n        \"tags\": [\"example\"]\n    }\n}\n"
-				}
+					"raw": "{\n    \"analysis\": {\n        \"label\": \"Test Analysis 1\"\n    },\n    \"job\" : {\n        \"gear_id\": \"{{workaround_gear_id}}\",\n        \"inputs\": {\n            \"dicom\": {\n                \"type\": \"acquisition\",\n                \"id\": \"{{test-acquisition-1-id}}\",\n                \"name\" : \"test-1.dcm\"\n            }\n        },\n        \"tags\": [\"example\"]\n    }\n}\n"
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -815,7 +808,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -853,7 +847,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -902,7 +897,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -948,7 +944,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -997,7 +994,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1044,7 +1042,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1093,7 +1092,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1139,7 +1139,8 @@
 							"value": ""
 						}
 					]
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1171,7 +1172,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1203,7 +1205,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1235,7 +1238,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1267,7 +1271,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\"text\":\"test note\"}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1302,7 +1307,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"group\": \"test-group\",\n    \"label\": \"Project with template\",\n    \"public\": false\n  }"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1337,7 +1343,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"ex8945\"\n    },\n    \"label\": \"Compliant Session\",\n    \"project\": \"{{ST-project-id}}\",\n    \"public\": false\n  }"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1372,7 +1379,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"ex9849\"\n    },\n    \"label\": \"Non-compliant Session\",\n    \"project\": \"{{ST-project-id}}\",\n    \"public\": false\n  }"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1407,7 +1415,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\": \"c-acquisition-1-t1\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1442,7 +1451,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\": \"c-acquisition-2-t1\",\n    \"session\":\"{{ST-compliant-session-id}}\",\n    \"public\": false\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1477,7 +1487,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\": \"nc-acquisition-1-t1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1517,7 +1528,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"session\": {\n        \"subject\": {\n            \"code\" : \"^ex\"\n        }\n    },\n    \"acquisitions\": [\n        {\n            \"label\": \"t1\",\n            \"minimum\": 2\n        }\n    ]\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1554,7 +1566,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1591,7 +1604,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1631,7 +1645,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "{\n    \"label\": \"nc-acquisition-2-t1\",\n    \"session\":\"{{ST-noncompliant-session-id}}\",\n    \"public\": false\n}"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1668,7 +1683,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1705,7 +1721,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": "  {\n    \"subject\": {\n      \"code\": \"bad-subject-code\"\n    }\n  }"
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		},
@@ -1742,7 +1759,8 @@
 				"body": {
 					"mode": "raw",
 					"raw": ""
-				}
+				},
+				"description": ""
 			},
 			"response": []
 		}

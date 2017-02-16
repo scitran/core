@@ -4,7 +4,7 @@
   "properties":{
     "_id":{"$ref":"../definitions/job.json#/definitions/id"},
     "origin":{"$ref":"../definitions/job.json#/definitions/origin"},
-    "name":{"$ref":"../definitions/job.json#/definitions/name"},
+    "gear_id":{"$ref":"../definitions/job.json#/definitions/gear_id"},
     "inputs":{"$ref":"../definitions/job.json#/definitions/inputs-array"},
     "destination":{"$ref":"../definitions/job.json#/definitions/destination"},
     "tags":{"$ref":"../definitions/job.json#/definitions/tags"},
@@ -19,7 +19,7 @@
   },
   "additionalProperties":false,
   "required":[
-     "_id", "name", "inputs", "config",
+     "_id", "gear_id", "inputs", "config",
      "destination", "tags", "state", "attempt"
   ]
 }
