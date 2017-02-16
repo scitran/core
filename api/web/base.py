@@ -133,7 +133,12 @@ class RequestHandler(webapp2.RequestHandler):
             uid = cached_token['uid']
             self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
         else:
-            auth_type, token = access_token.split(' ', 1)
+            try:
+                auth_type, token = access_token.split(' ', 1)
+            except ValueError:
+                # If token is not cached, user must provide auth type in header
+                self.abort(401, 'Auth type not provided with token')
+
             uid = self.validate_oauth_token(auth_type, token, timestamp)
             self.request.logger.debug('looked up remote token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
@@ -143,7 +148,7 @@ class RequestHandler(webapp2.RequestHandler):
                 'timestamp': timestamp,
                 'auth_type': auth_type
             }
-            dbutil.fault_tolerant_replace_one('authtokens', {'_id': access_token}, update, upsert=False)
+            dbutil.fault_tolerant_replace_one('authtokens', {'_id': token}, update, upsert=True)
 
         return uid
 
