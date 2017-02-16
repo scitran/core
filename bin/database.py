@@ -3,10 +3,12 @@
 import bson
 import copy
 import dateutil.parser
+import datetime
 import json
 import logging
 import re
 import sys
+import time
 
 from api import config
 from api.dao import containerutil
@@ -14,7 +16,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 21 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 22 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -634,6 +636,58 @@ def upgrade_to_21():
     query['$or'].append({'instrument': { '$exists': True}})
     query['$or'].append({'measurement': { '$exists': True}})
     dm_v2_updates(config.db.acquisitions.find(query), 'acquisitions')
+
+def upgrade_to_22():
+    """
+    Add created and modified timestamps to gear docs
+
+    Of debatable value, since infra will load gears on each boot.
+    """
+
+
+    # Add timestamps to gears.
+    for gear in config.db.gears.find({}):
+        now = datetime.datetime.utcnow()
+
+        gear['created']  = now
+        gear['modified'] = now
+
+        config.db.gears.update({'_id': gear['_id']}, gear)
+
+        # Ensure there cannot possibly be two gears of the same name with the same timestamp.
+        # Plus or minus monotonic time.
+        # A very silly solution, but we only ever need to do this once, on a double-digit number of documents.
+        # Not worth the effort to, eg, rewind time and do math.
+        time.sleep(1)
+        print "Updated gear " + str(gear['_id']) + " ..."
+        sys.stdout.flush()
+
+
+    # Blanket-assume gears were the latest in the DB pre-gear versioning.
+    for job in config.db.jobs.find({}):
+
+        # Look up latest gear by name, lose job name key
+        gear = gears.get_gear_by_name(job['name'])
+        job.pop('name', None)
+
+        # Store gear ID
+        job['gear_id'] = str(gear['_id'])
+
+        # Save
+        config.db.jobs.update({'_id': job['_id']}, job)
+
+    for batch in config.db.batch.find({}):
+
+        # Look up latest gear by name, lose job name key
+        gear = gears.get_gear_by_name(batch['gear'])
+        batch.pop('gear', None)
+
+        # Store gear ID
+        batch['gear_id'] = str(gear['_id'])
+
+        # Save
+        config.db.batch.update({'_id': batch['_id']}, batch)
+
 
 
 def upgrade_schema():

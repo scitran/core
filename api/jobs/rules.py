@@ -122,7 +122,7 @@ def queue_job_legacy(algorithm_id, input_):
         input_name: input_
     }
 
-    job = Job(algorithm_id, inputs)
+    job = Job(str(gear['_id']), inputs)
     return job.insert()
 
 def find_type_in_container(container, type_):
@@ -162,7 +162,8 @@ def create_jobs(db, container, container_type, file_):
                         raise Exception("No type " + match_type + " found for alg rule " + alg_name + " that should have been satisfied")
                     inputs[input_name] = FileReference(type=container_type, id=str(container['_id']), name=match['name'])
 
-                job = Job(alg_name, inputs)
+                gear = gears.get_gear_by_name(alg_name)
+                job = Job(str(gear['_id']), inputs)
                 job.insert()
 
             job_list.append(alg_name)

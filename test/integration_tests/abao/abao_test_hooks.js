@@ -80,6 +80,17 @@ hooks.skip("POST /projects/{ProjectId}/template -> 200")
 hooks.skip("DELETE /projects/{ProjectId}/template -> 200")
 hooks.skip("POST /projects/{ProjectId}/recalc -> 200")
 
+// Porting to python as per #600
+hooks.skip("POST /jobs/add -> 200")
+hooks.skip("GET /gears/{GearName} -> 200")
+hooks.skip("GET /sessions/{SessionId}/jobs -> 200")
+
+// Cannot be ran due to gear IDs being used as per #
+hooks.skip("POST /sessions/{SessionId}/analyses -> 200")
+hooks.skip("GET /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
+hooks.skip("DELETE /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
+
+
 hooks.beforeEach(function (test, done) {
     test.request.query.root = "true"
     test.request.headers.Authorization = "scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK";

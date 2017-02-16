@@ -23,22 +23,6 @@ class Node(object):
     def filter(children, criterion):
         raise NotImplementedError()
 
-
-def _pipeline(table, pipeline):
-    """
-    Temporary philosophical dupe with reporthandler.py.
-    Execute a mongo pipeline, check status, return results.
-    A workaround for wonky pymongo aggregation behavior.
-    """
-
-    output = config.db.command('aggregate', table, pipeline=pipeline)
-    result = output.get('result')
-
-    if output.get('ok') != 1.0 or result is None:
-        raise Exception()
-
-    return result
-
 def _get_files(table, match):
     """
     Return a consistently-ordered set of files for a given container query.
@@ -51,7 +35,7 @@ def _get_files(table, match):
         {'$group': {'_id':'$_id', 'files': {'$push':'$files'}}}
     ]
 
-    result = _pipeline(table, pipeline)
+    result = config.mongo_pipeline(table, pipeline)
     if len(result) == 0:
         return []
 

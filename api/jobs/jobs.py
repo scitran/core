@@ -13,7 +13,7 @@ from .. import config
 
 
 class Job(object):
-    def __init__(self, name, inputs, destination=None, tags=None,
+    def __init__(self, gear_id, inputs, destination=None, tags=None,
                  attempt=1, previous_job_id=None, created=None,
                  modified=None, state='pending', request=None,
                  id_=None, config_=None, now=False, origin=None,
@@ -23,8 +23,8 @@ class Job(object):
 
         Parameters
         ----------
-        name: string
-            Unique name of the algorithm
+        gear_id: string
+            Unique gear_id of the algorithm
         inputs: string -> FileReference map
             The inputs to be used by this job
         destination: ContainerReference (optional)
@@ -69,9 +69,6 @@ class Job(object):
             fr = inputs[key]
             destination = create_containerreference_from_filereference(fr)
 
-        # A job is always tagged with the name of the gear
-        tags.append(name)
-
         # Trim tags array to unique members...
         tags = list(set(tags))
 
@@ -83,7 +80,7 @@ class Job(object):
             }
 
 
-        self.name               = name
+        self.gear_id            = gear_id
         self.inputs             = inputs
         self.destination        = destination
         self.tags               = tags
@@ -121,7 +118,7 @@ class Job(object):
 
         d['_id'] = str(d['_id'])
 
-        return cls(d['name'], d.get('inputs'),
+        return cls(d['gear_id'], d.get('inputs'),
             destination=d.get('destination'),
             tags=d['tags'], attempt=d['attempt'],
             previous_job_id=d.get('previous_job_id'),
