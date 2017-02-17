@@ -644,6 +644,7 @@ def upgrade_to_22():
     Of debatable value, since infra will load gears on each boot.
     """
 
+    logging.info('Upgrade v22, phase 1 of 3, upgrading gears...')
 
     # Add timestamps to gears.
     for gear in config.db.gears.find({}):
@@ -659,9 +660,11 @@ def upgrade_to_22():
         # A very silly solution, but we only ever need to do this once, on a double-digit number of documents.
         # Not worth the effort to, eg, rewind time and do math.
         time.sleep(1)
-        logging.info('Updated gear ' + str(gear['_id']) + ' ...')
+        logging.info('  Updated gear ' + str(gear['_id']) + ' ...')
         sys.stdout.flush()
 
+
+    logging.info('Upgrade v22, phase 2 of 3, upgrading jobs...')
 
     # Now that they're updated, fetch all gears and hold them in memory.
     # This prevents extra database queries during the job upgrade.
@@ -707,6 +710,8 @@ def upgrade_to_22():
         }
     }
 
+    maximum = config.db.jobs.count()
+    upgraded = 0
 
     # Blanket-assume gears were the latest in the DB pre-gear versioning.
     for job in config.db.jobs.find({}):
@@ -743,6 +748,16 @@ def upgrade_to_22():
         # Save
         config.db.jobs.update({'_id': job['_id']}, job)
 
+        upgraded += 1
+        if upgraded % 1000 == 0:
+            logging.info('  Processed ' + str(upgraded) + ' jobs of ' + str(maximum) + '...')
+
+
+    logging.info('Upgrade v22, phase 3 of 3, upgrading batch...')
+
+    maximum = config.db.batch.count()
+    upgraded = 0
+
     for batch in config.db.batch.find({}):
 
         # Look up latest gear by name, lose job name key
@@ -754,6 +769,13 @@ def upgrade_to_22():
 
         # Save
         config.db.batch.update({'_id': batch['_id']}, batch)
+
+        upgraded += 1
+        if upgraded % 1000 == 0:
+            logging.info('  Processed ' + str(upgraded) + ' jobs of ' + str(maximum) + '...')
+
+
+    logging.info('Upgrade v22, complete.')
 
 
 
