@@ -165,7 +165,7 @@ class JobsHandler(base.RequestHandler):
 
         # Config manifest check
         gear = get_gear(gear_id)
-        if gear.get('custom', {}).get('flywheel', {}).get('invalid', False):
+        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             self.abort(400, 'Gear marked as invalid, will not run!')
         validate_gear_config(gear, config_)
 
@@ -314,7 +314,7 @@ class BatchHandler(base.RequestHandler):
         if not gear_id or not targets:
             self.abort(400, 'A gear name and list of target containers is required.')
         gear = get_gear(gear_id)
-        if gear.get('custom', {}).get('flywheel', {}).get('invalid', False):
+        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             self.abort(400, 'Gear marked as invalid, will not run!')
         validate_gear_config(gear, config_)
 

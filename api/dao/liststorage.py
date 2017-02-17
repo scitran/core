@@ -292,7 +292,7 @@ class AnalysesStorage(ListStorage):
 
         # Config manifest check
         gear = get_gear(gear_id)
-        if gear.get('custom', {}).get('flywheel', {}).get('invalid', False):
+        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             raise APIConflictException('Gear marked as invalid, will not run!')
         validate_gear_config(gear, job.get('config'))
 
