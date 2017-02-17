@@ -187,6 +187,11 @@ class Job(object):
         return d
 
     def insert(self):
+        """
+        Warning: this will not stop you from inserting a job for a gear that has gear.custom.flywheel.invald set to true.
+
+        """
+
         if self.id_ is not None:
             raise Exception('Cannot insert job that has already been inserted')
 
@@ -211,6 +216,9 @@ class Job(object):
         gear: map
             A gear_list map from the gears table.
         """
+
+        if gear.get('custom', {}).get('flywheel', {}).get('invalid', False):
+            raise Exception('Gear marked as invalid, will not run!')
 
         r = {
             'inputs': [
