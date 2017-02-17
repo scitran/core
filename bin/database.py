@@ -772,7 +772,7 @@ def upgrade_to_22():
 
         upgraded += 1
         if upgraded % 1000 == 0:
-            logging.info('  Processed ' + str(upgraded) + ' jobs of ' + str(maximum) + '...')
+            logging.info('  Processed ' + str(upgraded) + ' batch of ' + str(maximum) + '...')
 
 
     logging.info('Upgrade v22, complete.')
