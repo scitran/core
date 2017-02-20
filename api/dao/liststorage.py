@@ -8,6 +8,7 @@ from . import APIStorageException, APIConflictException
 from .containerstorage import SessionStorage, AcquisitionStorage
 from .containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 from ..jobs.jobs import Job
+from ..jobs.gears import validate_gear_config, get_gear
 
 log = config.log
 
@@ -288,6 +289,12 @@ class AnalysesStorage(ListStorage):
             tags.append('analysis')
 
         gear_id = job['gear_id']
+
+        # Config manifest check
+        gear = get_gear(gear_id)
+        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
+            raise APIConflictException('Gear marked as invalid, will not run!')
+        validate_gear_config(gear, job.get('config'))
 
         destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
 

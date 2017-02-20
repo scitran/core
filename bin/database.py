@@ -644,6 +644,7 @@ def upgrade_to_22():
     Of debatable value, since infra will load gears on each boot.
     """
 
+    logging.info('Upgrade v22, phase 1 of 3, upgrading gears...')
 
     # Add timestamps to gears.
     for gear in config.db.gears.find({}):
@@ -659,22 +660,103 @@ def upgrade_to_22():
         # A very silly solution, but we only ever need to do this once, on a double-digit number of documents.
         # Not worth the effort to, eg, rewind time and do math.
         time.sleep(1)
-        print "Updated gear " + str(gear['_id']) + " ..."
+        logging.info('  Updated gear ' + str(gear['_id']) + ' ...')
         sys.stdout.flush()
 
+
+    logging.info('Upgrade v22, phase 2 of 3, upgrading jobs...')
+
+    # Now that they're updated, fetch all gears and hold them in memory.
+    # This prevents extra database queries during the job upgrade.
+
+    all_gears = list(config.db.gears.find({}))
+    gears_map = { }
+
+    for gear in all_gears:
+        gear_name = gear['gear']['name']
+
+        gears_map[gear_name] = gear
+
+    # A dummy gear for missing refs
+    dummy_gear = {
+        'category' : 'converter',
+        'gear' : {
+            'inputs' : {
+                'do-not-use' : {
+                    'base' : 'file'
+                }
+            },
+            'maintainer' : 'Noone <nobody@example.example>',
+            'description' : 'This gear or job was referenced before gear versioning. Version information is not available for this gear.',
+            'license' : 'BSD-2-Clause',
+            'author' : 'Noone',
+            'url' : 'https://example.example',
+            'label' : 'Deprecated Gear',
+            'flywheel' : '0',
+            'source' : 'https://example.example',
+            'version' : '0.0.0',
+            'custom' : {
+                'flywheel': {
+                    'invalid': True
+                }
+            },
+            'config' : {},
+            'name' : 'deprecated-gear'
+        },
+        'exchange' : {
+            'git-commit' : '0000000000000000000000000000000000000000',
+            'rootfs-hash' : 'sha384:000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+            'rootfs-url' : 'https://example.example/does-not-exist.tgz'
+        }
+    }
+
+    maximum = config.db.jobs.count()
+    upgraded = 0
 
     # Blanket-assume gears were the latest in the DB pre-gear versioning.
     for job in config.db.jobs.find({}):
 
         # Look up latest gear by name, lose job name key
-        gear = gears.get_gear_by_name(job['name'])
-        job.pop('name', None)
+        gear_name = job['name']
+        gear = gears_map.get(gear_name)
+
+        if gear is None:
+            logging.info('Job doc ' + str(job['_id']) + ' could not find gear ' + gear_name + ', creating...')
+
+            new_gear = copy.deepcopy(dummy_gear)
+            new_gear['gear']['name'] = gear_name
+
+            # Save new gear, store id in memory
+            resp = config.db.gears.insert_one(new_gear)
+            new_id = resp.inserted_id
+            new_gear['_id'] = str(new_id)
+
+            # Insert gear into memory map
+            gears_map[gear_name] = new_gear
+
+            logging.info('Created gear  ' + gear_name + ' with id ' + str(new_id) + '. Future jobs with this gear name with not alert.')
+
+            gear = new_gear
+
+        if gear is None:
+            raise Exception("We don't understand python scopes ;( ;(")
 
         # Store gear ID
+        job.pop('name', None)
         job['gear_id'] = str(gear['_id'])
 
         # Save
         config.db.jobs.update({'_id': job['_id']}, job)
+
+        upgraded += 1
+        if upgraded % 1000 == 0:
+            logging.info('  Processed ' + str(upgraded) + ' jobs of ' + str(maximum) + '...')
+
+
+    logging.info('Upgrade v22, phase 3 of 3, upgrading batch...')
+
+    maximum = config.db.batch.count()
+    upgraded = 0
 
     for batch in config.db.batch.find({}):
 
@@ -687,6 +769,13 @@ def upgrade_to_22():
 
         # Save
         config.db.batch.update({'_id': batch['_id']}, batch)
+
+        upgraded += 1
+        if upgraded % 1000 == 0:
+            logging.info('  Processed ' + str(upgraded) + ' batch of ' + str(maximum) + '...')
+
+
+    logging.info('Upgrade v22, complete.')
 
 
 
