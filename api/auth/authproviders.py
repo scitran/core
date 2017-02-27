@@ -97,12 +97,12 @@ class WechatOAuthProvider(AuthProvider):
 
     def validate_code(code):
         payload = {
-            'client_id':        self.config['client_id']
-            'client_secret':    self.config['client_secret']
-            'code':             code,
-            'grant_type':       'authorization_code'
+            'appid':        self.config['client_id']
+            'secret':       self.config['client_secret']
+            'code':         code,
+            'grant_type':   'authorization_code'
         }
-        r = requests.post(self.config['token_url'], data=payload)
+        r = requests.post(self.config['token_url'], params=payload)
         if not r.ok:
             raise APIAuthProviderException('User code not valid')
 
