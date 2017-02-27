@@ -1,12 +1,14 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
+        "description":  {"type": "string"},
         "project-input":{
             "type": "object",
             "properties": {
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
                 "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "description":  {"$ref": "../definitions/project.json#/definitions/description"},
                 "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"}
             },
@@ -19,6 +21,7 @@
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
                 "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "description": {"$ref": "../definitions/project.json#/definitions/description"},
                 "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
                 "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
