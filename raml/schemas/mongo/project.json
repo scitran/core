@@ -15,6 +15,7 @@
         "template": {"$ref": "../definitions/project-template.json"},
         "tags": {},
         "info": {},
+        "description": {},
 
         "group": {"type": "string"}
     },

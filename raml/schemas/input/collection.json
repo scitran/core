@@ -2,12 +2,6 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Collection",
     "type": "object",
-    "properties": {
-        "public": {"$ref": "../definitions/container.json#/definitions/public"},
-        "label": {"$ref": "../definitions/container.json#/definitions/label"},
-        "info": {"$ref": "../definitions/container.json#/definitions/info"},
-        "curator": {"$ref": "../definitions/collection.json#/definitions/curator"}
-    },
-    "required": ["label"],
-    "additionalProperties": false
+    "allOf": [{"$ref": "../definitions/collection.json#/definitions/collection-input"}],
+    "required": ["label"]
 }

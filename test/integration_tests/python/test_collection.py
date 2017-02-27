@@ -55,7 +55,6 @@ def single_project_session_acquisition_tree(api_as_admin, request, bunch, data_b
 def create_collection(api):
     # POST - Create a collection
     NEW_COLLECTION_JSON = json.dumps({
-        'curator': 'admin@user.com',
         'label': 'SciTran/Testing',
         'public': True
     })

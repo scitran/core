@@ -39,6 +39,7 @@
 	"created": "2016-09-22T21:54:47.925000+00:00",
 	"modified": "2016-09-22T21:54:47.925000+00:00",
 	"label": "test-project",
+	"description": "Test Project",
 	"_id": "57e45327466d8e000e33a859",
 	"public": false,
 	"permissions": [{
@@ -51,6 +52,7 @@
 	"created": "2016-09-29T18:53:06.199000+00:00",
 	"modified": "2016-09-29T18:53:06.199000+00:00",
 	"label": "test2",
+	"description": "Test Project Two",
 	"_id": "57ed6312466d8e01c91ee427",
 	"permissions": [{
 		"access": "admin",
