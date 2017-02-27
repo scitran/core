@@ -237,7 +237,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         token_entry = {
                 'token': session_token,
-                'refresh_token': refresh_token
+                'refresh_token': refresh_token,
                 'uid': uid,
                 'timestamp': datetime.datetime.utcnow(),
                 'auth_type': auth_type

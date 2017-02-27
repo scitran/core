@@ -1,16 +1,10 @@
 import requests
+import json
 from . import APIAuthProviderException, APIUnknownUserException
 from .. import config, util
 
 
 log = config.log
-
-
-AuthProviders = util.Enum('AuthProviders', {
-    'google'    : GoogleAuthProvider,
-    'ldap'      : JWTAuthProvider,
-    'wechat'    : WechatAuthProvider
-})
 
 class AuthProvider(object):
     """
@@ -34,7 +28,7 @@ class AuthProvider(object):
         if auth_type in AuthProviders:
             provider_class = AuthProviders[auth_type].value
             return provider_class()
-        except:
+        else:
             raise NotImplementedError('Auth type {} is not supported'.format(auth_type))
 
 
@@ -64,8 +58,8 @@ class GoogleOAuthProvider(AuthProvider):
 
     def validate_code(code):
         payload = {
-            'client_id':        self.config['client_id']
-            'client_secret':    self.config['client_secret']
+            'client_id':        self.config['client_id'],
+            'client_secret':    self.config['client_secret'],
             'code':             code,
             'grant_type':       'authorization_code'
         }
@@ -97,8 +91,8 @@ class WechatOAuthProvider(AuthProvider):
 
     def validate_code(code):
         payload = {
-            'appid':        self.config['client_id']
-            'secret':       self.config['client_secret']
+            'appid':        self.config['client_id'],
+            'secret':       self.config['client_secret'],
             'code':         code,
             'grant_type':   'authorization_code'
         }
@@ -112,3 +106,9 @@ class WechatOAuthProvider(AuthProvider):
         uid = response['openid']
 
         return token, refresh_token, uid
+
+AuthProviders = util.Enum('AuthProviders', {
+    'google'    : GoogleOAuthProvider,
+    'ldap'      : JWTAuthProvider,
+    'wechat'    : WechatOAuthProvider
+})

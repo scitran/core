@@ -28,6 +28,13 @@ def _get_access(uid, site, container):
 def has_access(uid, container, perm, site):
     return _get_access(uid, site, container) >= INTEGER_ROLES[perm]
 
+class APIAuthProviderException(Exception):
+    pass
+
+class APIUnknownUserException(Exception):
+    pass
+
+
 def always_ok(exec_op):
     """
     This decorator leaves the original method unchanged.
