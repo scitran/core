@@ -134,79 +134,34 @@ class RequestHandler(webapp2.RequestHandler):
         cached_token = config.db.authtokens.find_one({'_id': session_token})
 
         if cached_token:
-            uid = cached_token['uid']
             self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
+
+            # Check if token is expired
+            if cached_token.get('expires') and timestamp > cached_token['expires']:
+                refresh_token = cached_token.get('refresh_token')
+                if refresh_token:
+                    # Attempt to refresh the token, update db
+
+                    auth_type = cached_token['auth_type']
+                    try:
+                        auth_provider = AuthProvider.factory(auth_type)
+                    except NotImplementedError as e:
+                        self.abort(401, str(e))
+
+                    updated_token_info = auth_provider.refresh_token(refresh_token)
+                    config.db.authtokens.update_one({'_id': cached_token['_id']}, {'$set': updated_token_info})
+
+                else:
+                    # Token expired, remove and deny request
+                    config.db.authtokens.delete_one({'_id': cached_token['_id']})
+                    self.abort(401, 'Expired session token')
+
+            uid = cached_token['uid']
         else:
             self.abort(401, 'Invalid session token')
 
         return uid
 
-
-    # def validate_oauth_token(self, auth_type, access_token, timestamp):
-    #     """
-    #     Validates a token assertion against the configured ID endpoint. Calls self.abort on failure.
-
-    #     Returns the user's UID.
-    #     """
-
-    #     auth_config = config.get_auth(auth_type)
-    #     id_endpoint = auth_config.get('id_endpoint')
-
-    #     # If we start supporting more than google and ldap, break into classes inherited from abstract class
-    #     if auth_type == 'google':
-    #         r = requests.get(id_endpoint, headers={'Authorization': 'Bearer ' + access_token})
-    #     elif auth_type == 'ldap':
-    #         p = {'token': access_token}
-    #         r = requests.post(id_endpoint, data=p)
-    #     else:
-    #         raise self.abort(401, 'Auth not configured.')
-
-    #     if not r.ok:
-    #         # Oauth authN failed; for now assume it was an invalid token. Could be more accurate in the future.
-    #         err_msg = 'Invalid OAuth2 token.'
-    #         site_id = config.get_item('site', 'id')
-    #         headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="{}"'.format(site_id, err_msg)}
-    #         self.request.logger.warning('{} Request headers: {}'.format(err_msg, str(self.request.headers.items())))
-    #         self.abort(401, err_msg, headers=headers)
-
-    #     identity = json.loads(r.content)
-    #     email_key = 'email' if auth_type == 'google' else 'mail'
-    #     uid = identity.get(email_key)
-
-    #     if not uid:
-    #         self.abort(400, 'OAuth2 token resolution did not return email address')
-
-    #     # If this is the first time they've logged in, record that
-    #     config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})
-
-    #     # Unconditionally set their most recent login time
-    #     config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': timestamp}})
-
-    #     # Set user's auth provider avatar
-    #     # TODO: switch on auth.provider rather than manually comparing endpoint URL.
-    #     if auth_type == 'google':
-    #         # A google-specific avatar URL is provided in the identity return.
-    #         provider_avatar = identity.get('picture', '')
-
-    #         # Remove attached size param from URL.
-    #         u = urlparse.urlparse(provider_avatar)
-    #         query = urlparse.parse_qs(u.query)
-    #         query.pop('sz', None)
-    #         u = u._replace(query=urllib.urlencode(query, True))
-    #         provider_avatar = urlparse.urlunparse(u)
-    #         # Update the user's provider avatar if it has changed.
-    #         config.db.users.update_one({'_id': uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': timestamp}})
-
-    #         # If the user has no avatar set, mark their provider_avatar as their chosen avatar.
-    #         config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': provider_avatar, 'modified': timestamp}})
-
-    #     # Look to see if user has a Gravatar
-    #     gravatar = util.resolve_gravatar(uid)
-    #     if gravatar is not None:
-    #         # Update the user's gravatar if it has changed.
-    #         config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
-
-    #     return uid
 
     @log_access(AccessType.user_login)
     def log_in(self):
@@ -221,28 +176,24 @@ class RequestHandler(webapp2.RequestHandler):
         if 'code' not in payload or 'auth_type' not in payload:
             self.abort(400, 'Auth code and type required for login')
 
+        auth_type = payload['auth_type']
         try:
-            auth_provider = AuthProvider.factory(payload['auth_type'])
+            auth_provider = AuthProvider.factory(auth_type)
         except NotImplementedError as e:
             self.abort(400, str(e))
 
-        _, refresh_token, uid = auth_provider.validate_code(payload['code'])
+        token_entry = auth_provider.validate_code(payload['code'])
+        timestamp = datetime.datetime.utcnow()
 
         # If this is the first time they've logged in, record that
         config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})
         # Unconditionally set their most recent login time
         config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': timestamp}})
 
-        # Generate session token
         session_token = base64.urlsafe_b64encode(os.urandom(42))
+        token_entry['_id'] = session_token
+        token_entry['timestamp'] = timestamp
 
-        token_entry = {
-                'token': session_token,
-                'refresh_token': refresh_token,
-                'uid': uid,
-                'timestamp': datetime.datetime.utcnow(),
-                'auth_type': auth_type
-        }
         config.db.authtokens.insert_one(token_entry)
 
         return {'token': session_token}
