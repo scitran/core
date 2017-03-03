@@ -16,7 +16,7 @@ from .. import config
 from ..types import Origin
 from .. import validators
 from ..auth.authproviders import AuthProvider
-from ..auth import APIAuthProviderException
+from ..auth import APIAuthProviderException, APIUnknownUserException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException, dbutil
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
@@ -295,6 +295,8 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.warning(str(exception))
         elif isinstance(exception, APIAuthProviderException):
             code = 401
+        elif isinstance(exception, APIUnknownUserException):
+            code = 402
         elif isinstance(exception, APIConsistencyException):
             code = 400
         elif isinstance(exception, APIPermissionException):

@@ -170,7 +170,7 @@ class WechatOAuthProvider(AuthProvider):
     def __init__(self):
         super(WechatOAuthProvider,self).__init__('wechat')
 
-    def validate_code(self, code):
+    def validate_code(self, code, registration_code=None):
         payload = {
             'appid':        self.config['client_id'],
             'secret':       self.config['client_secret'],
@@ -182,9 +182,10 @@ class WechatOAuthProvider(AuthProvider):
             raise APIAuthProviderException('User code not valid')
 
         response = json.loads(r.content)
-        uid = response['openid']
+        config.log.debug(response)
+        openid = response['openid']
 
-        self.ensure_user_exists(uid)
+        uid = self.ensure_user_exists(openid, registration_code=registration_code)
 
         return {
             'refresh_token': response['refresh_token'],
@@ -193,6 +194,29 @@ class WechatOAuthProvider(AuthProvider):
             'auth_type': self.auth_type,
             'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
         }
+
+    def ensure_user_exists(self, openid, registration_code=None):
+        if registration_code:
+            user = config.db.users.find_one({'wechat.registration_code': registration_code})
+            if user is None:
+                raise APIUnknownUserException('Invalid registration code.')
+            update = {
+                '$set': {
+                    'wechat.openid': openid
+                },
+                '$unset': {
+                    'wechat.registration_code':''
+                }
+            }
+            config.db.users.update_one({'_id': user['_id']}, update)
+        else:
+            user = config.db.users.find_one({'wechat.openid': openid})
+        if not user:
+            raise APIUnknownUserException('User not registered.')
+        if user.get('disabled', False) is True:
+            raise APIUnknownUserException('User {} is disabled'.format(user['_id']))
+
+        return user['_id']
 
     def refresh_token(self, token):
         payload = {

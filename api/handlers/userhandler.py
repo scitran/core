@@ -23,7 +23,7 @@ class UserHandler(base.RequestHandler):
     def get(self, _id):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
-        result = permchecker(self.storage.exec_op)('GET', _id, projection={'api_key': 0} or None)
+        result = permchecker(self.storage.exec_op)('GET', _id, projection={'api_key': 0, 'wechat': 0} or None)
         if result is None:
             self.abort(404, 'User does not exist')
         return result
@@ -39,7 +39,7 @@ class UserHandler(base.RequestHandler):
 
     def get_all(self):
         permchecker = userauth.list_permission_checker(self)
-        result = permchecker(self.storage.exec_op)('GET', projection={'preferences': 0, 'api_key': 0})
+        result = permchecker(self.storage.exec_op)('GET', projection={'preferences': 0, 'api_key': 0, 'wechat': 0})
         if result is None:
             self.abort(404, 'Not found')
         return result
@@ -63,6 +63,8 @@ class UserHandler(base.RequestHandler):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         payload = self.request.json_body
+        if self.is_true('wechat'):
+            payload['wechat'] = {'registration_code': base64.urlsafe_b64encode(os.urandom(42))}
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
         payload_schema_uri = validators.schema_uri('input', 'user-update.json')
