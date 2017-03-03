@@ -196,10 +196,11 @@ class WechatOAuthProvider(AuthProvider):
         }
 
     def ensure_user_exists(self, openid, registration_code=None):
+        config.log.debug('openid is {} and reg code is {}'.format(openid, registration_code))
         if registration_code:
             user = config.db.users.find_one({'wechat.registration_code': registration_code})
             if user is None:
-                raise APIUnknownUserException('Invalid registration code.')
+                raise APIUnknownUserException('Invalid or expired registration code.')
             update = {
                 '$set': {
                     'wechat.openid': openid

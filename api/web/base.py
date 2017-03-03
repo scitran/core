@@ -173,6 +173,7 @@ class RequestHandler(webapp2.RequestHandler):
         """
 
         payload = self.request.json_body
+        config.log.debug(payload)
         if 'code' not in payload or 'auth_type' not in payload:
             self.abort(400, 'Auth code and type required for login')
 
@@ -182,7 +183,8 @@ class RequestHandler(webapp2.RequestHandler):
         except NotImplementedError as e:
             self.abort(400, str(e))
 
-        token_entry = auth_provider.validate_code(payload['code'])
+        registration_code = payload.get('registration_code')
+        token_entry = auth_provider.validate_code(payload['code'], registration_code=registration_code)
         timestamp = datetime.datetime.utcnow()
 
         # If this is the first time they've logged in, record that
