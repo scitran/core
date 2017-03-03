@@ -35,7 +35,7 @@ class AuthProvider(object):
         else:
             raise NotImplementedError('Auth type {} is not supported'.format(auth_type))
 
-    def validate_code(self, code):
+    def validate_code(self, code, **kwargs):
         raise NotImplementedError
 
     def ensure_user_exists(self, uid):
@@ -60,7 +60,7 @@ class JWTAuthProvider(AuthProvider):
     def __init__(self):
         super(JWTAuthProvider,self).__init__('ldap')
 
-    def validate_code(self, code):
+    def validate_code(self, code, **kwargs):
         uid = self.validate_user(code)
         return code, None, uid
 
@@ -88,7 +88,7 @@ class GoogleOAuthProvider(AuthProvider):
     def __init__(self):
         super(GoogleOAuthProvider,self).__init__('google')
 
-    def validate_code(self, code):
+    def validate_code(self, code, **kwargs):
         payload = {
             'client_id':        self.config['client_id'],
             'client_secret':    self.config['client_secret'],
@@ -170,7 +170,7 @@ class WechatOAuthProvider(AuthProvider):
     def __init__(self):
         super(WechatOAuthProvider,self).__init__('wechat')
 
-    def validate_code(self, code, registration_code=None):
+    def validate_code(self, code, **kwargs):
         payload = {
             'appid':        self.config['client_id'],
             'secret':       self.config['client_secret'],
@@ -185,6 +185,7 @@ class WechatOAuthProvider(AuthProvider):
         config.log.debug(response)
         openid = response['openid']
 
+        registration_code = kwargs.get('registration_code')
         uid = self.ensure_user_exists(openid, registration_code=registration_code)
 
         return {

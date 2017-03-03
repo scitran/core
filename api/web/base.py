@@ -207,10 +207,9 @@ class RequestHandler(webapp2.RequestHandler):
         Remove all cached auth tokens associated with caller's uid.
         """
 
-        payload = self.request.json_body
-        if 'token' not in payload:
-            self.abort(400, 'Token required for log out')
-
+        token = self.request.headers.get('Authorization', None)
+        if not token:
+            self.abort(401, 'User not logged in.')
         result = config.db.authtokens.delete_one({'_id': token})
         return {'tokens_removed': result.deleted_count}
 
