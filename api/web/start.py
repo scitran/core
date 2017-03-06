@@ -5,20 +5,24 @@ import sys
 import traceback
 import webapp2
 
-# enable code coverage when API is started for testing
+# Enable code coverage for testing when API is started
 # Start coverage before local module loading so their def and imports are counted
 #   http://coverage.readthedocs.io/en/coverage-4.2/faq.html
 if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true":
-    import coverage
     def save_coverage(cov):
         print("Saving coverage")
         cov.stop()
         cov.save()
 
-    print("Enabling code coverage")
-    cov = coverage.coverage(source=["api"], data_suffix="integration-tests")
-    cov.start()
-    atexit.register(save_coverage, cov)
+    def start_coverage():
+        import coverage
+        print("Enabling code coverage")
+        cov = coverage.coverage(source=["api"], data_suffix="integration-tests")
+        cov.start()
+        atexit.register(save_coverage, cov)
+
+    start_coverage()
+
 
 from ..api import endpoints
 from .. import config
