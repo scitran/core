@@ -36,6 +36,7 @@ clean_up () {
   rm .coverage
   coverage combine
   coverage report -m
+  coverage html
 }
 
 trap clean_up EXIT
