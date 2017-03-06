@@ -1,13 +1,10 @@
 import base64
 import datetime
-import json
 import jsonschema
 import os
 import pymongo
 import requests
 import traceback
-import urllib
-import urlparse
 import webapp2
 
 from .. import util
@@ -17,7 +14,7 @@ from ..types import Origin
 from .. import validators
 from ..auth.authproviders import AuthProvider
 from ..auth import APIAuthProviderException, APIUnknownUserException
-from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException, dbutil
+from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
 

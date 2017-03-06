@@ -65,7 +65,7 @@ class JWTAuthProvider(AuthProvider):
         return code, None, uid
 
     def validate_user(self, token):
-        r = requests.post(self.config['id_endpoint'], data={'token': token})
+        r = requests.post(self.config['verify_endpoint'], data={'token': token})
         if not r.ok:
             raise APIAuthProviderException('User token not valid')
         uid = json.loads(r.content).get('mail')
@@ -186,7 +186,7 @@ class WechatOAuthProvider(AuthProvider):
         openid = response['openid']
 
         registration_code = kwargs.get('registration_code')
-        uid = self.ensure_user_exists(openid, registration_code=registration_code)
+        uid = self.validate_user(openid, registration_code=registration_code)
 
         return {
             'refresh_token': response['refresh_token'],
@@ -196,8 +196,24 @@ class WechatOAuthProvider(AuthProvider):
             'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
         }
 
-    def ensure_user_exists(self, openid, registration_code=None):
-        config.log.debug('openid is {} and reg code is {}'.format(openid, registration_code))
+    def refresh_token(self, token):
+        payload = {
+            'appid':            self.config['client_id'],
+            'refresh_token':    token,
+            'grant_type':       'refresh_token'
+        }
+        r = requests.post(self.config['refresh_endpoint'], params=payload)
+        if not r.ok:
+            raise APIAuthProviderException('Unable to refresh token.')
+
+        response = json.loads(r.content)
+        return {
+            'refresh_token': response['refresh_token'],
+            'access_token': response['access_token'],
+            'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
+        }
+
+    def validate_user(self, openid, registration_code=None):
         if registration_code:
             user = config.db.users.find_one({'wechat.registration_code': registration_code})
             if user is None:
@@ -220,22 +236,8 @@ class WechatOAuthProvider(AuthProvider):
 
         return user['_id']
 
-    def refresh_token(self, token):
-        payload = {
-            'appid':            self.config['client_id'],
-            'refresh_token':    token,
-            'grant_type':       'refresh_token'
-        }
-        r = requests.post(self.config['refresh_endpoint'], params=payload)
-        if not r.ok:
-            raise APIAuthProviderException('Unable to refresh token.')
-
-        response = json.loads(r.content)
-        return {
-            'refresh_token': response['refresh_token'],
-            'access_token': response['access_token'],
-            'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
-        }
+    def set_user_avatar(self, uid, identity):
+        pass
 
 AuthProviders = {
     'google'    : GoogleOAuthProvider,
