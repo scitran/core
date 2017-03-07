@@ -8,4 +8,5 @@ bootstrap.json
 .cache
 /.coverage*
 coverage.xml
+/htmlcov
 node_modules/

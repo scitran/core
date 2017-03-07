@@ -5,6 +5,25 @@ import sys
 import traceback
 import webapp2
 
+# Enable code coverage for testing when API is started
+# Start coverage before local module loading so their def and imports are counted
+#   http://coverage.readthedocs.io/en/coverage-4.2/faq.html
+if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true":
+    def save_coverage(cov):
+        print("Saving coverage")
+        cov.stop()
+        cov.save()
+
+    def start_coverage():
+        import coverage
+        print("Enabling code coverage")
+        cov = coverage.coverage(source=["api"], data_suffix="integration-tests")
+        cov.start()
+        atexit.register(save_coverage, cov)
+
+    start_coverage()
+
+
 from ..api import endpoints
 from .. import config
 from . import encoder
@@ -47,8 +66,6 @@ def app_factory(*_, **__):
     application = webapp2.WSGIApplication(endpoints, debug=config.__config['core']['debug'])
     application.router.set_dispatcher(dispatcher)
     application.request_class = SciTranRequest
-    if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true":
-        start_coverage()
     # configure new relic
     if config.__config['core']['newrelic']:
         try:
@@ -64,16 +81,3 @@ def app_factory(*_, **__):
             sys.exit(1)
 
     return application
-
-# Functions to enable code coverage when API is started for testing
-def start_coverage():
-    import coverage
-    config.log.info("Enabling code coverage")
-    cov = coverage.coverage(source=["api"], data_suffix="integration-tests")
-    cov.start()
-    atexit.register(save_coverage, cov)
-
-def save_coverage(cov):
-    config.log.info("Saving coverage")
-    cov.stop()
-    cov.save()
