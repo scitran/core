@@ -34,6 +34,7 @@ DEFAULT_CONFIG = {
         'id': 'local',
         'name': 'Local',
         'api_url': 'https://localhost/api',
+        'redirect_url': 'https://localhost',
         'central_url': 'https://sdmc.scitran.io/api',
         'registered': False,
         'ssl_cert': None
@@ -45,10 +46,12 @@ DEFAULT_CONFIG = {
     },
     'auth': {
         'google': {
-            'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
-            'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
-            'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
-            'verify_endpoint': 'https://www.googleapis.com/oauth2/v1/tokeninfo'
+            "id_endpoint" : "https://www.googleapis.com/plus/v1/people/me/openIdConnect",
+            "client_id" : "979703271380-q85tbsupddmb7996q30244368r7e54lr.apps.googleusercontent.com",
+            "token_endpoint" : "https://accounts.google.com/o/oauth2/token",
+            "verify_endpoint" : "https://www.googleapis.com/oauth2/v1/tokeninfo",
+            "refresh_endpoint" : "https://www.googleapis.com/oauth2/v4/token",
+            "auth_endpoint" : "https://accounts.google.com/o/oauth2/auth"
         }
     },
     'persistent': {
