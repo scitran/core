@@ -280,11 +280,14 @@ def get_config():
     return __config
 
 def get_public_config():
+    auth = copy.deepcopy(__config.get('auth'))
+    for values in auth.itervalues():
+        values.pop('client_secret', None)
     return {
         'created': __config.get('created'),
         'modified': __config.get('modified'),
         'site': __config.get('site'),
-        'auth': __config.get('auth'),
+        'auth': auth,
     }
 
 def get_version():
