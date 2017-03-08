@@ -88,6 +88,8 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(402, 'user ' + self.uid + ' does not exist')
             if user.get('disabled', False) is True:
                 self.abort(402, 'user account ' + self.uid + ' is disabled')
+            if user.get('root'):
+                self.user_is_admin = True
             if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
