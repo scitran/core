@@ -44,47 +44,6 @@ def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
     fixture_data.files = files
     return fixture_data
 
-@pytest.fixture()
-def with_gear(as_admin, request):
-    gear_name = 'test-gear'
-    r = as_admin.post('/gears/' + gear_name, json={
-        'category': 'converter',
-        'gear': {
-            'inputs': {
-                'wat': {
-                    'base': 'file',
-                    'type': { 'enum': [ 'wat' ] }
-                }
-            },
-            'maintainer': 'Example',
-            'description': 'Example',
-            'license': 'BSD-2-Clause',
-            'author': 'Example',
-            'url': 'https://example.example',
-            'label': 'wat',
-            'flywheel': '0',
-            'source': 'https://example.example',
-            'version': '0.0.1',
-            'config': {},
-            'name': gear_name
-        },
-        'exchange': {
-            'git-commit': 'aex',
-            'rootfs-hash': 'sha384:oy',
-            'rootfs-url': 'https://example.example'
-        }
-    })
-    assert r.ok
-    gear_id = r.json()['_id']
-
-    def teardown_db():
-        r = as_admin.delete('/gears/' + gear_id)
-        assert r.ok
-
-    request.addfinalizer(teardown_db)
-
-    return gear_id
-
 
 def test_uid_upload(with_group_and_file_data, api_as_admin):
     data = with_group_and_file_data

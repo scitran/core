@@ -66,3 +66,20 @@ def as_user(base_url_session):
         _apiAsUser = s
 
     return _apiAsUser
+
+
+_apiAsPublic = None
+
+@pytest.fixture(scope="module")
+def as_public(base_url_session):
+
+    global _apiAsPublic
+
+    # Create one session and reuse it.
+    if _apiAsPublic is None:
+
+        s = base_url_session()
+
+        _apiAsPublic = s
+
+    return _apiAsPublic
