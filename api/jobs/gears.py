@@ -2,10 +2,12 @@
 Gears
 """
 
+from __future__ import absolute_import
+
 import bson.objectid
 import datetime
 from jsonschema import Draft4Validator, ValidationError
-import gear_tools
+import gears as gear_tools
 import pymongo
 
 from .. import config

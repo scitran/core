@@ -165,6 +165,10 @@ class JobsHandler(base.RequestHandler):
 
         # Config manifest check
         gear = get_gear(gear_id)
+
+        if gear is None:
+            self.abort(400, 'Could not find gear ' + gear_id)
+
         if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             self.abort(400, 'Gear marked as invalid, will not run!')
         validate_gear_config(gear, config_)
