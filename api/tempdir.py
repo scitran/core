@@ -37,6 +37,9 @@ class TemporaryDirectory(object):
 
     def cleanup(self, _warn=False):
         if self.name and not self._closed:
+            if _warn:
+                self._warn("start: Implicitly cleaning up {!r}".format(self),
+                           Warning)
             try:
                 self._rmtree(self.name)
             except (TypeError, AttributeError) as ex:
@@ -50,7 +53,7 @@ class TemporaryDirectory(object):
                 return
             self._closed = True
             if _warn:
-                self._warn("Implicitly cleaning up {!r}".format(self),
+                self._warn("end: Implicitly cleaning up {!r}".format(self),
                            Warning)
 
     def __exit__(self, exc, value, tb):
