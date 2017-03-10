@@ -83,6 +83,7 @@ hooks.skip("POST /projects/{ProjectId}/recalc -> 200")
 
 // Porting to python as per #600
 hooks.skip("POST /jobs/add -> 200")
+hooks.skip("PUT /jobs/{JobId} -> 200")
 hooks.skip("GET /gears/{GearId} -> 200")
 hooks.skip("GET /sessions/{SessionId}/jobs -> 200")
 
@@ -127,13 +128,6 @@ hooks.before("GET /jobs/{JobId}/config.json -> 200", function(test, done) {
     done();
 });
 
-
-hooks.before("PUT /jobs/{JobId} -> 200", function(test, done) {
-    test.request.params = {
-        JobId: job_id
-    };
-    done();
-});
 
 hooks.before("POST /jobs/{JobId}/retry -> 200", function(test, done) {
     test.request.params = {

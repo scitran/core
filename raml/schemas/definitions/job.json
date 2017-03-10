@@ -5,6 +5,7 @@
     "_id": {"$ref":"../definitions/objectid.json#"},
     "id": {"$ref":"../definitions/objectid.json#"},
     "gear_id": {"type":"string"},
+    "previous_job_id": {"type":"string"},
     "inputs-property-type":{"type":"string"},
     "inputs-property-id":{"type":"string"},
     "inputs-property-name":{"type":"string"},
