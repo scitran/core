@@ -102,6 +102,14 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
         # Not the best practice. Open to improvements.
         # These are presumbed to be required by every function later called with field as a parameter.
         field.path	 = os.path.join(tempdir.name, field.filename)
+        if not os.path.exists(field.path):
+            tempdir_exists = os.path.exists(tempdir.name)
+            raise Exception("file {} does not exist, tmpdir {} exists: {}, files in tmpdir: {}".format(
+                field.path,
+                tempdir.name,
+                tempdir_exists,
+                tempdir_exists and os.listdir(tempdir.name),
+            ))
         field.size	 = os.path.getsize(field.path)
         field.hash	 = field.file.get_formatted_hash()
         field.mimetype = util.guess_mimetype(field.filename) # TODO: does not honor metadata's mime type if any
