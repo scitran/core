@@ -5,6 +5,8 @@ from ..web import base
 from .. import config
 from .. import util
 from ..search import pathparser, queryprocessor, es_query, es_aggs
+from ..dao import APINotFoundException
+from ..dao.containerstorage import ContainerStorage
 
 log = config.log
 
@@ -124,18 +126,29 @@ class SearchHandler(base.RequestHandler):
     def _get_parents(self, container, cont_name):
         parents = {}
         self._strip_other_permissions(container, cont_name)
-        if parent_container_dict.get(cont_name):
-            parent_name = parent_container_dict[cont_name]
-            parent_id = container[parent_name[:-1]]
-            parent_results = self.search_containers[parent_name].results
-            if parent_results is None:
-                return parents
+        if parent_container_dict.get(cont_name) is None:
+            return parents
+        parent_name = parent_container_dict[cont_name]
+        parent_id = container[parent_name[:-1]]
+        parent_results = self.search_containers[parent_name].results
+        parent_container = None
+        if parent_results is not None:
             parent_container = parent_results.get(parent_id, {}).get('_source')
-            if parent_container is None:
+        if parent_container is None:
+            try:
+                parent_container = self._get_from_mongo(parent_name, parent_id)
+            except APINotFoundException:
+                # if the parent is missing we return only the _id
+                # and we stop the recursion
+                parents[parent_name[:-1]] = {'_id': parent_id}
                 return parents
-            parents[parent_name[:-1]] = parent_container
-            parents.update(self._get_parents(parent_container, parent_name))
+        parents[parent_name[:-1]] = parent_container
+        parents.update(self._get_parents(parent_container, parent_name))
         return parents
+
+    def _get_from_mongo(self, container_name, container_id):
+        storage = ContainerStorage.factory(container_name)
+        return storage.get_container(container_id)
 
     def get_datatree(self):
         if self.public_request:
