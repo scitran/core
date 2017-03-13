@@ -80,6 +80,8 @@ class JWTAuthProvider(AuthProvider):
         self.ensure_user_exists(uid)
         self.set_user_gravatar(uid, uid)
 
+        return uid
+
 
 
 class GoogleOAuthProvider(AuthProvider):

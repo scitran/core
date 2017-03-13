@@ -80,8 +80,10 @@ class RequestHandler(webapp2.RequestHandler):
 
         if self.public_request or self.source_site:
             self.superuser_request = False
+            self.user_is_admin = False
         elif drone_request:
             self.superuser_request = True
+            self.user_is_admin = True
         else:
             user = config.db.users.find_one({'_id': self.uid}, ['root', 'disabled'])
             if not user:
@@ -174,7 +176,6 @@ class RequestHandler(webapp2.RequestHandler):
         """
 
         payload = self.request.json_body
-        config.log.debug(payload)
         if 'code' not in payload or 'auth_type' not in payload:
             self.abort(400, 'Auth code and type required for login')
 
@@ -362,7 +363,6 @@ class RequestHandler(webapp2.RequestHandler):
             # If this is a ticket download, log only once per ticket
             ticket_id = self.get_param('ticket')
             log_map['context']['ticket_id'] = ticket_id
-            config.log.debug('the context is {} and the ticket is {}'.format(log_map['context'], ticket_id))
             try:
                 config.log_db.access_log.update(
                     {'context.ticket_id': ticket_id},
