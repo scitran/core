@@ -7,7 +7,7 @@ from ..web import base
 from .. import util
 from .. import config
 from .. import validators
-from ..auth import userauth
+from ..auth import userauth, require_admin
 from ..dao import containerstorage
 from ..dao import noop, APIStorageException
 
@@ -176,6 +176,21 @@ class UserHandler(base.RequestHandler):
             return {'key': generated_key}
         else:
             self.abort(500, 'New key for user {} not generated'.format(self.uid))
+
+    @require_admin
+    def reset_registration(self, uid):
+        new_registration_code = base64.urlsafe_b64encode(os.urandom(42))
+        update = {
+            'modified': datetime.datetime.utcnow(),
+            'wechat': {
+                'registration_code': new_registration_code
+            }
+        }
+        result = self.storage.exec_op('PUT', _id=uid, payload=update)
+        if result.modified_count == 1:
+            return {'registration_code': new_registration_code}
+        else:
+            self.abort(404, 'User {} not updated'.format(uid))
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)

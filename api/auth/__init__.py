@@ -55,6 +55,18 @@ def require_login(handler_method):
         return handler_method(self, *args, **kwargs)
     return check_login
 
+def require_admin(handler_method):
+    """
+    A decorator to ensure the request is made as superuser.
+
+    Accepts drone and user requests.
+    """
+    def check_admin(self, *args, **kwargs):
+        if not self.user_is_admin:
+            raise APIPermissionException('Admin user required.')
+        return handler_method(self, *args, **kwargs)
+    return check_admin
+
 def require_superuser(handler_method):
     """
     A decorator to ensure the request is made as superuser.
