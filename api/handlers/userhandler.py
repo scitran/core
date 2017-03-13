@@ -24,9 +24,7 @@ class UserHandler(base.RequestHandler):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
         projection = {'api_key': 0}
-        if self.user_is_admin:
-            projection['wechat.openid'] = 0
-        else:
+        if not self.user_is_admin:
             projection['wechat'] = 0
         result = permchecker(self.storage.exec_op)('GET', _id, projection=projection or None)
         if result is None:
@@ -45,9 +43,7 @@ class UserHandler(base.RequestHandler):
     def get_all(self):
         permchecker = userauth.list_permission_checker(self)
         projection = {'preferences': 0, 'api_key': 0}
-        if self.user_is_admin:
-            projection['wechat.openid'] = 0
-        else:
+        if not self.user_is_admin:
             projection['wechat'] = 0
         result = permchecker(self.storage.exec_op)('GET', projection=projection)
         if result is None:
