@@ -62,7 +62,12 @@ class JWTAuthProvider(AuthProvider):
 
     def validate_code(self, code, **kwargs):
         uid = self.validate_user(code)
-        return code, None, uid
+        return {
+            'access_token': code,
+            'uid': uid,
+            'auth_type': self.auth_type,
+            'expires': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        }
 
     def validate_user(self, token):
         r = requests.post(self.config['verify_endpoint'], data={'token': token})
@@ -75,12 +80,6 @@ class JWTAuthProvider(AuthProvider):
         self.ensure_user_exists(uid)
         self.set_user_gravatar(uid, uid)
 
-        return {
-            'access_token': token,
-            'uid': uid,
-            'auth_type': self.auth_type,
-            'expires': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
-        }
 
 
 class GoogleOAuthProvider(AuthProvider):
