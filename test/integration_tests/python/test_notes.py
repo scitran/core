@@ -43,3 +43,24 @@ def test_notes(with_a_group_and_a_project, api_as_user):
 
     r = api_as_user.get(note_path)
     assert r.status_code == 404
+
+
+def test_analysis_notes(with_hierarchy_and_file_data, as_user):
+    data = with_hierarchy_and_file_data
+    data.files['metadata'] = ('', json.dumps({
+        'label': 'test analysis',
+        'inputs': [{'name': 'one.csv'}, {'name': 'two.csv'}]
+    }))
+
+    # create acquisition analysis
+    r = as_user.post('/acquisitions/' + data.acquisition + '/analyses', files=data.files)
+    assert r.ok
+    acquisition_analysis_upload = r.json()['_id']
+
+    note = {'text': 'test'}
+    r = as_user.post('/acquisitions/' + data.acquisition + '/analyses/' + acquisition_analysis_upload + '/notes', json=note)
+    assert r.ok
+
+    # delete acquisition analysis
+    r = as_user.delete('/acquisitions/' + data.acquisition + '/analyses/' + acquisition_analysis_upload)
+    assert r.ok

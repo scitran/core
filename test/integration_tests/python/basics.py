@@ -45,3 +45,24 @@ def as_admin(base_url_session):
         _apiAsAdmin = s
 
     return _apiAsAdmin
+
+
+_apiAsUser = None
+
+@pytest.fixture(scope="module")
+def as_user(base_url_session):
+
+    global _apiAsUser
+
+    # Create one session and reuse it.
+    if _apiAsUser is None:
+
+        s = base_url_session()
+
+        s.headers.update({
+            "Authorization":"scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
+        })
+
+        _apiAsUser = s
+
+    return _apiAsUser

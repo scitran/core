@@ -51,7 +51,7 @@ hooks.skip("GET /users/{UserId}/avatar -> 307");
 hooks.skip("POST /devices -> 200")
 hooks.skip("GET /devices/self -> 200")
 
-// Tests that are skipped because we do them in postman or python
+// Tests that are skipped because we do them in python
 
 // Skipping because abao doesn't support file fields
 hooks.skip("POST /download -> 200");

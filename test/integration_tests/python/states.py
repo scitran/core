@@ -3,19 +3,13 @@
 import time
 import pytest
 
-# Currently a dupe from test_uploads.py.
-# Could not understand why this doesn't work if I remove the original; future work needed here.
-@pytest.fixture(scope="module")
-def with_hierarchy_and_file_data(api_as_admin, bunch, request, data_builder):
-    group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
+
+@pytest.fixture
+def with_hierarchy(api_as_admin, bunch, request, data_builder):
+    group =         data_builder.create_group('test_prop_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)
     acquisition =   data_builder.create_acquisition(session)
-
-    file_names = ['one.csv', 'two.csv']
-    files = {}
-    for i, name in enumerate(file_names):
-        files['file' + str(i+1)] = (name, 'some,data,to,send\nanother,row,to,send\n')
 
     def teardown_db():
         data_builder.delete_acquisition(acquisition)
@@ -30,5 +24,21 @@ def with_hierarchy_and_file_data(api_as_admin, bunch, request, data_builder):
     fixture_data.project = project
     fixture_data.session = session
     fixture_data.acquisition = acquisition
+    return fixture_data
+
+
+# NOTE removing scope='module' form with_hierarchy_and_file_data fixed the need
+# for keeping the duplicate in test_uploads. Now the fixture runs per test,
+# eliminating any data dependency between tests within a module at the price
+# of more load/teardown requests.
+
+@pytest.fixture
+def with_hierarchy_and_file_data(with_hierarchy):
+    file_names = ['one.csv', 'two.csv']
+    files = {}
+    for i, name in enumerate(file_names):
+        files['file' + str(i+1)] = (name, 'some,data,to,send\nanother,row,to,send\n')
+
+    fixture_data = with_hierarchy
     fixture_data.files = files
     return fixture_data

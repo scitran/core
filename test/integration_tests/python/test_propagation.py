@@ -8,28 +8,6 @@ sh = logging.StreamHandler()
 log.addHandler(sh)
 
 
-@pytest.fixture()
-def with_hierarchy(api_as_admin, bunch, request, data_builder):
-    group =         data_builder.create_group('test_prop_' + str(int(time.time() * 1000)))
-    project =       data_builder.create_project(group)
-    session =       data_builder.create_session(project)
-    acquisition =   data_builder.create_acquisition(session)
-
-    def teardown_db():
-        data_builder.delete_acquisition(acquisition)
-        data_builder.delete_session(session)
-        data_builder.delete_project(project)
-        data_builder.delete_group(group)
-
-    request.addfinalizer(teardown_db)
-
-    fixture_data = bunch.create()
-    fixture_data.group = group
-    fixture_data.project = project
-    fixture_data.session = session
-    fixture_data.acquisition = acquisition
-    return fixture_data
-
 # Test changing propagated properties
 def test_archived_propagation_from_project(with_hierarchy, data_builder, api_as_admin):
     """

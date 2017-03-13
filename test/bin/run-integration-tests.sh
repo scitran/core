@@ -55,6 +55,16 @@ BASE_URL="$SCITRAN_SITE_API_URL" \
     ACCESS_LOG_MONGO_PATH="$ACCESS_LOG_MONGODB_URI" \
     py.test test/integration_tests/python
 
+# Load fixtures that Abao relies on:
+# - test-group
+# - test-project-1 (+analysis upload)
+# - test-session-1 (+analysis upload)
+# - test-acquisition-1 (+analysis upload)
+# - test-case-gear
+# - test-collection-1 (+analysis upload)
+BASE_URL="$SCITRAN_SITE_API_URL" \
+    python test/integration_tests/abao/load_fixture.py
+
 set +u
 # If no VIRTUAL_ENV, make sure /usr/local/bin is in the path
 if [ -z "$VIRTUAL_ENV" ]; then
@@ -69,8 +79,6 @@ npm install test/integration_tests
 # Allow us to require modules from package.json,
 # since abao_test_hooks.js is not being called from the package directory
 integration_test_node_modules="$( pwd )/node_modules/scitran-core-integration-tests/node_modules"
-
-newman run test/integration_tests/postman/integration_tests.postman_collection -e test/integration_tests/postman/environments/integration_tests.postman_environment
 
 # Have to change into definitions directory to resolve
 # relative $ref's in the jsonschema's
