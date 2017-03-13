@@ -28,9 +28,10 @@ def test_jobs_access(as_user):
     assert r.status_code == 403
 
 
-def test_jobs(with_gear, with_hierarchy, as_user, as_admin):
-    gear = with_gear
+def test_jobs(with_hierarchy, with_gear, with_invalid_gear, as_user, as_admin):
     data = with_hierarchy
+    gear = with_gear
+    invalid_gear = with_invalid_gear
 
     job1 = {
         'gear_id': gear,
@@ -73,21 +74,11 @@ def test_jobs(with_gear, with_hierarchy, as_user, as_admin):
     assert r.ok
 
     # add job with invalid gear
-    r = as_admin.get('/gears/' + gear)
-    assert r.ok
-    invalid_gear = r.json()
-    del invalid_gear['_id']
-    invalid_gear['gear']['name'] = 'invalid'
-    invalid_gear['gear']['custom'] = {'flywheel': {'invalid': True}}
-    invalid_gear_id = as_admin.post('/gears/invalid', json=invalid_gear).json()['_id']
-
     job3 = deepcopy(job2)
-    job3['gear_id'] = invalid_gear_id
+    job3['gear_id'] = invalid_gear
 
     r = as_user.post('/jobs/add', json=job3)
     assert r.status_code == 400
-
-    as_admin.delete('/gears/' + invalid_gear_id)
 
     # get next job - with nonexistent tag
     r = as_admin.get('/jobs/next?tags=fake-tag')
