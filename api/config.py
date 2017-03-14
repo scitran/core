@@ -1,6 +1,7 @@
 import os
 import copy
 import glob
+import json
 import logging
 import pymongo
 import datetime
@@ -33,6 +34,7 @@ DEFAULT_CONFIG = {
         'id': 'local',
         'name': 'Local',
         'api_url': 'https://localhost/api',
+        'redirect_url': 'https://localhost',
         'central_url': 'https://sdmc.scitran.io/api',
         'registered': False,
         'ssl_cert': None
@@ -43,11 +45,14 @@ DEFAULT_CONFIG = {
         'prefetch': False
     },
     'auth': {
-        'auth_type': 'google',
-        'client_id': '1052740023071-n20pk8h5uepdua3r8971pc6jrf25lvee.apps.googleusercontent.com',
-        'id_endpoint': 'https://www.googleapis.com/plus/v1/people/me/openIdConnect',
-        'auth_endpoint': 'https://accounts.google.com/o/oauth2/auth',
-        'verify_endpoint': 'https://www.googleapis.com/oauth2/v1/tokeninfo',
+        'google': {
+            "id_endpoint" : "https://www.googleapis.com/plus/v1/people/me/openIdConnect",
+            "client_id" : "979703271380-q85tbsupddmb7996q30244368r7e54lr.apps.googleusercontent.com",
+            "token_endpoint" : "https://accounts.google.com/o/oauth2/token",
+            "verify_endpoint" : "https://www.googleapis.com/oauth2/v1/tokeninfo",
+            "refresh_endpoint" : "https://www.googleapis.com/oauth2/v4/token",
+            "auth_endpoint" : "https://accounts.google.com/o/oauth2/auth"
+        }
     },
     'persistent': {
         'db_uri': 'mongodb://localhost:9001/scitran',
@@ -61,7 +66,20 @@ DEFAULT_CONFIG = {
 
 def apply_env_variables(config):
     # Overwrite default config values with SCITRAN env variables if available
+
+    # Load auth config from file if available
+    if 'SCITRAN_AUTH_CONFIG_FILE' in os.environ:
+        auth_config = config['auth']
+        file_path = os.environ['SCITRAN_AUTH_CONFIG_FILE']
+        with open(file_path) as config_file:
+            environ_config = json.load(config_file)
+        auth_config.update(environ_config)
+        config['auth'] = auth_config
+
     for outer_key, scoped_config in config.iteritems():
+        if outer_key == 'auth':
+            # Auth is loaded via file
+            continue
         try:
             for inner_key in scoped_config:
                 key = 'SCITRAN_' + outer_key.upper() + '_' + inner_key.upper()
@@ -226,7 +244,7 @@ def initialize_db():
         upsert=True
     )
 
-    create_or_recreate_ttl_index('authtokens', 'timestamp', 604800)
+    create_or_recreate_ttl_index('authtokens', 'timestamp', 2592000)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
     create_or_recreate_ttl_index('downloads', 'timestamp', 60)
 
@@ -262,11 +280,14 @@ def get_config():
     return __config
 
 def get_public_config():
+    auth = copy.deepcopy(__config.get('auth'))
+    for values in auth.itervalues():
+        values.pop('client_secret', None)
     return {
         'created': __config.get('created'),
         'modified': __config.get('modified'),
         'site': __config.get('site'),
-        'auth': __config.get('auth'),
+        'auth': auth,
     }
 
 def get_version():
@@ -289,3 +310,6 @@ def mongo_pipeline(table, pipeline):
         raise Exception()
 
     return result
+
+def get_auth(auth_type):
+    return get_config()['auth'][auth_type]

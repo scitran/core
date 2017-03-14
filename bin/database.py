@@ -16,7 +16,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 22 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 23 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -637,6 +637,7 @@ def upgrade_to_21():
     query['$or'].append({'measurement': { '$exists': True}})
     dm_v2_updates(config.db.acquisitions.find(query), 'acquisitions')
 
+
 def upgrade_to_22():
     """
     Add created and modified timestamps to gear docs
@@ -777,6 +778,21 @@ def upgrade_to_22():
 
     logging.info('Upgrade v22, complete.')
 
+
+def upgrade_to_23():
+    """
+    scitran/core issue #650
+
+    Support multiple auth providers
+    Config 'auth' key becomes map where keys are auth_type
+    """
+
+    db_config = config.db.singletons.find_one({'_id': 'config'})
+    if db_config:
+        auth_config = db_config.get('auth', {})
+        if auth_config.get('auth_type'):
+            auth_type = auth_config.pop('auth_type')
+            config.db.singletons.update_one({'_id': 'config'}, {'$set': {'auth': {auth_type: auth_config}}})
 
 
 def upgrade_schema():

@@ -40,7 +40,8 @@
         "last_used":      {}
       },
       "additionalProperties": false
-    }
+    },
+    "wechat": {}
   },
   "additionalProperties": false,
   "required":["_id", "firstname", "lastname", "created", "modified", "root"]

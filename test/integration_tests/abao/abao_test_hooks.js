@@ -23,6 +23,7 @@ var test_project_1 = null;
 var test_project_tag = 'test-project-tag';
 var delete_project_id = '';
 var device_id = 'bootstrapper_Bootstrapper'
+var injected_api_key = 'XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK'
 
 // Tests we're skipping, fix these
 
@@ -90,6 +91,13 @@ hooks.skip("POST /sessions/{SessionId}/analyses -> 200")
 hooks.skip("GET /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
 hooks.skip("DELETE /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
 
+hooks.before("POST /login -> 200", function(test, done) {
+    test.request.body = {
+        'code': injected_api_key,
+        'auth_type': 'api-key'
+    };
+    done();
+});
 
 hooks.beforeEach(function (test, done) {
     test.request.query.root = "true"

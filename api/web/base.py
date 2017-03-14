@@ -1,11 +1,10 @@
+import base64
 import datetime
-import json
 import jsonschema
+import os
 import pymongo
 import requests
 import traceback
-import urllib
-import urlparse
 import webapp2
 
 from .. import util
@@ -13,6 +12,8 @@ from .. import files
 from .. import config
 from ..types import Origin
 from .. import validators
+from ..auth.authproviders import AuthProvider, APIKeyAuthProvider
+from ..auth import APIAuthProviderException, APIUnknownUserException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
@@ -31,7 +32,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         drone_request = False
         user_agent = self.request.headers.get('User-Agent', '')
-        access_token = self.request.headers.get('Authorization', None)
+        session_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
         drone_method = self.request.headers.get('X-SciTran-Method', None)
         drone_name = self.request.headers.get('X-SciTran-Name', None)
@@ -40,18 +41,18 @@ class RequestHandler(webapp2.RequestHandler):
         if site_id is None:
             self.abort(503, 'Database not initialized')
 
-        if access_token:
-            if access_token.startswith('scitran-user '):
+        if session_token:
+            if session_token.startswith('scitran-user '):
                 # User (API key) authentication
-                key = access_token.split()[1]
-                self.uid = self.authenticate_user_api_key(key)
-            elif access_token.startswith('scitran-drone '):
+                key = session_token.split()[1]
+                self.uid = APIKeyAuthProvider.validate_user_api_key(key)
+            elif session_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
                 # When supported, remove custom headers and shared secret
                 self.abort(401, 'Drone API keys are not yet supported')
             else:
                 # User (oAuth) authentication
-                self.uid = self.authenticate_user(access_token)
+                self.uid = self.authenticate_user_token(session_token)
 
         # Drone shared secret authentication
         elif drone_secret is not None:
@@ -79,14 +80,20 @@ class RequestHandler(webapp2.RequestHandler):
 
         if self.public_request or self.source_site:
             self.superuser_request = False
+            self.user_is_admin = False
         elif drone_request:
             self.superuser_request = True
+            self.user_is_admin = True
         else:
             user = config.db.users.find_one({'_id': self.uid}, ['root', 'disabled'])
             if not user:
                 self.abort(402, 'user ' + self.uid + ' does not exist')
             if user.get('disabled', False) is True:
                 self.abort(402, 'user account ' + self.uid + ' is disabled')
+            if user.get('root'):
+                self.user_is_admin = True
+            else:
+                self.user_is_admin = False
             if self.is_true('root'):
                 if user.get('root'):
                     self.superuser_request = True
@@ -102,22 +109,7 @@ class RequestHandler(webapp2.RequestHandler):
         super(RequestHandler, self).initialize(request, response)
         request.logger.info("Initialized request")
 
-    def authenticate_user_api_key(self, key):
-        """
-        AuthN for user accounts via api key. Calls self.abort on failure.
-
-        Returns the user's UID.
-        """
-
-        timestamp = datetime.datetime.utcnow()
-        user = config.db.users.find_one_and_update({'api_key.key': key}, {'$set': {'api_key.last_used': timestamp}}, ['_id'])
-        if user:
-            return user['_id']
-        else:
-            self.abort(401, 'Invalid scitran-user API key')
-
-
-    def authenticate_user(self, access_token):
+    def authenticate_user_token(self, session_token):
         """
         AuthN for user accounts. Calls self.abort on failure.
 
@@ -126,88 +118,34 @@ class RequestHandler(webapp2.RequestHandler):
 
         uid = None
         timestamp = datetime.datetime.utcnow()
-        cached_token = config.db.authtokens.find_one({'_id': access_token})
+        cached_token = config.db.authtokens.find_one({'_id': session_token})
 
         if cached_token:
-            uid = cached_token['uid']
             self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
+
+            # Check if token is expired
+            if cached_token.get('expires') and timestamp > cached_token['expires']:
+                refresh_token = cached_token.get('refresh_token')
+                if refresh_token:
+                    # Attempt to refresh the token, update db
+
+                    auth_type = cached_token['auth_type']
+                    try:
+                        auth_provider = AuthProvider.factory(auth_type)
+                    except NotImplementedError as e:
+                        self.abort(401, str(e))
+
+                    updated_token_info = auth_provider.refresh_token(refresh_token)
+                    config.db.authtokens.update_one({'_id': cached_token['_id']}, {'$set': updated_token_info})
+
+                else:
+                    # Token expired, remove and deny request
+                    config.db.authtokens.delete_one({'_id': cached_token['_id']})
+                    self.abort(401, 'Expired session token')
+
+            uid = cached_token['uid']
         else:
-            uid = self.validate_oauth_token(access_token, timestamp)
-            self.request.logger.debug('looked up remote token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
-
-            # Cache the token for future requests
-            update = {
-                'uid': uid,
-                'timestamp': timestamp,
-                'auth_type': config.get_item('auth', 'auth_type')
-            }
-            config.db.authtokens.replace_one({'_id': access_token}, update, upsert=True)
-
-        return uid
-
-    def validate_oauth_token(self, access_token, timestamp):
-        """
-        Validates a token assertion against the configured ID endpoint. Calls self.abort on failure.
-
-        Returns the user's UID.
-        """
-
-        id_endpoint = config.get_item('auth', 'id_endpoint')
-        auth_type = config.get_item('auth', 'auth_type')
-
-        # If we start supporting more than google and ldap, break into classes inherited from abstract class
-        if auth_type == 'google':
-            r = requests.get(id_endpoint, headers={'Authorization': 'Bearer ' + access_token})
-        elif auth_type == 'ldap':
-            p = {'token': access_token}
-            r = requests.post(id_endpoint, data=p)
-        else:
-            raise self.abort(401, 'Auth not configured.')
-
-        if not r.ok:
-            # Oauth authN failed; for now assume it was an invalid token. Could be more accurate in the future.
-            err_msg = 'Invalid OAuth2 token.'
-            site_id = config.get_item('site', 'id')
-            headers = {'WWW-Authenticate': 'Bearer realm="{}", error="invalid_token", error_description="{}"'.format(site_id, err_msg)}
-            self.request.logger.warning('{} Request headers: {}'.format(err_msg, str(self.request.headers.items())))
-            self.abort(401, err_msg, headers=headers)
-
-        identity = json.loads(r.content)
-        email_key = 'email' if auth_type == 'google' else 'mail'
-        uid = identity.get(email_key)
-
-        if not uid:
-            self.abort(400, 'OAuth2 token resolution did not return email address')
-
-        # If this is the first time they've logged in, record that
-        config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})
-
-        # Unconditionally set their most recent login time
-        config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': timestamp}})
-
-        # Set user's auth provider avatar
-        # TODO: switch on auth.provider rather than manually comparing endpoint URL.
-        if auth_type == 'google':
-            # A google-specific avatar URL is provided in the identity return.
-            provider_avatar = identity.get('picture', '')
-
-            # Remove attached size param from URL.
-            u = urlparse.urlparse(provider_avatar)
-            query = urlparse.parse_qs(u.query)
-            query.pop('sz', None)
-            u = u._replace(query=urllib.urlencode(query, True))
-            provider_avatar = urlparse.urlunparse(u)
-            # Update the user's provider avatar if it has changed.
-            config.db.users.update_one({'_id': uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': timestamp}})
-
-            # If the user has no avatar set, mark their provider_avatar as their chosen avatar.
-            config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': provider_avatar, 'modified': timestamp}})
-
-        # Look to see if user has a Gravatar
-        gravatar = util.resolve_gravatar(uid)
-        if gravatar is not None:
-            # Update the user's gravatar if it has changed.
-            config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
+            self.abort(401, 'Invalid session token')
 
         return uid
 
@@ -221,10 +159,32 @@ class RequestHandler(webapp2.RequestHandler):
         Not required to use system as logged in user.
         """
 
-        if not self.uid:
-            self.abort(400, 'Only users may log in.')
+        payload = self.request.json_body
+        if 'code' not in payload or 'auth_type' not in payload:
+            self.abort(400, 'Auth code and type required for login')
 
-        return {'success': True}
+        auth_type = payload['auth_type']
+        try:
+            auth_provider = AuthProvider.factory(auth_type)
+        except NotImplementedError as e:
+            self.abort(400, str(e))
+
+        registration_code = payload.get('registration_code')
+        token_entry = auth_provider.validate_code(payload['code'], registration_code=registration_code)
+        timestamp = datetime.datetime.utcnow()
+
+        # If this is the first time they've logged in, record that
+        config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})
+        # Unconditionally set their most recent login time
+        config.db.users.update_one({'_id': self.uid}, {'$set': {'lastlogin': timestamp}})
+
+        session_token = base64.urlsafe_b64encode(os.urandom(42))
+        token_entry['_id'] = session_token
+        token_entry['timestamp'] = timestamp
+
+        config.db.authtokens.insert_one(token_entry)
+
+        return {'token': session_token}
 
 
     @log_access(AccessType.user_logout)
@@ -233,11 +193,11 @@ class RequestHandler(webapp2.RequestHandler):
         Remove all cached auth tokens associated with caller's uid.
         """
 
-        if not self.uid:
-            self.abort(400, 'Only users may log out.')
-
-        result = config.db.authtokens.delete_many({'uid': self.uid})
-        return {'auth_tokens_removed': result.deleted_count}
+        token = self.request.headers.get('Authorization', None)
+        if not token:
+            self.abort(401, 'User not logged in.')
+        result = config.db.authtokens.delete_one({'_id': token})
+        return {'tokens_removed': result.deleted_count}
 
 
     def set_origin(self, drone_request):
@@ -320,6 +280,10 @@ class RequestHandler(webapp2.RequestHandler):
         elif isinstance(exception, validators.InputValidationException):
             code = 400
             self.request.logger.warning(str(exception))
+        elif isinstance(exception, APIAuthProviderException):
+            code = 401
+        elif isinstance(exception, APIUnknownUserException):
+            code = 402
         elif isinstance(exception, APIConsistencyException):
             code = 400
         elif isinstance(exception, APIPermissionException):
@@ -383,7 +347,6 @@ class RequestHandler(webapp2.RequestHandler):
             # If this is a ticket download, log only once per ticket
             ticket_id = self.get_param('ticket')
             log_map['context']['ticket_id'] = ticket_id
-            config.log.debug('the context is {} and the ticket is {}'.format(log_map['context'], ticket_id))
             try:
                 config.log_db.access_log.update(
                     {'context.ticket_id': ticket_id},

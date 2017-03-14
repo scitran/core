@@ -116,10 +116,11 @@ endpoints = [
             route('/self/avatar',          UserHandler, h='self_avatar',     m=['GET']),
             route('/self/key',             UserHandler, h='generate_api_key',m=['POST']),
 
-            route('/<_id:{uid}>',          UserHandler),
-            route('/<uid:{uid}>/groups',   GroupHandler,                h='get_all',          m=['GET']),
-            route('/<uid:{uid}>/avatar',   UserHandler,                 h='avatar',           m=['GET']),
-            route('/<uid:{uid}>/<cont_name:{cname}>', ContainerHandler, h='get_all_for_user', m=['GET']),
+            route('/<_id:{uid}>',                       UserHandler),
+            route('/<uid:{uid}>/groups',                GroupHandler,                h='get_all',               m=['GET']),
+            route('/<uid:{uid}>/avatar',                UserHandler,                 h='avatar',                m=['GET']),
+            route('/<uid:{uid}>/reset-registration',    UserHandler,                 h='reset_registration',    m=['POST']),
+            route('/<uid:{uid}>/<cont_name:{cname}>',   ContainerHandler, h='get_all_for_user', m=['GET']),
 
         ]),
 

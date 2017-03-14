@@ -28,6 +28,13 @@ def _get_access(uid, site, container):
 def has_access(uid, container, perm, site):
     return _get_access(uid, site, container) >= INTEGER_ROLES[perm]
 
+class APIAuthProviderException(Exception):
+    pass
+
+class APIUnknownUserException(Exception):
+    pass
+
+
 def always_ok(exec_op):
     """
     This decorator leaves the original method unchanged.
@@ -47,6 +54,18 @@ def require_login(handler_method):
             raise APIPermissionException('Login required.')
         return handler_method(self, *args, **kwargs)
     return check_login
+
+def require_admin(handler_method):
+    """
+    A decorator to ensure the request is made as superuser.
+
+    Accepts drone and user requests.
+    """
+    def check_admin(self, *args, **kwargs):
+        if not self.user_is_admin:
+            raise APIPermissionException('Admin user required.')
+        return handler_method(self, *args, **kwargs)
+    return check_admin
 
 def require_superuser(handler_method):
     """

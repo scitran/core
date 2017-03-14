@@ -7,7 +7,7 @@ from ..web import base
 from .. import util
 from .. import config
 from .. import validators
-from ..auth import userauth
+from ..auth import userauth, require_admin
 from ..dao import containerstorage
 from ..dao import noop, APIStorageException
 
@@ -23,7 +23,10 @@ class UserHandler(base.RequestHandler):
     def get(self, _id):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
-        result = permchecker(self.storage.exec_op)('GET', _id, projection={'api_key': 0} or None)
+        projection = {'api_key': 0}
+        if not self.user_is_admin:
+            projection['wechat'] = 0
+        result = permchecker(self.storage.exec_op)('GET', _id, projection=projection or None)
         if result is None:
             self.abort(404, 'User does not exist')
         return result
@@ -39,7 +42,10 @@ class UserHandler(base.RequestHandler):
 
     def get_all(self):
         permchecker = userauth.list_permission_checker(self)
-        result = permchecker(self.storage.exec_op)('GET', projection={'preferences': 0, 'api_key': 0})
+        projection = {'preferences': 0, 'api_key': 0}
+        if not self.user_is_admin:
+            projection['wechat'] = 0
+        result = permchecker(self.storage.exec_op)('GET', projection=projection)
         if result is None:
             self.abort(404, 'Not found')
         return result
@@ -79,6 +85,8 @@ class UserHandler(base.RequestHandler):
         """Add user"""
         permchecker = userauth.default(self)
         payload = self.request.json_body
+        if self.is_true('wechat'):
+            payload['wechat'] = {'registration_code': base64.urlsafe_b64encode(os.urandom(42))}
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
         payload_schema_uri = validators.schema_uri('input', 'user-new.json')
@@ -164,6 +172,21 @@ class UserHandler(base.RequestHandler):
             return {'key': generated_key}
         else:
             self.abort(500, 'New key for user {} not generated'.format(self.uid))
+
+    @require_admin
+    def reset_registration(self, uid):
+        new_registration_code = base64.urlsafe_b64encode(os.urandom(42))
+        update = {
+            'modified': datetime.datetime.utcnow(),
+            'wechat': {
+                'registration_code': new_registration_code
+            }
+        }
+        result = self.storage.exec_op('PUT', _id=uid, payload=update)
+        if result.modified_count == 1:
+            return {'registration_code': new_registration_code}
+        else:
+            self.abort(404, 'User {} not updated'.format(uid))
 
     def _get_user(self, _id):
         user = self.storage.get_container(_id)
