@@ -12,7 +12,7 @@ from .. import files
 from .. import config
 from ..types import Origin
 from .. import validators
-from ..auth.authproviders import AuthProvider
+from ..auth.authproviders import AuthProvider, APIKeyAuthProvider
 from ..auth import APIAuthProviderException, APIUnknownUserException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from ..dao.hierarchy import get_parent_tree
@@ -45,7 +45,7 @@ class RequestHandler(webapp2.RequestHandler):
             if session_token.startswith('scitran-user '):
                 # User (API key) authentication
                 key = session_token.split()[1]
-                self.uid = self.authenticate_user_api_key(key)
+                self.uid = APIKeyAuthProvider.validate_user_api_key(key)
             elif session_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
                 # When supported, remove custom headers and shared secret
@@ -108,22 +108,6 @@ class RequestHandler(webapp2.RequestHandler):
     def initialize(self, request, response):
         super(RequestHandler, self).initialize(request, response)
         request.logger.info("Initialized request")
-
-
-    def authenticate_user_api_key(self, key):
-        """
-        AuthN for user accounts via api key. Calls self.abort on failure.
-
-        Returns the user's UID.
-        """
-
-        timestamp = datetime.datetime.utcnow()
-        user = config.db.users.find_one_and_update({'api_key.key': key}, {'$set': {'api_key.last_used': timestamp}}, ['_id'])
-        if user:
-            return user['_id']
-        else:
-            self.abort(401, 'Invalid scitran-user API key')
-
 
     def authenticate_user_token(self, session_token):
         """

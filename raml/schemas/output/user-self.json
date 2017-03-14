@@ -14,7 +14,9 @@
     "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
     "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
     "api_key":{"$ref":"../definitions/user.json#/definitions/api_key"},
-    "wechat":{"$ref":"../definitions/user.json#/definitions/wechat"}
+    "wechat":{"$ref":"../definitions/user.json#/definitions/wechat"},
+    "firstlogin":{"$ref":"../definitions/user.json#/definitions/firstlogin"},
+    "lastlogin":{"$ref":"../definitions/user.json#/definitions/lastlogin"}
   },
   "additionalProperties":false,
   "required":[

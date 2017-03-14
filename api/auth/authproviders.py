@@ -16,12 +16,13 @@ class AuthProvider(object):
     Examples: projects, sessions, acquisitions and collections
     """
 
-    def __init__(self, auth_type):
+    def __init__(self, auth_type, set_config=True):
         self.auth_type = auth_type
-        try:
-            self.config =  config.get_auth(auth_type)
-        except KeyError:
-            raise NotImplementedError('Auth type {} is not supported by this instance'.format(auth_type))
+        if set_config:
+            try:
+                self.config =  config.get_auth(auth_type)
+            except KeyError:
+                raise NotImplementedError('Auth type {} is not supported by this instance'.format(auth_type))
 
     @staticmethod
     def factory(auth_type):
@@ -52,7 +53,6 @@ class AuthProvider(object):
                 timestamp = datetime.datetime.utcnow()
                 # Update the user's gravatar if it has changed.
                 config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
-
 
 
 class JWTAuthProvider(AuthProvider):
@@ -240,8 +240,53 @@ class WechatOAuthProvider(AuthProvider):
     def set_user_avatar(self, uid, identity):
         pass
 
+
+class APIKeyAuthProvider(AuthProvider):
+    """
+    Uses an API key for authentication.
+
+    Note: This auth provider is mainly used for testing. A user
+    can access the API directly by placing their API key in the
+    Authorization header. There is no need for them to exchange
+    the key for a session token in normal usecases.
+
+    The static method is used by the base RequestHandler to
+    verify the API key and attach it to a user.
+    """
+
+    def __init__(self):
+        """
+        Does not need to be supported in config.
+        """
+        super(APIKeyAuthProvider,self).__init__('api-key', set_config=False)
+
+    def validate_code(self, code, **kwargs):
+        uid = self.validate_user_api_key(code)
+        return {
+            'access_token': code,
+            'uid': uid,
+            'auth_type': self.auth_type,
+            'expires': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        }
+
+    @staticmethod
+    def validate_user_api_key(key):
+        """
+        AuthN for user accounts via api key.
+
+        401s via APIAuthProviderException on failure.
+        """
+        timestamp = datetime.datetime.utcnow()
+        user = config.db.users.find_one_and_update({'api_key.key': key}, {'$set': {'api_key.last_used': timestamp}}, ['_id'])
+        if user:
+            return user['_id']
+        else:
+            raise APIAuthProviderException('Invalid scitran-user API key')
+
+
 AuthProviders = {
     'google'    : GoogleOAuthProvider,
     'ldap'      : JWTAuthProvider,
-    'wechat'    : WechatOAuthProvider
+    'wechat'    : WechatOAuthProvider,
+    'api-key'   : APIKeyAuthProvider
 }

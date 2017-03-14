@@ -36,6 +36,8 @@
                           "type": "object"
                         },
     "wechat": {},
+    "firstlogin":       {"type": "string"},
+    "lastlogin":        {"type": "string"},
     "api_key":{
       "type":"object",
       "properties":{
@@ -57,7 +59,9 @@
         "root":{"$ref":"#/definitions/root"},
         "disabled":{"$ref":"#/definitions/disabled"},
         "preferences":{"$ref":"#/definitions/preferences"},
-        "wechat":{"$ref":"#/definitions/wechat"}
+        "wechat":{"$ref":"#/definitions/wechat"},
+        "firstlogin":{"$ref":"#/definitions/firstlogin"},
+        "lastlogin":{"$ref":"#/definitions/lastlogin"}
       },
       "additionalProperties":false
     },
@@ -74,6 +78,8 @@
         "disabled":{"$ref":"#/definitions/disabled"},
         "preferences":{"$ref":"#/definitions/preferences"},
         "wechat":{"$ref":"#/definitions/wechat"},
+        "firstlogin":{"$ref":"#/definitions/firstlogin"},
+        "lastlogin":{"$ref":"#/definitions/lastlogin"},
         "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
         "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"}
       },

@@ -86,7 +86,12 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.post('/login')
+    payload = json.dumps({
+        'auth_type': 'api-key',
+        'code': 'XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK'
+    })
+
+    r = api_as_user.post('/login', data=payload)
     assert r.ok
 
     log_records_count_after = access_log_db.access_log.count({})
