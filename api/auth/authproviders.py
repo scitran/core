@@ -184,7 +184,9 @@ class WechatOAuthProvider(AuthProvider):
 
         response = json.loads(r.content)
         config.log.debug(response)
-        openid = response['openid']
+        openid = response.get('openid')
+        if not openid:
+            raise APIAuthProviderException('Open ID not returned with successful auth.')
 
         registration_code = kwargs.get('registration_code')
         uid = self.validate_user(openid, registration_code=registration_code)
@@ -219,6 +221,10 @@ class WechatOAuthProvider(AuthProvider):
             user = config.db.users.find_one({'wechat.registration_code': registration_code})
             if user is None:
                 raise APIUnknownUserException('Invalid or expired registration code.')
+
+            # Check to make sure there is not already a user with this wechat openid:
+            if config.db.users.find({'wechat.openid': openid}).count() > 0:
+                raise APIUnknownUserException('User already registred with this Wechat OpenID.')
             update = {
                 '$set': {
                     'wechat.openid': openid
