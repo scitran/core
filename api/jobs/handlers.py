@@ -11,6 +11,7 @@ from ..dao import APIPermissionException
 from ..dao.containerstorage import AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from ..web import base
+from ..validators import InputValidationException
 from .. import config
 from . import batch
 
@@ -78,18 +79,13 @@ class GearHandler(base.RequestHandler):
             return { '_id': str(result) }
 
         except ValidationError as err:
-            key = None
+            key = "none"
             if len(err.relative_path) > 0:
                 key = err.relative_path[0]
 
-            self.response.set_status(400)
-            return {
-                'reason': 'Gear manifest does not match schema',
-                'error': err.message.replace("u'", "'"),
-                'key': key
-            }
+            message = err.message.replace("u'", "'")
 
-
+            raise InputValidationException('Gear manifest does not match schema on key ' + key + ': ' + message)
 
     def delete(self, _id):
         """Delete a gear. Generally not recommended."""
