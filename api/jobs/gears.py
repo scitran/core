@@ -161,7 +161,10 @@ def insert_gear(doc):
 
 
 def remove_gear(_id):
-    config.db.gears.delete_one({"_id": _id})
+    result = config.db.gears.delete_one({"_id": bson.ObjectId(_id)})
+
+    if result.deleted_count != 1:
+        raise Exception("Deleted failed " + str(result.raw_result))
 
 def upsert_gear(doc):
     gear_tools.validate_manifest(doc['gear'])
