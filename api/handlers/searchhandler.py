@@ -105,10 +105,18 @@ class SearchHandler(base.RequestHandler):
         return results
 
     def _augment_result(self, result, result_type):
+        # Check if result type is special leaf node
         if result_type in ['files', 'notes', 'analyses']:
+
+            # Find leaf's parent container, add to source as parent_container_name: parent_container
             container = result['_source'].pop('container')
             container_name = result['_source']['container_name']
             result['_source'][container_name[:-1]] = container
+
+            # Get user_permissions results from strip, add to leaf
+            self._strip_other_permissions(container, container_name)
+            result['_source']['user_permissions'] = container.get('user_permissions')
+
         else:
             container = result['_source']
             container_name = result_type
