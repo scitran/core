@@ -183,7 +183,6 @@ class WechatOAuthProvider(AuthProvider):
             raise APIAuthProviderException('User code not valid')
 
         response = json.loads(r.content)
-        config.log.debug(response)
         openid = response.get('openid')
         if not openid:
             raise APIAuthProviderException('Open ID not returned with successful auth.')
@@ -223,7 +222,16 @@ class WechatOAuthProvider(AuthProvider):
                 raise APIUnknownUserException('Invalid or expired registration link.')
 
             # Check to make sure there is not already a user with this wechat openid:
-            if config.db.users.find({'wechat.openid': openid}).count() > 0:
+            conflicts = config.db.users.find({'wechat.openid': openid})
+            if conflicts.count() > 0:
+                # For now, throw the error in access log so the site admin can find it
+                log_map = {
+                    'access_type':      'user_conflict',
+                    'timestamp':        datetime.datetime.utcnow(),
+                    'conflicts':        [c['_id'] for c in conflicts],
+                    'attempted_user':   user['_id']
+                }
+                config.log_db.access_log.insert_one(log_map)
                 raise APIUnknownUserException('Another user is already registred with this Wechat OpenID.')
             update = {
                 '$set': {
