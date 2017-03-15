@@ -42,9 +42,9 @@ class AuthProvider(object):
     def ensure_user_exists(self, uid):
         user = config.db.users.find_one({'_id': uid})
         if not user:
-            raise APIUnknownUserException('User {} does not exist.'.format(uid))
+            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(uid))
         if user.get('disabled', False) is True:
-            raise APIUnknownUserException('User {} is disabled'.format(uid))
+            raise APIUnknownUserException('User {} is disabled.'.format(uid))
 
     def set_user_gravatar(self, uid, email):
         if email and uid:
@@ -220,11 +220,11 @@ class WechatOAuthProvider(AuthProvider):
         if registration_code:
             user = config.db.users.find_one({'wechat.registration_code': registration_code})
             if user is None:
-                raise APIUnknownUserException('Invalid or expired registration code.')
+                raise APIUnknownUserException('Invalid or expired registration link.')
 
             # Check to make sure there is not already a user with this wechat openid:
             if config.db.users.find({'wechat.openid': openid}).count() > 0:
-                raise APIUnknownUserException('User already registred with this Wechat OpenID.')
+                raise APIUnknownUserException('Another user is already registred with this Wechat OpenID.')
             update = {
                 '$set': {
                     'wechat.openid': openid
@@ -237,9 +237,9 @@ class WechatOAuthProvider(AuthProvider):
         else:
             user = config.db.users.find_one({'wechat.openid': openid})
         if not user:
-            raise APIUnknownUserException('User not registered.')
+            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(uid))
         if user.get('disabled', False) is True:
-            raise APIUnknownUserException('User {} is disabled'.format(user['_id']))
+            raise APIUnknownUserException('User {} is disabled.'.format(uid))
 
         return user['_id']
 
