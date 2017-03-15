@@ -42,9 +42,9 @@ class AuthProvider(object):
     def ensure_user_exists(self, uid):
         user = config.db.users.find_one({'_id': uid})
         if not user:
-            raise APIUnknownUserException('User {} does not exist.'.format(uid))
+            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(uid))
         if user.get('disabled', False) is True:
-            raise APIUnknownUserException('User {} is disabled'.format(uid))
+            raise APIUnknownUserException('User {} is disabled.'.format(uid))
 
     def set_user_gravatar(self, uid, email):
         if email and uid:
@@ -183,8 +183,9 @@ class WechatOAuthProvider(AuthProvider):
             raise APIAuthProviderException('User code not valid')
 
         response = json.loads(r.content)
-        config.log.debug(response)
-        openid = response['openid']
+        openid = response.get('openid')
+        if not openid:
+            raise APIAuthProviderException('Open ID not returned with successful auth.')
 
         registration_code = kwargs.get('registration_code')
         uid = self.validate_user(openid, registration_code=registration_code)
@@ -218,7 +219,20 @@ class WechatOAuthProvider(AuthProvider):
         if registration_code:
             user = config.db.users.find_one({'wechat.registration_code': registration_code})
             if user is None:
-                raise APIUnknownUserException('Invalid or expired registration code.')
+                raise APIUnknownUserException('Invalid or expired registration link.')
+
+            # Check to make sure there is not already a user with this wechat openid:
+            conflicts = config.db.users.find({'wechat.openid': openid})
+            if conflicts.count() > 0:
+                # For now, throw the error in access log so the site admin can find it
+                log_map = {
+                    'access_type':      'user_conflict',
+                    'timestamp':        datetime.datetime.utcnow(),
+                    'conflicts':        [c['_id'] for c in conflicts],
+                    'attempted_user':   user['_id']
+                }
+                config.log_db.access_log.insert_one(log_map)
+                raise APIUnknownUserException('Another user is already registred with this Wechat OpenID.')
             update = {
                 '$set': {
                     'wechat.openid': openid
@@ -231,9 +245,9 @@ class WechatOAuthProvider(AuthProvider):
         else:
             user = config.db.users.find_one({'wechat.openid': openid})
         if not user:
-            raise APIUnknownUserException('User not registered.')
+            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(user['_id']))
         if user.get('disabled', False) is True:
-            raise APIUnknownUserException('User {} is disabled'.format(user['_id']))
+            raise APIUnknownUserException('User {} is disabled.'.format(user['_id']))
 
         return user['_id']
 
