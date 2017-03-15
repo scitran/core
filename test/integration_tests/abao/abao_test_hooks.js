@@ -90,6 +90,9 @@ hooks.skip("GET /sessions/{SessionId}/jobs -> 200")
 hooks.skip("POST /sessions/{SessionId}/analyses -> 200")
 hooks.skip("GET /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
 hooks.skip("DELETE /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
+// Related, ref #696
+hooks.skip("DELETE /gears/{GearName} -> 200")
+
 
 hooks.before("POST /login -> 200", function(test, done) {
     test.request.body = {
