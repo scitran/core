@@ -27,7 +27,7 @@ def default_container(handler, container=None, target_parent_container=None):
                 has_access = _get_access(handler.uid, handler.user_site, target_parent_container) >= INTEGER_ROLES[required_perm]
             elif method == 'DELETE':
                 required_perm = 'rw'
-                if container.get('has_children') is True or container.get('files'):
+                if container.get('has_children'):
                     # If the container has children or files, admin is required to delete
                     required_perm = 'admin'
                     additional_error_msg = 'Container is not empty.'
