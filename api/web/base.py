@@ -87,9 +87,9 @@ class RequestHandler(webapp2.RequestHandler):
         else:
             user = config.db.users.find_one({'_id': self.uid}, ['root', 'disabled'])
             if not user:
-                raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(uid))
+                raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(self.uid))
             if user.get('disabled', False) is True:
-                raise APIUnknownUserException('User {} is disabled.'.format(uid))
+                raise APIUnknownUserException('User {} is disabled.'.format(self.uid))
             if user.get('root'):
                 self.user_is_admin = True
             else:

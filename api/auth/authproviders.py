@@ -245,9 +245,9 @@ class WechatOAuthProvider(AuthProvider):
         else:
             user = config.db.users.find_one({'wechat.openid': openid})
         if not user:
-            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(uid))
+            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(user['_id']))
         if user.get('disabled', False) is True:
-            raise APIUnknownUserException('User {} is disabled.'.format(uid))
+            raise APIUnknownUserException('User {} is disabled.'.format(user['_id']))
 
         return user['_id']
 
