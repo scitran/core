@@ -449,6 +449,8 @@ class ContainerHandler(base.RequestHandler):
             container['has_children'] = bool(self.storage.get_children(_id))
         else:
             container['has_children'] = False
+        if container.get('analyses', []):
+            container['has_children'] = True
         target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
