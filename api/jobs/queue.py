@@ -190,7 +190,7 @@ class Queue(object):
         if result is None:
             raise Exception('Marked job as running but could not generate and save formula')
 
-        return result
+        return Job.load(result)
 
     @staticmethod
     def search(containers, states=None, tags=None):
