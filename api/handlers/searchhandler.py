@@ -172,7 +172,7 @@ class SearchHandler(base.RequestHandler):
                     container_name: {}
                     """.format(container_id, container_name))
             elif len(es_results) == 0:
-                self.abort(500,
+                raise APINotFoundException(
                     """Zero result returned by ElasticSearch for container:
                     container_id: {}
                     container_name: {}
@@ -182,7 +182,7 @@ class SearchHandler(base.RequestHandler):
                 self.cached_containers[(container_name, container_id)] = result
                 return result
         except elasticsearch.exceptions.ConnectionError:
-            self.abort(503, 'elasticsearch is not available')
+            raise APINotFoundException('elasticsearch is not available')
 
     def get_datatree(self):
         if self.public_request:
