@@ -638,9 +638,6 @@ class AnalysesHandler(ListHandler):
             self.abort(400, 'ticket not for this resource')
         return ticket
 
-    def put(self, *args, **kwargs):
-        raise NotImplementedError("an analysis can't be modified")
-
     def post(self, cont_name, list_name, **kwargs):
         """
         Default behavior:

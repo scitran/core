@@ -413,8 +413,12 @@ def test_analysis_upload(with_gear, with_hierarchy, as_user):
     })
     assert r.ok
 
+    # try to create analysis+job w/ missing analysis/job info
+    r = as_user.post('/sessions/' + data.session + '/analyses', params={'job': 'true'}, json={})
+    assert r.status_code == 400
+
     # create session analysis (job) using acquisition's file as input
-    r = as_user.post('/sessions/' + data.session + '/analyses?job=true', json={
+    r = as_user.post('/sessions/' + data.session + '/analyses', params={'job': 'true'}, json={
         'analysis': { 'label': 'test analysis job' },
         'job': {
             'gear_id': gear,
