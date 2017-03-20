@@ -27,6 +27,11 @@ class RequestHandler(webapp2.RequestHandler):
         """Set uid, source_site, public_request, and superuser"""
         self.initialize(request, response)
 
+        # If user is attempting to log in through `/login`, ignore Auth here:
+        # In future updates, move login and logout handlers to class that overrides this init
+        if self.request.path == 'api/login':
+            return
+
         self.uid = None
         self.source_site = None
 
@@ -173,6 +178,8 @@ class RequestHandler(webapp2.RequestHandler):
         token_entry = auth_provider.validate_code(payload['code'], registration_code=registration_code)
         timestamp = datetime.datetime.utcnow()
 
+        self.uid = token_entry['uid']
+
         # If this is the first time they've logged in, record that
         config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})
         # Unconditionally set their most recent login time
@@ -183,6 +190,8 @@ class RequestHandler(webapp2.RequestHandler):
         token_entry['timestamp'] = timestamp
 
         config.db.authtokens.insert_one(token_entry)
+
+        self.set_origin(False)
 
         return {'token': session_token}
 
