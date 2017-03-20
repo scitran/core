@@ -520,3 +520,65 @@ def test_analysis_engine_upload(with_hierarchy_and_file_data, as_admin):
     # delete acquisition analysis
     r = as_admin.delete('/acquisitions/' + data.acquisition + '/analyses/' + acquisition_analysis_upload)
     assert r.ok
+
+
+def test_packfile(with_hierarchy_and_file_data, as_user):
+    data = with_hierarchy_and_file_data
+
+    # try to start packfile-upload to non-project target
+    r = as_user.post('/sessions/' + data.session + '/packfile-start')
+    assert r.status_code == 500
+
+    # try to start packfile-upload to non-existent project (using session id)
+    r = as_user.post('/projects/' + data.session + '/packfile-start')
+    assert r.status_code == 500
+
+    # start packfile-upload
+    r = as_user.post('/projects/' + data.project + '/packfile-start')
+    assert r.ok
+    token = r.json()['token']
+
+    # try to upload to packfile w/o token
+    r = as_user.post('/projects/' + data.project + '/packfile')
+    assert r.status_code == 500
+
+    # upload to packfile
+    r = as_user.post('/projects/' + data.project + '/packfile', params={'token': token}, files=data.files)
+    assert r.ok
+
+    metadata = {
+        'project': {'_id': data.project},
+        'session': {'label': 'test-packfile-label'},
+        'acquisition': {
+            'label': 'test-packfile-label',
+            'timestamp': '1979-01-01T00:00:00+00:00'
+        },
+        'packfile': {'type': 'test'}
+    }
+
+    # try to finish packfile-upload w/o token
+    r = as_user.post('/projects/' + data.project + '/packfile-end', params={'metadata': json.dumps(metadata)})
+    assert r.status_code == 500
+
+    # try to finish packfile-upload with files in the request
+    r = as_user.post('/projects/' + data.project + '/packfile-end',
+        params={'token': token, 'metadata': json.dumps(metadata)},
+        files={'file': ('packfile-end.txt', 'sending files to packfile-end is not allowed\n')}
+    )
+    assert r.status_code == 500
+
+    # finish packfile-upload (creates new session/acquisition)
+    r = as_user.post('/projects/' + data.project + '/packfile-end', params={
+        'token': token,
+        'metadata': json.dumps(metadata)
+    })
+    assert r.ok
+
+    # clean up added session/acquisition
+    event_data_start_str = 'event: result\ndata: '
+    event_data_start_pos = r.text.find(event_data_start_str)
+    event_data = json.loads(r.text[event_data_start_pos + len(event_data_start_str):])
+    r = as_user.delete('/acquisitions/' + event_data['acquisition_id'])
+    assert r.ok
+    r = as_user.delete('/sessions/' + event_data['session_id'])
+    assert r.ok
