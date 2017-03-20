@@ -66,7 +66,7 @@ class JWTAuthProvider(AuthProvider):
             'access_token': code,
             'uid': uid,
             'auth_type': self.auth_type,
-            'expires': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+            'expires': datetime.datetime.utcnow() + datetime.timedelta(days=14)
         }
 
     def validate_user(self, token):
@@ -128,7 +128,6 @@ class GoogleOAuthProvider(AuthProvider):
 
         response = json.loads(r.content)
         return {
-            'refresh_token': response['refresh_token'],
             'access_token': response['access_token'],
             'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
         }
@@ -232,7 +231,7 @@ class WechatOAuthProvider(AuthProvider):
                     'attempted_user':   user['_id']
                 }
                 config.log_db.access_log.insert_one(log_map)
-                raise APIUnknownUserException('Another user is already registred with this Wechat OpenID.')
+                raise APIUnknownUserException('Another user is already registered with this Wechat OpenID.')
             update = {
                 '$set': {
                     'wechat.openid': openid
@@ -245,7 +244,7 @@ class WechatOAuthProvider(AuthProvider):
         else:
             user = config.db.users.find_one({'wechat.openid': openid})
         if not user:
-            raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(user['_id']))
+            raise APIUnknownUserException('No user associated with this WeChat OpenID. Please use a valid registration link upon first sign in.')
         if user.get('disabled', False) is True:
             raise APIUnknownUserException('User {} is disabled.'.format(user['_id']))
 
