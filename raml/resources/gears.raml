@@ -7,12 +7,19 @@ get:
   uriParameters:
     GearName:
       type: string
-      description: Id of the gear to interact with
+      description: Name of the gear to interact with
   post:
     description: |
       Create or update a gear.
       If no existing gear is found, one will be created
       Otherwise, the specified gear will be updated
+
+/{GearId}:
+  description: Interact with a specific gear
+  uriParameters:
+    GearId:
+      type: string
+      description: Id of the gear to interact with
   get:
     description: Retrieve details about a specific gear
     responses:
@@ -21,7 +28,7 @@ get:
           application/json:
             example: !include ../examples/gear_full.json
   delete:
-      description: Delete a gear (not recommended)
-      responses:
-        200:
-          description: Gear was deleted
+    description: Delete a gear (not recommended)
+    responses:
+      200:
+        description: Gear was deleted

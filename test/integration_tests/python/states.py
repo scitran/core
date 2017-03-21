@@ -1,10 +1,12 @@
 # Various wholesale app states that might be useful in your tests
 
+import copy
 import time
+
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def with_hierarchy(api_as_admin, bunch, request, data_builder):
     group =         data_builder.create_group('test_prop_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
@@ -42,3 +44,71 @@ def with_hierarchy_and_file_data(with_hierarchy):
     fixture_data = with_hierarchy
     fixture_data.files = files
     return fixture_data
+
+
+test_gear = {
+    'category': 'converter',
+    'gear': {
+        'inputs': {
+            'any text file <= 100 KB': {
+                'base': 'file',
+                'name': { 'pattern': '^.*.txt$' },
+                'size': { 'maximum': 100000 }
+            }
+        },
+        'maintainer': 'Example',
+        'description': 'Example',
+        'license': 'BSD-2-Clause',
+        'author': 'Example',
+        'url': 'https://example.example',
+        'label': 'wat',
+        'flywheel': '0',
+        'source': 'https://example.example',
+        'version': '0.0.1',
+        'config': {},
+    },
+    'exchange': {
+        'git-commit': 'aex',
+        'rootfs-hash': 'sha384:oy',
+        'rootfs-url': 'https://example.example'
+    }
+}
+
+
+@pytest.fixture(scope='module')
+def with_gear(request, as_admin):
+    gear_name = 'test-gear'
+    gear_data = copy.deepcopy(test_gear)
+    gear_data['gear']['name'] = gear_name
+
+    r = as_admin.post('/gears/' + gear_name, json=gear_data)
+    assert r.ok
+    gear_id = r.json()['_id']
+
+    def teardown_db():
+        r = as_admin.delete('/gears/' + gear_id)
+        assert r.ok
+
+    request.addfinalizer(teardown_db)
+
+    return gear_id
+
+
+@pytest.fixture(scope='module')
+def with_invalid_gear(request, as_admin):
+    gear_name = 'invalid-test-gear'
+    gear_data = copy.deepcopy(test_gear)
+    gear_data['gear']['name'] = gear_name
+    gear_data['gear']['custom'] = {'flywheel': {'invalid': True}}
+
+    r = as_admin.post('/gears/' + gear_name, json=gear_data)
+    assert r.ok
+    gear_id = r.json()['_id']
+
+    def teardown_db():
+        r = as_admin.delete('/gears/' + gear_id)
+        assert r.ok
+
+    request.addfinalizer(teardown_db)
+
+    return gear_id

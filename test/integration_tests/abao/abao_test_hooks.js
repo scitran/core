@@ -83,7 +83,8 @@ hooks.skip("POST /projects/{ProjectId}/recalc -> 200")
 
 // Porting to python as per #600
 hooks.skip("POST /jobs/add -> 200")
-hooks.skip("GET /gears/{GearName} -> 200")
+hooks.skip("PUT /jobs/{JobId} -> 200")
+hooks.skip("GET /gears/{GearId} -> 200")
 hooks.skip("GET /sessions/{SessionId}/jobs -> 200")
 
 // Cannot be ran due to gear IDs being used as per #
@@ -91,7 +92,7 @@ hooks.skip("POST /sessions/{SessionId}/analyses -> 200")
 hooks.skip("GET /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
 hooks.skip("DELETE /sessions/{SessionId}/analyses/{AnalysisId} -> 200")
 // Related, ref #696
-hooks.skip("DELETE /gears/{GearName} -> 200")
+hooks.skip("DELETE /gears/{GearId} -> 200")
 
 
 hooks.before("POST /login -> 200", function(test, done) {
@@ -127,13 +128,6 @@ hooks.before("GET /jobs/{JobId}/config.json -> 200", function(test, done) {
     done();
 });
 
-
-hooks.before("PUT /jobs/{JobId} -> 200", function(test, done) {
-    test.request.params = {
-        JobId: job_id
-    };
-    done();
-});
 
 hooks.before("POST /jobs/{JobId}/retry -> 200", function(test, done) {
     test.request.params = {
@@ -214,27 +208,6 @@ hooks.before("GET /users/{UserId}/projects -> 200", function(test, done) {
 hooks.before("GET /users/{UserId}/sessions -> 200", function(test, done) {
     test.request.params = {
         UserId: "admin@user.com"
-    };
-    done();
-});
-
-hooks.before("GET /gears/{GearName} -> 200", function(test, done) {
-    test.request.params = {
-        GearName: gear_name
-    };
-    done();
-});
-
-hooks.before("POST /gears/{GearName} -> 200", function(test, done) {
-    test.request.params = {
-        GearName: gear_name
-    };
-    done();
-});
-
-hooks.before("GET /gears/{GearName} -> 200", function(test, done) {
-    test.request.params = {
-        GearName: gear_name
     };
     done();
 });

@@ -225,7 +225,8 @@ class Job(object):
                 {
                     'type': 'http',
                     'uri': gear['exchange']['rootfs-url'],
-                    'vu': 'vu0:x-' + gear['exchange']['rootfs-hash']
+                    'vu': 'vu0:x-' + gear['exchange']['rootfs-hash'],
+                    'location': '/',
                 }
             ],
             'target': {
