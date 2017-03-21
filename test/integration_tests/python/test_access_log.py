@@ -15,7 +15,7 @@ log.addHandler(sh)
 
 
 @pytest.fixture()
-def with_session_and_file_data(api_as_admin, bunch, request, data_builder):
+def with_session_and_file_data(as_admin, bunch, request, data_builder):
     group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)
@@ -40,7 +40,7 @@ def with_session_and_file_data(api_as_admin, bunch, request, data_builder):
     return fixture_data
 
 @pytest.fixture()
-def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data_builder, access_log_db):
+def with_session_and_file_data_and_db_failure(as_admin, bunch, request, data_builder, access_log_db):
     group =         data_builder.create_group('test_upload_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)
@@ -77,7 +77,7 @@ def with_session_and_file_data_and_db_failure(api_as_admin, bunch, request, data
     return fixture_data
 
 
-def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log_db):
+def test_access_log_succeeds(with_session_and_file_data, as_user, access_log_db):
     data = with_session_and_file_data
 
     ###
@@ -91,7 +91,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
         'code': 'XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK'
     })
 
-    r = api_as_user.post('/login', data=payload)
+    r = as_user.post('/login', data=payload)
     assert r.ok
 
     log_records_count_after = access_log_db.access_log.count({})
@@ -107,7 +107,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.post('/logout')
+    r = as_user.post('/logout')
     assert r.ok
 
     log_records_count_after = access_log_db.access_log.count({})
@@ -123,7 +123,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.get('/sessions/' + data.session)
+    r = as_user.get('/sessions/' + data.session)
     assert r.ok
 
     log_records_count_after = access_log_db.access_log.count({})
@@ -142,7 +142,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
     subject = {'subject': {'code': 'Test subject code'}}
     subject_update = json.dumps(subject)
 
-    r = api_as_user.put('/sessions/' + data.session, data=subject_update)
+    r = as_user.put('/sessions/' + data.session, data=subject_update)
     assert r.ok
 
 
@@ -152,7 +152,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.get('/sessions/' + data.session + '/subject')
+    r = as_user.get('/sessions/' + data.session + '/subject')
     assert r.ok
 
     log_records_count_after = access_log_db.access_log.count({})
@@ -166,7 +166,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
 
     # Upload files
-    r = api_as_user.post('/projects/' + data.project + '/files', files=data.files)
+    r = as_user.post('/projects/' + data.project + '/files', files=data.files)
     assert r.ok
 
 
@@ -176,7 +176,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.get('/projects/' + data.project + '/files/one.csv')
+    r = as_user.get('/projects/' + data.project + '/files/one.csv')
     assert r.ok
 
     file_ = r.raw.read(10)
@@ -197,12 +197,12 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.get('/projects/' + data.project + '/files/one.csv?ticket=')
+    r = as_user.get('/projects/' + data.project + '/files/one.csv?ticket=')
     assert r.ok
 
     ticket_id = json.loads(r.content)['ticket']
 
-    r = api_as_user.get('/projects/' + data.project + '/files/one.csv?ticket=' + ticket_id)
+    r = as_user.get('/projects/' + data.project + '/files/one.csv?ticket=' + ticket_id)
     assert r.ok
 
     file_ = r.raw.read(10)
@@ -224,7 +224,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.get('/projects/' + data.project + '/files/one.csv/info')
+    r = as_user.get('/projects/' + data.project + '/files/one.csv/info')
     assert r.ok
     file_info = json.loads(r.content)
     assert file_info['name'] == 'one.csv'
@@ -244,7 +244,7 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
     log_records_count_before = access_log_db.access_log.count({})
 
-    r = api_as_user.delete('/projects/' + data.project + '/files/one.csv')
+    r = as_user.delete('/projects/' + data.project + '/files/one.csv')
     assert r.ok
 
     log_records_count_after = access_log_db.access_log.count({})
@@ -257,21 +257,21 @@ def test_access_log_succeeds(with_session_and_file_data, api_as_user, access_log
 
 
 
-def test_access_log_fails(with_session_and_file_data_and_db_failure, api_as_user, access_log_db):
+def test_access_log_fails(with_session_and_file_data_and_db_failure, as_user, access_log_db):
     data = with_session_and_file_data_and_db_failure
 
     # Upload files
-    r = api_as_user.post('/projects/' + data.project + '/files', files=data.files)
+    r = as_user.post('/projects/' + data.project + '/files', files=data.files)
     assert r.ok
 
     ###
     # Test file delete request fails and does not delete file
     ###
 
-    r = api_as_user.delete('/projects/' + data.project + '/files/one.csv')
+    r = as_user.delete('/projects/' + data.project + '/files/one.csv')
     assert r.status_code == 500
 
-    r = api_as_user.get('/projects/' + data.project)
+    r = as_user.get('/projects/' + data.project)
     assert r.ok
     project = json.loads(r.content)
     assert len(project.get('files', [])) == 1

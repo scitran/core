@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.fixture(scope='module')
-def with_hierarchy(api_as_admin, bunch, request, data_builder):
+def with_hierarchy(as_admin, bunch, request, data_builder):
     group =         data_builder.create_group('test_prop_' + str(int(time.time() * 1000)))
     project =       data_builder.create_project(group)
     session =       data_builder.create_session(project)

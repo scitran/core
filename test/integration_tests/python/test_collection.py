@@ -7,30 +7,30 @@ sh = logging.StreamHandler()
 log.addHandler(sh)
 
 
-def test_collections(api_as_user, single_project_session_acquisition_tree):
+def test_collections(as_user, single_project_session_acquisition_tree):
     data = single_project_session_acquisition_tree
 
-    my_collection_id = create_collection(api_as_user)
-    get_collection(api_as_user, my_collection_id)
-    add_session_to_collection(api_as_user, data.sid, my_collection_id)
+    my_collection_id = create_collection(as_user)
+    get_collection(as_user, my_collection_id)
+    add_session_to_collection(as_user, data.sid, my_collection_id)
 
-    r = api_as_user.get('/acquisitions/' + data.aid)
+    r = as_user.get('/acquisitions/' + data.aid)
     collections = json.loads(r.content)['collections']
     assert my_collection_id in collections
 
-    delete_collection(api_as_user, my_collection_id)
+    delete_collection(as_user, my_collection_id)
 
-    r = api_as_user.get('/collections/' + my_collection_id)
+    r = as_user.get('/collections/' + my_collection_id)
     assert r.status_code == 404
 
-    r = api_as_user.get('/acquisitions/' + data.aid)
+    r = as_user.get('/acquisitions/' + data.aid)
     collections = json.loads(r.content)['collections']
     assert my_collection_id not in collections
 
 
 # This fixture sets up a single project->session->acquisition hierarchy in the db
 @pytest.fixture(scope="module")
-def single_project_session_acquisition_tree(api_as_admin, request, bunch, data_builder):
+def single_project_session_acquisition_tree(as_admin, request, bunch, data_builder):
 
     pid = data_builder.create_project('scitran')
     sid = data_builder.create_session(pid)

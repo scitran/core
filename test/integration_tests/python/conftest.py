@@ -36,99 +36,8 @@ def access_log_db():
     return pymongo.MongoClient(mongo_path).get_default_database()
 
 
-@pytest.fixture(scope="module")
-def base_url():
-    return os.environ.get('BASE_URL', 'http://localhost:8080/api')
-
-
-class RequestsAccessor(object):
-    def __init__(self, base_url, default_params=None, default_headers=None):
-        self.base_url = base_url
-        if default_params is None:
-            default_params = {}
-        self.default_params = default_params
-        if default_headers is None:
-            default_headers = {}
-        self.default_headers = default_headers
-
-    def _get_params(self, **kwargs):
-        params = self.default_params.copy()
-        if ("params" in kwargs):
-            params.update(kwargs["params"])
-        return params
-
-    def get_headers(self, user_headers):
-        request_headers = self.default_headers.copy()
-        request_headers.update(user_headers)
-        return request_headers
-
-    def get(self, url_path, **kwargs):
-        url = self.get_url_from_path(url_path)
-        kwargs['params'] = self._get_params(**kwargs)
-        headers = self.get_headers(kwargs.get("headers", {}))
-        return requests.get(url, verify=False,
-                            headers=headers, **kwargs)
-
-    def post(self, url_path, **kwargs):
-        url = self.get_url_from_path(url_path)
-        kwargs['params'] = self._get_params(**kwargs)
-        headers = self.get_headers(kwargs.get("headers", {}))
-        return requests.post(url, verify=False,
-                             headers=headers, **kwargs)
-
-    def put(self, url_path, **kwargs):
-        url = self.get_url_from_path(url_path)
-        kwargs['params'] = self._get_params(**kwargs)
-        headers = self.get_headers(kwargs.get("headers", {}))
-        return requests.put(url, verify=False,
-                            headers=headers, **kwargs)
-
-    def delete(self, url_path, **kwargs):
-        kwargs['params'] = self._get_params(**kwargs)
-        headers = self.get_headers(kwargs.get("headers", {}))
-        url = self.get_url_from_path(url_path)
-        return requests.delete(url, verify=False,
-                               headers=headers, **kwargs)
-
-    def get_url_from_path(self, path):
-        return "{0}{1}".format(self.base_url, path)
-
-@pytest.fixture(scope="module")
-def api_as_admin(base_url):
-    accessor = RequestsAccessor(base_url,
-        {"root": "true"},
-        default_headers={
-            "Authorization":"scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
-            }
-        )
-    return accessor
-
-
-@pytest.fixture(scope="module")
-def api_as_user(base_url):
-    accessor = RequestsAccessor(base_url,
-        default_headers={
-            "Authorization":"scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK"
-            }
-        )
-    return accessor
-
-
-@pytest.fixture(scope="module")
-def api_accessor(base_url):
-    class RequestsAccessorWithBaseUrl(RequestsAccessor):
-        def __init__(self, user_api_key):
-            super(self.__class__, self).__init__(
-                base_url,
-                default_headers={
-                    "Authorization":"scitran-user {0}".format(user_api_key)
-                })
-
-    return RequestsAccessorWithBaseUrl
-
-
 @pytest.fixture()
-def with_a_group_and_a_project(api_as_admin, data_builder, request, bunch):
+def with_a_group_and_a_project(as_admin, data_builder, request, bunch):
 
     user_1 = 'user1@user.com'
     user_2 = 'user2@user.com'
@@ -151,7 +60,7 @@ def with_a_group_and_a_project(api_as_admin, data_builder, request, bunch):
 
 
 @pytest.fixture(scope="module")
-def data_builder(api_as_admin):
+def data_builder(as_admin):
     class DataBuilder:
 
         # This function is called whenever DataBuilder.create_X() or
@@ -185,7 +94,7 @@ def data_builder(api_as_admin):
                     payload = json.dumps(payload)
 
                     print api_path, payload
-                    r = api_as_admin.post(api_path, data=payload)
+                    r = as_admin.post(api_path, data=payload)
                     print r.content
 
                     assert r.ok
@@ -201,7 +110,7 @@ def data_builder(api_as_admin):
                 def delete_(id):
                     container = name.split('delete_')[1]
                     api_path = '/' + container + 's'  # API paths are pluralized
-                    r = api_as_admin.delete(api_path + '/' + id)
+                    r = as_admin.delete(api_path + '/' + id)
                     assert r.ok
 
                 return delete_
