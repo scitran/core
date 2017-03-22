@@ -49,19 +49,19 @@ class Placer(object):
         """
         Run any pre-processing checks. Expected to throw on error.
         """
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
     def process_file_field(self, field, file_attrs):
         """"
         Process a single file field.
         """
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
     def finalize(self):
         """
         Run any post-processing work. Expected to return output for the callee.
         """
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
     def requireTarget(self):
         """
