@@ -11,7 +11,7 @@ sh = logging.StreamHandler()
 log.addHandler(sh)
 
 @pytest.fixture()
-def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
+def with_group_and_file_data(as_admin, data_builder, bunch, request):
     group_id = 'test_group_' + str(int(time.time() * 1000))
     data_builder.create_group(group_id)
     files = {}
@@ -36,22 +36,22 @@ def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
     }
 
     def teardown_db():
-        r = api_as_admin.get('/groups/{}/projects'.format(group_id))
+        r = as_admin.get('/groups/{}/projects'.format(group_id))
         content = json.loads(r.content)
         if content:
             project_id = content[0]['_id']
-            r = api_as_admin.get('/projects/{}/sessions'.format(project_id))
+            r = as_admin.get('/projects/{}/sessions'.format(project_id))
             content = json.loads(r.content)
             if content:
                 session_id = content[0]['_id']
-                r = api_as_admin.get('/sessions/{}/acquisitions'.format(session_id))
+                r = as_admin.get('/sessions/{}/acquisitions'.format(session_id))
                 content = json.loads(r.content)
                 if content:
                     acquisition_id = content[0]['_id']
-                    api_as_admin.delete('/acquisitions/' + acquisition_id)
-                api_as_admin.delete('/sessions/' + session_id)
-            api_as_admin.delete('/projects/' + project_id)
-        api_as_admin.delete('/groups/' + group_id)
+                    as_admin.delete('/acquisitions/' + acquisition_id)
+                as_admin.delete('/sessions/' + session_id)
+            as_admin.delete('/projects/' + project_id)
+        as_admin.delete('/groups/' + group_id)
 
     request.addfinalizer(teardown_db)
 
@@ -60,7 +60,7 @@ def with_group_and_file_data(api_as_admin, data_builder, bunch, request):
     return fixture_data
 
 
-def test_uid_upload(with_group_and_file_data, api_as_admin):
+def test_uid_upload(with_group_and_file_data, as_admin):
     data = with_group_and_file_data
     metadata = data.files['metadata']
     metadata['session']['uid'] = 'test_session_uid'
@@ -68,16 +68,16 @@ def test_uid_upload(with_group_and_file_data, api_as_admin):
 
     # try to uid-upload w/o metadata
     del data.files['metadata']
-    r = api_as_admin.post('/upload/uid', files=data.files)
+    r = as_admin.post('/upload/uid', files=data.files)
     assert r.status_code == 500
 
     # uid-upload files
     data.files['metadata'] = ('', json.dumps(metadata))
-    r = api_as_admin.post('/upload/uid', files=data.files)
+    r = as_admin.post('/upload/uid', files=data.files)
     assert r.ok
 
 
-def test_label_upload(with_group_and_file_data, api_as_admin):
+def test_label_upload(with_group_and_file_data, as_admin):
     data = with_group_and_file_data
     metadata = data.files['metadata']
     metadata['session']['label'] = 'test_session_label'
@@ -85,7 +85,7 @@ def test_label_upload(with_group_and_file_data, api_as_admin):
 
     # label-upload files
     data.files['metadata'] = ('', json.dumps(metadata))
-    r = api_as_admin.post('/upload/label', files=data.files)
+    r = as_admin.post('/upload/label', files=data.files)
     assert r.ok
 
 
@@ -94,7 +94,7 @@ def find_file_in_array(filename, files):
         if f.get('name') == filename:
             return f
 
-def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+def test_acquisition_engine_upload(with_hierarchy_and_file_data, as_admin):
 
     data = with_hierarchy_and_file_data
     metadata = {
@@ -127,17 +127,17 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     }
     data.files['metadata'] = ('', json.dumps(metadata))
 
-    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
+    r = as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
     assert r.ok
 
-    r = api_as_admin.get('/projects/' + data.project)
+    r = as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
     assert cmp(p['info'], metadata['project']['info']) == 0
 
-    r = api_as_admin.get('/sessions/' + data.session)
+    r = as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     # Engine metadata should not replace existing fields
@@ -145,7 +145,7 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     assert cmp(s['info'], metadata['session']['info']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
 
-    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    r = as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
     # Engine metadata should not replace existing fields
@@ -161,7 +161,7 @@ def test_acquisition_engine_upload(with_hierarchy_and_file_data, api_as_admin):
         assert f['type'] == mf['type']
         assert cmp(f['info'], mf['info']) == 0
 
-def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+def test_session_engine_upload(with_hierarchy_and_file_data, as_admin):
 
     data = with_hierarchy_and_file_data
     metadata = {
@@ -190,17 +190,17 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     }
     data.files['metadata'] = ('', json.dumps(metadata))
 
-    r = api_as_admin.post('/engine?level=session&id='+data.session, files=data.files)
+    r = as_admin.post('/engine?level=session&id='+data.session, files=data.files)
     assert r.ok
 
-    r = api_as_admin.get('/projects/' + data.project)
+    r = as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
     assert cmp(p['info'], metadata['project']['info']) == 0
 
-    r = api_as_admin.get('/sessions/' + data.session)
+    r = as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     # Engine metadata should not replace existing fields
@@ -218,7 +218,7 @@ def test_session_engine_upload(with_hierarchy_and_file_data, api_as_admin):
         assert f['type'] == mf['type']
         assert cmp(f['info'], mf['info']) == 0
 
-def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+def test_project_engine_upload(with_hierarchy_and_file_data, as_admin):
 
     data = with_hierarchy_and_file_data
     metadata = {
@@ -241,10 +241,10 @@ def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
     }
     data.files['metadata'] = ('', json.dumps(metadata))
 
-    r = api_as_admin.post('/engine?level=project&id='+data.project, files=data.files)
+    r = as_admin.post('/engine?level=project&id='+data.project, files=data.files)
     assert r.ok
 
-    r = api_as_admin.get('/projects/' + data.project)
+    r = as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
@@ -257,14 +257,14 @@ def test_project_engine_upload(with_hierarchy_and_file_data, api_as_admin):
         assert f['type'] == mf['type']
         assert cmp(f['info'], mf['info']) == 0
 
-def test_acquisition_file_only_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+def test_acquisition_file_only_engine_upload(with_hierarchy_and_file_data, as_admin):
 
     data = with_hierarchy_and_file_data
 
-    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
+    r = as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
     assert r.ok
 
-    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    r = as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
 
@@ -272,7 +272,7 @@ def test_acquisition_file_only_engine_upload(with_hierarchy_and_file_data, api_a
         mf = find_file_in_array(v[0], a['files'])
         assert mf is not None
 
-def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data, as_admin):
 
     data = with_hierarchy_and_file_data
 
@@ -290,10 +290,10 @@ def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data,
         }
     }))
 
-    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=filedata_1)
+    r = as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=filedata_1)
     assert r.ok
 
-    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    r = as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
 
@@ -314,10 +314,10 @@ def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data,
         }
     }))
 
-    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=filedata_2)
+    r = as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=filedata_2)
     assert r.ok
 
-    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    r = as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
 
@@ -327,7 +327,7 @@ def test_acquisition_subsequent_file_engine_upload(with_hierarchy_and_file_data,
     mf = find_file_in_array('file-two.csv', a['files'])
     assert mf is not None
 
-def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, api_as_admin):
+def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, as_admin):
 
     data = with_hierarchy_and_file_data
     metadata = {
@@ -349,17 +349,17 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     data.files = {}
     data.files['metadata'] = ('', json.dumps(metadata))
 
-    r = api_as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
+    r = as_admin.post('/engine?level=acquisition&id='+data.acquisition, files=data.files)
     assert r.ok
 
-    r = api_as_admin.get('/projects/' + data.project)
+    r = as_admin.get('/projects/' + data.project)
     assert r.ok
     p = json.loads(r.content)
     # Engine metadata should not replace existing fields
     assert p['label'] != metadata['project']['label']
     assert cmp(p['info'], metadata['project']['info']) == 0
 
-    r = api_as_admin.get('/sessions/' + data.session)
+    r = as_admin.get('/sessions/' + data.session)
     assert r.ok
     s = json.loads(r.content)
     # Engine metadata should not replace existing fields
@@ -367,7 +367,7 @@ def test_acquisition_metadata_only_engine_upload(with_hierarchy_and_file_data, a
     assert cmp(s['info'], metadata['session']['info']) == 0
     assert s['subject']['code'] == metadata['session']['subject']['code']
 
-    r = api_as_admin.get('/acquisitions/' + data.acquisition)
+    r = as_admin.get('/acquisitions/' + data.acquisition)
     assert r.ok
     a = json.loads(r.content)
     # Engine metadata should not replace existing fields

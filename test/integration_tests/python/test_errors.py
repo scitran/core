@@ -7,7 +7,7 @@ sh = logging.StreamHandler()
 log.addHandler(sh)
 
 
-def test_extra_param(api_as_admin):
+def test_extra_param(as_admin):
     label = 'SciTran/testing_' + str(int(time.time() * 1000))
 
     bad_payload = json.dumps({
@@ -17,10 +17,10 @@ def test_extra_param(api_as_admin):
         'extra_param': 'some_value'
     })
 
-    r = api_as_admin.post('/projects', data=bad_payload)
+    r = as_admin.post('/projects', data=bad_payload)
     assert r.status_code == 400
 
-    r = api_as_admin.get('/projects')
+    r = as_admin.get('/projects')
     assert r.ok
     projects = json.loads(r.content)
     filtered_projects = filter(lambda e: e['label'] == label, projects)
