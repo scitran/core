@@ -62,7 +62,8 @@ class SearchContainer(object):
 
         if not self.all_data and self.user:
             # Filter on permissions for searches that do not include all data
-            query = add_filter(query, 'permissions._id', self.user)
+            filter_on = 'permissions._id' if self.cont_name != 'groups' else 'roles._id'
+            query = add_filter(query, filter_on, self.user)
 
         source_filter = None
         if self.all_data and self.cont_name == 'sessions':
