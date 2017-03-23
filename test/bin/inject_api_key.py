@@ -37,7 +37,7 @@ def set_api_key(user_id, api_key):
     if matching_user is None:
         raise RuntimeError("Unable to find matching user: " + user_id)
 
-    if matching_user['api_key'] == api_key_doc['api_key']:
+    if  matching_user.get('api_key', '') == api_key_doc['api_key']:
         return
 
     result = users_storage.exec_op('PUT', _id=user_id, payload=api_key_doc)
