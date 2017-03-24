@@ -203,9 +203,6 @@ endpoints = [
             route('/<cid:{cid}>/subject',       ContainerHandler, h='get_subject',  m=['GET']),
         ]),
 
-        route('/sessions/<cid:{cid}>/jobs',    ContainerHandler, h='get_jobs', m=['GET']),
-        route('/sessions/<cid:{cid}>/jobs',    ContainerHandler, h='get_jobs', m=['GET']),
-
 
         # Collections
 
