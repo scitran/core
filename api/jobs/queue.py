@@ -170,27 +170,28 @@ class Queue(object):
 
         job = Job.load(result)
 
+        # Return if there is a job request already, else create one
         if job.request is not None:
             log.info('Job ' + job.id_ + ' already has a request, so not generating')
-            print job.request
-            return result
+            return job
 
-        # Generate, save, and return a job request.
-        request = job.generate_request(get_gear(job.gear_id))
-        result = config.db.jobs.find_one_and_update(
-            {
-                '_id': bson.ObjectId(job.id_)
-            },
-            { '$set': {
-                'request': request }
-            },
-            return_document=pymongo.collection.ReturnDocument.AFTER
-        )
+        else:
+            # Generate, save, and return a job request.
+            request = job.generate_request(get_gear(job.gear_id))
+            result = config.db.jobs.find_one_and_update(
+                {
+                    '_id': bson.ObjectId(job.id_)
+                },
+                { '$set': {
+                    'request': request }
+                },
+                return_document=pymongo.collection.ReturnDocument.AFTER
+            )
 
-        if result is None:
-            raise Exception('Marked job as running but could not generate and save formula')
+            if result is None:
+                raise Exception('Marked job as running but could not generate and save formula')
 
-        return Job.load(result)
+            return Job.load(result)
 
     @staticmethod
     def search(containers, states=None, tags=None):
