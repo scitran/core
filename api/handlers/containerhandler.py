@@ -131,6 +131,9 @@ class ContainerHandler(base.RequestHandler):
                 Origin.job.name:    {}
             }
 
+        # Cache looked-up gears if needed
+        cached_gears = {}
+
         for f in result.get('files', []):
             origin = f.get('origin', None)
 
@@ -157,9 +160,19 @@ class ContainerHandler(base.RequestHandler):
 
                     # Join in gear name on the job doc if requested
                     if join_gear_name and j_type == 'job':
-                        gear_id_bson = bson.ObjectId(join_doc['gear_id'])
-                        gear = config.db.gears.find_one({'_id': gear_id_bson})
-                        join_doc['gear_name'] = gear['gear']['name']
+
+                        gear_id = join_doc['gear_id']
+                        gear_name = None
+
+                        if cached_gears.get(gear_id, None) is not None:
+                            gear_name = cached_gears['gear_id']['gear']['name']
+                        else:
+                            gear_id_bson = bson.ObjectId(gear_id)
+                            gear = config.db.gears.find_one({'_id': gear_id_bson})
+                            gear_name = gear['gear']['name']
+
+                        join_doc['gear_name'] = gear_name
+                        cached_gears[gear_id] = gear_name
 
                     # Save to join table
                     result['join-origin'][j_type][j_id] = join_doc
