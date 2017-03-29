@@ -200,7 +200,7 @@ def test_get_container(with_hierarchy, as_user, as_public):
     assert 'join-origin' in r.json()
 
 
-def test_get_session_jobs(with_hierarchy, with_gear, as_user, db):
+def test_get_session_jobs(with_hierarchy, with_gear, as_user):
     data = with_hierarchy
     gear = with_gear
 
@@ -222,10 +222,6 @@ def test_get_session_jobs(with_hierarchy, with_gear, as_user, db):
 
     r = as_user.get('/sessions/' + data.session + '/jobs', params={'join': 'containers'})
     assert r.ok
-
-    # TODO figure out better/generalized way to handle state cleanup
-    # make sure other tests start clean w/o existing jobs (eg for /jobs/next to work as expected)
-    db.jobs.delete_many({'gear_id': gear})
 
 
 def test_post_container(with_hierarchy, as_user):

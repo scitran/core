@@ -76,7 +76,7 @@ test_gear = {
 
 
 @pytest.fixture(scope='module')
-def with_gear(request, as_admin):
+def with_gear(request, as_admin, db):
     gear_name = 'test-gear'
     gear_data = copy.deepcopy(test_gear)
     gear_data['gear']['name'] = gear_name
@@ -86,6 +86,7 @@ def with_gear(request, as_admin):
     gear_id = r.json()['_id']
 
     def teardown_db():
+        db.jobs.delete_many({'gear_id': gear_id})
         r = as_admin.delete('/gears/' + gear_id)
         assert r.ok
 

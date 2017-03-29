@@ -28,7 +28,7 @@ def test_jobs_access(as_user):
     assert r.status_code == 403
 
 
-def test_jobs(with_hierarchy, with_gear, with_invalid_gear, as_user, as_admin, db):
+def test_jobs(with_hierarchy, with_gear, with_invalid_gear, as_user, as_admin):
     data = with_hierarchy
     gear = with_gear
     invalid_gear = with_invalid_gear
@@ -94,5 +94,3 @@ def test_jobs(with_hierarchy, with_gear, with_invalid_gear, as_user, as_admin, d
 
     r = as_user.post('/jobs/' + job1_id + '/retry')
     assert r.ok
-
-    db.jobs.delete_many({'gear_id': gear})
