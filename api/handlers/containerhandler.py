@@ -90,7 +90,7 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.get('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        container= self._get_container(_id)
+        container = self._get_container(_id)
 
         permchecker = self._get_permchecker(container)
         try:
@@ -234,9 +234,9 @@ class ContainerHandler(base.RequestHandler):
         if join_cont:
             # create a map of analyses and acquisitions by _id
             containers = dict((str(c['_id']), c) for c in analyses+acquisitions)
-            for c in containers:
+            for container in containers.itervalues():
                 # No need to return perm arrays
-                c.pop('permissions', None)
+                container.pop('permissions', None)
             response['containers'] = containers
 
         return response
@@ -245,7 +245,7 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
 
-        projection = self.config['list_projection']
+        projection = self.config['list_projection'].copy()
         if self.is_true('info'):
             projection.pop('info')
             if not projection:
@@ -307,7 +307,7 @@ class ContainerHandler(base.RequestHandler):
     def _add_results_counts(self, results, cont_name):
         dbc_name = self.config.get('children_cont')
         el_cont_name = cont_name[:-1]
-        dbc = config.db.get(dbc_name)
+        dbc = config.db[dbc_name]
         counts =  dbc.aggregate([
             {'$match': {el_cont_name: {'$in': [res['_id'] for res in results]}}},
             {'$group': {'_id': '$' + el_cont_name, 'count': {"$sum": 1}}}
