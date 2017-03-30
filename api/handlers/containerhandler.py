@@ -117,7 +117,11 @@ class ContainerHandler(base.RequestHandler):
         """
 
         # If `join=origin` passed as a request param, join out that key
-        join_origin = 'origin' in self.request.params.getall('join')
+        join_origin    = 'origin' in self.request.params.getall('join')
+
+        # Now that gears are identified by ID rather than name, the origin.job.gear_id is not enough.
+        # Joining the whole gear doc in feels like overkill; for now let's just add gear names to jobs
+        join_gear_name = 'origin_job_gear_name' in self.request.params.getall('join')
 
         # If it was requested, create a map of each type of origin to hold the join
         if join_origin:
@@ -126,6 +130,9 @@ class ContainerHandler(base.RequestHandler):
                 Origin.device.name: {},
                 Origin.job.name:    {}
             }
+
+        # Cache looked-up gears if needed
+        cached_gears = {}
 
         for f in result.get('files', []):
             origin = f.get('origin', None)
@@ -148,7 +155,27 @@ class ContainerHandler(base.RequestHandler):
 
                 # Join from database if we haven't for this origin before
                 if j_type != 'unknown' and result['join-origin'][j_type].get(j_id, None) is None:
-                    result['join-origin'][j_type][j_id] = config.db[j_type + 's'].find_one({'_id': j_id_b})
+                    # Initial join
+                    join_doc = config.db[j_type + 's'].find_one({'_id': j_id_b})
+
+                    # Join in gear name on the job doc if requested
+                    if join_gear_name and j_type == 'job':
+
+                        gear_id = join_doc['gear_id']
+                        gear_name = None
+
+                        if cached_gears.get(gear_id, None) is not None:
+                            gear_name = cached_gears['gear_id']['gear']['name']
+                        else:
+                            gear_id_bson = bson.ObjectId(gear_id)
+                            gear = config.db.gears.find_one({'_id': gear_id_bson})
+                            gear_name = gear['gear']['name']
+
+                        join_doc['gear_name'] = gear_name
+                        cached_gears[gear_id] = gear_name
+
+                    # Save to join table
+                    result['join-origin'][j_type][j_id] = join_doc
 
         return result
 
