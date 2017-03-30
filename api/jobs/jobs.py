@@ -229,7 +229,7 @@ class Job(object):
                 }
             ],
             'target': {
-                'command': ['bash', '-c', 'rm -rf output; mkdir -p output; ./run; echo "Exit was $?"'],
+                'command': ['bash', '-c', 'ls -laR; rm -rf output; mkdir -p output; ./run; echo "Exit was $?"'],
                 'env': {
                     'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
                 },
