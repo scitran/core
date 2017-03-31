@@ -14,6 +14,7 @@ from ..web import base
 from ..validators import InputValidationException
 from .. import config
 from . import batch
+from ..validators import validate_data
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job
@@ -116,7 +117,8 @@ class RulesHandler(base.RequestHandler):
         if project:
             if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
                 doc = self.request.json
-                # Validate rule.json
+
+                validate_data(doc, 'rule-add.json', 'input', 'POST', optional=True)
 
                 doc['project_id'] = cid
 
@@ -153,12 +155,12 @@ class RuleHandler(base.RequestHandler):
         if project:
             if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
                 doc = self.request.json
-                # Validate rule-update.json
 
                 result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
                 if result is None:
                     self.abort(404, 'Rule not found')
 
+                validate_data(doc, 'rule-update.json', 'input', 'POST', optional=True)
 
                 doc['_id']        = result['_id']
                 doc['project_id'] = cid

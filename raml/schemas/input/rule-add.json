@@ -3,9 +3,6 @@
     "title": "rule",
     "type": "object",
     "properties": {
-        "project_id": {
-            "type": "string"
-        },
         "alg": {
             "type": "string"
         },
@@ -54,10 +51,10 @@
         }
     },
     "required": [
-        "project_id",
         "alg",
+        "all",
         "any",
-        "all"
+        "name"
     ],
     "additionalProperties": false
 }
