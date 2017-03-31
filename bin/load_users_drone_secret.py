@@ -94,6 +94,25 @@ def users(filepath, api_url, http_headers, insecure):
                 role.setdefault('site', site_id)
                 r = _upsert_role(request_session=rs, api_url=api_url, role_doc=role, group_id=g['_id'])
                 r.raise_for_status()
+
+        log.info('bootstrapping projects...')
+        for p in input_data.get('projects', []):
+            r = rs.post(api_url + '/projects?inherit=true' , json=p)
+            r.raise_for_status()
+
+            project_id = r.json()['_id']
+            project_name = p['label']
+
+            for stanza in input_data.get('gear_rules', []):
+
+                desired_projects = stanza.get('projects', [])
+                rule = stanza.get('rule', None)
+
+                if project_name in desired_projects and rule:
+                    log.info('Adding rule...')
+                    r = rs.post(api_url + '/projects/' +  project_id + '/rules', json=rule)
+                    r.raise_for_status()
+
     log.info('bootstrapping complete')
 
 
