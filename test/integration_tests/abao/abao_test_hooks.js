@@ -80,6 +80,7 @@ hooks.skip("GET /projects/{ProjectId}/packfile-end -> 200");
 hooks.skip("POST /projects/{ProjectId}/template -> 200")
 hooks.skip("DELETE /projects/{ProjectId}/template -> 200")
 hooks.skip("POST /projects/{ProjectId}/recalc -> 200")
+hooks.skip("GET /projects/{ProjectId}/rules -> 200")
 
 // Porting to python as per #600
 hooks.skip("POST /jobs/add -> 200")

@@ -8,39 +8,46 @@ from .jobs import Job
 
 log = config.log
 
-
-#
 # {
-#   At least one match from this array must succeed, or array must be empty
-#   "any": [
-#       ["file.type",             "dicom"     ] # Match the file's type
-#       ["file.name",             "*.dcm"     ] # Match a shell glob for the file name
-#       ["file.measurements",     "diffusion" ] # Match any of the file's measurements
-#       ["container.has-type",    "bvec"      ] # Match the container having any file (including this one) with this type
-#   ]
-#
-#   All matches from array must succeed, or array must be empty
-#   "all": [
-#   ]
-#
-#   Algorithm to run if both sets of rules match
-#   "alg": "dcm2nii"
-# }
-#
+#     '_id':        'SOME_ID',
+#     'project_id': 'SOME_PROJECT',
 
-MATCH_TYPES = [
-    'file.type',
-    'file.name',
-    'file.measurements',
-    'container.has-type'
-]
+#     Algorithm to run if both sets of rules match
+#     'alg':        'my-gear-name',
+#
+#     At least one match from this array must succeed, or array must be empty
+#     'any': [],
+#
+#     All matches from array must succeed, or array must be empty
+#     'all': [
+#         {
+#             'type': 'file.type', # Match the file's type
+#             'value': 'dicom'
+#         },
+#         {
+#             'type': 'file.name', # Match a shell glob for the file name
+#             'value': '*.dcm'
+#         },
+#         {
+#             'type': 'file.measurements', # Match any of the file's measurements
+#             'value': 'diffusion'
+#         },
+#         {
+#             'type': 'container.has-type', # Match the container having any file (including this one) with this type
+#             'value': 'bvec'
+#         }
+#     ]
+# }
+
 
 def get_base_rules():
     """
     Fetch the install-global gear rules from the database
     """
-    rule_doc = config.db.singletons.find_one({'_id': 'rules'}) or {}
-    return rule_doc.get('rule_list', [])
+
+    # rule_doc = config.db.singletons.find_one({'_id': 'rules'}) or {}
+    # return rule_doc.get('rule_list', [])
+    return []
 
 def _log_file_key_error(file_, container, error):
     log.warning('file ' + file_.get('name', '?') + ' in container ' + str(container.get('_id', '?')) + ' ' + error)
@@ -90,7 +97,7 @@ def eval_rule(rule, file_, container):
     has_match = False
 
     for match in rule.get('any', []):
-        if eval_match(match[0], match[1], file_, container):
+        if eval_match(match['type'], match['value'], file_, container):
             has_match = True
             break
 
@@ -100,7 +107,7 @@ def eval_rule(rule, file_, container):
 
     # Are there matches in the 'all' set?
     for match in rule.get('all', []):
-        if not eval_match(match[0], match[1], file_, container):
+        if not eval_match(match['type'], match['value'], file_, container):
             return False
 
     return True
@@ -147,7 +154,9 @@ def create_jobs(db, container, container_type, file_):
         rules.append(hardcoded_rule)
 
     for rule in rules:
+
         if eval_rule(rule, file_, container):
+
             alg_name = rule['alg']
 
             if rule.get('match') is None:
@@ -175,6 +184,7 @@ def get_rules_for_container(db, container):
     """
     Recursively walk the hierarchy until the project object is found.
     """
+
     if 'session' in container:
         session = db.sessions.find_one({'_id': container['session']})
         return get_rules_for_container(db, session)
@@ -183,4 +193,11 @@ def get_rules_for_container(db, container):
         return get_rules_for_container(db, project)
     else:
         # Assume container is a project, or a collection (which currently cannot have a rules property)
-        return container.get('rules', [])
+        result = list(db.project_rules.find({'project_id': str(container['_id'])}))
+
+        if result is None:
+            print 'Container ' + str(container['_id']) + ' found NO rules'
+            return []
+        else:
+            print 'Container ' + str(container['_id']) + ' found ' + str(len(result)) + ' rules'
+            return result

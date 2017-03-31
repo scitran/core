@@ -15,7 +15,7 @@ from .handlers.roothandler        import RootHandler
 from .handlers.schemahandler      import SchemaHandler
 from .handlers.searchhandler      import SearchHandler
 from .handlers.userhandler        import UserHandler
-from .jobs.handlers               import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler
+from .jobs.handlers               import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler, RuleHandler
 from .upload                      import Upload
 from .web.base                    import RequestHandler
 from . import config
@@ -144,8 +144,6 @@ endpoints = [
             route('/<:[^/]+>/suggest/<:[^/]+>/<:[^/]+>', GearHandler, h='suggest'),
         ]),
 
-        route('/rules', RulesHandler),
-
 
         # Batch jobs
 
@@ -193,6 +191,8 @@ endpoints = [
             route('/<cid:{cid}>/template', ContainerHandler, h='set_project_template',         m=['POST']),
             route('/<cid:{cid}>/template', ContainerHandler, h='delete_project_template',      m=['DELETE']),
             route('/<cid:{cid}>/recalc',   ContainerHandler, h='calculate_project_compliance', m=['POST']),
+            route('/<cid:{cid}>/rules',    RulesHandler,                                       m=['GET', 'POST']),
+            route('/<cid:{cid}>/rules/<rid:{cid}>',  RuleHandler,                              m=['GET', 'PUT', 'DELETE']),
         ]),
 
 

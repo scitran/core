@@ -98,22 +98,96 @@ class GearHandler(base.RequestHandler):
 
 class RulesHandler(base.RequestHandler):
 
-    """Provide /rules API routes."""
-
-    def get(self):
+    def get(self, cid):
         """List rules"""
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
 
-        return config.db.singletons.find_one({"_id" : "rules"})['rule_list']
+        project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
-    def post(self):
-        """Upsert all rules"""
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+        if project and (self.superuser_request or has_access(self.uid, project, 'ro', self.user_site)):
+            return config.db.project_rules.find({'project_id' : cid})
+        else:
+            self.abort(404, 'Project not found')
 
-        doc = self.request.json
-        config.db.singletons.replace_one({"_id" : "rules"}, {'rule_list': doc}, upsert=True)
+    def post(self, cid):
+        """Add a rule"""
+
+        project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
+
+        if project:
+            if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
+                doc = self.request.json
+                # Validate rule.json
+
+                doc['project_id'] = cid
+
+                result = config.db.project_rules.insert_one(doc)
+                return { '_id': result.inserted_id }
+
+            elif has_access(self.uid, project, 'ro', self.user_site):
+                self.abort(403, 'Adding rules to a project can only be done by a project admin.')
+
+        self.abort(404, 'Project not found')
+
+
+class RuleHandler(base.RequestHandler):
+
+    def get(self, cid, rid):
+        """Get rule"""
+
+        project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
+
+        if project and (self.superuser_request or has_access(self.uid, project, 'r', self.user_site)):
+            result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
+            if result:
+                return result
+            else:
+                self.abort(404, 'Rule not found')
+        else:
+            self.abort(404, 'Project not found')
+
+    def put(self, cid, rid):
+        """Change a rule"""
+
+        project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
+
+        if project:
+            if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
+                doc = self.request.json
+                # Validate rule-update.json
+
+                result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
+                if result is None:
+                    self.abort(404, 'Rule not found')
+
+
+                doc['_id']        = result['_id']
+                doc['project_id'] = cid
+
+                config.db.project_rules.update_one({'_id': bson.ObjectId(rid)}, {'$set': doc })
+                return
+
+            elif has_access(self.uid, project, 'r', self.user_site):
+                self.abort(403, 'Changing project rules can only be done by a project admin.')
+
+        self.abort(404, 'Project not found')
+
+    def delete(self, cid, rid):
+        """Remove a rule"""
+
+        project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
+
+        if project:
+            if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
+
+                result = config.db.project_rules.delete_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
+                if result.deleted_count != 1:
+                    self.abort(404, 'Rule not found')
+                return
+
+            elif has_access(self.uid, project, 'r', self.user_site):
+                self.abort(403, 'Changing project rules can only be done by a project admin.')
+
+        self.abort(404, 'Project not found')
 
 
 class JobsHandler(base.RequestHandler):
@@ -172,7 +246,7 @@ class JobsHandler(base.RequestHandler):
         job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
         result = job.insert()
 
-        return { "_id": result }
+        return { '_id': result }
 
     def stats(self):
         if not self.superuser_request:

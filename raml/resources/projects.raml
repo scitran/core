@@ -77,6 +77,10 @@ post:
             application/json:
               example: !include ../examples/output/acquisition-list.json
               schema: !include ../schemas/output/acquisition-list.json
+  /rules:
+    get:
+      responses:
+        200:
   /analyses:
     type: analyses-list
     /{AnalysisId}:
