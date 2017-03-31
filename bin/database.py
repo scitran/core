@@ -16,7 +16,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 23 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 24 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -637,7 +637,6 @@ def upgrade_to_21():
     query['$or'].append({'measurement': { '$exists': True}})
     dm_v2_updates(config.db.acquisitions.find(query), 'acquisitions')
 
-
 def upgrade_to_22():
     """
     Add created and modified timestamps to gear docs
@@ -778,7 +777,6 @@ def upgrade_to_22():
 
     logging.info('Upgrade v22, complete.')
 
-
 def upgrade_to_23():
     """
     scitran/core issue #650
@@ -793,6 +791,71 @@ def upgrade_to_23():
         if auth_config.get('auth_type'):
             auth_type = auth_config.pop('auth_type')
             config.db.singletons.update_one({'_id': 'config'}, {'$set': {'auth': {auth_type: auth_config}}})
+
+def upgrade_to_24():
+    """
+    scitran/core issue #720
+
+    Migrate gear rules to the project level
+    """
+
+    global_rules = config.db.singletons.find_one({"_id" : "rules"})
+    project_ids  = list(config.db.projects.find({},{"_id": "true"}))
+
+    if global_rules is None:
+        global_rules = {
+            'rule_list': []
+        }
+
+    logging.info('Upgrade v23, migrating ' + str(len(global_rules['rule_list'])) + ' gear rules...')
+
+    count = 0
+    for old_rule in global_rules['rule_list']:
+
+        logging.info(json.dumps(old_rule))
+
+        gear_name = old_rule['alg']
+        rule_name = 'Migrated rule ' + str(count)
+
+        any_stanzas = []
+        all_stanzas = []
+
+        for old_any_stanza in old_rule.get('any', []):
+            if len(old_any_stanza) != 2:
+                raise Exception('Confusing any-rule stanza ' + str(count) + ': ' + json.dumps(old_any_stanza))
+
+            any_stanzas.append({ 'type': old_any_stanza[0], 'value': old_any_stanza[1] })
+
+        for old_all_stanza in old_rule.get('all', []):
+            if len(old_all_stanza) != 2:
+                raise Exception('Confusing all-rule stanza ' + str(count) + ': ' + json.dumps(old_all_stanza))
+
+            all_stanzas.append({ 'type': old_all_stanza[0], 'value': old_all_stanza[1] })
+
+        # New rule object
+        new_rule = {
+            'alg': gear_name,
+            'name': rule_name,
+            'any': any_stanzas,
+            'all': all_stanzas
+        }
+
+        # Insert rule on every project
+        for project in project_ids:
+            project_id = project['_id']
+
+            new_rule_obj = copy.deepcopy(new_rule)
+            new_rule_obj['project_id'] = str(project_id)
+
+            config.db.project_rules.insert_one(new_rule_obj)
+
+        logging.info('Upgrade v23, migrated rule ' + str(count) + ' of ' + str(len(global_rules)) + '...')
+        count += 1
+
+    # Remove obsolete singleton
+    config.db.singletons.remove({"_id" : "rules"})
+    logging.info('Upgrade v23, complete.')
+
 
 
 def upgrade_schema():

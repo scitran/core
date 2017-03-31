@@ -1,0 +1,63 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "rule",
+    "type": "object",
+    "properties": {
+        "project_id": {
+            "type": "string"
+        },
+        "alg": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "any": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "file.type",
+                            "file.name",
+                            "file.measurements",
+                            "container.has-type"
+                        ]
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "all": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "file.type",
+                            "file.name",
+                            "file.measurements",
+                            "container.has-type"
+                        ]
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "required": [
+        "project_id",
+        "alg",
+        "any",
+        "all"
+    ],
+    "additionalProperties": false
+}

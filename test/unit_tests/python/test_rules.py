@@ -105,12 +105,18 @@ def test_eval_rule_any():
     container = {'a': 'b'}
 
     rule = {
-        "any": [
-            ["file.type",             "dicom"     ],
-            ["file.name",             "*.dcm"     ],
+        'any': [
+            {
+                'type': 'file.type',
+                'value': 'dicom'
+            },
+            {
+                'type': 'file.name',
+                'value': '*.dcm',
+            },
         ],
-        "all": [],
-        "alg": "dcm2nii",
+        'all': [],
+        'alg': 'dcm2nii',
     }
 
     file_ = {'name': 'hello.dcm', 'type': 'a'}
@@ -133,13 +139,19 @@ def test_eval_rule_all():
     container = {'a': 'b'}
 
     rule = {
-        "any": [
+        'any': [
         ],
-        "all": [
-            ["file.type",             "dicom"     ],
-            ["file.name",             "*.dcm"     ],
+        'all': [
+            {
+                'type': 'file.type',
+                'value': 'dicom'
+            },
+            {
+                'type': 'file.name',
+                'value': '*.dcm',
+            },
         ],
-        "alg": "dcm2nii",
+        'alg': 'dcm2nii',
     }
 
     file_ = {'name': 'hello.dcm', 'type': 'a'}
@@ -162,15 +174,27 @@ def test_eval_rule_any_all():
     container = {'a': 'b'}
 
     rule = {
-        "any": [
-            ["file.type",             "dicom"     ],
-            ["file.name",             "*.dcm"     ],
+        'any': [
+            {
+                'type': 'file.type',
+                'value': 'dicom'
+            },
+            {
+                'type': 'file.name',
+                'value': '*.dcm',
+            },
         ],
-        "all": [
-            ["file.type",             "dicom"     ],
-            ["file.name",             "*.dcm"     ],
+        'all': [
+            {
+                'type': 'file.type',
+                'value': 'dicom'
+            },
+            {
+                'type': 'file.name',
+                'value': '*.dcm',
+            },
         ],
-        "alg": "dcm2nii",
+        'alg': 'dcm2nii',
     }
 
     file_ = {'name': 'hello.dcm', 'type': 'a'}

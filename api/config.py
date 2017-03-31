@@ -165,6 +165,8 @@ expected_input_schemas = set([
     'project.json',
     'project-template.json',
     'project-update.json',
+    'rule.json',
+    'rule-update.json',
     'session.json',
     'session-update.json',
     'subject.json',
@@ -231,18 +233,10 @@ def initialize_db():
     db.jobs.create_index([('state', 1),('now', 1), ('modified', 1)])
     db.gears.create_index('name')
     db.batch.create_index('jobs')
+    db.project_rules.create_index('project_id')
 
     if __config['core']['access_log_enabled']:
         log_db.access_log.create_index('context.ticket_id')
-
-    # Must be kept in sync with jobs/rules.py
-    db.singletons.update({"_id" : "rules"}, {
-            '$setOnInsert': {
-                'rule_list': []
-            }
-        },
-        upsert=True
-    )
 
     create_or_recreate_ttl_index('authtokens', 'timestamp', 2592000)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
