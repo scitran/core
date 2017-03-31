@@ -79,7 +79,6 @@ class Job(object):
                 'id': None
             }
 
-
         self.gear_id            = gear_id
         self.inputs             = inputs
         self.destination        = destination

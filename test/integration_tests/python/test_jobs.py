@@ -59,6 +59,18 @@ def test_jobs(with_hierarchy, with_gear, with_invalid_gear, as_user, as_admin):
     r = as_admin.get('/jobs/' + job1_id)
     assert r.ok
 
+    # add job log
+    r = as_admin.post('/jobs/' + job1_id + '/logs', json=[
+        { 'fd': 1, 'msg': 'Hello' },
+        { 'fd': 2, 'msg': 'World' }
+    ])
+    assert r.ok
+
+    # get job log
+    r = as_admin.get('/jobs/' + job1_id + '/logs')
+    assert r.ok
+    assert len(r.json()['logs']) == 2
+
     # get job config
     r = as_admin.get('/jobs/' + job1_id + '/config.json')
     assert r.ok

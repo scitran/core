@@ -136,6 +136,8 @@ endpoints = [
             route('/<:[^/]+>',             JobHandler),
             route('/<:[^/]+>/config.json', JobHandler,  h='get_config'),
             route('/<:[^/]+>/retry',       JobHandler,  h='retry',      m=['POST']),
+            route('/<:[^/]+>/logs',        JobHandler,  h='get_logs',   m=['GET']),
+            route('/<:[^/]+>/logs',        JobHandler,  h='add_logs',   m=['POST']),
         ]),
         route('/gears',                                  GearsHandler),
         prefix('/gears', [

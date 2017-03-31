@@ -247,6 +247,47 @@ class JobHandler(base.RequestHandler):
 
         Queue.mutate(j, mutation)
 
+    def get_logs(self, _id):
+        """Get a job's logs"""
+
+        job = Job.get(_id)
+        if job is None:
+            self.abort(404, 'Job not found')
+
+        # Permission check
+        if not self.superuser_request:
+            for x in job.inputs:
+                job.inputs[x].check_access(self.uid, 'ro')
+            # Unlike jobs-add, explicitly not checking write access to destination.
+
+        log = config.db.job_logs.find_one({'_id': _id})
+
+        if log is None:
+            return { '_id': _id, 'logs': [] }
+        else:
+            return log
+
+    def add_logs(self, _id):
+        """Add to a job's logs"""
+
+        if not self.superuser_request:
+            self.abort(403, 'Request requires superuser')
+
+        doc = self.request.json
+
+        job = Job.get(_id)
+        if job is None:
+            self.abort(404, 'Job not found')
+
+        log = config.db.job_logs.find_one({'_id': _id})
+
+        if log is None: # Race
+            config.db.job_logs.insert_one({'_id': _id, 'logs': []})
+
+        config.db.job_logs.update({'_id': _id}, {'$push':{'logs':{'$each':doc}}})
+        return
+
+
     def retry(self, _id):
         """ Retry a job.
 
