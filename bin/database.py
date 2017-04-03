@@ -873,6 +873,8 @@ def upgrade_to_25():
         }
         config.db.refreshtokens.insert(refresh_doc)
 
+    config.db.authtokens.update_many({'refresh_token': {'$exists': True}}, {'$unset': {'refresh_token': ''}})
+
 
 
 def upgrade_schema():
