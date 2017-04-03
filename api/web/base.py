@@ -13,7 +13,7 @@ from .. import config
 from ..types import Origin
 from .. import validators
 from ..auth.authproviders import AuthProvider, APIKeyAuthProvider
-from ..auth import APIAuthProviderException, APIUnknownUserException
+from ..auth import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
@@ -27,13 +27,18 @@ class RequestHandler(webapp2.RequestHandler):
         """Set uid, source_site, public_request, and superuser"""
         self.initialize(request, response)
 
+        site_id = config.get_item('site', 'id')
+        if site_id is None:
+            self.abort(503, 'Database not initialized')
+
+        self.source_site = None
+        self.uid = None
+
         # If user is attempting to log in through `/login`, ignore Auth here:
         # In future updates, move login and logout handlers to class that overrides this init
-        if self.request.path == 'api/login':
+        if self.request.path == '/api/login':
+            self.source_site = site_id
             return
-
-        self.uid = None
-        self.source_site = None
 
         drone_request = False
         user_agent = self.request.headers.get('User-Agent', '')
@@ -41,10 +46,6 @@ class RequestHandler(webapp2.RequestHandler):
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
         drone_method = self.request.headers.get('X-SciTran-Method', None)
         drone_name = self.request.headers.get('X-SciTran-Name', None)
-
-        site_id = config.get_item('site', 'id')
-        if site_id is None:
-            self.abort(503, 'Database not initialized')
 
         if session_token:
             if session_token.startswith('scitran-user '):
@@ -58,6 +59,8 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 # User (oAuth) authentication
                 self.uid = self.authenticate_user_token(session_token)
+
+
 
         # Drone shared secret authentication
         elif drone_secret is not None:
@@ -92,9 +95,9 @@ class RequestHandler(webapp2.RequestHandler):
         else:
             user = config.db.users.find_one({'_id': self.uid}, ['root', 'disabled'])
             if not user:
-                raise APIUnknownUserException('User {} will need to be added to the system before managing data.'.format(self.uid))
+                self.abort(402, 'User {} will need to be added to the system before managing data.'.format(self.uid))
             if user.get('disabled', False) is True:
-                raise APIUnknownUserException('User {} is disabled.'.format(self.uid))
+                self.abort(402, 'User {} is disabled.'.format(self.uid))
             if user.get('root'):
                 self.user_is_admin = True
             else:
@@ -130,23 +133,40 @@ class RequestHandler(webapp2.RequestHandler):
 
             # Check if token is expired
             if cached_token.get('expires') and timestamp > cached_token['expires']:
-                refresh_token = cached_token.get('refresh_token')
-                if refresh_token:
+
+                # look to see if the user has a stored refresh token:
+                unverified_uid = cached_token['uid']
+                auth_type = cached_token['auth_type']
+                user = config.db.users.find_one({'_id': unverified_uid})
+                if user and user.get('refresh_tokens', {}).get(auth_type):
                     # Attempt to refresh the token, update db
 
-                    auth_type = cached_token['auth_type']
+                    refresh_token = user.get('refresh_tokens', {}).get(auth_type)
                     try:
                         auth_provider = AuthProvider.factory(auth_type)
                     except NotImplementedError as e:
                         self.abort(401, str(e))
 
-                    updated_token_info = auth_provider.refresh_token(refresh_token)
+                    try:
+                        updated_token_info = auth_provider.refresh_token(refresh_token)
+                    except APIAuthProviderException as e:
+
+                        # Remove the bad refresh token and session token:
+                        config.db.users.update_one({'_id': unverified_uid }, {'$unset': {'refresh_tokens.'+auth_type: ''}})
+                        config.db.authtokens.delete_one({'_id': cached_token['_id']})
+
+                        # TODO: Rework auth so it's not tied to init, then:
+                        #   - Raise a refresh token exception specifically in this situation
+                        #   - Alerts clients they may need to re-ask for `offline` permission
+                        # Until then, the key `invalid_refresh_token` alerts the client
+                        self.abort(401, 'invalid_refresh_token')
+
                     config.db.authtokens.update_one({'_id': cached_token['_id']}, {'$set': updated_token_info})
 
                 else:
-                    # Token expired, remove and deny request
+                    # Token expired and no refresh token, remove and deny request
                     config.db.authtokens.delete_one({'_id': cached_token['_id']})
-                    self.abort(401, 'Expired session token')
+                    self.abort(401, 'invalid_refresh_token')
 
             uid = cached_token['uid']
         else:
@@ -191,6 +211,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         config.db.authtokens.insert_one(token_entry)
 
+        # Set origin now that the uid is known
         self.set_origin(False)
 
         return {'token': session_token}
@@ -283,6 +304,7 @@ class RequestHandler(webapp2.RequestHandler):
         For HTTP and other known exceptions, use its error code
         For all others use a generic 500 error code and log the stack trace
         """
+
         custom_errors = None
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
@@ -291,6 +313,9 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.warning(str(exception))
         elif isinstance(exception, APIAuthProviderException):
             code = 401
+        elif isinstance(exception, APIRefreshTokenException):
+            code = 401
+            custom_errors = exception.errors
         elif isinstance(exception, APIUnknownUserException):
             code = 402
         elif isinstance(exception, APIConsistencyException):

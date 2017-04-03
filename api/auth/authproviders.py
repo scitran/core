@@ -54,6 +54,13 @@ class AuthProvider(object):
                 # Update the user's gravatar if it has changed.
                 config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
 
+    def set_refresh_token(self, uid, refresh_token):
+        if not refresh_token:
+            return
+
+        update = {'$set': {'refresh_tokens.'+ self.auth_type: refresh_token}}
+        config.db.users.update_one({'_id': uid}, update)
+
 
 class JWTAuthProvider(AuthProvider):
 
@@ -106,9 +113,9 @@ class GoogleOAuthProvider(AuthProvider):
         token = response['access_token']
 
         uid = self.validate_user(token)
+        self.set_refresh_token(uid, response.get('refresh_token'))
 
         return {
-            'refresh_token': response.get('refresh_token'),
             'access_token': token,
             'uid': uid,
             'auth_type': self.auth_type,
@@ -188,9 +195,9 @@ class WechatOAuthProvider(AuthProvider):
 
         registration_code = kwargs.get('registration_code')
         uid = self.validate_user(openid, registration_code=registration_code)
+        self.set_refresh_token(uid, response.get('refresh_token'))
 
         return {
-            'refresh_token': response['refresh_token'],
             'access_token': response['access_token'],
             'uid': uid,
             'auth_type': self.auth_type,
@@ -209,7 +216,6 @@ class WechatOAuthProvider(AuthProvider):
 
         response = json.loads(r.content)
         return {
-            'refresh_token': response['refresh_token'],
             'access_token': response['access_token'],
             'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
         }
