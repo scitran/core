@@ -16,7 +16,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 24 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 25 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -855,6 +855,23 @@ def upgrade_to_24():
     # Remove obsolete singleton
     config.db.singletons.remove({"_id" : "rules"})
     logging.info('Upgrade v23, complete.')
+
+def upgrade_to_25():
+    """
+    scitran/core PR #733
+
+    Migrate refresh token from authtokens to seperate collection
+    """
+
+    auth_tokens = config.db.authtokens.find({'refresh_token': {'$exists': True}})
+
+    for a in auth_tokens:
+        refresh_doc = {
+            'uid': a['uid'],
+            'token': a['refresh_token'],
+            'auth_type': a['auth_type']
+        }
+        config.db.refreshtokens.insert(refresh_doc)
 
 
 

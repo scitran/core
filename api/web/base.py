@@ -49,8 +49,13 @@ class RequestHandler(webapp2.RequestHandler):
 
             self.initialization_auth(site_id)
 
+        except webapp2.HTTPException:
+            raise
         except Exception: # pylint: disable=broad-except
-            self.abort(500, 'An unexpected error has occured.')
+            tb = traceback.format_exc()
+            self.request.logger.error(tb)
+            self.abort(500, 'Unexpected error.')
+
 
 
     def initialize(self, request, response):
@@ -151,22 +156,21 @@ class RequestHandler(webapp2.RequestHandler):
                 # look to see if the user has a stored refresh token:
                 unverified_uid = cached_token['uid']
                 auth_type = cached_token['auth_type']
-                user = config.db.users.find_one({'_id': unverified_uid})
-                if user and user.get('refresh_tokens', {}).get(auth_type):
+                refresh_token = config.db.refreshtokens.find_one({'uid': unverified_uid, 'auth_type': cached_token['auth_type']})
+                if refresh_token:
                     # Attempt to refresh the token, update db
 
-                    refresh_token = user.get('refresh_tokens', {}).get(auth_type)
                     try:
                         auth_provider = AuthProvider.factory(auth_type)
                     except NotImplementedError as e:
                         self.abort(401, str(e))
 
                     try:
-                        updated_token_info = auth_provider.refresh_token(refresh_token)
+                        updated_token_info = auth_provider.refresh_token(refresh_token['token'])
                     except APIAuthProviderException as e:
 
                         # Remove the bad refresh token and session token:
-                        config.db.users.update_one({'_id': unverified_uid }, {'$unset': {'refresh_tokens.'+auth_type: ''}})
+                        config.db.refreshtokens.delete_one({'_id': refresh_token['_id']})
                         config.db.authtokens.delete_one({'_id': cached_token['_id']})
 
                         # TODO: Rework auth so it's not tied to init, then:

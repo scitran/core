@@ -6,6 +6,7 @@ import urlparse
 
 from . import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from .. import config, util
+from ..dao import dbutil
 
 log = config.log
 
@@ -57,14 +58,22 @@ class AuthProvider(object):
     def set_refresh_token_if_exists(self, uid, refresh_token):
         # Also check to make sure if refresh token is missing, that the user
         # has a refresh token on their user doc. If not, alert the client.
+        query = {'uid': uid, 'auth_type': self.auth_type}
         if not refresh_token:
-            user = config.db.users.find_one({'_id': uid})
-            if not user.get('refresh_tokens', {}).get(self.auth_type):
+            token = config.db.refreshtokens.find_one(query)
+            if not token:
                 # user does not have refresh token, alert the client
                 raise APIRefreshTokenException('invalid_refresh_token')
+            else:
+                # user does have a previously saved refresh token, move on
+                return
 
-        update = {'$set': {'refresh_tokens.'+ self.auth_type: refresh_token}}
-        config.db.users.update_one({'_id': uid}, update)
+        refresh_doc = {
+            'token': refresh_token,
+            'auth_type': self.auth_type,
+            'uid': uid
+        }
+        dbutil.fault_tolerant_replace_one('refreshtokens', query, refresh_doc, upsert=True)
 
 
 class JWTAuthProvider(AuthProvider):
