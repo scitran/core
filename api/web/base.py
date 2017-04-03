@@ -33,6 +33,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         self.source_site = None
         self.uid = None
+        self.origin = None
 
         # If user is attempting to log in through `/login`, ignore Auth here:
         # In future updates, move login and logout handlers to class that overrides this init
@@ -40,6 +41,23 @@ class RequestHandler(webapp2.RequestHandler):
             self.source_site = site_id
             return
 
+        try:
+            # TODO: This should be taken out of base.RequestHandler so `handle_exception()`
+            # can properly catch exceptions raised by this logic as well as uninteded exceptions
+            # For now, wrap in a try/catch to prevent stack traces from getting to the client
+            # For more info see scitran/core #733
+
+            self.initialization_auth(site_id)
+
+        except Exception: # pylint: disable=broad-except
+            self.abort(500, 'An unexpected error has occured.')
+
+
+    def initialize(self, request, response):
+        super(RequestHandler, self).initialize(request, response)
+        request.logger.info("Initialized request")
+
+    def initialization_auth(self, site_id):
         drone_request = False
         user_agent = self.request.headers.get('User-Agent', '')
         session_token = self.request.headers.get('Authorization', None)
@@ -112,10 +130,6 @@ class RequestHandler(webapp2.RequestHandler):
 
         self.origin = None
         self.set_origin(drone_request)
-
-    def initialize(self, request, response):
-        super(RequestHandler, self).initialize(request, response)
-        request.logger.info("Initialized request")
 
     def authenticate_user_token(self, session_token):
         """
