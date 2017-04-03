@@ -4,7 +4,7 @@ import json
 import urllib
 import urlparse
 
-from . import APIAuthProviderException, APIUnknownUserException
+from . import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from .. import config, util
 
 log = config.log
@@ -55,8 +55,13 @@ class AuthProvider(object):
                 config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
 
     def set_refresh_token_if_exists(self, uid, refresh_token):
+        # Also check to make sure if refresh token is missing, that the user
+        # has a refresh token on their user doc. If not, alert the client.
         if not refresh_token:
-            return
+            user = config.db.users.find_one({'_id': uid})
+            if not user.get('refresh_tokens', {}).get(self.auth_type):
+                # user does not have refresh token, alert the client
+                raise APIRefreshTokenException('invalid_refresh_token')
 
         update = {'$set': {'refresh_tokens.'+ self.auth_type: refresh_token}}
         config.db.users.update_one({'_id': uid}, update)

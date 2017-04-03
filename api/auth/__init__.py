@@ -40,7 +40,7 @@ class APIRefreshTokenException(Exception):
     def __init__(self, msg):
 
         super(APIRefreshTokenException, self).__init__(msg)
-        self.errors = {'core_status_code': 'bad_refresh_token'}
+        self.errors = {'core_status_code': 'invalid_refresh_token'}
 
 
 def always_ok(exec_op):
