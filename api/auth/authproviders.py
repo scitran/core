@@ -4,8 +4,9 @@ import json
 import urllib
 import urlparse
 
-from . import APIAuthProviderException, APIUnknownUserException
+from . import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from .. import config, util
+from ..dao import dbutil
 
 log = config.log
 
@@ -53,6 +54,26 @@ class AuthProvider(object):
                 timestamp = datetime.datetime.utcnow()
                 # Update the user's gravatar if it has changed.
                 config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
+
+    def set_refresh_token_if_exists(self, uid, refresh_token):
+        # Also check to make sure if refresh token is missing, that the user
+        # has a refresh token on their user doc. If not, alert the client.
+        query = {'uid': uid, 'auth_type': self.auth_type}
+        if not refresh_token:
+            token = config.db.refreshtokens.find_one(query)
+            if not token:
+                # user does not have refresh token, alert the client
+                raise APIRefreshTokenException('invalid_refresh_token')
+            else:
+                # user does have a previously saved refresh token, move on
+                return
+
+        refresh_doc = {
+            'token': refresh_token,
+            'auth_type': self.auth_type,
+            'uid': uid
+        }
+        dbutil.fault_tolerant_replace_one('refreshtokens', query, refresh_doc, upsert=True)
 
 
 class JWTAuthProvider(AuthProvider):
@@ -106,9 +127,9 @@ class GoogleOAuthProvider(AuthProvider):
         token = response['access_token']
 
         uid = self.validate_user(token)
+        self.set_refresh_token_if_exists(uid, response.get('refresh_token'))
 
         return {
-            'refresh_token': response.get('refresh_token'),
             'access_token': token,
             'uid': uid,
             'auth_type': self.auth_type,
@@ -188,9 +209,9 @@ class WechatOAuthProvider(AuthProvider):
 
         registration_code = kwargs.get('registration_code')
         uid = self.validate_user(openid, registration_code=registration_code)
+        self.set_refresh_token_if_exists(uid, response.get('refresh_token'))
 
         return {
-            'refresh_token': response['refresh_token'],
             'access_token': response['access_token'],
             'uid': uid,
             'auth_type': self.auth_type,
@@ -209,7 +230,6 @@ class WechatOAuthProvider(AuthProvider):
 
         response = json.loads(r.content)
         return {
-            'refresh_token': response['refresh_token'],
             'access_token': response['access_token'],
             'expires': datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
         }
