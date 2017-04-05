@@ -16,20 +16,18 @@ class GroupHandler(base.RequestHandler):
 
     def get(self, _id):
         group = self._get_group(_id)
-        if not group:
-            self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('GET', _id)
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_roles([result], self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            ContainerHandler.join_user_info([result])
         return result
 
     def delete(self, _id):
         if _id == 'unknown':
             self.abort(400, 'The group "unknown" can\'t be deleted as it is integral within the API')
         group = self._get_group(_id)
-        if not group:
-            self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('DELETE', _id)
         if result.deleted_count == 1:
@@ -50,8 +48,6 @@ class GroupHandler(base.RequestHandler):
 
     def put(self, _id):
         group = self._get_group(_id)
-        if not group:
-            self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'group.json')

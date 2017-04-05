@@ -100,8 +100,10 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
         if result is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, _id))
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_permissions(result, self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            self.join_user_info([result])
         # build and insert file paths if they are requested
         if self.is_true('paths'):
             for fileinfo in result['files']:
