@@ -179,6 +179,27 @@ class ContainerHandler(base.RequestHandler):
 
         return result
 
+    @staticmethod
+    def join_user_info(results):
+        """
+        Given a list of containers, adds avatar and name context to each member of the permissions/roles list
+        """
+
+        # Get list of all users, hash by uid
+        users_list = containerstorage.ContainerStorage('users', use_object_id=False).get_all_el({}, None, None)
+        users = {user['_id']: user for user in users_list}
+
+        for r in results:
+            permissions = r.get('permissions', [])
+
+            for p in permissions:
+                user = users[p['_id']]
+                p['avatar'] = user.get('avatar')
+                p['firstname'] = user.get('firstname', '')
+                p['lastname'] = user.get('lastname', '')
+
+        return results
+
     def handle_analyses(self, result):
         """
         Given an object with an `analyses` array key, inflate job info for job-based analyses
@@ -275,6 +296,7 @@ class ContainerHandler(base.RequestHandler):
         projection = self.config['list_projection'].copy()
         if self.is_true('info'):
             projection.pop('info')
+        if self.is_true('permissions'):
             if not projection:
                 projection = None
 
@@ -304,7 +326,7 @@ class ContainerHandler(base.RequestHandler):
         if results is None:
             self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
         # return only permissions of the current user
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('avatars'):
             self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
         if self.is_true('counts'):
@@ -322,6 +344,9 @@ class ContainerHandler(base.RequestHandler):
                 result = containerutil.get_stats(result, cont_name)
             result = self.handle_origin(result)
             modified_results.append(result)
+
+        if self.is_true('avatars'):
+            modified_results = self.join_user_info(modified_results)
 
         return modified_results
 
