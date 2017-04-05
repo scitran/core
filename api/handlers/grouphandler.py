@@ -5,6 +5,7 @@ from .. import util
 from .. import validators
 from ..auth import groupauth
 from ..dao import containerstorage
+from .containerhandler import ContainerHandler
 
 
 class GroupHandler(base.RequestHandler):
@@ -15,20 +16,18 @@ class GroupHandler(base.RequestHandler):
 
     def get(self, _id):
         group = self._get_group(_id)
-        if not group:
-            self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('GET', _id)
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_roles([result], self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            ContainerHandler.join_user_info([result])
         return result
 
     def delete(self, _id):
         if _id == 'unknown':
             self.abort(400, 'The group "unknown" can\'t be deleted as it is integral within the API')
         group = self._get_group(_id)
-        if not group:
-            self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('DELETE', _id)
         if result.deleted_count == 1:
@@ -41,16 +40,14 @@ class GroupHandler(base.RequestHandler):
         projection = {'name': 1, 'created': 1, 'modified': 1, 'roles': [], 'tags': []}
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
-        if results is None:
-            self.abort(404, 'Not found')
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_roles(results, self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            results = ContainerHandler.join_user_info(results)
         return results
 
     def put(self, _id):
         group = self._get_group(_id)
-        if not group:
-            self.abort(404, 'no such Group: ' + _id)
         permchecker = groupauth.default(self, group)
         payload = self.request.json_body
         mongo_schema_uri = validators.schema_uri('mongo', 'group.json')

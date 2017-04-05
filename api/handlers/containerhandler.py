@@ -100,8 +100,10 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
         if result is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, _id))
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_permissions(result, self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            self.join_user_info([result])
         # build and insert file paths if they are requested
         if self.is_true('paths'):
             for fileinfo in result['files']:
@@ -178,6 +180,27 @@ class ContainerHandler(base.RequestHandler):
                     result['join-origin'][j_type][j_id] = join_doc
 
         return result
+
+    @staticmethod
+    def join_user_info(results):
+        """
+        Given a list of containers, adds avatar and name context to each member of the permissions/roles list
+        """
+
+        # Get list of all users, hash by uid
+        users_list = containerstorage.ContainerStorage('users', use_object_id=False).get_all_el({}, None, None)
+        users = {user['_id']: user for user in users_list}
+
+        for r in results:
+            permissions = r.get('permissions') or r.get('roles', [])
+
+            for p in permissions:
+                user = users[p['_id']]
+                p['avatar'] = user.get('avatar')
+                p['firstname'] = user.get('firstname', '')
+                p['lastname'] = user.get('lastname', '')
+
+        return results
 
     def handle_analyses(self, result):
         """
@@ -275,6 +298,7 @@ class ContainerHandler(base.RequestHandler):
         projection = self.config['list_projection'].copy()
         if self.is_true('info'):
             projection.pop('info')
+        if self.is_true('permissions'):
             if not projection:
                 projection = None
 
@@ -303,8 +327,8 @@ class ContainerHandler(base.RequestHandler):
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
-        # return only permissions of the current user
-        if not self.superuser_request:
+        # return only permissions of the current user unless superuser or getting avatars
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
         if self.is_true('counts'):
@@ -322,6 +346,9 @@ class ContainerHandler(base.RequestHandler):
                 result = containerutil.get_stats(result, cont_name)
             result = self.handle_origin(result)
             modified_results.append(result)
+
+        if self.is_true('join_avatars'):
+            modified_results = self.join_user_info(modified_results)
 
         return modified_results
 

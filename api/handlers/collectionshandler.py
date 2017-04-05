@@ -109,9 +109,10 @@ class CollectionsHandler(ContainerHandler):
             permchecker = containerauth.list_permission_checker(self)
         query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
-        if results is None:
-            self.abort(404, 'Element not found in collection {}'.format(self.storage.cont_name))
-        self._filter_all_permissions(results, self.uid, self.user_site)
+        if not self.superuser_request and not self.is_true('join_avatars'):
+            self._filter_all_permissions(results, self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            results = ContainerHandler.join_user_info(results)
         for result in results:
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, 'collections')
