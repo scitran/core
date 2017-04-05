@@ -164,7 +164,7 @@ class UserHandler(base.RequestHandler):
     def generate_api_key(self):
         if not self.uid:
             self.abort(400, 'no user is logged in')
-        generated_key = base64.urlsafe_b64encode(os.urandom(42))
+        generated_key = util.create_nonce()
         now = datetime.datetime.utcnow()
         payload = {'api_key': {'key': generated_key, 'created': now, 'last_used': None}}
         result = self.storage.exec_op('PUT', _id=self.uid, payload=payload)

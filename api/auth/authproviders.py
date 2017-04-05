@@ -75,7 +75,6 @@ class AuthProvider(object):
         }
         dbutil.fault_tolerant_replace_one('refreshtokens', query, refresh_doc, upsert=True)
 
-
 class JWTAuthProvider(AuthProvider):
 
     def __init__(self):
@@ -102,8 +101,6 @@ class JWTAuthProvider(AuthProvider):
         self.set_user_gravatar(uid, uid)
 
         return uid
-
-
 
 class GoogleOAuthProvider(AuthProvider):
 
@@ -184,7 +181,6 @@ class GoogleOAuthProvider(AuthProvider):
         config.db.users.update_one({'_id': uid, 'avatars.provider': {'$ne': provider_avatar}}, {'$set':{'avatars.provider': provider_avatar, 'modified': timestamp}})
         # If the user has no avatar set, mark their provider_avatar as their chosen avatar.
         config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': provider_avatar, 'modified': timestamp}})
-
 
 class WechatOAuthProvider(AuthProvider):
 
@@ -273,7 +269,6 @@ class WechatOAuthProvider(AuthProvider):
     def set_user_avatar(self, uid, identity):
         pass
 
-
 class APIKeyAuthProvider(AuthProvider):
     """
     Uses an API key for authentication.
@@ -293,7 +288,19 @@ class APIKeyAuthProvider(AuthProvider):
         """
         super(APIKeyAuthProvider,self).__init__('api-key', set_config=False)
 
+    @staticmethod
+    def _preprocess_key(key):
+        """
+        Convention for API keys is that they can have arbitrary information, separated by a :,
+        before the actual key. Generally, this will have a connection string in it.
+        Strip this preamble, if any, before processing the key.
+        """
+
+        return key.split(":")[-1] # Get the last segment of the string after any : separators
+
     def validate_code(self, code, **kwargs):
+        code = APIKeyAuthProvider._preprocess_key(code)
+
         uid = self.validate_user_api_key(code)
         return {
             'access_token': code,
@@ -309,6 +316,8 @@ class APIKeyAuthProvider(AuthProvider):
 
         401s via APIAuthProviderException on failure.
         """
+        key = APIKeyAuthProvider._preprocess_key(key)
+
         timestamp = datetime.datetime.utcnow()
         user = config.db.users.find_one_and_update({'api_key.key': key}, {'$set': {'api_key.last_used': timestamp}}, ['_id'])
         if user:

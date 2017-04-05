@@ -1,12 +1,14 @@
 import datetime
 import enum as baseEnum
 import errno
+import hashlib
 import json
 import mimetypes
 import os
-import uuid
+import random
 import requests
-import hashlib
+import string
+import uuid
 
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
@@ -204,3 +206,15 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+NONCE_CHARS  = string.ascii_letters + string.digits
+NONCE_LENGTH = 18
+
+def create_nonce():
+    x = len(NONCE_CHARS)
+
+    # Class that uses the os.urandom() function for generating random numbers.
+    # https://docs.python.org/2/library/random.html#random.SystemRandom
+    randrange = random.SystemRandom().randrange
+
+    return ''.join([NONCE_CHARS[randrange(x)] for _ in range(NONCE_LENGTH)])
