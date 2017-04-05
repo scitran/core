@@ -5,6 +5,7 @@ from .. import util
 from .. import validators
 from ..auth import groupauth
 from ..dao import containerstorage
+from .containerhandler import ContainerHandler
 
 
 class GroupHandler(base.RequestHandler):
@@ -41,10 +42,10 @@ class GroupHandler(base.RequestHandler):
         projection = {'name': 1, 'created': 1, 'modified': 1, 'roles': [], 'tags': []}
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
-        if results is None:
-            self.abort(404, 'Not found')
-        if not self.superuser_request:
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_roles(results, self.uid, self.user_site)
+        if self.is_true('join_avatars'):
+            results = ContainerHandler.join_user_info(results)
         return results
 
     def put(self, _id):

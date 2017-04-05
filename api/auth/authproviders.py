@@ -48,12 +48,19 @@ class AuthProvider(object):
             raise APIUnknownUserException('User {} is disabled.'.format(uid))
 
     def set_user_gravatar(self, uid, email):
+        """
+        Looks for user gravatar via email. If a gravatar is found, adds to avatar map.
+        If the user has not yet set an avatar (first time logging in), set the default
+        avatar to the gravatar image.
+        """
         if email and uid:
             gravatar = util.resolve_gravatar(email)
             if gravatar is not None:
                 timestamp = datetime.datetime.utcnow()
                 # Update the user's gravatar if it has changed.
-                config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}}, {'$set':{'avatars.gravatar': gravatar, 'modified': timestamp}})
+                config.db.users.update_one({'_id': uid, 'avatars.gravatar': {'$ne': gravatar}},{'$set':{'avatars.gravatar': gravatar,'modified': timestamp}})
+                # If the user has no avatar set, use gravar
+                config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': gravatar, 'modified': timestamp}})
 
     def set_refresh_token_if_exists(self, uid, refresh_token):
         # Also check to make sure if refresh token is missing, that the user
@@ -163,8 +170,8 @@ class GoogleOAuthProvider(AuthProvider):
             raise APIAuthProviderException('Auth provider did not provide user email')
 
         self.ensure_user_exists(uid)
-        self.set_user_avatar(uid, identity)
         self.set_user_gravatar(uid, uid)
+        self.set_user_avatar(uid, identity)
 
         return uid
 

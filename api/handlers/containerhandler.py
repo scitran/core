@@ -190,7 +190,7 @@ class ContainerHandler(base.RequestHandler):
         users = {user['_id']: user for user in users_list}
 
         for r in results:
-            permissions = r.get('permissions', [])
+            permissions = r.get('permissions') or r.get('roles', [])
 
             for p in permissions:
                 user = users[p['_id']]
@@ -325,8 +325,8 @@ class ContainerHandler(base.RequestHandler):
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:
             self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
-        # return only permissions of the current user
-        if not self.superuser_request and not self.is_true('avatars'):
+        # return only permissions of the current user unless superuser or getting avatars
+        if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_all_permissions(results, self.uid, self.user_site)
         # the "count" flag add a count for each container returned
         if self.is_true('counts'):
@@ -345,7 +345,7 @@ class ContainerHandler(base.RequestHandler):
             result = self.handle_origin(result)
             modified_results.append(result)
 
-        if self.is_true('avatars'):
+        if self.is_true('join_avatars'):
             modified_results = self.join_user_info(modified_results)
 
         return modified_results
