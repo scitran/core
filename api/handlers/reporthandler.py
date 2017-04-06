@@ -1,6 +1,7 @@
 import bson
 import dateutil
 import copy
+import pymongo
 
 from ..web import base
 from .. import config
@@ -11,37 +12,27 @@ EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 class APIReportException(Exception):
     pass
 
+class APIReportParamsException(Exception):
+    pass
+
+
 class ReportHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(ReportHandler, self).__init__(request, response)
 
     def get(self, report_type):
+
         report = None
-        if report_type == 'site':
-            report = SiteReport()
 
-        elif report_type == 'project':
-            project_list = self.request.GET.getall('projects')
-            start_date = self.get_param('start_date')
-            end_date = self.get_param('end_date')
-
-            if len(project_list) < 1:
-                self.abort(400, 'List of projects requried for Project Report')
-            if start_date is not None:
-                start_date = dateutil.parser.parse(self.get_param('start_date'))
-            if end_date is not None:
-                end_date = dateutil.parser.parse(self.get_param('end_date'))
-            if end_date is not None and start_date is not None and end_date < start_date:
-                self.abort(400, 'End date {} is before start date {}'.format(end_date, start_date))
-
-            report = ProjectReport([bson.ObjectId(id_) for id_ in project_list],
-                                   start_date=start_date,
-                                   end_date=end_date)
-
+        if report_type in ReportTypes:
+            report_class = ReportTypes[report_type]
+            try:
+                report = report_class(self.request.params)
+            except APIReportParamsException as e:
+                self.abort(400, e.msg)
         else:
-            # They should never even get this far because of filtering in api.py
-            self.abort(400, 'The report type {} is not supported'.format(report_type))
+            raise NotImplementedError('Report type {} is not supported'.format(report_type))
 
         if self.superuser_request or report.user_can_generate(self.uid):
             return report.build()
@@ -49,36 +40,14 @@ class ReportHandler(base.RequestHandler):
             self.abort(403, 'User {} does not have required permissions to generate report'.format(self.uid))
 
 
-def _get_result_list(output):
-    """
-    Helper function for extracting mongo aggregation results
-
-    Given the output of a mongo aggregation call, checks 'ok' field
-    If not 1.0, 'result' field does not exist or 'result' array is empty,
-    throws APIReportException
-    """
-
-    if output.get('ok') == 1.0:
-        result = output.get('result')
-        if result is not None and len(result) > 0:
-            return result
-
-    raise APIReportException
-
-def _get_result(output):
-    """
-    Helper function for extracting a singular mongo aggregation result
-
-    If more than one item is in the results array, throws APIReportException
-    """
-
-    results = _get_result_list(output)
-    if len(results) == 1:
-        return results[0]
-
-    raise APIReportException
-
 class Report(object):
+
+    def __init__(self, params):
+        """
+        Initialize a Report
+        """
+
+        super(Report, self).__init__()
 
     def user_can_generate(self, uid):
         """
@@ -91,6 +60,38 @@ class Report(object):
         Build and return a json report
         """
         raise NotImplementedError()
+
+    @staticmethod
+    def _get_result_list(output):
+        """
+        Helper function for extracting mongo aggregation results
+
+        Given the output of a mongo aggregation call, checks 'ok' field
+        If not 1.0, 'result' field does not exist or 'result' array is empty,
+        throws APIReportException
+        """
+
+        if output.get('ok') == 1.0:
+            result = output.get('result')
+            if result is not None and len(result) > 0:
+                return result
+
+        raise APIReportException
+
+    @staticmethod
+    def _get_result(output):
+        """
+        Helper function for extracting a singular mongo aggregation result
+
+        If more than one item is in the results array, throws APIReportException
+        """
+
+        results = _get_result_list(output)
+        if len(results) == 1:
+            return results[0]
+
+        raise APIReportException
+
 
 
 class SiteReport(Report):
@@ -152,17 +153,32 @@ class ProjectReport(Report):
       - Subjects over 18
     """
 
-    def __init__(self, projects, start_date=None, end_date=None):
+    def __init__(self, params):
         """
         Initialize a Project Report
 
+        Possible keys in :params:
         :projects:      a list of project ObjectIds
         :start_date:    ISO formatted timestamp
         :end_date:      ISO formatted timestamp
         """
 
-        super(ProjectReport, self).__init__()
-        self.projects = projects
+        super(ProjectReport, self).__init__(params)
+
+        project_list = params.getall('projects')
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+
+        if len(project_list) < 1:
+            raise APIReportParamsException('List of projects requried for Project Report')
+        if start_date:
+            start_date = dateutil.parser.parse(start_date)
+        if end_date:
+            end_date = dateutil.parser.parse(end_date)
+        if end_date and start_date and end_date < start_date:
+            raise APIReportParamsException('End date {} is before start date {}'.format(end_date, start_date))
+
+        self.projects = [bson.ObjectId(id_) for id_ in project_list]
         self.start_date = start_date
         self.end_date = end_date
 
@@ -170,6 +186,7 @@ class ProjectReport(Report):
         """
         User generating report must be admin on all
         """
+
         perm_count = config.db.projects.count({'_id': {'$in': self.projects},
                                                'permissions._id': uid,
                                                'permissions.access': 'admin'})
@@ -320,7 +337,7 @@ class ProjectReport(Report):
                 {'$group': {'_id': 1, 'count': { '$sum': 1 }}}
             ]
 
-            result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
             project['subjects_count'] = result.get('count', 0)
 
 
@@ -339,7 +356,7 @@ class ProjectReport(Report):
                                       'male':   {'$sum': '$male'},
                                       'other':  {'$sum': '$other'}}}
             ]
-            result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
             project['female_count'] = result.get('female',0)
             project['male_count'] = result.get('male',0)
@@ -357,7 +374,7 @@ class ProjectReport(Report):
                                                    'ethnicity': {'$last': '$subject.ethnicity'}}},
                 {'$group': {'_id': { 'sex': '$sex', 'race': '$race', 'ethnicity': '$ethnicity'}, 'count': {'$sum': 1}}}
             ]
-            results = _get_result_list(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            results = self._get_result_list(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
             grid, total = self._process_demo_results(results, project['demographics_grid'])
             project['demographics_grid'] = grid
@@ -375,7 +392,7 @@ class ProjectReport(Report):
                                         'under_18': {'$cond': [{'$lt': ['$age', EIGHTEEN_YEARS_IN_SEC]}, 1, 0]}}},
                 {'$group': {'_id': 1, 'over_18': {'$sum': '$over_18'}, 'under_18': {'$sum': '$under_18'}}}
             ]
-            result = _get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
 
             project['over_18_count'] = result.get('over_18',0)
             project['under_18_count'] = result.get('under_18',0)
@@ -384,3 +401,75 @@ class ProjectReport(Report):
             report['projects'].append(project)
 
         return report
+
+
+class AccessLogReport(Report):
+    """
+    Report of the last <limit> logs in the access log.
+
+    Specify a uid to only return logs for a specific user.
+    Specify a date range to only return logs in that range.
+
+    Report includes:
+      - action completed
+      - user that took action
+      - information about the session/project/group in which the action took place
+    """
+
+    def __init__(self, params):
+        """
+        Initialize an Access Log Report
+
+        Possible keys in :params:
+        :start_date:    ISO formatted timestamp
+        :end_date:      ISO formatted timestamp
+        :uid:           user id of the target user
+        :limit:         number of records to return
+        """
+
+        super(AccessLogReport, self).__init__(params)
+
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+
+        if start_date:
+            start_date = dateutil.parser.parse(start_date)
+        if end_date:
+            end_date = dateutil.parser.parse(end_date)
+        if end_date and start_date and end_date < start_date:
+            raise APIReportParamsException('End date {} is before start date {}'.format(end_date, start_date))
+
+        self.start_date     = start_date
+        self.end_date       = end_date
+        self.uid            = params.get('uid')
+        self.limit          = params.get('limit', 100)
+
+
+    def user_can_generate(self, uid):
+        """
+        User generating report must be superuser
+        """
+        if config.db.users.count({'_id': uid, 'root': True}) > 0:
+            return True
+        return False
+
+
+    def build(self):
+        query = {}
+
+        if self.uid:
+            query['origin'] = {'_id': self.uid}
+        if self.start_date or self.end_date:
+            query['timestamp'] = {}
+        if self.start_date:
+            query['timestamp']['$gte'] = self.start_date
+        if self.end_date:
+            query['timestamp']['$lte'] = self.end_date
+
+        return config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
+
+ReportTypes = {
+    'site'         : SiteReport,
+    'project'      : ProjectReport,
+    'accesslog'    : AccessLogReport
+}
