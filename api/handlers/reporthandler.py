@@ -5,6 +5,7 @@ import pymongo
 
 from ..web import base
 from .. import config
+from .. import util
 
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
@@ -30,7 +31,7 @@ class ReportHandler(base.RequestHandler):
             try:
                 report = report_class(self.request.params)
             except APIReportParamsException as e:
-                self.abort(400, e.msg)
+                self.abort(400, e.message)
         else:
             raise NotImplementedError('Report type {} is not supported'.format(report_type))
 
@@ -48,6 +49,7 @@ class Report(object):
         """
 
         super(Report, self).__init__()
+        self.params = params
 
     def user_can_generate(self, uid):
         """
@@ -86,7 +88,7 @@ class Report(object):
         If more than one item is in the results array, throws APIReportException
         """
 
-        results = _get_result_list(output)
+        results = Report._get_result_list(output)
         if len(results) == 1:
             return results[0]
 
@@ -431,6 +433,8 @@ class AccessLogReport(Report):
 
         start_date = params.get('start_date')
         end_date = params.get('end_date')
+        uid = params.get('user')
+        limit= params.get('limit', 100)
 
         if start_date:
             start_date = dateutil.parser.parse(start_date)
@@ -438,11 +442,19 @@ class AccessLogReport(Report):
             end_date = dateutil.parser.parse(end_date)
         if end_date and start_date and end_date < start_date:
             raise APIReportParamsException('End date {} is before start date {}'.format(end_date, start_date))
+        if uid and not util.is_user_id(uid):
+            raise APIReportParamsException('Invalid user.')
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            raise APIReportParamsException('Limit must be an integer greater than 0.')
+        if limit < 1:
+            raise APIReportParamsException('Limit must be an integer greater than 0.')
 
         self.start_date     = start_date
         self.end_date       = end_date
-        self.uid            = params.get('uid')
-        self.limit          = params.get('limit', 100)
+        self.uid            = uid
+        self.limit          = limit
 
 
     def user_can_generate(self, uid):
@@ -458,7 +470,7 @@ class AccessLogReport(Report):
         query = {}
 
         if self.uid:
-            query['origin'] = {'_id': self.uid}
+            query['origin.id'] = self.uid
         if self.start_date or self.end_date:
             query['timestamp'] = {}
         if self.start_date:

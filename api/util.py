@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import random
+import re
 import requests
 import string
 import uuid
@@ -83,6 +84,20 @@ def user_perm(permissions, _id, site=None):
         if perm['_id'] == _id and perm.get('site') == site:
             return perm
     return {}
+
+def is_user_id(uid):
+    """
+    Checks to make sure uid matches uid regex
+    """
+    pattern = re.compile('^[0-9a-zA-Z.@_-]*$')
+    return bool(pattern.match(uid))
+
+def is_group_id(gid):
+    """
+    Checks to make sure uid matches uid regex
+    """
+    pattern = re.compile('^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$')
+    return bool(pattern.match(gid))
 
 def resolve_gravatar(email):
     """
