@@ -2,10 +2,12 @@
 
 import bson
 import copy
-import dateutil.parser
 import datetime
+import dateutil.parser
 import json
 import logging
+import multiprocessing
+import os
 import re
 import sys
 import time
@@ -16,7 +18,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 25 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 26 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -875,6 +877,85 @@ def upgrade_to_25():
 
     config.db.authtokens.update_many({'refresh_token': {'$exists': True}}, {'$unset': {'refresh_token': ''}})
 
+
+def getMonotonicTime():
+    # http://stackoverflow.com/a/7424304
+    return os.times()[4]
+
+def process_cursor(cursor, closure):
+    begin = getMonotonicTime()
+
+    cores = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(cores)
+    logging.info('Iterating over cursor with ' + str(cores) + ' workers')
+
+    # Launch all work, iterating over the cursor
+    # Note that this creates an array of n multiprocessing.pool.AsyncResults, where N is table size.
+    # Memory usage concern in the future? Doesn't seem to be an issue with ~120K records.
+    # Could be upgraded later with some yield trickery.
+    results = [pool.apply_async(closure, (document,)) for document in cursor]
+
+    # Read the results back, presumably in order!
+    for res in results:
+        result = res.get()
+        if result != True:
+            logging.info('Upgrade failed: ' + str(result))
+
+    logging.info('Waiting for workers to complete')
+    pool.close()
+    pool.join()
+
+    end = getMonotonicTime()
+    elapsed = end - begin
+    logging.info('Parallel cursor iteration took ' + ('%.3f' % elapsed))
+
+def upgrade(job):
+
+    # Semi-worst-case: single uncacheable lookup per migrated job
+    gear = config.db.gears.find_one({'_id': bson.ObjectId(job['gear_id'])})
+    gear_name = gear['gear']['name']
+
+    # Update doc
+    result = config.db.jobs.update_one({'_id': job['_id']}, {'$push': {'tags': 'parallel-approach'}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return 'Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count)
+
+def upgrade_to_26():
+    """
+    scitran/core #734
+
+    Add job tags back to the job document, and use a faster cursor-walking update method
+    """
+
+    logging.info('Upgrade v26, removing tags')
+    config.db.jobs.update_many({}, {"$pull": {"tags": "normal-approach"}})
+    config.db.jobs.update_many({}, {"$pull": {"tags": "parallel-approach"}})
+    logging.info('Upgrade v26, removed')
+
+    # Normal approach
+    begin = getMonotonicTime()
+
+    cursor = config.db.jobs.find({})
+    for job in cursor:
+        # Semi-worst-case: single uncacheable lookup per migrated job
+        gear = config.db.gears.find_one({'_id': bson.ObjectId(job['gear_id'])})
+        gear_name = gear['gear']['name']
+
+        # Update doc
+        result = config.db.jobs.update_one({'_id': job['_id']}, {'$push': {'tags': 'normal-approach'}})
+        if result.modified_count != 1:
+            logging.info('Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count))
+
+    end = getMonotonicTime()
+    elapsed = end - begin
+    logging.info('Upgrade v26, normal approach took ' + ('%.3f' % elapsed))
+
+
+    # Parallel approach
+    cursor = config.db.jobs.find({})
+    process_cursor(cursor, upgrade)
 
 
 def upgrade_schema():
