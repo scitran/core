@@ -167,7 +167,7 @@ class ContainerHandler(base.RequestHandler):
                         gear_name = None
 
                         if cached_gears.get(gear_id, None) is not None:
-                            gear_name = cached_gears['gear_id']['gear']['name']
+                            gear_name = cached_gears[gear_id]
                         else:
                             gear_id_bson = bson.ObjectId(gear_id)
                             gear = config.db.gears.find_one({'_id': gear_id_bson})
