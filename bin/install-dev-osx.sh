@@ -86,5 +86,5 @@ fi
 
 # Install testing dependencies
 echo "Installing testing dependencies"
-pip install -r "test/integration_tests/requirements-integration-test.txt"
+pip install --no-cache-dir -r "test/integration_tests/requirements-integration-test.txt"
 npm install test/integration_tests
