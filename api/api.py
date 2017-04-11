@@ -92,11 +92,11 @@ endpoints = [
 
         # Top-level endpoints
 
-        route('/login',                             RequestHandler, h='log_in',   m=['POST']),
-        route('/logout',                            RequestHandler, h='log_out',  m=['POST']),
-        route('/resolve',                           ResolveHandler, h='resolve',  m=['POST']),
-        route('/schemas/<schema:{schema}>',         SchemaHandler,                m=['GET']),
-        route('/report/<report_type:site|project>', ReportHandler,                m=['GET']),
+        route('/login',                                         RequestHandler, h='log_in',   m=['POST']),
+        route('/logout',                                        RequestHandler, h='log_out',  m=['POST']),
+        route('/resolve',                                       ResolveHandler, h='resolve',  m=['POST']),
+        route('/schemas/<schema:{schema}>',                     SchemaHandler,                m=['GET']),
+        route('/report/<report_type:site|project|accesslog>',   ReportHandler,                m=['GET']),
 
 
         # Search
