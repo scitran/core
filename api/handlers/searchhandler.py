@@ -245,6 +245,7 @@ class SearchHandler(base.RequestHandler):
     def get_terms_for_field(self):
         if self.public_request:
             self.abort(403, 'search is available only for authenticated users.')
+        all_data = self.is_true('all_data')
         payload = self.request.json_body
         doc_type = payload.get('doc_type')
         field_name = payload.get('field')
@@ -261,7 +262,13 @@ class SearchHandler(base.RequestHandler):
         if doc_type == 'subject' and field_name not in allowable_subject_agg_fields:
             self.abort(400, 'Allowable fields for subject doc_type: {}.'.format(allowable_subject_agg_fields))
 
-        query = es_aggs(doc_type, field_name)
+        # Add filters for permissions if not aggregating all data:
+        additional_filter = None
+        if not all_data:
+            additional_filter = ('permissions._id', self.uid)
+
+        query = es_aggs(doc_type, field_name, additional_filter=additional_filter)
+
         try:
             # pylint disable can be removed after PyCQA/pylint#258 is fixed
             es_results = config.es.search(index='scitran', body=query) # pylint: disable=unexpected-keyword-arg
