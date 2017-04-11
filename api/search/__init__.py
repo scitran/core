@@ -35,11 +35,24 @@ def es_query(input_query, doc_type, min_score=0.5, additional_filter=None, sourc
 
     return query
 
-def es_aggs(doc_type, field_name):
+def es_aggs(doc_type, field_name, additional_filter=None):
     query = {
       "size": 0,
       "aggs": {}
     }
+    if additional_filter:
+        query['query'] = {
+          "filtered": {
+            "query": {
+              "match_all": {}
+            },
+            "filter": {
+              "term": {
+                additional_filter[0] : additional_filter[1]
+              }
+            }
+          }
+        }
 
     query['aggs'][field_name] = {
         "terms": {
