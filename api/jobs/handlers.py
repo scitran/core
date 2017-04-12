@@ -31,7 +31,13 @@ class GearsHandler(base.RequestHandler):
         if self.public_request:
             self.abort(403, 'Request requires login')
 
-        return get_gears()
+        gears   = get_gears()
+        filters = self.request.GET.getall('filter')
+
+        if 'single_input' in filters:
+            gears = list(filter(lambda x: len(x["gear"]["inputs"].keys()) <= 1, gears))
+
+        return gears
 
 class GearHandler(base.RequestHandler):
     """Provide /gears/x API routes."""

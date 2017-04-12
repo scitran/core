@@ -78,7 +78,7 @@ def test_eval_match_file_measurements():
     assert result == False
 
     # Check match returns false without raising when not given a file.type
-    args = part.gen(file_={'a': 'b'}, container={'a': 'b'})
+    args = part.gen(file_={'a': 'b'}, match_param='', container={'a': 'b'})
     result = rules.eval_match(*args)
     assert result == False
 
