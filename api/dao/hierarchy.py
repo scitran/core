@@ -433,7 +433,7 @@ def find_existing_hierarchy(metadata, user=None, site=None):
         raise APIStorageException(str(e))
 
     # Confirm session and acquisition exist
-    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project'])
+    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project', 'roles', 'permissions'])
 
     if session_obj is None:
         raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))
