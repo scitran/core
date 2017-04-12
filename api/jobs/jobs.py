@@ -188,7 +188,6 @@ class Job(object):
     def insert(self):
         """
         Warning: this will not stop you from inserting a job for a gear that has gear.custom.flywheel.invald set to true.
-
         """
 
         if self.id_ is not None:

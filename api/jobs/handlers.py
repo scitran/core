@@ -96,7 +96,6 @@ class GearHandler(base.RequestHandler):
 
         return remove_gear(_id)
 
-
 class RulesHandler(base.RequestHandler):
 
     def get(self, cid):
@@ -129,7 +128,6 @@ class RulesHandler(base.RequestHandler):
                 self.abort(403, 'Adding rules to a project can only be done by a project admin.')
 
         self.abort(404, 'Project not found')
-
 
 class RuleHandler(base.RequestHandler):
 
@@ -191,7 +189,6 @@ class RuleHandler(base.RequestHandler):
 
         self.abort(404, 'Project not found')
 
-
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
     def get(self):
@@ -214,7 +211,7 @@ class JobsHandler(base.RequestHandler):
             inputs[x] = create_filereference_from_dictionary(input_map)
 
         # Add job tags, config, attempt number, and/or previous job ID, if present
-        tags            = submit.get('tags', None)
+        tags            = submit.get('tags', [])
         config_         = submit.get('config', {})
         attempt_n       = submit.get('attempt_n', 1)
         previous_job_id = submit.get('previous_job_id', None)
@@ -244,6 +241,11 @@ class JobsHandler(base.RequestHandler):
         if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             self.abort(400, 'Gear marked as invalid, will not run!')
         validate_gear_config(gear, config_)
+
+        gear_name = gear['gear']['name']
+
+        if gear_name not in tags:
+            tags.append(gear_name)
 
         job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
         result = job.insert()
