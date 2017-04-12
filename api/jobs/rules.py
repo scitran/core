@@ -57,22 +57,29 @@ def eval_match(match_type, match_param, file_, container):
     Given a match entry, return if the match succeeded.
     """
 
+    def lower(x):
+        return x.lower()
+
+
     # Match the file's type
     if match_type == 'file.type':
         try:
-            return file_['type'] == match_param
+            return file_['type'].lower() == match_param.lower()
         except KeyError:
             _log_file_key_error(file_, container, 'has no type key')
             return False
 
     # Match a shell glob for the file name
     elif match_type == 'file.name':
-        return fnmatch.fnmatch(file_['name'], match_param)
+        return fnmatch.fnmatch(file_['name'].lower(), match_param.lower())
 
     # Match any of the file's measurements
     elif match_type == 'file.measurements':
         try:
-            return match_param in file_['measurements']
+            if match_param:
+                return match_param.lower() in map(lower, file_.get('measurements', []))
+            else:
+                return False
         except KeyError:
             _log_file_key_error(file_, container, 'has no measurements key')
             return False
@@ -80,7 +87,7 @@ def eval_match(match_type, match_param, file_, container):
     # Match the container having any file (including this one) with this type
     elif match_type == 'container.has-type':
         for c_file in container['files']:
-            if match_param == c_file.get('type'):
+            if match_param.lower() == c_file.get('type').lower():
                 return True
 
         return False
