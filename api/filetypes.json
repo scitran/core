@@ -2,7 +2,7 @@
     "bval":         [ ".bval", ".bvals" ],
     "bvec":         [ ".bvec", ".bvecs" ],
     "dicom":        [ ".dcm", ".dcm.zip", ".dicom.zip" ],
-    "ismrmrd":      [ ".h5" ],
+    "ismrmrd":      [ ".h5", ".hdf5" ],
     "parrec":       [ ".parrec.zip", ".par-rec.zip" ],
     "gephysio":     [ ".gephysio.zip" ],
     "MATLAB data":  [ ".mat" ],
