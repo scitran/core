@@ -60,9 +60,12 @@ def getMonotonicTime():
 def process_cursor(cursor, closure):
     """
     Given an iterable (say, a mongo cursor) and a closure, call that closure in parallel over the iterable.
-    Call order is undefinied. Currently launches N python process workers, where N is the number of vcpu cores.
+    Call order is undefined. Currently launches N python process workers, where N is the number of vcpu cores.
 
     Useful for upgrades that need to touch each document in a database, and don't need an iteration order.
+
+    Your closure MUST return True on success. Anything else is logged and treated as a failure.
+    A closure that throws an exception will fail the upgrade immediately.
     """
 
     begin = getMonotonicTime()
@@ -78,14 +81,21 @@ def process_cursor(cursor, closure):
     results = [pool.apply_async(closure, (document,)) for document in cursor]
 
     # Read the results back, presumably in order!
+    failed = False
     for res in results:
         result = res.get()
         if result != True:
+            failed = True
             logging.info('Upgrade failed: ' + str(result))
 
     logging.info('Waiting for workers to complete')
     pool.close()
     pool.join()
+
+    if failed is True:
+        msg = 'Worker pool experienced one or more failures. See above logs.'
+        logging.info(msg)
+        raise Exception(msg)
 
     end = getMonotonicTime()
     elapsed = end - begin
@@ -914,7 +924,6 @@ def upgrade_to_25():
         config.db.refreshtokens.insert(refresh_doc)
 
     config.db.authtokens.update_many({'refresh_token': {'$exists': True}}, {'$unset': {'refresh_token': ''}})
-
 
 def upgrade_to_26_closure(job):
 
