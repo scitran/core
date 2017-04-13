@@ -56,7 +56,8 @@ def es_aggs(doc_type, field_name, additional_filter=None):
 
     query['aggs'][field_name] = {
         "terms": {
-            "field": '.'.join((doc_type, field_name, 'exact_'+field_name))
+            "field": '.'.join((doc_type, field_name, 'exact_'+field_name)),
+            'size': 1000
         }
     }
 
