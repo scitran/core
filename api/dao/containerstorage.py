@@ -132,10 +132,10 @@ class ContainerStorage(object):
         replace = None
         if replace_metadata:
             replace = {}
-            if payload.get('metadata') is not None:
-                replace['metadata'] = util.mongo_sanitize_fields(payload.pop('metadata'))
-            if payload.get('subject') is not None and payload['subject'].get('metadata') is not None:
-                replace['subject.metadata'] = util.mongo_sanitize_fields(payload['subject'].pop('metadata'))
+            if payload.get('info') is not None:
+                replace['info'] = util.mongo_sanitize_fields(payload.pop('info'))
+            if payload.get('subject') is not None and payload['subject'].get('info') is not None:
+                replace['subject.info'] = util.mongo_sanitize_fields(payload['subject'].pop('info'))
 
         update = {}
 
