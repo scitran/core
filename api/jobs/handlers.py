@@ -142,7 +142,7 @@ class RuleHandler(base.RequestHandler):
 
         project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
-        if project and (self.superuser_request or has_access(self.uid, project, 'r', self.user_site)):
+        if project and (self.superuser_request or has_access(self.uid, project, 'ro', self.user_site)):
             result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
             if result:
                 return result
@@ -172,7 +172,7 @@ class RuleHandler(base.RequestHandler):
                 config.db.project_rules.update_one({'_id': bson.ObjectId(rid)}, {'$set': doc })
                 return
 
-            elif has_access(self.uid, project, 'r', self.user_site):
+            elif has_access(self.uid, project, 'ro', self.user_site):
                 self.abort(403, 'Changing project rules can only be done by a project admin.')
 
         self.abort(404, 'Project not found')
@@ -190,7 +190,7 @@ class RuleHandler(base.RequestHandler):
                     self.abort(404, 'Rule not found')
                 return
 
-            elif has_access(self.uid, project, 'r', self.user_site):
+            elif has_access(self.uid, project, 'ro', self.user_site):
                 self.abort(403, 'Changing project rules can only be done by a project admin.')
 
         self.abort(404, 'Project not found')
