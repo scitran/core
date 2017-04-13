@@ -480,8 +480,218 @@ class AccessLogReport(Report):
 
         return config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
 
+class UsageReport(Report):
+    """
+    Report of the last <limit> logs in the access log.
+
+    Specify a uid to only return logs for a specific user.
+    Specify a date range to only return logs in that range.
+
+    Report includes:
+      - action completed
+      - user that took action
+      - information about the session/project/group in which the action took place
+    """
+
+    def __init__(self, params):
+        """
+        Initialize an Access Log Report
+
+        Possible keys in :params:
+        :start_date:    ISO formatted timestamp
+        :end_date:      ISO formatted timestamp
+        :uid:           user id of the target user
+        :limit:         number of records to return
+        """
+
+        super(UsageReport, self).__init__(params)
+
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+        report_type = params.get('type')
+
+        if not report_type or report_type not in ['month', 'project']:
+            raise APIReportParamsException('Report type must be "month" or "project".')
+
+        if start_date:
+            start_date = dateutil.parser.parse(start_date)
+        if end_date:
+            end_date = dateutil.parser.parse(end_date)
+        if end_date and start_date and end_date < start_date:
+            raise APIReportParamsException('End date {} is before start date {}'.format(end_date, start_date))
+
+        self.start_date     = start_date
+        self.end_date       = end_date
+        self.report_type    = report_type
+
+
+    def user_can_generate(self, uid):
+        """
+        User generating report must be superuser
+        """
+        if config.db.users.count({'_id': uid, 'root': True}) > 0:
+            return True
+        return False
+
+
+    def build(self):
+        query = {}
+
+        if self.start_date or self.end_date:
+            query['timestamp'] = {}
+        if self.start_date:
+            query['timestamp']['$gte'] = self.start_date
+        if self.end_date:
+            query['timestamp']['$lte'] = self.end_date
+
+        if self.report_type == 'project':
+            return self._build_project_report()
+        else:
+            return self._build_month_report()
+
+    def _build_month_report(self):
+        return [
+            {
+                'month': 3,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 4,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 5,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 6,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 7,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 8,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 9,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 10,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 11,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 12,
+                'year': 2016,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'month': 1,
+                'year': 2017,
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            }
+        ]
+
+    def _build_project_report(self):
+        return [
+            {
+                'project': {
+                    '_id': '93024k90283klsjd3',
+                    'label': 'Neuroscience'
+                },
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'project': {
+                    '_id': '93024k90283klsjd3',
+                    'label': 'Test Data'
+                },
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'project': {
+                    '_id': '93024k90283klsjd3',
+                    'label': 'Psychology'
+                },
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'project': {
+                    '_id': '93024k90283klsjd3',
+                    'label': 'Depression Study'
+                },
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'project': {
+                    '_id': '93024k90283klsjd3',
+                    'label': 'Megans Project'
+                },
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            },
+            {
+                'project': {
+                    '_id': '93024k90283klsjd3',
+                    'label': 'Dans Project'
+                },
+                'session_count': 23,
+                'file_mbs': 12329,
+                'gear_execution_count': 238
+            }
+        ]
+
+
 ReportTypes = {
     'site'         : SiteReport,
     'project'      : ProjectReport,
-    'accesslog'    : AccessLogReport
+    'accesslog'    : AccessLogReport,
+    'usage'        : UsageReport
 }
