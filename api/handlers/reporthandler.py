@@ -3,12 +3,15 @@ import dateutil
 import copy
 import pymongo
 
+from datetime import datetime as dt
+
 from ..web import base
 from .. import config
 from .. import util
 
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
+BYTES_IN_MEGABYTE = float(1<<20)
 
 class APIReportException(Exception):
     pass
@@ -524,6 +527,16 @@ class UsageReport(Report):
         self.end_date       = end_date
         self.report_type    = report_type
 
+        # Used for month calculation:
+        self.first_month = start_date if start_date else None
+        self.last_month = end_date if end_date else None
+
+        # if not self.last_month:
+        #     # PYTHON WHY
+        #     # WHY DO YOU DO THIS TO ME
+        #     self.last_month = dt.utcnow()
+        #     self.last_month.replace(tzinfo=dateutil.tz.tzutc())
+
 
     def user_can_generate(self, uid):
         """
@@ -538,97 +551,170 @@ class UsageReport(Report):
         query = {}
 
         if self.start_date or self.end_date:
-            query['timestamp'] = {}
+            query['created'] = {}
         if self.start_date:
-            query['timestamp']['$gte'] = self.start_date
+            query['created']['$gte'] = self.start_date
         if self.end_date:
-            query['timestamp']['$lte'] = self.end_date
+            query['created']['$lte'] = self.end_date
 
         if self.report_type == 'project':
-            return self._build_project_report()
+            return self._build_project_report(query)
         else:
-            return self._build_month_report()
+            return self._build_month_report(query)
 
-    def _build_month_report(self):
-        return [
-            {
-                'month': 3,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 4,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 5,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 6,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 7,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 8,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 9,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 10,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 11,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 12,
-                'year': 2016,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'month': 1,
-                'year': 2017,
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            }
+    def _create_default(self, month=None, year=None, project=None, ignore_minmax=False):
+        obj = {
+            'gear_execution_count': 0,
+            'file_mbs': 0,
+            'session_count': 0
+        }
+        if month:
+            obj['month'] = month
+        if year:
+            obj['year'] = year
+        if project:
+            obj['project'] = project
+
+        if month and year and not ignore_minmax:
+            # update the first or last month if this is outside the known bounds
+            date = dateutil.parser.parse(year+'-'+month+'-01T00:00.000Z')
+            if self.first_month is None or date < self.first_month:
+                self.first_month = date
+            if self.last_month is None or date > self.last_month:
+                self.last_month = date
+
+        return obj
+
+    def _build_month_report(self, base_query):
+
+        report = {}
+
+        # Count jobs that completed successfully, by month
+        job_q = copy.deepcopy(base_query)
+        job_q['state'] = 'complete'
+
+        pipeline = [
+            {'$match': job_q},
+            {'$project': {'month': {'$month': '$created'}, 'year': {'$year': '$created'}}},
+            {'$group': {'_id': {'month': '$month', 'year': '$year'}, 'jobs_completed': {'$sum':1}}}
         ]
+
+        try:
+            results = self._get_result_list(config.db.command('aggregate', 'jobs', pipeline=pipeline))
+        except APIReportException:
+            results = []
+
+        for r in results:
+            month = str(r['_id']['month'])
+            year = str(r['_id']['year'])
+            key = year+month
+
+            # Check to see if we already have a record for this month/year combo, create and update first/last
+            if key not in report:
+                report[key] = self._create_default(month=month, year=year)
+
+            report[key]['gear_execution_count'] = r['jobs_completed']
+
+        # Count sessions by month
+        pipeline = [
+            {'$match': base_query},
+            {'$project': {'month': {'$month': '$created'}, 'year': {'$year': '$created'}}},
+            {'$group': {'_id': {'month': '$month', 'year': '$year'}, 'session_count': {'$sum':1}}}
+        ]
+
+        try:
+            results = self._get_result_list(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+        except APIReportException:
+            results = []
+
+        for r in results:
+            month = str(r['_id']['month'])
+            year = str(r['_id']['year'])
+            key = year+month
+
+            # Check to see if we already have a record for this month/year combo, create and update first/last
+            if key not in report:
+                report[key] = self._create_default(month=month, year=year)
+
+            report[key]['session_count'] = r['session_count']
+
+        file_q = {}
+        analysis_q = {'analyses.files.output': True}
+
+        if 'created' in base_query:
+            file_q['files.created'] = base_query['created']
+            analysis_q['analyses.created'] = base_query['created']
+
+        for cont_name in ['groups', 'projects', 'sessions', 'acquisitions']:
+
+            pipeline = [
+                {'$unwind': '$files'},
+                {'$match': file_q},
+                {'$project': {'month': {'$month': '$files.created'}, 'year': {'$year': '$files.created'}, 'mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
+                {'$group': {'_id': {'month': '$month', 'year': '$year'}, 'mb_total': {'$sum':'$mbs'}}}
+            ]
+
+            try:
+                results = self._get_result_list(config.db.command('aggregate', cont_name, pipeline=pipeline))
+            except APIReportException:
+                results = []
+
+            for r in results:
+                month = str(r['_id']['month'])
+                year = str(r['_id']['year'])
+                key = year+month
+
+                # Check to see if we already have a record for this month/year combo, create and update first/last
+                if key not in report:
+                    report[key] = self._create_default(month=month, year=year)
+
+                report[key]['file_mbs'] += r['mb_total']
+
+            pipeline = [
+                {'$unwind': '$analyses'},
+                {'$unwind': '$analyses.files'},
+                {'$match': analysis_q},
+                {'$project': {'month': {'$month': '$analyses.created'}, 'year': {'$year': '$analyses.created'}, 'mbs': {'$divide': ['$analyses.files.size', BYTES_IN_MEGABYTE]}}},
+                {'$group': {'_id': {'month': '$month', 'year': '$year'}, 'mb_total': {'$sum':'$mbs'}}}
+            ]
+
+            try:
+                results = self._get_result_list(config.db.command('aggregate', cont_name, pipeline=pipeline))
+            except APIReportException:
+                results = []
+
+            for r in results:
+                month = str(r['_id']['month'])
+                year = str(r['_id']['year'])
+                key = year+month
+
+                # Check to see if we already have a record for this month/year combo, create and update first/last
+                if key not in report:
+                    report[key] = self._create_default(month=month, year=year)
+
+                report[key]['file_mbs'] += r['mb_total']
+
+        curr_month = self.first_month.month
+        curr_year = self.first_month.year
+
+        last_month = self.last_month.month
+        last_year = self.last_month.year
+
+        final_report_list = []
+
+        while curr_year < last_year or (curr_month <= last_month and curr_year == last_year):
+            key = str(curr_year)+str(curr_month)
+            if key in report:
+                final_report_list.append(report[key])
+            else:
+                final_report_list.append(self._create_default(month=curr_month, year=curr_year, ignore_minmax=True))
+            curr_month += 1
+            if curr_month == 13:
+                curr_year += 1
+                curr_month = 1
+
+        return final_report_list
+
 
     def _build_project_report(self):
         return [
