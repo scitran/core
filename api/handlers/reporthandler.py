@@ -709,14 +709,14 @@ class UsageReport(Report):
             else:
                 final_report_list.append(self._create_default(month=curr_month, year=curr_year, ignore_minmax=True))
             curr_month += 1
-            if curr_month == 13:
+            if curr_month > 12:
                 curr_year += 1
                 curr_month = 1
 
         return final_report_list
 
 
-    def _build_project_report(self):
+    def _build_project_report(self, base_query):
         return [
             {
                 'project': {
