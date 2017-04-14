@@ -483,26 +483,24 @@ class AccessLogReport(Report):
 
 class UsageReport(Report):
     """
-    Report of the last <limit> logs in the access log.
+    Creates a usage report, aggregated by month or project.
 
-    Specify a uid to only return logs for a specific user.
-    Specify a date range to only return logs in that range.
+    Specify a date range to only return stats for that range.
 
     Report includes:
-      - action completed
-      - user that took action
-      - information about the session/project/group in which the action took place
+      - count of gears executed (jobs completed successfully)
+      - count of sessions
+      - aggregation of file size in megabytes
     """
 
     def __init__(self, params):
         """
-        Initialize an Access Log Report
+        Initialize a Usage Report
 
         Possible keys in :params:
         :start_date:    ISO formatted timestamp
         :end_date:      ISO formatted timestamp
-        :uid:           user id of the target user
-        :limit:         number of records to return
+        :type:          <'project'|'month'>, type of aggregation for results
         """
 
         super(UsageReport, self).__init__(params)
@@ -528,12 +526,6 @@ class UsageReport(Report):
         # Used for month calculation:
         self.first_month = start_date if start_date else None
         self.last_month = end_date if end_date else None
-
-        # if not self.last_month:
-        #     # PYTHON WHY
-        #     # WHY DO YOU DO THIS TO ME
-        #     self.last_month = dt.utcnow()
-        #     self.last_month.replace(tzinfo=dateutil.tz.tzutc())
 
 
     def user_can_generate(self, uid):
