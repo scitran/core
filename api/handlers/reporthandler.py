@@ -3,8 +3,6 @@ import dateutil
 import copy
 import pymongo
 
-from datetime import datetime as dt
-
 from ..web import base
 from .. import config
 from .. import util
