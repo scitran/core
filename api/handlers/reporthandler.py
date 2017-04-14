@@ -573,7 +573,7 @@ class UsageReport(Report):
         if year:
             obj['year'] = year
         if project:
-            obj['project'] = project
+            obj['project'] = {'_id': project['_id'], 'label': project['label']}
 
         if month and year and not ignore_minmax:
             # update the first or last month if this is outside the known bounds
@@ -717,62 +717,81 @@ class UsageReport(Report):
 
 
     def _build_project_report(self, base_query):
-        return [
-            {
-                'project': {
-                    '_id': '93024k90283klsjd3',
-                    'label': 'Neuroscience'
-                },
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'project': {
-                    '_id': '93024k90283klsjd3',
-                    'label': 'Test Data'
-                },
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'project': {
-                    '_id': '93024k90283klsjd3',
-                    'label': 'Psychology'
-                },
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'project': {
-                    '_id': '93024k90283klsjd3',
-                    'label': 'Depression Study'
-                },
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'project': {
-                    '_id': '93024k90283klsjd3',
-                    'label': 'Megans Project'
-                },
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
-            },
-            {
-                'project': {
-                    '_id': '93024k90283klsjd3',
-                    'label': 'Dans Project'
-                },
-                'session_count': 23,
-                'file_mbs': 12329,
-                'gear_execution_count': 238
+        projects = config.db.projects.find({})
+        final_report_list = []
+
+        for p in projects:
+            report_obj = self._create_default(project=p)
+
+            sessions = config.db.sessions.find({'project': p['_id']}, {'_id': 1, 'analyses':1})
+            session_ids = [s['_id'] for s in sessions]
+
+            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1, 'analyses':1})
+            acquisition_ids = [a['_id'] for a in acquisitions]
+
+            analysis_ids = [an['_id'] for an in p.get('analyses', [])]
+            analysis_ids.extend([an['_id'] for an in s.get('analyses', []) for s in sessions])
+            analysis_ids.extend([an['_id'] for an in a.get('analyses', []) for a in acquisitions])
+
+            report_obj['session_count'] = len(session_ids)
+
+            cont_query = {
+                'projects': {'_id': {'project': p['_id']}},
+                'sessions': {'project': p['_id']},
+                'acquisitions': {'session': {'$in': session_ids}}
             }
-        ]
+
+            file_q = {}
+            analysis_q = {'analyses.files.output': True}
+
+            if 'created' in base_query:
+                file_q['files.created'] = base_query['created']
+                analysis_q['analyses.created'] = base_query['created']
+
+            for cont_name in ['projects', 'sessions', 'acquisitions']:
+
+                pipeline = [
+                    {'$match': cont_query[cont_name]},
+                    {'$unwind': '$files'},
+                    {'$match': file_q},
+                    {'$project': {'mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
+                    {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
+                ]
+
+                try:
+                    result = self._get_result(config.db.command('aggregate', cont_name, pipeline=pipeline))
+                except APIReportException:
+                    result = None
+
+                if result:
+                    report_obj['file_mbs'] += result['mb_total']
+
+                pipeline = [
+                    {'$match': cont_query[cont_name]},
+                    {'$unwind': '$analyses'},
+                    {'$unwind': '$analyses.files'},
+                    {'$match': analysis_q},
+                    {'$project': {'mbs': {'$divide': ['$analyses.files.size', BYTES_IN_MEGABYTE]}}},
+                    {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
+                ]
+
+                try:
+                    result = self._get_result(config.db.command('aggregate', cont_name, pipeline=pipeline))
+                except APIReportException:
+                    result = None
+
+                if result:
+                    report_obj['file_mbs'] += result['mb_total']
+
+                job_query = copy.deepcopy(base_query)
+                job_query['state'] = 'complete'
+                job_query['destination.id'] = {'$in': [str(id_) for id_ in id_list]}
+
+                report_obj['gear_execution_count'] = config.db.jobs.count(job_query)
+
+            final_report_list.append(report_obj)
+
+        return final_report_list
 
 
 ReportTypes = {
