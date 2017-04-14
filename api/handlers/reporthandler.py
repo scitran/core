@@ -783,6 +783,8 @@ class UsageReport(Report):
                 if result:
                     report_obj['file_mbs'] += result['mb_total']
 
+                id_list = analysis_ids+acquisition_ids+session_ids
+
                 job_query = copy.deepcopy(base_query)
                 job_query['state'] = 'complete'
                 job_query['destination.id'] = {'$in': [str(id_) for id_ in id_list]}
