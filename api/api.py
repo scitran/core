@@ -96,7 +96,7 @@ endpoints = [
         route('/logout',                                        RequestHandler, h='log_out',  m=['POST']),
         route('/resolve',                                       ResolveHandler, h='resolve',  m=['POST']),
         route('/schemas/<schema:{schema}>',                     SchemaHandler,                m=['GET']),
-        route('/report/<report_type:site|project|accesslog>',   ReportHandler,                m=['GET']),
+        route('/report/<report_type:site|project|accesslog|usage>',   ReportHandler,                m=['GET']),
 
 
         # Search
