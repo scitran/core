@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -e
 
 unset CDPATH
@@ -24,13 +25,22 @@ clean_up () {
   coverage report -m
   coverage html
 }
-
 trap clean_up EXIT
 
 ./bin/install-dev-osx.sh
 
-# Note this will fail with "unbound variable" errors if "set -u" is enabled
-. "$SCITRAN_RUNTIME_PATH/bin/activate"
+source $SCITRAN_RUNTIME_PATH/bin/activate # will fail with `set -u`
+
+# Install Node.js
+if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
+    echo "Installing Node.js"
+    NODE_URL="https://nodejs.org/dist/v6.10.2/node-v6.10.2-darwin-x64.tar.gz"
+    curl $NODE_URL | tar xz -C $VIRTUAL_ENV --strip-components 1
+fi
+
+# Install testing dependencies
+echo "Installing testing dependencies"
+pip install --no-cache-dir -r "test/integration_tests/requirements-integration-test.txt"
 
 ./test/bin/lint.sh api
 
