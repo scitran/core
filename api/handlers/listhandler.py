@@ -342,7 +342,8 @@ class FileListHandler(ListHandler):
             self.abort(400, 'ticket not for this resource or source IP')
         return ticket
 
-    def _build_zip_info(self, filepath):
+    @staticmethod
+    def build_zip_info(filepath):
         """
         Builds a json response containing member and comment info for a zipfile
         """
@@ -436,7 +437,7 @@ class FileListHandler(ListHandler):
         # Request for info about zipfile
         elif self.is_true('info'):
             try:
-                info = self._build_zip_info(filepath)
+                info = self.build_zip_info(filepath)
             except zipfile.BadZipfile:
                 self.abort(400, 'not a zip file')
             return info
@@ -815,13 +816,43 @@ class AnalysesHandler(ListHandler):
                     util.path_from_hash(fileinfo['hash'])
                 )
                 filename = fileinfo['name']
-                self.response.app_iter = open(filepath, 'rb')
-                self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-                if self.is_true('view'):
-                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+
+                # Request for info about zipfile
+                if self.is_true('info'):
+                    try:
+                        info = FileListHandler.build_zip_info(filepath)
+                    except zipfile.BadZipfile:
+                        self.abort(400, 'not a zip file')
+                    return info
+
+                # Request to download zipfile member
+                elif self.get_param('member') is not None:
+                    zip_member = self.get_param('member')
+                    try:
+                        with zipfile.ZipFile(filepath) as zf:
+                            self.response.headers['Content-Type'] = util.guess_mimetype(zip_member)
+                            self.response.write(zf.open(zip_member).read())
+                    except zipfile.BadZipfile:
+                        self.abort(400, 'not a zip file')
+                    except KeyError:
+                        self.abort(400, 'zip file contains no such member')
+                    # log download if we haven't already for this ticket
+                    if ticket:
+                        if not ticket.get('logged', False):
+                            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                            config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
+                    else:
+                        self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+
+                # Request to download the file itself
                 else:
-                    self.response.headers['Content-Type'] = 'application/octet-stream'
-                    self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
+                    self.response.app_iter = open(filepath, 'rb')
+                    self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
+                    if self.is_true('view'):
+                        self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+                    else:
+                        self.response.headers['Content-Type'] = 'application/octet-stream'
+                        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
 
             # log download if we haven't already for this ticket
             if ticket:
