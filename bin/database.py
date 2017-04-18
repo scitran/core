@@ -936,6 +936,17 @@ def upgrade_to_25():
 def upgrade_to_26_closure(job):
 
     gear = config.db.gears.find_one({'_id': bson.ObjectId(job['gear_id'])}, {'gear.name': 1})
+
+    # This logic WILL NOT WORK in parallel mode
+    if gear is None:
+        logging.info('No gear found for job ' + str(job['_id']))
+        return
+    if gear.get('gear', {}).get('name', None) is None:
+        logging.info('No gear found for job ' + str(job['_id']))
+        return
+    # This logic WILL NOT WORK in parallel mode
+
+
     gear_name = gear['gear']['name']
 
     # Update doc
