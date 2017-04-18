@@ -940,10 +940,10 @@ def upgrade_to_26_closure(job):
     # This logic WILL NOT WORK in parallel mode
     if gear is None:
         logging.info('No gear found for job ' + str(job['_id']))
-        return
+        return True
     if gear.get('gear', {}).get('name', None) is None:
         logging.info('No gear found for job ' + str(job['_id']))
-        return
+        return True
     # This logic WILL NOT WORK in parallel mode
 
 
