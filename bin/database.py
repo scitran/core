@@ -70,27 +70,35 @@ def process_cursor(cursor, closure):
 
     begin = getMonotonicTime()
 
-    cores = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(cores)
-    logging.info('Iterating over cursor with ' + str(cores) + ' workers')
+    # cores = multiprocessing.cpu_count()
+    # pool = multiprocessing.Pool(cores)
+    # logging.info('Iterating over cursor with ' + str(cores) + ' workers')
 
-    # Launch all work, iterating over the cursor
-    # Note that this creates an array of n multiprocessing.pool.AsyncResults, where N is table size.
-    # Memory usage concern in the future? Doesn't seem to be an issue with ~120K records.
-    # Could be upgraded later with some yield trickery.
-    results = [pool.apply_async(closure, (document,)) for document in cursor]
+    # # Launch all work, iterating over the cursor
+    # # Note that this creates an array of n multiprocessing.pool.AsyncResults, where N is table size.
+    # # Memory usage concern in the future? Doesn't seem to be an issue with ~120K records.
+    # # Could be upgraded later with some yield trickery.
+    # results = [pool.apply_async(closure, (document,)) for document in cursor]
 
-    # Read the results back, presumably in order!
+    # # Read the results back, presumably in order!
+    # failed = False
+    # for res in results:
+    # 	result = res.get()
+    # 	if result != True:
+    # 		failed = True
+    # 		logging.info('Upgrade failed: ' + str(result))
+
+    # logging.info('Waiting for workers to complete')
+    # pool.close()
+    # pool.join()
+
+
     failed = False
-    for res in results:
-        result = res.get()
+    for document in cursor:
+        result = closure(document)
         if result != True:
             failed = True
             logging.info('Upgrade failed: ' + str(result))
-
-    logging.info('Waiting for workers to complete')
-    pool.close()
-    pool.join()
 
     if failed is True:
         msg = 'Worker pool experienced one or more failures. See above logs.'
