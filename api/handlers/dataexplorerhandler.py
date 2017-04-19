@@ -3,7 +3,7 @@ import copy
 import dateutil
 import elasticsearch
 
-from .. import base
+from ..web import base
 from .. import config
 from ..auth import require_login, require_superuser
 

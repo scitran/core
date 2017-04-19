@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import ast
 import copy
 import dateutil.parser
 import dicom
@@ -7,12 +8,13 @@ import elasticsearch
 import json
 import logging
 
-from api import config, encoder
+from api import config
+from api.web import encoder
 
 es = config.es
 db = config.db
 
-DICOM_INDEX = 'dicom_store'
+DE_INDEX = 'data_explorer'
 
 ANALYSIS = {
             'analyzer' : {
@@ -123,8 +125,11 @@ def datetime(str_datetime):
 def age(str_age):
     pass
 
+BLACKLIST_KEYS = ['template', 'roles', 'permissions', 'analyses', 'files', 'collections']
 
-SKIPPED = ['PixelSpacing', 'ImageOrientationPatient', 'PatientAge', 'ImagePositionPatient']
+
+SKIPPED = []
+SKIPPED2ELECTRICBOOGALOO = ['PixelSpacing', 'ImageOrientationPatient', 'PatientAge', 'ImagePositionPatient']
 
 # TODO: Choose integer/long and float/double where appropriate
 VR_TYPES = {
@@ -151,7 +156,7 @@ VR_TYPES = {
         'SQ': None,
         'SS': ['long', int],
         'ST': ['string', str],
-        'TM': ['date', datetime],
+        'TM': ['time', datetime],
         'UI': ['string', str],
         'UL': ['long', int],
         'US': ['long', int],
@@ -171,9 +176,11 @@ def create_mappings():
         if vr_mapping:
             field_type = vr_mapping[0]
             if field_type == 'string' and vr_type not in ['UT', 'LT', 'ST']:
-                config.log
                 field_mappings[field_name+'_term'] = {'type': 'string', 'index': 'not_analyzed'}
             field_mappings[field_name] = {'type': field_type}
+            if field_type == 'time':
+                # Actually store as date, format as time:
+                field_mappings[field_name] = {'type': 'date', 'format': 'time'}
         else:
             pass
             #logging.warn('Skipping field {} of VR type {}'.format(field_name, vr_type))
@@ -244,13 +251,91 @@ def cast_age(dcm_age):
     seconds = multipliers[unit]*value
     return seconds
 
+def value_is_array(value):
+    if type(value) != unicode:
+        return False
+    if len(value) < 2:
+        return False
+    if value[0] == '[' and value[-1] == ']':
+        return True
+    return False
+
+def cast_array_from_string(string):
+    array = None
+    try:
+        array = ast.literal_eval(string)
+    except:
+        config.log.warn('Tried to cast string {} as array, failed.'.format(string))
+
+    if array:
+        new_array = []
+        for element in array:
+            try:
+                element = int(element)
+            except:
+                try:
+                    element = float(element)
+                except:
+                    pass
+            new_array.append(element)
+        return new_array
+    else:
+        return string
+
+def remove_blacklisted_keys(obj):
+    for key in BLACKLIST_KEYS:
+        obj.pop(key, None)
+
+def handle_files(parent, files, dicom_mappings, permissions):
+    for f in files:
+        doc = {
+            'file': f,
+            'permissions': permissions
+        }
+        if f.get('type', '') == 'dicom' and f.get('info'):
+            dicom_data = f.pop('info')
+            term_fields = {}
+            modified_data = {}
+            for skipped in SKIPPED:
+                dicom_data.pop(skipped, None)
+            for k,v in dicom_data.iteritems():
+
+                # Arrays are saved as strings in
+                if value_is_array(v):
+                    config.log.debug('calling array for {} and value {}'.format(k, v))
+                    v = cast_array_from_string(v)
+                if 'datetime' in k.lower():
+                    config.log.debug('called datetime for {} and value {}'.format(k, v))
+                    v = cast_datetime(str(v))
+                elif 'date' in k.lower():
+                    config.log.debug('called date for {} and value {}'.format(k, v))
+                    v = cast_date(str(v))
+                # elif 'time' in k.lower():
+                #     # config.log.debug('called time for {} and value {}'.format(k, v))
+                #     # v = cast_time(str(v))
+                elif 'Age' in k:
+                    config.log.debug('called age for {} and value {}'.format(k, v))
+                    v = cast_age(str(v))
+
+                term_field_name = k+'_term'
+                if term_field_name in dicom_mappings and type(v) in [unicode, str]:
+                    term_fields[k+'_term'] = str(v)
+                modified_data[k] = v
+
+            modified_data.update(term_fields)
+            doc['dicom_header'] = modified_data
+
+        generated_id = str(parent['_id']) + '_' + f['name']
+
+        doc = json.dumps(doc, default=encoder.custom_json_serializer)
+        es.index(index=DE_INDEX, id=generated_id, parent=str(parent['_id']), doc_type='file', body=doc)
 
 
 if __name__ == '__main__':
 
-    if es.indices.exists(DICOM_INDEX):
-        print 'Removing existing dicom_store index...'
-        res = es.indices.delete(index=DICOM_INDEX)
+    if es.indices.exists(DE_INDEX):
+        print 'Removing existing data explorer index...'
+        res = es.indices.delete(index=DE_INDEX)
         print 'response: {}'.format(res)
 
     mappings = create_mappings()
@@ -266,10 +351,10 @@ if __name__ == '__main__':
                 '_all' : {'enabled' : True},
                 'dynamic_templates': DYNAMIC_TEMPLATES
             },
-            'acquisition': {},
-            'dicom': {
+            'flywheel': {},
+            'file': {
                 '_parent': {
-                    'type': 'acquisition'
+                    'type': 'flywheel'
                 },
                 'properties': {
                     'dicom_header': {
@@ -280,68 +365,105 @@ if __name__ == '__main__':
         }
     }
 
-    print 'creating {} index ...'.format(DICOM_INDEX)
-    res = es.indices.create(index=DICOM_INDEX, body=request)
+    print 'creating {} index ...'.format(DE_INDEX)
+    res = es.indices.create(index=DE_INDEX, body=request)
     print 'response: {}'.format(res)
 
-    mappings = es.indices.get_mapping(index=DICOM_INDEX, doc_type='dicom')
-    dicom_mappings = mappings['dicom_store']['mappings']['dicom']['properties']['dicom_header']['properties']
+    mappings = es.indices.get_mapping(index=DE_INDEX, doc_type='file')
+
+    dicom_mappings = mappings[DE_INDEX]['mappings']['file']['properties']['dicom_header']['properties']
+
+    permissions = []
 
     groups = db.groups.find({})
     for g in groups:
-        g.pop('roles', None)
+        remove_blacklisted_keys(g)
+
         projects = db.projects.find({'group': g['_id']})
         for p in projects:
-            p.pop('permissions', None)
-            logging.warn('the project is {}'.format(p['label']))
+
+            files = p.pop('files', [])
+            # Set permissions for documents
+            permissions = p.pop('permissions', [])
+            remove_blacklisted_keys(p)
+
+            doc = {
+                'project':              p,
+                'group':                g,
+                'permissions':          permissions,
+                'container_type':       'project'
+
+            }
+
+            doc = json.dumps(doc, default=encoder.custom_json_serializer)
+            es.index(index=DE_INDEX, id=str(p['_id']), doc_type='flywheel', body=doc)
+
+            handle_files(p, files, dicom_mappings, permissions)
+
+
             sessions = db.sessions.find({'project': p['_id']})
             for s in sessions:
-                s.pop('permissions', None)
-                acquisitions = db.acquisitions.find({'session': s['_id'], 'files.type': 'dicom'})
+
+                analyses = s.pop('analyses', [])
+                files = s.pop('files', [])
+                remove_blacklisted_keys(s)
+
+                doc = {
+                    'project':              p,
+                    'group':                g,
+                    'session':              s,
+                    'permissions':          permissions,
+                    'container_type':       'session'
+
+                }
+
+                doc = json.dumps(doc, default=encoder.custom_json_serializer)
+                es.index(index=DE_INDEX, id=str(s['_id']), doc_type='flywheel', body=doc)
+
+                handle_files(s, files, dicom_mappings, permissions)
+
+                for an in analyses:
+                    files = an.pop('files', [])
+                    doc = {
+                        'analysis':             an,
+                        'session':              s,
+                        'project':              p,
+                        'group':                g,
+                        'permissions':          permissions,
+                        'container_type':       'analysis'
+
+                    }
+
+                    doc = json.dumps(doc, default=encoder.custom_json_serializer)
+                    es.index(index=DE_INDEX, id=str(an['_id']), doc_type='flywheel', body=doc)
+
+                    files = [f for f in files if f.get('output')]
+
+                    handle_files(an, files, dicom_mappings, permissions)
+
+
+
+                acquisitions = db.acquisitions.find({'session': s['_id']})
                 for a in acquisitions:
 
-                    permissions = a.pop('permissions', [])
                     files = a.pop('files', [])
+                    remove_blacklisted_keys(a)
+
                     doc = {
                         'acquisition':          a,
                         'session':              s,
                         'project':              p,
                         'group':                g,
-                        'permissions':          permissions
+                        'permissions':          permissions,
+                        'container_type':       'acquisition'
 
                     }
 
                     doc = json.dumps(doc, default=encoder.custom_json_serializer)
-                    es.index(index=DICOM_INDEX, id=a['_id'], doc_type='acquisition', body=doc)
+                    es.index(index=DE_INDEX, id=str(a['_id']), doc_type='flywheel', body=doc)
 
 
-                    for f in files:
-                        if f.get('type', '') == 'dicom' and f.get('info'):
-                            dicom_data = f.pop('info')
-                            term_fields = {}
-                            for skipped in SKIPPED:
-                                dicom_data.pop(skipped, None)
-                            for k,v in dicom_data.iteritems():
-                                if 'datetime' in k.lower():
-                                    config.log.debug('called for {}'.format(k))
-                                    v = cast_datetime(str(v))
-                                elif 'date' in k.lower():
-                                    config.log.debug('called for {}'.format(k))
-                                    v = cast_date(str(v))
-                                elif 'time' in k.lower():
-                                    config.log.debug('called for {}'.format(k))
-                                    v = cast_time(str(v))
-
-                                term_field_name = k+'_term'
-                                if term_field_name in dicom_mappings:
-                                    term_fields[k+'_term'] = str(v)
-                            dicom_data.update(term_fields)
-                            doc = {
-                                'file':         f,
-                                'dicom_header': dicom_data
-                            }
-                            doc = json.dumps(doc, default=encoder.custom_json_serializer)
-                            es.index(index=DICOM_INDEX, id=f['name'], parent=a['_id'], doc_type='dicom', body=doc)
+                    handle_files(a, files, dicom_mappings, permissions)
 
 
 
