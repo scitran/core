@@ -122,8 +122,8 @@ class DataExplorerHandler(base.RequestHandler):
 
     def _run_query(self, es_query):
         results = config.es.search(
-            index='dicom_store',
-            doc_type='dicom',
+            index='data_explorer',
+            doc_type='file',
             body=es_query,
             size=10000
         )
@@ -131,8 +131,8 @@ class DataExplorerHandler(base.RequestHandler):
 
     def get_facets(self):
         results = config.es.search(
-            index='dicom_store',
-            doc_type='dicom',
+            index='data_explorer',
+            doc_type='file',
             body=FACET_QUERY,
             size=10000
         )['aggregations']
