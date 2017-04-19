@@ -328,7 +328,10 @@ def handle_files(parent, files, dicom_mappings, permissions):
         generated_id = str(parent['_id']) + '_' + f['name']
 
         doc = json.dumps(doc, default=encoder.custom_json_serializer)
-        es.index(index=DE_INDEX, id=generated_id, parent=str(parent['_id']), doc_type='file', body=doc)
+        try:
+            es.index(index=DE_INDEX, id=generated_id, parent=str(parent['_id']), doc_type='file', body=doc)
+        except:
+            return
 
 
 if __name__ == '__main__':
