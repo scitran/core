@@ -343,7 +343,6 @@ class ProjectReport(Report):
             result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
             project['subjects_count'] = result.get('count', 0)
 
-
             # Count subjects by sex
             # Use last sex reporting for subjects with multiple entries
             sex_q = copy.deepcopy(subject_q)
@@ -359,7 +358,11 @@ class ProjectReport(Report):
                                       'male':   {'$sum': '$male'},
                                       'other':  {'$sum': '$other'}}}
             ]
-            result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            try:
+                result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            except APIReportException:
+                # Edge case when none of the subjects have a sex field
+                result = {}
 
             project['female_count'] = result.get('female',0)
             project['male_count'] = result.get('male',0)
@@ -395,7 +398,11 @@ class ProjectReport(Report):
                                         'under_18': {'$cond': [{'$lt': ['$age', EIGHTEEN_YEARS_IN_SEC]}, 1, 0]}}},
                 {'$group': {'_id': 1, 'over_18': {'$sum': '$over_18'}, 'under_18': {'$sum': '$under_18'}}}
             ]
-            result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            try:
+                result = self._get_result(config.db.command('aggregate', 'sessions', pipeline=pipeline))
+            except APIReportException:
+                # Edge case when none of the subjects have an age field
+                result = {}
 
             project['over_18_count'] = result.get('over_18',0)
             project['under_18_count'] = result.get('under_18',0)
