@@ -38,86 +38,88 @@ ANALYSIS = {
             }
         }
 
-DYNAMIC_TEMPLATES = [{
-                '_id': {
-                    'match': '_id',
-                    'match_mapping_type' : 'string',
-                    'mapping': {
-                       'type': 'string',
-                       'index': 'not_analyzed'
-                    }
+DYNAMIC_TEMPLATES = [
+    {
+            '_id': {
+                'match': '_id',
+                'match_mapping_type' : 'string',
+                'mapping': {
+                   'type': 'string',
+                   'index': 'not_analyzed'
                 }
-            },
+            }
+        },
+    {
+            'long_fields' : {
+                'match_mapping_type' : 'long',
+                'mapping' : {
+                    'ignore_malformed': True
+                }
+            }
+        },
+    {
+            'integer_fields' : {
+                'match_mapping_type' : 'integer',
+                'mapping' : {
+                    'ignore_malformed': True
+                }
+            }
+        },
+    {
+            'double_fields' : {
+                'match_mapping_type' : 'double',
+                'mapping' : {
+                    'ignore_malformed': True
+                }
+            }
+        },
+    {
+            'float_fields' : {
+                'match_mapping_type' : 'float',
+                'mapping' : {
+                    'ignore_malformed': True
+                }
+            }
+        },
+    {
+            'short_fields' : {
+                'match_mapping_type' : 'short',
+                'mapping' : {
+                    'ignore_malformed': True
+                }
+            }
+        },
+    {
+            'byte_fields' : {
+                'match_mapping_type' : 'byte',
+                'mapping' : {
+                    'ignore_malformed': True
+                }
+            }
+        },
         {
-                'long_fields' : {
-                    'match_mapping_type' : 'long',
-                    'mapping' : {
-                        'ignore_malformed': True
-                    }
+            'hash': {
+                'match': 'hash',
+                'match_mapping_type' : 'string',
+                'mapping': {
+                   'type': 'string',
+                   'index': 'not_analyzed'
                 }
-            },
+            }
+        },
         {
-                'integer_fields' : {
-                    'match_mapping_type' : 'integer',
-                    'mapping' : {
-                        'ignore_malformed': True
-                    }
+            'string_fields' : {
+                'match': '*',
+                'match_mapping_type' : 'string',
+                'mapping' : {
+                    'type': 'string',
+                    'search_analyzer': 'str_search_analyzer',
+                    'index_analyzer': 'str_index_analyzer',
+                    'ignore_above': 10922
                 }
-            },
-        {
-                'double_fields' : {
-                    'match_mapping_type' : 'double',
-                    'mapping' : {
-                        'ignore_malformed': True
-                    }
-                }
-            },
-        {
-                'float_fields' : {
-                    'match_mapping_type' : 'float',
-                    'mapping' : {
-                        'ignore_malformed': True
-                    }
-                }
-            },
-        {
-                'short_fields' : {
-                    'match_mapping_type' : 'short',
-                    'mapping' : {
-                        'ignore_malformed': True
-                    }
-                }
-            },
-        {
-                'byte_fields' : {
-                    'match_mapping_type' : 'byte',
-                    'mapping' : {
-                        'ignore_malformed': True
-                    }
-                }
-            },
-            {
-                'hash': {
-                    'match': 'hash',
-                    'match_mapping_type' : 'string',
-                    'mapping': {
-                       'type': 'string',
-                       'index': 'not_analyzed'
-                    }
-                }
-            },
-            {
-                'string_fields' : {
-                    'match': '*',
-                    'match_mapping_type' : 'string',
-                    'mapping' : {
-                        'type': 'string',
-                        'search_analyzer': 'str_search_analyzer',
-                        'index_analyzer': 'str_index_analyzer',
-                        'ignore_above': 10922
-                    }
-                }
-            }]
+            }
+        }
+]
 
 def datetime(str_datetime):
     pass
@@ -300,22 +302,26 @@ def handle_files(parent, files, dicom_mappings, permissions):
                 dicom_data.pop(skipped, None)
             for k,v in dicom_data.iteritems():
 
-                # Arrays are saved as strings in
-                if value_is_array(v):
-                    config.log.debug('calling array for {} and value {}'.format(k, v))
-                    v = cast_array_from_string(v)
-                if 'datetime' in k.lower():
-                    config.log.debug('called datetime for {} and value {}'.format(k, v))
-                    v = cast_datetime(str(v))
-                elif 'date' in k.lower():
-                    config.log.debug('called date for {} and value {}'.format(k, v))
-                    v = cast_date(str(v))
-                # elif 'time' in k.lower():
-                #     # config.log.debug('called time for {} and value {}'.format(k, v))
-                #     # v = cast_time(str(v))
-                elif 'Age' in k:
-                    config.log.debug('called age for {} and value {}'.format(k, v))
-                    v = cast_age(str(v))
+                try:
+
+                    # Arrays are saved as strings in
+                    if value_is_array(v):
+                        config.log.debug('calling array for {} and value {}'.format(k, v))
+                        v = cast_array_from_string(v)
+                    if 'datetime' in k.lower():
+                        config.log.debug('called datetime for {} and value {}'.format(k, v))
+                        v = cast_datetime(str(v))
+                    elif 'date' in k.lower():
+                        config.log.debug('called date for {} and value {}'.format(k, v))
+                        v = cast_date(str(v))
+                    # elif 'time' in k.lower():
+                    #     # config.log.debug('called time for {} and value {}'.format(k, v))
+                    #     # v = cast_time(str(v))
+                    elif 'Age' in k:
+                        config.log.debug('called age for {} and value {}'.format(k, v))
+                        v = cast_age(str(v))
+                except:
+                    pass
 
                 term_field_name = k+'_term'
                 if term_field_name in dicom_mappings and type(v) in [unicode, str]:
