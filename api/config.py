@@ -55,8 +55,8 @@ DEFAULT_CONFIG = {
         }
     },
     'persistent': {
-        'db_uri': 'mongodb://localhost:9001/scitran',
-        'db_log_uri': 'mongodb://localhost:9001/logs',
+        'db_uri':     'mongodb://localhost:27017/scitran',
+        'db_log_uri': 'mongodb://localhost:27017/logs',
         'db_connect_timeout': '2000',
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
