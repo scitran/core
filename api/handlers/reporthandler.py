@@ -1,11 +1,13 @@
+import copy
+import datetime
+
 import bson
 import dateutil
-import copy
 import pymongo
 
-from ..web import base
 from .. import config
 from .. import util
+from ..web import base
 
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
@@ -519,13 +521,13 @@ class UsageReport(Report):
         if end_date and start_date and end_date < start_date:
             raise APIReportParamsException('End date {} is before start date {}'.format(end_date, start_date))
 
-        self.start_date     = start_date
-        self.end_date       = end_date
-        self.report_type    = report_type
+        self.start_date  = start_date
+        self.end_date    = end_date
+        self.report_type = report_type
 
         # Used for month calculation:
-        self.first_month = start_date if start_date else None
-        self.last_month = end_date if end_date else None
+        self.first_month = start_date
+        self.last_month = end_date
 
 
     def user_can_generate(self, uid):
@@ -717,6 +719,11 @@ class UsageReport(Report):
         #  - add the month from the dictionary of report objects if it exists
         #  - OR create a zero'd out report object for the month
 
+        # Set `first_month` and `last_month` to current month in case they weren't specified
+        # AND there was no data in mongo to get defaults
+        self.first_month = self.first_month or datetime.datetime.utcnow()
+        self.last_month = self.last_month or self.first_month
+
         curr_month = self.first_month.month
         curr_year = self.first_month.year
 
@@ -733,7 +740,7 @@ class UsageReport(Report):
                 final_report_list.append(report[key])
             else:
                 # We don't have a record for this month/year combo, create a zero'd out version
-                final_report_list.append(self._create_default(month=curr_month, year=curr_year, ignore_minmax=True))
+                final_report_list.append(self._create_default(month=str(curr_month), year=str(curr_year), ignore_minmax=True))
             curr_month += 1
             if curr_month > 12:
                 curr_year += 1
