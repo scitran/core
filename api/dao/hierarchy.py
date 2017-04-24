@@ -235,10 +235,11 @@ def is_session_compliant(session, template):
             return False
         acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
         for req in a_requirements:
-            min_count = req.pop('minimum')
+            req_temp = copy.deepcopy(req)
+            min_count = req_temp.pop('minimum')
             count = 0
             for a in acquisitions:
-                if not check_cont(a, req):
+                if not check_cont(a, req_temp):
                     # Didn't find a match, on to the next one
                     continue
                 else:
