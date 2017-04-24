@@ -115,7 +115,14 @@ DYNAMIC_TEMPLATES = [
                     'type': 'string',
                     'search_analyzer': 'str_search_analyzer',
                     'index_analyzer': 'str_index_analyzer',
-                    'ignore_above': 10922
+                    'ignore_above': 10922,
+                    "fields": {
+                        "raw": {
+                            "type": "string",
+                            "index": "not_analyzed",
+                            "ignore_above": 256
+                        }
+                    }
                 }
             }
         }
@@ -288,54 +295,58 @@ def remove_blacklisted_keys(obj):
     for key in BLACKLIST_KEYS:
         obj.pop(key, None)
 
-def handle_files(parent, files, dicom_mappings, permissions):
+def handle_files(parent, files, dicom_mappings, permissions, doc):
+    doc['container_type'] = 'file'
     for f in files:
-        doc = {
-            'file': f,
-            'permissions': permissions
-        }
-        if f.get('type', '') == 'dicom' and f.get('info'):
-            dicom_data = f.pop('info')
-            term_fields = {}
-            modified_data = {}
-            for skipped in SKIPPED:
-                dicom_data.pop(skipped, None)
-            for k,v in dicom_data.iteritems():
+        # f.pop('info', None)
+        doc['file'] = f
+        # doc = {
+        #     'file': f,
+        #     'permissions': permissions
+        # }
+        # if f.get('type', '') == 'dicom' and f.get('info'):
+        #     dicom_data = f.pop('info')
+        #     term_fields = {}
+        #     modified_data = {}
+        #     for skipped in SKIPPED:
+        #         dicom_data.pop(skipped, None)
+        #     for k,v in dicom_data.iteritems():
 
-                try:
+        #         try:
 
-                    # Arrays are saved as strings in
-                    if value_is_array(v):
-                        config.log.debug('calling array for {} and value {}'.format(k, v))
-                        v = cast_array_from_string(v)
-                    if 'datetime' in k.lower():
-                        config.log.debug('called datetime for {} and value {}'.format(k, v))
-                        v = cast_datetime(str(v))
-                    elif 'date' in k.lower():
-                        config.log.debug('called date for {} and value {}'.format(k, v))
-                        v = cast_date(str(v))
-                    # elif 'time' in k.lower():
-                    #     # config.log.debug('called time for {} and value {}'.format(k, v))
-                    #     # v = cast_time(str(v))
-                    elif 'Age' in k:
-                        config.log.debug('called age for {} and value {}'.format(k, v))
-                        v = cast_age(str(v))
-                except:
-                    pass
+        #             # Arrays are saved as strings in
+        #             if value_is_array(v):
+        #                 config.log.debug('calling array for {} and value {}'.format(k, v))
+        #                 v = cast_array_from_string(v)
+        #             if 'datetime' in k.lower():
+        #                 config.log.debug('called datetime for {} and value {}'.format(k, v))
+        #                 v = cast_datetime(str(v))
+        #             elif 'date' in k.lower():
+        #                 config.log.debug('called date for {} and value {}'.format(k, v))
+        #                 v = cast_date(str(v))
+        #             # elif 'time' in k.lower():
+        #             #     # config.log.debug('called time for {} and value {}'.format(k, v))
+        #             #     # v = cast_time(str(v))
+        #             elif 'Age' in k:
+        #                 config.log.debug('called age for {} and value {}'.format(k, v))
+        #                 v = cast_age(str(v))
+        #         except:
+        #             pass
 
-                term_field_name = k+'_term'
-                if term_field_name in dicom_mappings and type(v) in [unicode, str]:
-                    term_fields[k+'_term'] = str(v)
-                modified_data[k] = v
+        #         term_field_name = k+'_term'
+        #         if term_field_name in dicom_mappings and type(v) in [unicode, str]:
+        #             term_fields[k+'_term'] = str(v)
+        #         modified_data[k] = v
 
-            modified_data.update(term_fields)
-            doc['dicom_header'] = modified_data
+        #     modified_data.update(term_fields)
+        #     doc['dicom_header'] = modified_data
 
         generated_id = str(parent['_id']) + '_' + f['name']
 
-        doc = json.dumps(doc, default=encoder.custom_json_serializer)
+        doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
         try:
-            es.index(index=DE_INDEX, id=generated_id, parent=str(parent['_id']), doc_type='file', body=doc)
+            # es.index(index=DE_INDEX, id=generated_id, parent=str(parent['_id']), doc_type='file', body=doc)
+            es.index(index=DE_INDEX, id=generated_id, doc_type='flywheel', body=doc_s)
         except:
             return
 
@@ -347,7 +358,7 @@ if __name__ == '__main__':
         res = es.indices.delete(index=DE_INDEX)
         print 'response: {}'.format(res)
 
-    mappings = create_mappings()
+    # mappings = create_mappings()
 
     request = {
         'settings': {
@@ -361,16 +372,16 @@ if __name__ == '__main__':
                 'dynamic_templates': DYNAMIC_TEMPLATES
             },
             'flywheel': {},
-            'file': {
-                '_parent': {
-                    'type': 'flywheel'
-                },
-                'properties': {
-                    'dicom_header': {
-                        'properties': mappings
-                    }
-                }
-            }
+            # 'file': {
+            #     '_parent': {
+            #         'type': 'flywheel'
+            #     },
+            #     'properties': {
+            #         'dicom_header': {
+            #             'properties': mappings
+            #         }
+            #     }
+            # }
         }
     }
 
@@ -378,9 +389,10 @@ if __name__ == '__main__':
     res = es.indices.create(index=DE_INDEX, body=request)
     print 'response: {}'.format(res)
 
-    mappings = es.indices.get_mapping(index=DE_INDEX, doc_type='file')
+    # mappings = es.indices.get_mapping(index=DE_INDEX, doc_type='flywheel')
 
-    dicom_mappings = mappings[DE_INDEX]['mappings']['file']['properties']['dicom_header']['properties']
+    # dicom_mappings = mappings[DE_INDEX]['mappings']['file']['properties']['dicom_header']['properties']
+    dicom_mappings = None
 
     permissions = []
 
@@ -404,14 +416,15 @@ if __name__ == '__main__':
 
             }
 
-            doc = json.dumps(doc, default=encoder.custom_json_serializer)
-            es.index(index=DE_INDEX, id=str(p['_id']), doc_type='flywheel', body=doc)
+            doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
+            es.index(index=DE_INDEX, id=str(p['_id']), doc_type='flywheel', body=doc_s)
 
-            handle_files(p, files, dicom_mappings, permissions)
+            handle_files(p, files, dicom_mappings, permissions, doc)
 
 
             sessions = db.sessions.find({'project': p['_id']})
             for s in sessions:
+                subject = s.pop('subject', {})
 
                 analyses = s.pop('analyses', [])
                 files = s.pop('files', [])
@@ -421,21 +434,23 @@ if __name__ == '__main__':
                     'project':              p,
                     'group':                g,
                     'session':              s,
+                    'subject':              subject,
                     'permissions':          permissions,
                     'container_type':       'session'
 
                 }
 
-                doc = json.dumps(doc, default=encoder.custom_json_serializer)
-                es.index(index=DE_INDEX, id=str(s['_id']), doc_type='flywheel', body=doc)
+                doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
+                es.index(index=DE_INDEX, id=str(s['_id']), doc_type='flywheel', body=doc_s)
 
-                handle_files(s, files, dicom_mappings, permissions)
+                handle_files(s, files, dicom_mappings, permissions, doc)
 
                 for an in analyses:
                     files = an.pop('files', [])
                     doc = {
                         'analysis':             an,
                         'session':              s,
+                        'subject':              subject,
                         'project':              p,
                         'group':                g,
                         'permissions':          permissions,
@@ -443,24 +458,25 @@ if __name__ == '__main__':
 
                     }
 
-                    doc = json.dumps(doc, default=encoder.custom_json_serializer)
-                    es.index(index=DE_INDEX, id=str(an['_id']), doc_type='flywheel', body=doc)
+                    doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
+                    es.index(index=DE_INDEX, id=str(an['_id']), doc_type='flywheel', body=doc_s)
 
                     files = [f for f in files if f.get('output')]
 
-                    handle_files(an, files, dicom_mappings, permissions)
+                    handle_files(an, files, dicom_mappings, permissions, doc)
 
 
 
                 acquisitions = db.acquisitions.find({'session': s['_id']})
                 for a in acquisitions:
-
+                    a.pop('info', None)
                     files = a.pop('files', [])
                     remove_blacklisted_keys(a)
 
                     doc = {
                         'acquisition':          a,
                         'session':              s,
+                        'subject':              subject,
                         'project':              p,
                         'group':                g,
                         'permissions':          permissions,
@@ -468,11 +484,11 @@ if __name__ == '__main__':
 
                     }
 
-                    doc = json.dumps(doc, default=encoder.custom_json_serializer)
-                    es.index(index=DE_INDEX, id=str(a['_id']), doc_type='flywheel', body=doc)
+                    doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
+                    es.index(index=DE_INDEX, id=str(a['_id']), doc_type='flywheel', body=doc_s)
 
 
-                    handle_files(a, files, dicom_mappings, permissions)
+                    handle_files(a, files, dicom_mappings, permissions, doc)
 
 
 
