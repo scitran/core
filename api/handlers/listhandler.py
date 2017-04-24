@@ -776,6 +776,7 @@ class AnalysesHandler(ListHandler):
         permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
         filename = kwargs.get('name')
         ticket_id = self.get_param('ticket')
+        ticket = None
         if ticket_id is None:
             permchecker(noop)('GET', _id=_id)
         elif ticket_id != '':
@@ -806,9 +807,12 @@ class AnalysesHandler(ListHandler):
             }
         else:
             if not filename:
-                self._send_batch(ticket)
+                if ticket:
+                    self._send_batch(ticket)
+                else:
+                    self.abort(400, 'batch downloads require a ticket')
             elif not fileinfo:
-                self.abort(404, '{} doesn''t exist'.format(filename))
+                self.abort(404, "{} doesn't exist".format(filename))
             else:
                 fileinfo = fileinfo[0]
                 filepath = os.path.join(
