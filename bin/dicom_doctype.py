@@ -44,7 +44,7 @@ DYNAMIC_TEMPLATES = [
                 'match': '_id',
                 'match_mapping_type' : 'string',
                 'mapping': {
-                   'type': 'text',
+                   'type': 'keyword',
                    'index': 'not_analyzed'
                 }
             }
@@ -113,12 +113,10 @@ DYNAMIC_TEMPLATES = [
                 'match_mapping_type' : 'string',
                 'mapping' : {
                     'type': 'text',
-                    'search_analyzer': 'str_search_analyzer',
-                    'index_analyzer': 'str_index_analyzer',
-                    'ignore_above': 10922,
+                    'analyzer': 'str_search_analyzer',
                     "fields": {
                         "raw": {
-                            "type": "text",
+                            "type": "keyword",
                             "index": "not_analyzed",
                             "ignore_above": 256
                         }
