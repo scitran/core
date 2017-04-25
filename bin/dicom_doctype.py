@@ -44,7 +44,7 @@ DYNAMIC_TEMPLATES = [
                 'match': '_id',
                 'match_mapping_type' : 'string',
                 'mapping': {
-                   'type': 'string',
+                   'type': 'text',
                    'index': 'not_analyzed'
                 }
             }
@@ -102,7 +102,7 @@ DYNAMIC_TEMPLATES = [
                 'match': 'hash',
                 'match_mapping_type' : 'string',
                 'mapping': {
-                   'type': 'string',
+                   'type': 'text',
                    'index': 'not_analyzed'
                 }
             }
@@ -112,13 +112,13 @@ DYNAMIC_TEMPLATES = [
                 'match': '*',
                 'match_mapping_type' : 'string',
                 'mapping' : {
-                    'type': 'string',
+                    'type': 'text',
                     'search_analyzer': 'str_search_analyzer',
                     'index_analyzer': 'str_index_analyzer',
                     'ignore_above': 10922,
                     "fields": {
                         "raw": {
-                            "type": "string",
+                            "type": "text",
                             "index": "not_analyzed",
                             "ignore_above": 256
                         }

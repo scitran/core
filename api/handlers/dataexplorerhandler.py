@@ -47,7 +47,7 @@ BASE_QUERY = {
   }
 }
 
-FACET_QUERY = {
+OLD_FACET_QUERY = {
     "size": 0,
     "aggs" : {
         "Series Description" : {
@@ -84,6 +84,67 @@ FACET_QUERY = {
             "date_histogram" : {
                 "field" : "dicom_header.StudyDate",
                 "interval" : "day"
+            }
+        }
+    }
+}
+
+
+FACET_QUERY = {
+    "size": 0,
+    "aggs" : {
+        "subect.sex" : {
+            "terms" : {
+                "field" : "subect.sex.raw",
+                "size" : 15
+            }
+        },
+        "subject.code" : {
+            "terms" : {
+                "field" : "subject.code.raw",
+                "size" : 15
+            }
+        },
+        "session.tags" : {
+            "terms" : {
+                "field" : "session.tags.raw",
+                "size" : 15
+            }
+        },
+        "project.label" : {
+            "terms" : {
+                "field" : "project.label.raw",
+                "size" : 15
+            }
+        },
+        "file.measurements" : {
+            "terms" : {
+                "field" : "file.measurements.raw",
+                "size" : 15
+            }
+        },
+        "file.type" : {
+            "terms" : {
+                "field" : "file.type.raw",
+                "size" : 15
+            }
+        },
+        "session.timestamp" : {
+            "date_histogram" : {
+                "field" : "session.timestamp",
+                "interval" : "month"
+            }
+        },
+        "session.created" : {
+            "date_histogram" : {
+                "field" : "session.created",
+                "interval" : "month"
+            }
+        },
+        "subject.age" : {
+            "histogram" : {
+                "field" : "subject.age",
+                "interval" : 31556952
             }
         }
     }
