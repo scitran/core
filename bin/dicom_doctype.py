@@ -14,6 +14,9 @@ from api.web import encoder
 es = config.es
 db = config.db
 
+# SHHH
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+
 DE_INDEX = 'data_explorer'
 
 ANALYSIS = {
@@ -370,17 +373,7 @@ if __name__ == '__main__':
                 '_all' : {'enabled' : True},
                 'dynamic_templates': DYNAMIC_TEMPLATES
             },
-            'flywheel': {},
-            # 'file': {
-            #     '_parent': {
-            #         'type': 'flywheel'
-            #     },
-            #     'properties': {
-            #         'dicom_header': {
-            #             'properties': mappings
-            #         }
-            #     }
-            # }
+            'flywheel': {}
         }
     }
 
@@ -396,7 +389,16 @@ if __name__ == '__main__':
     permissions = []
 
     groups = db.groups.find({})
+    print 'STARTING THE GROUPS'
+    print ''
+    print ''
+    print ''
+    count = 1
+    group_count_total = groups.count()
     for g in groups:
+        print 'Loading group {} ({} of {})'.format(g['label'], count, group_count_total)
+        count += 1
+
         remove_blacklisted_keys(g)
 
         projects = db.projects.find({'group': g['_id']})
