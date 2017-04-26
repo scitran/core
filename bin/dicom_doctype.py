@@ -360,7 +360,7 @@ if __name__ == '__main__':
 
     request = {
         'settings': {
-            "index.mapping.total_fields.limit": 2500,
+            "index.mapping.total_fields.limit": 4000,
             'number_of_shards': 1,
             'number_of_replicas': 0,
             'analysis' : ANALYSIS
