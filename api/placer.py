@@ -135,7 +135,8 @@ class UIDPlacer(Placer):
     Sessions and acquisitions are identified by UID.
     """
     metadata_schema = 'uidupload.json'
-    create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
+    create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
+    match_type = 'uid'
 
     def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
         super(UIDPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
@@ -151,7 +152,7 @@ class UIDPlacer(Placer):
         metadata_validator(self.metadata, 'POST')
 
         # If not a superuser request, pass uid of user making the upload request
-        targets = self.create_hierarchy(self.metadata, user=self.context.get('uid'), site=self.context.get('site'))
+        targets = self.create_hierarchy(self.metadata, type_=self.match_type, user=self.context.get('uid'), site=self.context.get('site'))
 
         self.metadata_for_file = {}
 
@@ -201,6 +202,18 @@ class UIDPlacer(Placer):
             self.recalc_session_compliance()
         return self.saved
 
+class ReaperUIDPlacer(UIDPlacer):
+    """
+    A placer that creates or matches based on UID.
+
+    Ignores project and group information if it finds session with matching UID.
+    Allows users to move sessions during scans without causing new data to be
+    created in referenced project/group.
+    """
+
+    metadata_schema = 'uidmatchupload.json'
+    create_hierarchy = staticmethod(hierarchy.hierarchy.upsert_bottom_up_hierarchy)
+    match_type = 'uid'
 
 class LabelPlacer(UIDPlacer):
     """
@@ -212,6 +225,7 @@ class LabelPlacer(UIDPlacer):
 
     metadata_schema = 'labelupload.json'
     create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
+    match_type = 'label'
 
 
 class UIDMatchPlacer(UIDPlacer):
@@ -221,6 +235,7 @@ class UIDMatchPlacer(UIDPlacer):
 
     metadata_schema = 'uidmatchupload.json'
     create_hierarchy = staticmethod(hierarchy.find_existing_hierarchy)
+    match_type = 'uid'
 
 
 class EnginePlacer(Placer):

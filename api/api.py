@@ -84,10 +84,10 @@ endpoints = [
 
         # General-purpose upload & download
 
-        route('/download',                              Download, h='download',              m=['GET', 'POST']),
-        route('/upload/<strategy:label|uid|uid-match>', Upload,   h='upload',                m=['POST']),
-        route('/clean-packfiles',                       Upload,   h='clean_packfile_tokens', m=['POST']),
-        route('/engine',                                Upload,   h='engine',                m=['POST']),
+        route('/download',                                      Download, h='download',              m=['GET', 'POST']),
+        route('/upload/<strategy:label|uid|uid-match|reaper>',  Upload,   h='upload',                m=['POST']),
+        route('/clean-packfiles',                               Upload,   h='clean_packfile_tokens', m=['POST']),
+        route('/engine',                                        Upload,   h='engine',                m=['POST']),
 
 
         # Top-level endpoints
