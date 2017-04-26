@@ -93,61 +93,141 @@ OLD_FACET_QUERY = {
 FACET_QUERY = {
     "size": 0,
     "aggs" : {
-        "subect.sex" : {
-            "terms" : {
-                "field" : "subect.sex.raw",
-                "size" : 15
+        "session": {
+            "filter": {"term": {"container_type": "session"}},
+            "aggs": {
+                "subect.sex" : {
+                    "terms" : {
+                        "field" : "subect.sex.raw",
+                        "size" : 15
+                    }
+                },
+                "subject.code" : {
+                    "terms" : {
+                        "field" : "subject.code.raw",
+                        "size" : 15
+                    }
+                },
+                "session.tags" : {
+                    "terms" : {
+                        "field" : "session.tags.raw",
+                        "size" : 15
+                    }
+                },
+                "project.label" : {
+                    "terms" : {
+                        "field" : "project.label.raw",
+                        "size" : 15
+                    }
+                },
+                "session.timestamp" : {
+                    "date_histogram" : {
+                        "field" : "session.timestamp",
+                        "interval" : "month"
+                    }
+                },
+                "session.created" : {
+                    "date_histogram" : {
+                        "field" : "session.created",
+                        "interval" : "month"
+                    }
+                },
+                "subject.age" : {
+                    "histogram" : {
+                        "field" : "subject.age",
+                        "interval" : 31556952
+                    }
+                }
             }
         },
-        "subject.code" : {
-            "terms" : {
-                "field" : "subject.code.raw",
-                "size" : 15
-            }
-        },
-        "session.tags" : {
-            "terms" : {
-                "field" : "session.tags.raw",
-                "size" : 15
-            }
-        },
-        "project.label" : {
-            "terms" : {
-                "field" : "project.label.raw",
-                "size" : 15
-            }
-        },
-        "file.measurements" : {
-            "terms" : {
-                "field" : "file.measurements.raw",
-                "size" : 15
-            }
-        },
-        "file.type" : {
-            "terms" : {
-                "field" : "file.type.raw",
-                "size" : 15
-            }
-        },
-        "session.timestamp" : {
-            "date_histogram" : {
-                "field" : "session.timestamp",
-                "interval" : "month"
-            }
-        },
-        "session.created" : {
-            "date_histogram" : {
-                "field" : "session.created",
-                "interval" : "month"
-            }
-        },
-        "subject.age" : {
-            "histogram" : {
-                "field" : "subject.age",
-                "interval" : 31556952
+        "file": {
+            "filter": {"term": {"container_type": "file"}},
+            "aggs": {
+
+                "file.measurements" : {
+                    "terms" : {
+                        "field" : "file.measurements.raw",
+                        "size" : 15
+                    }
+                },
+                "file.type" : {
+                    "terms" : {
+                        "field" : "file.type.raw",
+                        "size" : 15
+                    }
+                }
             }
         }
     }
+}
+
+EXAMPLE_SESSION_QUERY = {
+  "size": 0,
+  "query": {
+    "match": {
+      "_all": "test'"
+    }
+  },
+  "aggs": {
+    "by_session": {
+      "terms": {
+        "field": "session._id",
+        "size": 100
+      },
+      "aggs": {
+        "by_top_hit": {
+          "top_hits": {
+            "size": 15
+          }
+        }
+      }
+    }
+  }
+}
+
+EXAMPLE_ACQUISITION_QUERY = {
+  "size": 0,
+  "query": {
+    "match": {
+      "_all": "megan'"
+    }
+  },
+  "aggs": {
+    "by_session": {
+      "terms": {
+        "field": "acquisition._id",
+        "size": 100
+      },
+      "aggs": {
+        "by_top_hit": {
+          "top_hits": {
+            "size": 15
+          }
+        }
+      }
+    }
+  }
+}
+
+EXAMPLE_FILE_QUERY = {
+  "size": 100,
+  "query": {
+    "bool": {
+      "must": {
+        "match": {
+          "_all": "brain"
+        }
+      },
+      "filter": {
+        "bool" : {
+          "must" : [
+             { "term" : {"file.type" : "dicom"}},
+             { "term" : {"container_type" : "file"}}
+          ]
+        }
+      }
+    }
+  }
 }
 
 
