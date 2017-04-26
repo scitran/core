@@ -59,12 +59,13 @@ set +u
 # If no VIRTUAL_ENV, make sure /usr/local/bin is in the path
 if [ -z "$VIRTUAL_ENV" ]; then
     PATH="/usr/local/bin:$PATH"
+    npm install test/integration_tests
+else
+    npm install --global test/integration_tests
 fi
 set -u
 
 PATH="$(npm bin):$PATH"
-
-npm install test/integration_tests
 
 # Allow us to require modules from package.json,
 # since abao_test_hooks.js is not being called from the package directory

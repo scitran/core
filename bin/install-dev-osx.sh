@@ -74,17 +74,3 @@ else
     MONGODB_VERSION=$($SCITRAN_RUNTIME_PATH/bin/mongod --version | grep "db version" | cut -d "v" -f 3)
     echo "MongoDB version $MONGODB_VERSION installed"
 fi
-
-
-# Install Node.js
-if [ ! -f "$SCITRAN_RUNTIME_PATH/bin/node" ]; then
-    echo "Installing Node.js"
-    NODE_URL="https://nodejs.org/dist/v6.4.0/node-v6.4.0-darwin-x64.tar.gz"
-    curl $NODE_URL | tar xz -C $VIRTUAL_ENV --strip-components 1
-fi
-
-
-# Install testing dependencies
-echo "Installing testing dependencies"
-pip install -r "test/integration_tests/requirements-integration-test.txt"
-npm install test/integration_tests

@@ -181,10 +181,9 @@ if [ $BOOTSTRAP_TESTDATA -eq 1 ]; then
             git -C $SCITRAN_PERSISTENT_PATH/testdata pull
         fi
         echo "Ensuring reaper is up to date with master branch"
-        pip install -U git+https://github.com/scitran/reaper.git
+        pip install --upgrade --upgrade-strategy only-if-needed git+https://github.com/scitran/reaper.git
         echo "Bootstrapping testdata"
-        UPLOAD_URI="$SCITRAN_SITE_API_URL?secret=$SCITRAN_CORE_DRONE_SECRET"
-        folder_sniper --yes --insecure "$SCITRAN_PERSISTENT_PATH/testdata" $UPLOAD_URI
+        folder_sniper --yes --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" "$SCITRAN_PERSISTENT_PATH/testdata" $SCITRAN_SITE_API_URL
         echo "Bootstrapped testdata"
         touch "$SCITRAN_PERSISTENT_DATA_PATH/.bootstrapped"
     fi

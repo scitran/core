@@ -25,7 +25,7 @@ bootstrap_data_label=7d5c3608ff360d6ae28aab0ef262e6781c4ae8d6
 
 
 # Same as bootstrap_data_label above, except for scitran/reaper.
-bootstrap_reaper_label=1.0.3
+bootstrap_reaper_label=2.0.0
 
 
 # Move to API folder for relative path assumptions later on
@@ -72,6 +72,6 @@ pip install "git+https://github.com/scitran/reaper.git@${bootstrap_reaper_label}
 
 
 ## load the test data in
-folder_sniper --yes --insecure "$TESTDATA_DIR/download" "${SCITRAN_SITE_API_URL}?secret=${SCITRAN_CORE_DRONE_SECRET}"
+folder_sniper --yes --insecure --secret "$SCITRAN_CORE_DRONE_SECRET" "$TESTDATA_DIR/download" $SCITRAN_SITE_API_URL
 
 )
