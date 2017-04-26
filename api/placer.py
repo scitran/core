@@ -152,7 +152,7 @@ class UIDPlacer(Placer):
         metadata_validator(self.metadata, 'POST')
 
         # If not a superuser request, pass uid of user making the upload request
-        targets = self.create_hierarchy(self.metadata, type_=self.match_type, user=self.context.get('uid'), site=self.context.get('site'))
+        targets = self.create_hierarchy(self.metadata, self.match_type, user=self.context.get('uid'), site=self.context.get('site'))
 
         self.metadata_for_file = {}
 
@@ -202,7 +202,7 @@ class UIDPlacer(Placer):
             self.recalc_session_compliance()
         return self.saved
 
-class ReaperUIDPlacer(UIDPlacer):
+class UIDReaperPlacer(UIDPlacer):
     """
     A placer that creates or matches based on UID.
 
@@ -212,7 +212,7 @@ class ReaperUIDPlacer(UIDPlacer):
     """
 
     metadata_schema = 'uidmatchupload.json'
-    create_hierarchy = staticmethod(hierarchy.hierarchy.upsert_bottom_up_hierarchy)
+    create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
     match_type = 'uid'
 
 class LabelPlacer(UIDPlacer):

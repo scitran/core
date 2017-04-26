@@ -454,7 +454,7 @@ def find_existing_hierarchy(metadata, user=None, site=None):
     return target_containers
 
 
-def upsert_bottom_up_hierarchy(metadata, user=None, site=None):
+def upsert_bottom_up_hierarchy(metadata, type_='uid', user=None, site=None):
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
