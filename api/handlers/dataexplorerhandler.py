@@ -47,49 +47,6 @@ BASE_QUERY = {
   }
 }
 
-OLD_FACET_QUERY = {
-    "size": 0,
-    "aggs" : {
-        "Series Description" : {
-            "terms" : {
-                "field" : "dicom_header.SeriesDescription_term",
-                "size" : 5
-            }
-        },
-        "Series Description Fragment" : {
-            "terms" : {
-                "field" : "dicom_header.SeriesDescription",
-                "size" : 5
-            }
-        },
-        "Patient Name" : {
-            "terms" : {
-                "field" : "dicom_header.PatientName_term",
-                "size" : 5
-            }
-        },
-        "Patient ID" : {
-            "terms" : {
-                "field" : "dicom_header.PatientID_term",
-                "size" : 5
-            }
-        },
-        "Modality" : {
-            "terms" : {
-                "field" : "dicom_header.Modality_term",
-                "size" : 5
-            }
-        },
-        "Study Date" : {
-            "date_histogram" : {
-                "field" : "dicom_header.StudyDate",
-                "interval" : "day"
-            }
-        }
-    }
-}
-
-
 FACET_QUERY = {
     "size": 0,
     "aggs" : {
@@ -98,7 +55,7 @@ FACET_QUERY = {
             "aggs": {
                 "subect.sex" : {
                     "terms" : {
-                        "field" : "subect.sex.raw",
+                        "field" : "subject.sex.raw",
                         "size" : 15
                     }
                 },
@@ -131,11 +88,27 @@ FACET_QUERY = {
                         "field" : "session.created",
                         "interval" : "month"
                     }
-                },
+                }
+            }
+        },
+        "session_age": {
+            "filter": {
+                "bool" : {
+                  "must" : [
+                     {"range": {"subject.age": {"gte": -31556952, "lte": 3155695200}}},
+                     {"term": {"container_type": "session"}}
+                  ]
+                }
+            },
+            "aggs": {
                 "subject.age" : {
                     "histogram" : {
                         "field" : "subject.age",
-                        "interval" : 31556952
+                        "interval" : 31556952,
+                        "extended_bounds" : {
+                            "min" : -31556952,
+                            "max" : 3155695200
+                        }
                     }
                 }
             }
@@ -270,11 +243,16 @@ class DataExplorerHandler(base.RequestHandler):
         )
         return { 'results': results['hits']['hits'], 'result_count': results['hits']['total']}
 
+    @require_login
     def get_facets(self):
-        results = config.es.search(
+        aggs = config.es.search(
             index='data_explorer',
-            doc_type='file',
-            body=FACET_QUERY,
-            size=10000
+            doc_type='flywheel',
+            body=FACET_QUERY
         )['aggregations']
-        return {'facets': results}
+
+        # This aggregation needs an extra filter to filter out outliers (only shows ages between -1 and 100)
+        # Add it back in to the session aggregation node
+        age_node = aggs.pop('session_age')
+        aggs['session']['subject.age'] = age_node['subject.age']
+        return {'facets': aggs}

@@ -396,7 +396,7 @@ if __name__ == '__main__':
     count = 1
     group_count_total = groups.count()
     for g in groups:
-        print 'Loading group {} ({} of {})'.format(g['label'], count, group_count_total)
+        print 'Loading group {} ({} of {})'.format(g['name'], count, group_count_total)
         count += 1
 
         remove_blacklisted_keys(g)
