@@ -8,49 +8,13 @@ from .. import config
 from ..auth import require_login, require_superuser
 
 log = config.log
-TEST_QUERY = {
-  "query": {
-    "filtered": {
-      "query": {"match_all": {}},
-      "filter": {
-        "and": [
-          {"term": {"dicom_header.SeriesDescription": "fmri"}},
-          {
-            "has_parent": {
-              "type": "acquisition",
-              "query": {
-                "term": {"project.label": "neuro"}
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
-}
-MATCH_ALL= {"match_all": {}}
 
-BASE_QUERY = {
-  "query": {
-    "filtered": {
-      "query": MATCH_ALL,
-      "filter": {
-        "and": [
-          {
-            "has_parent": {
-              "type": "acquisition"
-            }
-          }
-        ]
-      }
-    }
-  }
-}
+MATCH_ALL= {"match_all": {}}
 
 FACET_QUERY = {
     "size": 0,
     "aggs" : {
-        "session": {
+        "by_session": {
             "filter": {"term": {"container_type": "session"}},
             "aggs": {
                 "subect.sex" : {
@@ -113,7 +77,7 @@ FACET_QUERY = {
                 }
             }
         },
-        "file": {
+        "by_file": {
             "filter": {"term": {"container_type": "file"}},
             "aggs": {
 
@@ -210,40 +174,6 @@ class DataExplorerHandler(base.RequestHandler):
         super(DataExplorerHandler, self).__init__(request, response)
 
     @require_login
-    def search(self):
-        user_query = self.request.json_body.get('query')
-        return self._run_query(self._construct_query(user_query))
-
-    def _construct_query(self, user_query):
-        es_query = copy.deepcopy(BASE_QUERY)
-        and_block = es_query['query']['filtered']['filter']['and']
-        parent_block = and_block[0]['has_parent']
-
-
-        user_flywheel_query = user_query.get('flywheel')
-        if user_flywheel_query:
-            parent_block['query'] = {'term': user_flywheel_query}
-        else:
-            parent_block['filter'] = MATCH_ALL
-
-        user_file_query = user_query.get('file')
-        if user_file_query:
-            log.debug('adding stuff')
-            for k,v in user_file_query.iteritems():
-                and_block.append({'term': {k: v}})
-        log.debug(es_query)
-        return es_query
-
-    def _run_query(self, es_query):
-        results = config.es.search(
-            index='data_explorer',
-            doc_type='file',
-            body=es_query,
-            size=10000
-        )
-        return { 'results': results['hits']['hits'], 'result_count': results['hits']['total']}
-
-    @require_login
     def get_facets(self):
         aggs = config.es.search(
             index='data_explorer',
@@ -254,5 +184,47 @@ class DataExplorerHandler(base.RequestHandler):
         # This aggregation needs an extra filter to filter out outliers (only shows ages between -1 and 100)
         # Add it back in to the session aggregation node
         age_node = aggs.pop('session_age')
-        aggs['session']['subject.age'] = age_node['subject.age']
+        aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
+
+
+    @require_login
+    def search(self):
+        request = self.request.json_body
+
+        # Parse and validate return_type
+        return_type = request.get('return_type')
+        if not return_type or return_type not in ['file', 'session', 'acquisition']:
+            self.abort(400, 'Must specify return type')
+
+        # Parse and "validate" filters, allowed to be non-existent
+        filters = request.get('filters', [])
+        if type(filters) is not list:
+            self.abort(400, 'filters must be a list')
+
+        # Parse and "validate" search_string, allowed to be non-existent
+        search_string = request.get('search_string', '')
+        try:
+            search_string = str(search_string)
+        except Exception:
+            self.abort(400, 'search_string must be of type string')
+
+        return self._run_query(self._construct_query(return_type, search_string, filters))
+
+    def _construct_query(self, return_type, search_string, filters):
+        if return_type == 'file':
+            return self._construct_file_query(search_string, filters)
+        else:
+            return {}
+
+    def _construct_file_query(self, search_string, filters):
+        return {}
+
+    def _run_query(self, es_query):
+        results = config.es.search(
+            index='data_explorer',
+            doc_type='file',
+            body=es_query,
+            size=10000
+        )
+        return { 'results': results['hits']['hits'], 'result_count': results['hits']['total']}
