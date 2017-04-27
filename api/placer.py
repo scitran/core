@@ -152,7 +152,7 @@ class UIDPlacer(Placer):
         metadata_validator(self.metadata, 'POST')
 
         # If not a superuser request, pass uid of user making the upload request
-        targets = self.create_hierarchy(self.metadata, self.match_type, user=self.context.get('uid'), site=self.context.get('site'))
+        targets = self.create_hierarchy(self.metadata, type_=self.match_type, user=self.context.get('uid'), site=self.context.get('site'))
 
         self.metadata_for_file = {}
 

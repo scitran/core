@@ -418,7 +418,7 @@ def _get_targets(project_obj, session, acquisition, type_, timestamp):
     return target_containers
 
 
-def find_existing_hierarchy(metadata, user=None, site=None):
+def find_existing_hierarchy(metadata, type_='uid', user=None, site=None):
     #pylint: disable=unused-argument
     project = metadata.get('project', {})
     session = metadata.get('session', {})
@@ -447,7 +447,7 @@ def find_existing_hierarchy(metadata, user=None, site=None):
     now = datetime.datetime.utcnow()
     project_files = dict_fileinfos(project.pop('files', []))
     project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
-    target_containers = _get_targets(project_obj, session, acquisition, 'uid', now)
+    target_containers = _get_targets(project_obj, session, acquisition, type_, now)
     target_containers.append(
         (TargetContainer(project_obj, 'project'), project_files)
     )
@@ -455,7 +455,6 @@ def find_existing_hierarchy(metadata, user=None, site=None):
 
 
 def upsert_bottom_up_hierarchy(metadata, type_='uid', user=None, site=None):
-    # pylint: disable=unused-argument
     group = metadata.get('group', {})
     project = metadata.get('project', {})
     session = metadata.get('session', {})
@@ -480,13 +479,13 @@ def upsert_bottom_up_hierarchy(metadata, type_='uid', user=None, site=None):
         now = datetime.datetime.utcnow()
         project_files = dict_fileinfos(project.pop('files', []))
         project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
-        target_containers = _get_targets(project_obj, session, acquisition, 'uid', now)
+        target_containers = _get_targets(project_obj, session, acquisition, type_, now)
         target_containers.append(
             (TargetContainer(project_obj, 'project'), project_files)
         )
         return target_containers
     else:
-        return upsert_top_down_hierarchy(metadata, 'uid', user=user, site=site)
+        return upsert_top_down_hierarchy(metadata, type_=type_, user=user, site=site)
 
 
 def upsert_top_down_hierarchy(metadata, type_='label', user=None, site=None):
