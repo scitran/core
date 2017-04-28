@@ -114,7 +114,7 @@ EXAMPLE_SESSION_QUERY = {
       "aggs": {
         "by_top_hit": {
           "top_hits": {
-            "size": 15
+            "size": 1
           }
         }
       }
@@ -138,7 +138,7 @@ EXAMPLE_ACQUISITION_QUERY = {
       "aggs": {
         "by_top_hit": {
           "top_hits": {
-            "size": 15
+            "size": 1
           }
         }
       }
@@ -209,22 +209,123 @@ class DataExplorerHandler(base.RequestHandler):
         except Exception:
             self.abort(400, 'search_string must be of type string')
 
-        return self._run_query(self._construct_query(return_type, search_string, filters))
+        return self._run_query(self._construct_query(return_type, search_string, filters), return_type)
+
+
+    ## CONSTRUCTING QUERIES ##
 
     def _construct_query(self, return_type, search_string, filters):
         if return_type == 'file':
             return self._construct_file_query(search_string, filters)
+
+        source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp", "subject.code", "project.label", "group.label" ]
+
+        if return_type == 'acquisition':
+            source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp"])
+
+        query = {
+            "size": 0,
+            "query": {
+                "bool": {
+                  "must": {
+                    "match": {
+                      "_all": ""
+                    }
+                  },
+                  "filter": {
+                    "bool" : {
+                      "must" : []
+                    }
+                  }
+                }
+            },
+            "aggs": {
+                "by_container": {
+                    "terms": {
+                        "field": return_type+"._id",
+                        "size": 100
+                    },
+                    "aggs": {
+                        "by_top_hit": {
+                            "top_hits": {
+                                "_source": source,
+                                "size": 1
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        # Add search_string to "match on _all fields" query, otherwise remove unneeded logic
+        if search_string:
+            query['query']['bool']['must']['match']['_all'] = search_string
         else:
-            return {}
+            query['query']['bool'].pop('must')
+
+        # Add filters list to filter key on query if exists
+        if filters:
+            query['query']['bool']['filter']['bool']['must'].extend(filters)
+
+        if not search_string and not filters:
+            query['query'] = MATCH_ALL
+
+        return query
 
     def _construct_file_query(self, search_string, filters):
-        return {}
+        source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp", "subject.code", "project.label", "group.label" ]
+        source.extend(["file.name", "file.created", "file.type", "file.measurements", "file.size"])
+        query = {
+          "size": 100,
+          "_source": source,
+          "query": {
+            "bool": {
+              "must": {
+                "match": {
+                  "_all": ""
+                }
+              },
+              "filter": {
+                "bool" : {
+                  "must" : [{ "term" : {"container_type" : "file"}}]
+                }
+              }
+            }
+          }
+        }
 
-    def _run_query(self, es_query):
+        # Add search_string to "match on _all fields" query, otherwise remove unneeded logic
+        if search_string:
+            query['query']['bool']['must']['match']['_all'] = search_string
+        else:
+            query['query']['bool'].pop('must')
+
+        # Add filters list to filter key on query if exists
+        if filters:
+            query['query']['bool']['filter']['bool']['must'].extend(filters)
+
+        return query
+
+
+    ## RUNNING QUERIES AND PROCESSING RESULTS ##
+
+    def _run_query(self, es_query, result_type):
+        config.log.debug(es_query)
         results = config.es.search(
             index='data_explorer',
-            doc_type='file',
-            body=es_query,
-            size=10000
+            doc_type='flywheel',
+            body=es_query
         )
-        return { 'results': results['hits']['hits'], 'result_count': results['hits']['total']}
+        return self._process_results(results, result_type)
+
+    def _process_results(self, results, result_type):
+        if result_type == 'file':
+            return self._process_file_results(results)
+        else:
+            containers = results['aggregations']['by_container']['buckets']
+            modified_results = []
+            for c in containers:
+                modified_results.append(c['by_top_hit']['hits']['hits'][0])
+            return modified_results
+
+    def _process_file_results(self, results):
+        return results['hits']['hits']
