@@ -97,7 +97,7 @@ class JWTAuthProvider(AuthProvider):
         }
 
     def validate_user(self, token):
-        r = requests.post(self.config['verify_endpoint'], data={'token': token})
+        r = requests.post(self.config['verify_endpoint'], data={'token': token}, verify=self.config.get('check_ssl', True))
         if not r.ok:
             raise APIAuthProviderException('User token not valid')
         uid = json.loads(r.content).get('mail')
