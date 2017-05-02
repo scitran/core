@@ -211,7 +211,7 @@ class UIDReaperPlacer(UIDPlacer):
     created in referenced project/group.
     """
 
-    metadata_schema = 'uidmatchupload.json'
+    metadata_schema = 'uidupload.json'
     create_hierarchy = staticmethod(hierarchy.upsert_bottom_up_hierarchy)
     match_type = 'uid'
 
