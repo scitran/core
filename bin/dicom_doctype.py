@@ -296,7 +296,7 @@ def remove_blacklisted_keys(obj):
     for key in BLACKLIST_KEYS:
         obj.pop(key, None)
 
-def handle_files(parent, files, dicom_mappings, permissions, doc):
+def handle_files(parent, parent_type, files, dicom_mappings, permissions, doc):
     doc['container_type'] = 'file'
     for f in files:
         # f.pop('info', None)
@@ -343,6 +343,11 @@ def handle_files(parent, files, dicom_mappings, permissions, doc):
         #     doc['dicom_header'] = modified_data
 
         generated_id = str(parent['_id']) + '_' + f['name']
+
+        doc['parent'] = {
+            '_id': parent['_id'],
+            'type': parent_type
+        }
 
         doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
         try:
@@ -420,7 +425,7 @@ if __name__ == '__main__':
             doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
             es.index(index=DE_INDEX, id=str(p['_id']), doc_type='flywheel', body=doc_s)
 
-            handle_files(p, files, dicom_mappings, permissions, doc)
+            handle_files(p, 'project', files, dicom_mappings, permissions, doc)
 
 
             sessions = db.sessions.find({'project': p['_id']})
@@ -444,7 +449,7 @@ if __name__ == '__main__':
                 doc_s = json.dumps(doc, default=encoder.custom_json_serializer)
                 es.index(index=DE_INDEX, id=str(s['_id']), doc_type='flywheel', body=doc_s)
 
-                handle_files(s, files, dicom_mappings, permissions, doc)
+                handle_files(s, 'session', files, dicom_mappings, permissions, doc)
 
                 for an in analyses:
                     files = an.pop('files', [])
@@ -464,7 +469,7 @@ if __name__ == '__main__':
 
                     files = [f for f in files if f.get('output')]
 
-                    handle_files(an, files, dicom_mappings, permissions, doc)
+                    handle_files(an, 'analysis', files, dicom_mappings, permissions, doc)
 
 
 
@@ -489,7 +494,7 @@ if __name__ == '__main__':
                     es.index(index=DE_INDEX, id=str(a['_id']), doc_type='flywheel', body=doc_s)
 
 
-                    handle_files(a, files, dicom_mappings, permissions, doc)
+                    handle_files(a, 'acquisition', files, dicom_mappings, permissions, doc)
 
 
 
