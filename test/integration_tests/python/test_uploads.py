@@ -1,15 +1,100 @@
 import json
 
 import dateutil.parser
+import pytest
 
 
-def test_upload_without_login(as_public):
+# TODO switch to upload_file_form in all uid(-match)/label/reaper upload tests
+# after #772 (coverage-low-hanging 3) gets merged to avoid conflict hell
+@pytest.fixture(scope='function')
+def upload_file_form(file_form, merge_dict, randstr):
+    def create_form(**meta_override):
+        prefix = randstr()
+        names = ('project', 'subject', 'session', 'acquisition', 'unused')
+        files = {name: '{}-{}.csv'.format(prefix, name) for name in names}
+        meta = {
+            'project': {
+                'label': prefix + '-project-label',
+                'files': [{'name': files['project']}]
+            },
+            'session': {
+                'uid': prefix + '-session-uid',
+                'label': prefix + '-session-label',
+                'subject': {
+                    'code': prefix + '-subject-code',
+                    'files': [{'name': files['subject']}]
+                },
+                'files': [{'name': files['session']}]
+            },
+            'acquisition': {
+                'uid': prefix + '-acquisition-uid',
+                'label': prefix + '-acquisition-label',
+                'files': [{'name': files['acquisition']}]
+            }
+        }
+        if meta_override:
+            merge_dict(meta, meta_override)
+        return file_form(*files.values(), meta=meta)
+
+    return create_form
+
+
+def test_reaper_upload(data_builder, randstr, upload_file_form, as_admin):
+    group_1 = data_builder.create_group()
+    prefix = randstr()
+    project_label_1 = prefix + '-project-label-1'
+    session_uid = prefix + '-session-uid'
+
+    # reaper-upload files to group_1/project_label_1 using session_uid
+    r = as_admin.post('/upload/reaper', files=upload_file_form(
+        group={'_id': group_1},
+        project={'label': project_label_1},
+        session={'uid': session_uid},
+    ))
+    assert r.ok
+
+    # get session created by the upload
+    project_1 = as_admin.get('/groups/' + group_1 + '/projects').json()[0]['_id']
+    session = as_admin.get('/projects/' + project_1 + '/sessions').json()[0]['_id']
+    assert len(as_admin.get('/projects/' + project_1 + '/sessions').json()) == 1
+    assert len(as_admin.get('/sessions/' + session + '/acquisitions').json()) == 1
+    assert len(as_admin.get('/sessions/' + session).json()['files']) == 1
+
+    # move session to group_2/project_2
+    group_2 = data_builder.create_group()
+    project_2 = data_builder.create_project(group=group_2, label=prefix + '-project-label-2')
+    as_admin.put('/sessions/' + session, json={'project': project_2})
+    assert len(as_admin.get('/projects/' + project_1 + '/sessions').json()) == 0
+    assert len(as_admin.get('/projects/' + project_2 + '/sessions').json()) == 1
+
+    # reaper-upload files using existing session_uid and incorrect group/project
+    r = as_admin.post('/upload/reaper', files=upload_file_form(
+        group={'_id': group_1},
+        project={'label': project_label_1},
+        session={'uid': session_uid},
+    ))
+    assert r.ok
+
+    # verify no new sessions were created and that group/project was ignored
+    # NOTE uploaded project file is NOT stored in this scenario!
+    assert len(as_admin.get('/projects/' + project_1 + '/sessions').json()) == 0
+    assert len(as_admin.get('/projects/' + project_2 + '/sessions').json()) == 1
+
+    # verify that acquisition creation/file uploads worked
+    assert len(as_admin.get('/sessions/' + session + '/acquisitions').json()) == 2
+    assert len(as_admin.get('/sessions/' + session).json()['files']) == 2
+
+    # clean up
+    data_builder.delete_group(group_1, recursive=True)
+    data_builder.delete_group(group_2, recursive=True)
+
+
+def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
+    group = data_builder.create_group()
+
+    # try to uid-upload w/o logging in
     r = as_public.post('/upload/uid')
     assert r.status_code == 403
-
-
-def test_uid_upload(data_builder, file_form, as_admin, as_user):
-    group = data_builder.create_group()
 
     # try to uid-upload w/o metadata
     r = as_admin.post('/upload/uid', files=file_form('test.csv'))
