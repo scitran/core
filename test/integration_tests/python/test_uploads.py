@@ -190,6 +190,105 @@ def test_label_upload(data_builder, file_form, as_admin):
     data_builder.delete_group(group, recursive=True)
 
 
+def test_multi_upload(data_builder, upload_file_form, randstr, as_admin):
+    # test uid-uploads respecting existing uids
+    fixed_uid = randstr()
+    fixed_uid_group = data_builder.create_group(_id=fixed_uid)
+    fixed_uid_form_args = dict(
+        group={'_id': fixed_uid_group},
+        project={'label': fixed_uid + '-project-label'},
+        session={'uid': fixed_uid + '-fixed-uid'},
+        acquisition={'uid': fixed_uid + '-fixed-uid'},
+    )
+
+    # uid-upload #1 w/ fixed uid
+    r = as_admin.post('/upload/uid', files=upload_file_form(**fixed_uid_form_args))
+    assert r.ok
+
+    # get newly created project/session/acquisition
+    project = as_admin.get('/groups/' + fixed_uid_group + '/projects').json()[0]['_id']
+    session = as_admin.get('/projects/' + project + '/sessions').json()[0]['_id']
+    acquisition = as_admin.get('/sessions/' + session + '/acquisitions').json()[0]['_id']
+
+    # test uploaded files
+    assert len(as_admin.get('/projects/' + project).json()['files']) == 1
+    assert len(as_admin.get('/sessions/' + session).json()['files']) == 1
+    assert len(as_admin.get('/acquisitions/' + acquisition).json()['files']) == 1
+
+    # uid-upload #2 w/ fixed uid
+    r = as_admin.post('/upload/uid', files=upload_file_form(**fixed_uid_form_args))
+    assert r.ok
+
+    # test hierarchy (should have no new containers)
+    assert len(as_admin.get('/groups/' + fixed_uid_group + '/projects').json()) == 1
+    assert len(as_admin.get('/projects/' + project + '/sessions').json()) == 1
+    assert len(as_admin.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    # test uploaded files
+    assert len(as_admin.get('/projects/' + project).json()['files']) == 2
+    assert len(as_admin.get('/sessions/' + session).json()['files']) == 2
+    assert len(as_admin.get('/acquisitions/' + acquisition).json()['files']) == 2
+
+    # label-upload w/ fixed uid
+    r = as_admin.post('/upload/label', files=upload_file_form(**fixed_uid_form_args))
+    assert r.ok
+
+    # test hierarchy (should have new session)
+    assert len(as_admin.get('/groups/' + fixed_uid_group + '/projects').json()) == 1
+    assert len(as_admin.get('/projects/' + project + '/sessions').json()) == 2
+
+    # test label-uploads respecting existing labels
+    # NOTE subject.code is also checked when label-matching sessions!
+    fixed_label = randstr()
+    fixed_label_group = data_builder.create_group(_id=fixed_label)
+    fixed_label_form_args = dict(
+        group={'_id': fixed_label_group},
+        project={'label': fixed_label + '-project-label'},
+        session={'label': fixed_label + '-fixed-label', 'subject': {'code': fixed_label + '-subject-code'}},
+        acquisition={'label': fixed_label + '-fixed-label'},
+    )
+
+    # label-upload #1 w/ fixed label
+    r = as_admin.post('/upload/label', files=upload_file_form(**fixed_label_form_args))
+    assert r.ok
+
+    # get newly created project/session/acquisition
+    project = as_admin.get('/groups/' + fixed_label_group + '/projects').json()[0]['_id']
+    session = as_admin.get('/projects/' + project + '/sessions').json()[0]['_id']
+    acquisition = as_admin.get('/sessions/' + session + '/acquisitions').json()[0]['_id']
+
+    # test uploaded files
+    assert len(as_admin.get('/projects/' + project).json()['files']) == 1
+    assert len(as_admin.get('/sessions/' + session).json()['files']) == 1
+    assert len(as_admin.get('/acquisitions/' + acquisition).json()['files']) == 1
+
+    # label-upload #2 w/ fixed label
+    r = as_admin.post('/upload/label', files=upload_file_form(**fixed_label_form_args))
+    assert r.ok
+
+    # test hierarchy (should have no new containers)
+    assert len(as_admin.get('/groups/' + fixed_label_group + '/projects').json()) == 1
+    assert len(as_admin.get('/projects/' + project + '/sessions').json()) == 1
+    assert len(as_admin.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    # test uploaded files
+    assert len(as_admin.get('/projects/' + project).json()['files']) == 2
+    assert len(as_admin.get('/sessions/' + session).json()['files']) == 2
+    assert len(as_admin.get('/acquisitions/' + acquisition).json()['files']) == 2
+
+    # uid-upload w/ fixed label
+    r = as_admin.post('/upload/uid', files=upload_file_form(**fixed_label_form_args))
+    assert r.ok
+
+    # test hierarchy (should have new session)
+    assert len(as_admin.get('/groups/' + fixed_label_group + '/projects').json()) == 1
+    assert len(as_admin.get('/projects/' + project + '/sessions').json()) == 2
+
+    # clean up
+    data_builder.delete_group(fixed_uid_group, recursive=True)
+    data_builder.delete_group(fixed_label_group, recursive=True)
+
+
 def find_file_in_array(filename, files):
     for f in files:
         if f.get('name') == filename:
