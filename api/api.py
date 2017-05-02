@@ -110,7 +110,7 @@ endpoints = [
         route('/search/files',               SearchHandler,         h='get_datatree',           m=['GET']),
         route('/search/<cont_name:{cname}>', SearchHandler,                                     m=['GET']),
         route('/dataexplorer/search',        DataExplorerHandler,   h='search',                 m=['POST']),
-        route('/dataexplorer/facets',        DataExplorerHandler,   h='get_facets',             m=['GET']),
+        route('/dataexplorer/facets',        DataExplorerHandler,   h='get_facets',             m=['POST']),
 
 
         # Users

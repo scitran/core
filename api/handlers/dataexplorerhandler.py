@@ -173,12 +173,47 @@ class DataExplorerHandler(base.RequestHandler):
     def __init__(self, request=None, response=None):
         super(DataExplorerHandler, self).__init__(request, response)
 
+    def _parse_request(self):
+        request = self.request.json_body
+
+        # Parse and validate return_type
+        return_type = request.get('return_type')
+        if not return_type or return_type not in ['file', 'session', 'acquisition', 'analysis']:
+            self.abort(400, 'Must specify return type')
+
+        # Parse and "validate" filters, allowed to be non-existent
+        filters = request.get('filters', [])
+        if type(filters) is not list:
+            self.abort(400, 'filters must be a list')
+
+        # Add permissions filter to list if user is not requesting all data
+        if not request.get('all_data', False):
+            filters.append({'term': {'permissions._id': self.uid}})
+
+        # Parse and "validate" search_string, allowed to be non-existent
+        search_string = request.get('search_string', '')
+        try:
+            search_string = str(search_string)
+        except Exception:
+            self.abort(400, 'search_string must be of type string')
+
+        return return_type, filters, search_string
+
+
     @require_login
     def get_facets(self):
+
+        return_type, filters, search_string = self._parse_request()
+
+        facets_q = copy.deepcopy(FACET_QUERY)
+        facets_q['query'] = self._construct_query(return_type, search_string, filters)['query']
+
+        config.log.debug(facets_q)
+
         aggs = config.es.search(
             index='data_explorer',
             doc_type='flywheel',
-            body=FACET_QUERY
+            body=facets_q
         )['aggregations']
 
         # This aggregation needs an extra filter to filter out outliers (only shows ages between -1 and 100)
@@ -190,25 +225,7 @@ class DataExplorerHandler(base.RequestHandler):
 
     @require_login
     def search(self):
-        request = self.request.json_body
-
-        # Parse and validate return_type
-        return_type = request.get('return_type')
-        if not return_type or return_type not in ['file', 'session', 'acquisition']:
-            self.abort(400, 'Must specify return type')
-
-        # Parse and "validate" filters, allowed to be non-existent
-        filters = request.get('filters', [])
-        if type(filters) is not list:
-            self.abort(400, 'filters must be a list')
-
-        # Parse and "validate" search_string, allowed to be non-existent
-        search_string = request.get('search_string', '')
-        try:
-            search_string = str(search_string)
-        except Exception:
-            self.abort(400, 'search_string must be of type string')
-
+        return_type, filters, search_string = self._parse_request()
         return self._run_query(self._construct_query(return_type, search_string, filters), return_type)
 
 
@@ -218,10 +235,14 @@ class DataExplorerHandler(base.RequestHandler):
         if return_type == 'file':
             return self._construct_file_query(search_string, filters)
 
-        source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp", "subject.code", "project.label", "group.label" ]
+        source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp",
+                   "subject.code", "project.label", "group.label", "group._id", "project._id" ]
 
         if return_type == 'acquisition':
             source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp"])
+
+        if return_type == 'analysis':
+            source.extend(["analysis._id", "analysis.label", "analysis.created"])
 
         query = {
             "size": 0,
@@ -229,12 +250,12 @@ class DataExplorerHandler(base.RequestHandler):
                 "bool": {
                   "must": {
                     "match": {
-                      "_all": ""
+                      "_all": search_string
                     }
                   },
                   "filter": {
                     "bool" : {
-                      "must" : []
+                      "must" : filters
                     }
                   }
                 }
@@ -257,14 +278,12 @@ class DataExplorerHandler(base.RequestHandler):
             }
         }
         # Add search_string to "match on _all fields" query, otherwise remove unneeded logic
-        if search_string:
-            query['query']['bool']['must']['match']['_all'] = search_string
-        else:
+        if not search_string:
             query['query']['bool'].pop('must')
 
         # Add filters list to filter key on query if exists
-        if filters:
-            query['query']['bool']['filter']['bool']['must'].extend(filters)
+        if not filters:
+            query['query']['bool'].pop('filter')
 
         if not search_string and not filters:
             query['query'] = MATCH_ALL
@@ -272,8 +291,10 @@ class DataExplorerHandler(base.RequestHandler):
         return query
 
     def _construct_file_query(self, search_string, filters):
-        source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp", "subject.code", "project.label", "group.label" ]
-        source.extend(["file.name", "file.created", "file.type", "file.measurements", "file.size"])
+        source = [ "permissions.*", "session._id", "session.label", "session.created",
+        "session.timestamp", "subject.code", "project.label", "group.label", "acquisition.label",
+        "acquisition._id", "group._id", "project._id", "analysis._id", "analysis.label" ]
+        source.extend(["file.name", "file.created", "file.type", "file.measurements", "file.size", "parent"])
         query = {
           "size": 100,
           "_source": source,
