@@ -21,6 +21,7 @@ Strategy = util.Enum('Strategy', {
     'labelupload' : pl.LabelPlacer,
     'uidupload'   : pl.UIDPlacer,
     'uidmatch'    : pl.UIDMatchPlacer,
+    'reaper'      : pl.UIDReaperPlacer,
     'analysis'    : pl.AnalysisPlacer,      # Upload N files to an analysis as input and output (no db updates)
     'analysis_job': pl.AnalysisJobPlacer   # Upload N files to an analysis as output from job results
 })
@@ -165,6 +166,8 @@ class Upload(base.RequestHandler):
             strategy = Strategy.uidupload
         elif strategy == 'uid-match':
             strategy = Strategy.uidmatch
+        elif strategy == 'reaper':
+            strategy = Strategy.reaper
         else:
             self.abort(500, 'stragegy {} not implemented'.format(strategy))
         return process_upload(self.request, strategy, origin=self.origin, context=context)

@@ -175,6 +175,20 @@ def file_form():
     return file_form
 
 
+@pytest.fixture(scope='session')
+def merge_dict():
+
+    def merge_dict(a, b):
+        """Merge two dicts into the first recursively"""
+        for key, value in b.iteritems():
+            if key in a and isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge_dict(a[key], b[key])
+            else:
+                a[key] = b[key]
+
+    return merge_dict
+
+
 @pytest.fixture(scope='module')
 def log(request):
     """Return logger for the test module for easy logging from tests"""
@@ -218,7 +232,7 @@ class DataBuilder(object):
 
         # merge any kwargs on top of the default payload
         payload = copy.deepcopy(_default_payload[resource])
-        merge_dict(payload, kwargs)
+        _merge_dict(payload, kwargs)
 
         # add missing required unique fields using randstr
         # such fields are: [user._id, group._id, gear.gear.name]
@@ -306,12 +320,4 @@ class DataBuilder(object):
 # as "private singletons" in the module. This seemed the least confusing.
 _default_payload = default_payload()
 _api_db = api_db()
-
-
-def merge_dict(a, b):
-    """Merge two dicts into the first recursively"""
-    for key, value in b.iteritems():
-        if key in a and isinstance(a[key], dict) and isinstance(b[key], dict):
-            merge_dict(a[key], b[key])
-        else:
-            a[key] = b[key]
+_merge_dict = merge_dict()
