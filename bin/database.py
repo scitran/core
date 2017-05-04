@@ -14,11 +14,12 @@ import time
 
 from api import config
 from api.dao import containerutil
+from api.dao.containerstorage import ProjectStorage
 from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 26 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 27 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -965,6 +966,29 @@ def upgrade_to_26():
 
     cursor = config.db.jobs.find({})
     process_cursor(cursor, upgrade_to_26_closure)
+
+
+def upgrade_to_27():
+    """
+    scitran/core PR #768
+
+    Fix project templates that reference `measurement` instead of `measurements`
+    Update all session compliance for affected projects
+    """
+
+    projects = config.db.projects.find({'template.acquisitions.files.measurement': {'$exists': True}})
+
+    storage = ProjectStorage()
+
+    for p in projects:
+        template = p.get('template', {})
+        for a in template.get('acquisitions', []):
+            for f in a.get('files', []):
+                if f.get('measurement'):
+                    f['measurements'] = f.pop('measurement')
+        config.log.debug('the template is now {}'.format(template))
+        config.db.projects.update_one({'_id': p['_id']}, {'$set': {'template': template}})
+        storage.recalc_sessions_compliance(project_id=str(p['_id']))
 
 
 def upgrade_schema():
