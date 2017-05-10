@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 27 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 28 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -93,6 +93,7 @@ def process_cursor(cursor, closure):
     # pool.close()
     # pool.join()
 
+    logging.info('Proccessing {} items in cursor ...'.format(cursor.count()))
 
     failed = False
     for document in cursor:
@@ -990,6 +991,21 @@ def upgrade_to_27():
         config.db.projects.update_one({'_id': p['_id']}, {'$set': {'template': template}})
         storage.recalc_sessions_compliance(project_id=str(p['_id']))
 
+def upgrade_to_28():
+    """
+    Fixes session.subject.age sometimes being a floating-point rather than integer.
+    """
+
+    sessions = config.db.sessions.find({'subject.age': {'$type': 'double'}})
+    logging.info('Fixing {} subjects with age stored as double ...'.format(sessions.count()))
+    for x in sessions:
+        try:
+            int_age = int(x['subject']['age'])
+        except:
+            int_age = None
+
+        config.db.sessions.update({'_id': x['_id']}, {'$set': {'subject.age': int_age}})
+
 
 def upgrade_schema():
     """
@@ -1003,7 +1019,9 @@ def upgrade_schema():
         while db_version < CURRENT_DATABASE_VERSION:
             db_version += 1
             upgrade_script = 'upgrade_to_'+str(db_version)
+            logging.info('Upgrading to version {} ...'.format(db_version))
             globals()[upgrade_script]()
+            logging.info('Upgrade to version {} complete.'.format(db_version))
     except KeyError as e:
         logging.exception('Attempted to upgrade using script that does not exist: {}'.format(e))
         sys.exit(1)
