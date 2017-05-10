@@ -313,4 +313,4 @@ def test_subject_age_must_be_int(data_builder, as_admin):
     assert r.ok
 
     r = as_admin.get('/sessions/' + session)
-    assert subject_age == r.json['subject']['age']
+    assert subject_age == r.json()['subject']['age']
