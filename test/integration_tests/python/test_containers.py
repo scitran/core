@@ -285,3 +285,32 @@ def test_put_container(data_builder, as_admin):
         'subject': {'_id': '000000000000000000000000'}
     })
     assert r.ok
+
+def test_subject_age_must_be_int(data_builder, as_admin):
+    # Ensure subject age can only be set as int (and None)
+    # Found old data that had subject age stored as float
+
+    session = data_builder.create_session()
+
+    subject_age = 123.2
+
+    # Attempt to send age as float
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'age': subject_age
+        }
+    })
+    assert r.status_code == 400
+
+    subject_age = 123
+
+    # Ensure subject age set as int works correctly
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'age': subject_age
+        }
+    })
+    assert r.ok
+
+    r = as_admin.get('/sessions/' + session)
+    assert subject_age == r.json()['subject']['age']

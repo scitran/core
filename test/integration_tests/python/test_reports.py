@@ -34,7 +34,7 @@ def test_project_report(data_builder, as_admin, as_user):
     project_1 = data_builder.create_project()
     project_2 = data_builder.create_project()
 
-    seconds_per_year = 365.25 * 24 * 60 * 60
+    seconds_per_year = int(365.25 * 24 * 60 * 60)
     session_1 = data_builder.create_session(project=project_1)
     session_2 = data_builder.create_session(
         project=project_1,
