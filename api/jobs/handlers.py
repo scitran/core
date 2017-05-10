@@ -158,12 +158,11 @@ class RuleHandler(base.RequestHandler):
 
         if project:
             if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
-                doc = self.request.json
-
                 result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
                 if result is None:
                     self.abort(404, 'Rule not found')
 
+                doc = self.request.json
                 validate_data(doc, 'rule-update.json', 'input', 'POST', optional=True)
 
                 doc['_id']        = result['_id']
@@ -334,8 +333,9 @@ class JobHandler(base.RequestHandler):
     def get_logs(self, _id):
         """Get a job's logs"""
 
-        job = Job.get(_id)
-        if job is None:
+        try:
+            job = Job.get(_id)
+        except Exception: # pylint: disable=broad-except
             self.abort(404, 'Job not found')
 
         # Permission check
@@ -359,8 +359,9 @@ class JobHandler(base.RequestHandler):
 
         doc = self.request.json
 
-        job = Job.get(_id)
-        if job is None:
+        try:
+            Job.get(_id)
+        except Exception: # pylint: disable=broad-except
             self.abort(404, 'Job not found')
 
         log = config.db.job_logs.find_one({'_id': _id})
