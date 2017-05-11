@@ -17,7 +17,7 @@ FACET_QUERY = {
         "by_session": {
             "filter": {"term": {"container_type": "session"}},
             "aggs": {
-                "subect.sex" : {
+                "subject.sex" : {
                     "terms" : {
                         "field" : "subject.sex.raw",
                         "size" : 15
@@ -173,13 +173,20 @@ class DataExplorerHandler(base.RequestHandler):
     def __init__(self, request=None, response=None):
         super(DataExplorerHandler, self).__init__(request, response)
 
-    def _parse_request(self):
-        request = self.request.json_body
+    def _parse_request(self, request_type='search'):
+
+        try:
+            request = self.request.json_body
+        except:
+            if request_type == 'search':
+                self.abort(400, 'Must specify return type')
+            return None, None, None
 
         # Parse and validate return_type
         return_type = request.get('return_type')
         if not return_type or return_type not in ['file', 'session', 'acquisition', 'analysis']:
-            self.abort(400, 'Must specify return type')
+            if request_type == 'search':
+                self.abort(400, 'Must specify return type')
 
         # Parse and "validate" filters, allowed to be non-existent
         filters = request.get('filters', [])
@@ -203,10 +210,13 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def get_facets(self):
 
-        return_type, filters, search_string = self._parse_request()
+        return_type, filters, search_string = self._parse_request(request_type='facet')
 
         facets_q = copy.deepcopy(FACET_QUERY)
         facets_q['query'] = self._construct_query(return_type, search_string, filters)['query']
+
+        # if the query comes back with a return_type agg, remove it
+        facets_q['query'].pop('aggs', None)
 
         config.log.debug(facets_q)
 
@@ -259,8 +269,11 @@ class DataExplorerHandler(base.RequestHandler):
                     }
                   }
                 }
-            },
-            "aggs": {
+            }
+        }
+
+        if return_type: # only searches have a return type, not facet queries
+            query['aggs'] = {
                 "by_container": {
                     "terms": {
                         "field": return_type+"._id",
@@ -276,7 +289,8 @@ class DataExplorerHandler(base.RequestHandler):
                     }
                 }
             }
-        }
+
+
         # Add search_string to "match on _all fields" query, otherwise remove unneeded logic
         if not search_string:
             query['query']['bool'].pop('must')
