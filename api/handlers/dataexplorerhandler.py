@@ -236,14 +236,19 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def search(self):
         return_type, filters, search_string = self._parse_request()
-        return self._run_query(self._construct_query(return_type, search_string, filters), return_type)
+        size = self.request.params.get('size', 100)
+        results = self._run_query(self._construct_query(return_type, search_string, filters, size), return_type)
+        response = {'results': results}
+        if self.is_true('facets'):
+            response['facets'] = self.get_facets()
+        return response
 
 
     ## CONSTRUCTING QUERIES ##
 
-    def _construct_query(self, return_type, search_string, filters):
+    def _construct_query(self, return_type, search_string, filters, size=100):
         if return_type == 'file':
-            return self._construct_file_query(search_string, filters)
+            return self._construct_file_query(search_string, filters, size)
 
         source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp",
                    "subject.code", "project.label", "group.label", "group._id", "project._id" ]
@@ -277,7 +282,7 @@ class DataExplorerHandler(base.RequestHandler):
                 "by_container": {
                     "terms": {
                         "field": return_type+"._id",
-                        "size": 100
+                        "size": size
                     },
                     "aggs": {
                         "by_top_hit": {
@@ -304,13 +309,13 @@ class DataExplorerHandler(base.RequestHandler):
 
         return query
 
-    def _construct_file_query(self, search_string, filters):
+    def _construct_file_query(self, search_string, filters, size=100):
         source = [ "permissions.*", "session._id", "session.label", "session.created",
         "session.timestamp", "subject.code", "project.label", "group.label", "acquisition.label",
         "acquisition._id", "group._id", "project._id", "analysis._id", "analysis.label" ]
         source.extend(["file.name", "file.created", "file.type", "file.measurements", "file.size", "parent"])
         query = {
-          "size": 100,
+          "size": size,
           "_source": source,
           "query": {
             "bool": {
