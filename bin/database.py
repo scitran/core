@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 30 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -97,7 +97,6 @@ def process_cursor(cursor, closure):
 
     failed = False
     cursor_size = cursor.count()
-    cursor_index = 0.0
     next_percent = 5.0
     percent_increment = 5
     if(cursor_size < 20):
@@ -106,11 +105,10 @@ def process_cursor(cursor, closure):
     if(cursor_size < 4):
         next_percent = 50.0
         percent_increment = 50
-    for document in cursor:
+    for cursor_index, document in enumerate(cursor):
         if 100 * (cursor_index / cursor_size) >= next_percent:
             logging.info('{} percent complete ...'.format(next_percent))
-            next_percent = next_percent + 5
-        cursor_index = cursor_index + 1
+            next_percent = next_percent + percent_increment
         result = closure(document)
         if result != True:
             failed = True
@@ -1046,7 +1044,7 @@ def upgrade_to_29_closure(job):
 
 def upgrade_to_29():
     """
-    scitran/core PR #777
+    scitran/core #777
 
     Logs progress on processing the cursor
     """
@@ -1060,6 +1058,22 @@ def upgrade_to_29():
     process_cursor(cursor, upgrade_to_29_closure)
 
     config.db.jobs.remove()
+
+
+def upgrade_to_30_closure(user):
+
+    for avatar in user.get(avatars):
+        if avatar[4] != 's':
+            user.remove(avatar)
+
+
+def upgrade_to_30():
+    """
+    Enforces HTTPS urls for avatars, removes them if they are not HTTPS
+    """
+
+    cursor = config.db.users.find({})
+    process_cursor(cursor, upgrade_to_30_closure)
 
 
 def upgrade_schema():
