@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 30 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 28 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -97,6 +97,7 @@ def process_cursor(cursor, closure):
 
     failed = False
     cursor_size = cursor.count()
+    cursor_index = 0
     next_percent = 5.0
     percent_increment = 5
     if(cursor_size < 20):
@@ -105,11 +106,12 @@ def process_cursor(cursor, closure):
     if(cursor_size < 4):
         next_percent = 50.0
         percent_increment = 50
-    for cursor_index, document in enumerate(cursor):
+    for document in cursor:
         if 100 * (cursor_index / cursor_size) >= next_percent:
             logging.info('{} percent complete ...'.format(next_percent))
             next_percent = next_percent + percent_increment
         result = closure(document)
+        cursor_index = cursor_index + 1
         if result != True:
             failed = True
             logging.info('Upgrade failed: ' + str(result))
@@ -1017,63 +1019,6 @@ def upgrade_to_28():
             int_age = None
 
         config.db.sessions.update({'_id': x['_id']}, {'$set': {'subject.age': int_age}})
-
-
-def upgrade_to_29_closure(job):
-
-    gear = config.db.gears.find_one({'_id': bson.ObjectId(job['gear_id'])}, {'gear.name': 1})
-
-    # This logic WILL NOT WORK in parallel mode
-    if gear is None:
-        return True
-    if gear.get('gear', {}).get('name', None) is None:
-        logging.info('No gear found for job ' + str(job['_id']))
-        return True
-    # This logic WILL NOT WORK in parallel mode
-
-
-    gear_name = gear['gear']['name']
-
-    # Update doc
-    result = config.db.jobs.update_one({'_id': job['_id']}, {'$push': {'tags': gear_name }})
-    if result.modified_count == 1:
-        return True
-    else:
-        return 'Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count)
-
-
-def upgrade_to_29():
-    """
-    scitran/core #777
-
-    Logs progress on processing the cursor
-    """
-
-    cursor = config.db.jobs.find({})
-    process_cursor(cursor, upgrade_to_29_closure)
-
-    # Below is insert command for 10000 jobs, they don't have many of the fields though
-    config.db.jobs.insert(({'name': i, 'gear_id': bson.objectid.ObjectId()} for i in xrange(10000)))
-    cursor = config.db.jobs.find({})
-    process_cursor(cursor, upgrade_to_29_closure)
-
-    config.db.jobs.remove()
-
-
-def upgrade_to_30_closure(user):
-
-    for avatar in user.get(avatars):
-        if avatar[4] != 's':
-            user.remove(avatar)
-
-
-def upgrade_to_30():
-    """
-    Enforces HTTPS urls for avatars, removes them if they are not HTTPS
-    """
-
-    cursor = config.db.users.find({})
-    process_cursor(cursor, upgrade_to_30_closure)
 
 
 def upgrade_schema():
