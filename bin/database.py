@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 28 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -97,6 +97,7 @@ def process_cursor(cursor, closure):
 
     failed = False
     cursor_size = cursor.count()
+    cursor_index = 0.0
     next_percent = 5.0
     percent_increment = 5
     if(cursor_size < 20):
@@ -105,7 +106,7 @@ def process_cursor(cursor, closure):
     if(cursor_size < 4):
         next_percent = 50.0
         percent_increment = 50
-    for cursor_index, document in cursor:
+    for document in cursor:
         if 100 * (cursor_index / cursor_size) >= next_percent:
             logging.info('{} percent complete ...'.format(next_percent))
             next_percent = next_percent + percent_increment
@@ -959,6 +960,7 @@ def upgrade_to_26_closure(job):
     if gear.get('gear', {}).get('name', None) is None:
         logging.info('No gear found for job ' + str(job['_id']))
         return True
+
     # This logic WILL NOT WORK in parallel mode
 
     gear_name = gear['gear']['name']
@@ -1021,6 +1023,45 @@ def upgrade_to_28():
             session['subject']['age'] = None
 
         config.db.sessions.update({'_id': session['_id']}, session)
+
+
+def upgrade_to_29_closure(user):
+
+    avatars = user['avatars']
+    if avatars.get('custom') and not 'https:' in avatars['custom']:
+        if user['avatar'] == user['avatars']['custom']:
+            config.db.users.update_one({'_id': user['_id']},
+                {'$set': {'avatar': user['avatars']['provider']}}
+            )
+        logging.info('Deleting custom ...')
+        config.db.users.update_one({'_id': user['_id']},
+            {'$unset': {"avatars.custom": ""}}
+        )
+    return True
+
+
+def upgrade_to_29():
+    """
+    Enforces HTTPS urls for user avatars
+    """
+    users = config.db.users.find({})
+    process_cursor(users, upgrade_to_29_closure)
+
+    config.db.users.insert_one({
+        'firstname': 'Person',
+        'created': datetime.datetime.utcnow(),
+        'lastname': '1',
+        'modified': datetime.datetime.utcnow(),
+        'avatars': {'custom': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg", 'provider': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg"},
+        'root': True,
+        'avatar': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg",
+        'email': 'p1@fakeemail.com'
+    })
+    users = config.db.users.find({})
+    process_cursor(users, upgrade_to_29_closure)
+
+
+    # raise Exception('Successful upgrade to 29')
 
 
 def upgrade_schema():
