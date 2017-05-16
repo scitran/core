@@ -25,12 +25,22 @@ RUN apt-get update \
 	&& pip install -U pip
 
 
-# Install gosu for docker-friendly stepdown from root
-RUN gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4
+# Grab gosu for easy step-down from root in a docker-friendly manner
+# https://github.com/tianon/gosu
+#
+# Alternate key servers are due to reliability issues with ha.pool.sks-keyservers.net
 RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.6/gosu-$(dpkg --print-architecture)" \
-	&& curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.6/gosu-$(dpkg --print-architecture).asc" \
-	&& gpg --verify /usr/local/bin/gosu.asc \
-	&& rm /usr/local/bin/gosu.asc \
+	&& curl -o /tmp/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.6/gosu-$(dpkg --print-architecture).asc" \
+	&& export GNUPGHOME="$(mktemp -d)" \
+	&& for server in $(shuf -e ha.pool.sks-keyservers.net \
+	                            hkp://p80.pool.sks-keyservers.net:80 \
+	                            keyserver.ubuntu.com \
+	                            hkp://keyserver.ubuntu.com:80 \
+	                            pgp.mit.edu) ; do \
+	        gpg --keyserver "$server" --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 && break || : ; \
+	    done \
+	&& gpg --batch --verify /tmp/gosu.asc /usr/local/bin/gosu \
+	&& rm -r "$GNUPGHOME" /tmp/gosu.asc \
 	&& chmod +x /usr/local/bin/gosu
 
 
