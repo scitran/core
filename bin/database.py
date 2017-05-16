@@ -1059,6 +1059,8 @@ def upgrade_to_29():
     cursor = config.db.jobs.find({})
     process_cursor(cursor, upgrade_to_29_closure)
 
+    config.db.jobs.remove()
+
 
 def upgrade_schema():
     """
