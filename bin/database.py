@@ -1044,18 +1044,20 @@ def upgrade_to_29_closure(job):
         return 'Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count)
 
 
-
 def upgrade_to_29():
     """
     scitran/core PR #777
 
     Logs progress on processing the cursor
     """
-    # Below is insert command for 10000 jobs, they don't have any of the fields though
-    # config.db.jobs.insert(({'name': i, 'gear_id': bson.objectid.ObjectId()} for i in xrange(10000)))
+
     cursor = config.db.jobs.find({})
     process_cursor(cursor, upgrade_to_29_closure)
-    logging.info('')
+
+    # Below is insert command for 10000 jobs, they don't have many of the fields though
+    config.db.jobs.insert(({'name': i, 'gear_id': bson.objectid.ObjectId()} for i in xrange(10000)))
+    cursor = config.db.jobs.find({})
+    process_cursor(cursor, upgrade_to_29_closure)
 
 
 def upgrade_schema():
