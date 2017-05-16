@@ -96,14 +96,21 @@ def process_cursor(cursor, closure):
     logging.info('Proccessing {} items in cursor ...'.format(cursor.count()))
 
     failed = False
-    cursor_size = cursor.count
-    cursor_index = 0
-    next_percent = 5
+    cursor_size = cursor.count()
+    cursor_index = 0.0
+    next_percent = 5.0
+    percent_increment = 5
+    if(cursor_size < 20):
+        next_percent = 25.0
+        percent_increment = 25
+    if(cursor_size < 4):
+        next_percent = 50.0
+        percent_increment = 50
     for document in cursor:
-        cursor_index += 1
         if 100 * (cursor_index / cursor_size) >= next_percent:
-            logging.info('Percent complete ...'.format(next_percent))
-            next_percent += 5
+            logging.info('{} percent complete ...'.format(next_percent))
+            next_percent = next_percent + 5
+        cursor_index = cursor_index + 1
         result = closure(document)
         if result != True:
             failed = True
@@ -1020,7 +1027,6 @@ def upgrade_to_29_closure(job):
 
     # This logic WILL NOT WORK in parallel mode
     if gear is None:
-        logging.info('No gear found for job ' + str(job['_id']))
         return True
     if gear.get('gear', {}).get('name', None) is None:
         logging.info('No gear found for job ' + str(job['_id']))
@@ -1045,11 +1051,11 @@ def upgrade_to_29():
 
     Logs progress on processing the cursor
     """
+    # Below is insert command for 10000 jobs, they don't have any of the fields though
+    # config.db.jobs.insert(({'name': i, 'gear_id': bson.objectid.ObjectId()} for i in xrange(10000)))
     cursor = config.db.jobs.find({})
-    logging.info(list(cursor))
     process_cursor(cursor, upgrade_to_29_closure)
     logging.info('')
-    # raise Exception('exception for upgrtade 29')
 
 
 def upgrade_schema():
