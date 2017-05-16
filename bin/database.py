@@ -97,7 +97,6 @@ def process_cursor(cursor, closure):
 
     failed = False
     cursor_size = cursor.count()
-    cursor_index = 0.0
     next_percent = 5.0
     percent_increment = 5
     if(cursor_size < 20):
@@ -106,7 +105,7 @@ def process_cursor(cursor, closure):
     if(cursor_size < 4):
         next_percent = 50.0
         percent_increment = 50
-    for document in cursor:
+    for cursor_index, document in cursor:
         if 100 * (cursor_index / cursor_size) >= next_percent:
             logging.info('{} percent complete ...'.format(next_percent))
             next_percent = next_percent + percent_increment
