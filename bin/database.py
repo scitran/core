@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 28 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -96,7 +96,14 @@ def process_cursor(cursor, closure):
     logging.info('Proccessing {} items in cursor ...'.format(cursor.count()))
 
     failed = False
+    cursor_size = cursor.count
+    cursor_index = 0
+    next_percent = 5
     for document in cursor:
+        cursor_index += 1
+        if 100 * (cursor_index / cursor_size) >= next_percent:
+            logging.info('Percent complete ...'.format(next_percent))
+            next_percent += 5
         result = closure(document)
         if result != True:
             failed = True
@@ -1005,6 +1012,44 @@ def upgrade_to_28():
             int_age = None
 
         config.db.sessions.update({'_id': x['_id']}, {'$set': {'subject.age': int_age}})
+
+
+def upgrade_to_29_closure(job):
+
+    gear = config.db.gears.find_one({'_id': bson.ObjectId(job['gear_id'])}, {'gear.name': 1})
+
+    # This logic WILL NOT WORK in parallel mode
+    if gear is None:
+        logging.info('No gear found for job ' + str(job['_id']))
+        return True
+    if gear.get('gear', {}).get('name', None) is None:
+        logging.info('No gear found for job ' + str(job['_id']))
+        return True
+    # This logic WILL NOT WORK in parallel mode
+
+
+    gear_name = gear['gear']['name']
+
+    # Update doc
+    result = config.db.jobs.update_one({'_id': job['_id']}, {'$push': {'tags': gear_name }})
+    if result.modified_count == 1:
+        return True
+    else:
+        return 'Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count)
+
+
+
+def upgrade_to_29():
+    """
+    scitran/core PR #777
+
+    Logs progress on processing the cursor
+    """
+    cursor = config.db.jobs.find({})
+    logging.info(list(cursor))
+    process_cursor(cursor, upgrade_to_29_closure)
+    logging.info('')
+    # raise Exception('exception for upgrtade 29')
 
 
 def upgrade_schema():
