@@ -96,8 +96,22 @@ def process_cursor(cursor, closure):
     logging.info('Proccessing {} items in cursor ...'.format(cursor.count()))
 
     failed = False
+    cursor_size = cursor.count()
+    cursor_index = 0
+    next_percent = 5.0
+    percent_increment = 5
+    if(cursor_size < 20):
+        next_percent = 25.0
+        percent_increment = 25
+    if(cursor_size < 4):
+        next_percent = 50.0
+        percent_increment = 50
     for document in cursor:
+        if 100 * (cursor_index / cursor_size) >= next_percent:
+            logging.info('{} percent complete ...'.format(next_percent))
+            next_percent = next_percent + percent_increment
         result = closure(document)
+        cursor_index = cursor_index + 1
         if result != True:
             failed = True
             logging.info('Upgrade failed: ' + str(result))
