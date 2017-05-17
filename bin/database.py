@@ -97,7 +97,7 @@ def process_cursor(cursor, closure):
 
     failed = False
     cursor_size = cursor.count()
-    cursor_index = 0
+    cursor_index = 0.0
     next_percent = 5.0
     percent_increment = 5
     if(cursor_size < 20):
