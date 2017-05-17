@@ -12,3 +12,4 @@ bootstrap.json
 .coverage*
 coverage.xml
 htmlcov
+node_modules
