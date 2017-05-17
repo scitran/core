@@ -3,10 +3,7 @@
   "title": "Group",
   "type": "object",
   "properties": {
-    "gravatar":         {
-      "type": ["string", "null"],
-      "pattern": "^https:",
-      "format": "uri" },
+    "gravatar":         {"type": ["string", "null"], "pattern": "^https:"},
     "provider":         {"type": ["string", "null"], "format": "uri" },
     "custom":           {"type": ["string", "null"], "format": "uri" }
   },
