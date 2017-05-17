@@ -1041,7 +1041,7 @@ def upgrade_to_29_closure(user):
 
 
 def upgrade_to_29():
-    """
+        """
     Enforces HTTPS urls for user avatars
     """
     users = config.db.users.find({})
@@ -1059,7 +1059,6 @@ def upgrade_to_29():
     })
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
-
 
     # raise Exception('Successful upgrade to 29')
 
