@@ -1060,6 +1060,10 @@ def upgrade_to_29():
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> upgrade 29 deletes any non-https url from custom and changes the avatar to provider if it does delete
     # raise Exception('Successful upgrade to 29')
 
 
