@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 28 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1019,6 +1019,39 @@ def upgrade_to_28():
             int_age = None
 
         config.db.sessions.update({'_id': x['_id']}, {'$set': {'subject.age': int_age}})
+
+def upgrade_to_29_closure(acquisition):
+    files = acquisition.get('files')
+    if files is not None:
+        updated_files = []
+        for file_ in files:
+            if 'created' not in file_:
+                file_['created'] = acquisition['created']
+            updated_files.append(file_)
+        config.db.acquisitions.update_one({'_id': acquisition['_id']}, {'$set': {'files': updated_files}})
+    return True
+
+def upgrade_to_29_test(acquisition):
+    file = acquisition.get('files')
+    if files is not None:
+        updated_files = []
+        for file_ in files:
+            if 'created' not in file_:
+                raise Exception("File does not have Created timestamp")
+    return True
+
+def upgrade_to_29():
+    """
+    scitran/core issue #759
+
+    give created timestamps that are missing are given based on the parent object's timestamp
+    """
+    config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow(),
+                                        'files': [{'type': 'dicom'}]})
+    cursor = config.db.acquisitions.find({})
+    process_cursor(cursor, upgrade_to_29_closure)
+    process_cursor(cursor, upgrade_to_29_test)
+
 
 
 def upgrade_schema():
