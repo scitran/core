@@ -1054,6 +1054,46 @@ def upgrade_to_29():
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
 
+def upgrade_to_29_closure(session):
+    analyses = session.get('analyses', None)
+    if analyses is not None:
+        for analysis_ in analyses:
+            files = analysis_.get('files', [])
+            for file_ in files:
+                if 'created' not in file_:
+                    file_['created'] = analysis_['created']
+        config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'analyses': analyses}})
+    # upgrade_to_29_test(session)
+    return True
+
+def upgrade_to_29_test(session):
+    analyses = session.get('analyses', None)
+    if analyses is not None:
+        for a_index, analysis_ in enumerate(session['analyses']):
+            files = session['analyses'][a_index].get('files')
+            if files is not None:
+                created_count = 0
+                for file_ in files:
+                    if 'created' not in file_:
+                        logging.info(session + ', ' + analysis_ + ', ' + file_ + ' has no created timestamp')
+    return True
+
+def upgrade_to_29():
+    """
+    scitran/core issue #759
+
+    give created timestamps that are missing are given based on the parent object's timestamp
+    """
+    config.db.sessions.insert_one({'created': datetime.datetime.utcnow(),
+                                        'analyses':[{'files': [{'type': 'dicom'}], 'created': datetime.datetime.utcnow()}]})
+    config.db.sessions.insert_one({'created': datetime.datetime.utcnow(),
+                                        'analyses': [{'files': []}]})
+    config.db.sessions.insert_one({'created': datetime.datetime.utcnow()})
+    cursor = config.db.sessions.find({'analyses': {'$exists': True},
+                                                       'analyses.files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_29_closure)
+
+
 
 def upgrade_schema():
     """
