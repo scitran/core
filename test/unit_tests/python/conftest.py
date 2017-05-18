@@ -44,7 +44,10 @@ def log_db(app):
 
 @pytest.yield_fixture(scope='session')
 def app():
-    """Return api instance that uses mocked MongoClient"""
+    """Return api instance that uses mocked os.environ and MongoClient"""
+    env_patch = mock.patch.dict(
+        os.environ, {'SCITRAN_CORE_DRONE_SECRET': SCITRAN_CORE_DRONE_SECRET}, clear=True)
+    env_patch.start()
     mongo_patch = mock.patch('pymongo.MongoClient', new=mongomock.MongoClient)
     mongo_patch.start()
     # NOTE db and log_db is created at import time in api.config
@@ -52,6 +55,7 @@ def app():
     reload(api.config)
     yield api.web.start.app_factory()
     mongo_patch.stop()
+    env_patch.stop()
 
 
 @pytest.fixture(scope='session')
