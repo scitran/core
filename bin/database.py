@@ -966,6 +966,7 @@ def upgrade_to_26_closure(job):
     gear_name = gear['gear']['name']
 
     # Checks if the specific gear tag already exists for the job
+    # Redundant now that cursor only finds jobs without the tags
     # for tag in job['tags']:
     #     if tag == gear_name:
     #         return True
@@ -978,7 +979,8 @@ def upgrade_to_26_closure(job):
 
 def upgrade_to_26_test_closure(job):
 
-    for count, tag in enumerate(job['tags']):
+    for count, tag in enumerate(job['tags'],1):
+        logging.info(count)
         if count > 2:
             raise Exception("Job has multiple gear tags")
     return True
@@ -989,7 +991,8 @@ def upgrade_to_26():
 
     Add job tags back to the job document, and use a faster cursor-walking update method
     """
-
+    for i in range(20):
+        config.db.jobs.insert_one({'tags': ['auto'], 'gear_id': "591cd19404bfcf0020d8cacf"})
     cursor = config.db.jobs.find({'tags[1]': {'$exists': True}})
     process_cursor(cursor, upgrade_to_26_closure)
     for i in range(4):
@@ -997,7 +1000,7 @@ def upgrade_to_26():
 
     cursor = config.db.jobs.find({})
     process_cursor(cursor,upgrade_to_26_test_closure)
-    # raise Exception("Successful upgrade to 26")
+    config.db.jobs.remove()
 
 
 def upgrade_to_27():
