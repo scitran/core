@@ -55,6 +55,7 @@ class GroupHandler(base.RequestHandler):
         payload_schema_uri = validators.schema_uri('input', 'group-update.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'PUT')
+        payload['modified'] = datetime.datetime.utcnow()
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         if result.modified_count == 1:
             return {'modified': result.modified_count}
