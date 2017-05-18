@@ -1048,6 +1048,9 @@ def upgrade_to_29():
     """
     config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow(),
                                         'files': [{'type': 'dicom'}]})
+    config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow(),
+                                        'files': []})
+    config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow()})
     cursor = config.db.acquisitions.find({})
     process_cursor(cursor, upgrade_to_29_closure)
     process_cursor(cursor, upgrade_to_29_test)
