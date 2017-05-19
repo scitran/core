@@ -74,7 +74,10 @@ class ListStorage(object):
         query = {'_id': _id}
         if exclude_params:
             query[self.list_name] = {'$not': {'$elemMatch': exclude_params} }
-        update = {'$push': {self.list_name: payload} }
+        update = {
+            '$push': {self.list_name: payload},
+            '$set': {'modified': datetime.datetime.utcnow()}
+        }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         result = self.dbc.update_one(query, update)
@@ -96,6 +99,7 @@ class ListStorage(object):
                 {self.list_name: {'$elemMatch': query_params}},
                 {self.list_name: {'$not': {'$elemMatch': exclude_params} }}
             ]
+        mod_elem['modified'] = datetime.datetime.utcnow()
         update = {
             '$set': mod_elem
         }
@@ -106,7 +110,10 @@ class ListStorage(object):
     def _delete_el(self, _id, query_params):
         log.debug('query_params {}'.format(query_params))
         query = {'_id': _id}
-        update = {'$pull': {self.list_name: query_params} }
+        update = {
+            '$pull': {self.list_name: query_params},
+            '$set': { 'modified': datetime.datetime.utcnow()}
+            }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         result =  self.dbc.update_one(query, update)
@@ -162,7 +169,10 @@ class StringListStorage(ListStorage):
     def _create_el(self, _id, payload, exclude_params):
         log.debug('payload {}'.format(payload))
         query = {'_id': _id, self.list_name: {'$ne': payload}}
-        update = {'$push': {self.list_name: payload}}
+        update = {
+            '$push': {self.list_name: payload},
+            '$set': {'modified': datetime.datetime.utcnow()}
+        }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         result = self.dbc.update_one(query, update)
@@ -180,7 +190,10 @@ class StringListStorage(ListStorage):
                 {self.list_name: {'$ne': payload} }
             ]
         }
-        update = {'$set': {self.list_name + '.$': payload}}
+        update = {
+            '$set': {self.list_name + '.$': payload,
+            'modified': datetime.datetime.utcnow()}
+        }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
