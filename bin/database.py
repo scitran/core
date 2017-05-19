@@ -991,16 +991,10 @@ def upgrade_to_26():
 
     Add job tags back to the job document, and use a faster cursor-walking update method
     """
-    for i in range(20):
-        config.db.jobs.insert_one({'tags': ['auto'], 'gear_id': "591cd19404bfcf0020d8cacf"})
     cursor = config.db.jobs.find({'tags[1]': {'$exists': True}})
     process_cursor(cursor, upgrade_to_26_closure)
-    for i in range(4):
-        process_cursor(cursor, upgrade_to_26_closure)
-
     cursor = config.db.jobs.find({})
     process_cursor(cursor,upgrade_to_26_test_closure)
-    config.db.jobs.remove()
 
 
 def upgrade_to_27():
