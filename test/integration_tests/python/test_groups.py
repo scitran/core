@@ -25,6 +25,18 @@ def test_groups(as_admin, data_builder):
     d2 = parse(second_modified)
     assert d2 > d1
 
+    # Add a tag to the group
+    tag_name = 'Grey2'
+    r = as_admin.post('/groups/' + group + '/tags', json={'value': tag_name})
+    assert r.ok
+
+    # Get the group again to compare timestamps for the Add tag test_groups
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
+    third_modified = r.json()['modified']
+    d3 = parse(third_modified)
+    assert d3 > d2
+
     r = as_admin.get('/groups/' + group)
     assert r.ok
     assert r.json()['name'] == group_name
