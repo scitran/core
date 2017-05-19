@@ -49,6 +49,52 @@ def test_groups(as_admin, data_builder):
     d4 = parse(fourth_modified)
     assert d4 > d3
 
+    # Delete the tag
+    r = as_admin.delete('/groups/' + group + '/tags/' + new_tag_name)
+    assert r.ok
+
+    # Get the group again to compare timestamps for the Delete tag test groups
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
+    fith_modified = r.json()['modified']
+    d5 = parse(fith_modified)
+    assert d5 > d4
+
+    # Add a role to the group
+    user = {'access': 'rw', 'site': 'local', '_id': 'newUser@fakeuser.com'}
+    r = as_admin.post('/groups/' + group + '/roles', json=user)
+    assert r.ok
+
+    # Get the group again to compare timestamps for the Add role test groups
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
+    six_modified = r.json()['modified']
+    d6 = parse(six_modified)
+    assert d6 > d5
+
+    # Edit a role in the group
+    user = {'access': 'ro', 'site': 'local', '_id': 'newUser@fakeuser.com'}
+    r = as_admin.put('/groups/' + group + '/roles/' + user['site'] + '/' + user['_id'], json=user)
+    assert r.ok
+
+    # Get the group again to compare timestamps for the Edit role test groups
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
+    seven_modified = r.json()['modified']
+    d7 = parse(seven_modified)
+    assert d7 > d6
+
+    # Delete a role in the group
+    r = as_admin.delete('/groups/' + group + '/roles/' + user['site'] + '/' + user['_id'])
+    assert r.ok
+
+    # Get the group again to compare timestamps for the Edit role test groups
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
+    eight_modified = r.json()['modified']
+    d8 = parse(eight_modified)
+    assert d8 > d7
+
     r = as_admin.get('/groups/' + group)
     assert r.ok
     assert r.json()['name'] == group_name
