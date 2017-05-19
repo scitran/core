@@ -330,9 +330,7 @@ class JobHandler(base.RequestHandler):
 
         Queue.mutate(j, mutation)
 
-    def get_logs(self, _id):
-        """Get a job's logs"""
-
+    def _log_read_check(self, _id):
         try:
             job = Job.get(_id)
         except Exception: # pylint: disable=broad-except
@@ -344,21 +342,17 @@ class JobHandler(base.RequestHandler):
                 job.inputs[x].check_access(self.uid, 'ro')
             # Unlike jobs-add, explicitly not checking write access to destination.
 
+
+    def get_logs(self, _id):
+        """Get a job's logs"""
+
+        self._log_read_check(_id)
         return Logs.get(_id)
 
     def get_logs_text(self, _id):
         """Get a job's logs in raw text"""
 
-        try:
-            job = Job.get(_id)
-        except Exception: # pylint: disable=broad-except
-            self.abort(404, 'Job not found')
-
-        # Permission check
-        if not self.superuser_request:
-            for x in job.inputs:
-                job.inputs[x].check_access(self.uid, 'ro')
-            # Unlike jobs-add, explicitly not checking write access to destination.
+        self._log_read_check(_id)
 
         self.response.headers['Content-Type'] = 'application/octet-stream'
         self.response.headers['Content-Disposition'] = 'attachment; filename="job-' + _id + '-logs.txt"'
@@ -371,16 +365,7 @@ class JobHandler(base.RequestHandler):
     def get_logs_html(self, _id):
         """Get a job's logs in html"""
 
-        try:
-            job = Job.get(_id)
-        except Exception: # pylint: disable=broad-except
-            self.abort(404, 'Job not found')
-
-        # Permission check
-        if not self.superuser_request:
-            for x in job.inputs:
-                job.inputs[x].check_access(self.uid, 'ro')
-            # Unlike jobs-add, explicitly not checking write access to destination.
+        self._log_read_check(_id)
 
         for output in Logs.get_html_generator(_id):
             self.response.write(output)
