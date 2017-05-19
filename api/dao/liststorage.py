@@ -162,7 +162,10 @@ class StringListStorage(ListStorage):
     def _create_el(self, _id, payload, exclude_params):
         log.debug('payload {}'.format(payload))
         query = {'_id': _id, self.list_name: {'$ne': payload}}
-        update = {'$push': {self.list_name: payload}}
+        update = {
+            '$push': {self.list_name: payload},
+            '$set': {'modified': datetime.datetime.utcnow()}
+        }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         result = self.dbc.update_one(query, update)
