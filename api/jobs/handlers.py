@@ -17,7 +17,7 @@ from . import batch
 from ..validators import validate_data
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
-from .jobs import Job
+from .jobs import Job, Logs
 from .queue import Queue
 
 
@@ -344,12 +344,48 @@ class JobHandler(base.RequestHandler):
                 job.inputs[x].check_access(self.uid, 'ro')
             # Unlike jobs-add, explicitly not checking write access to destination.
 
-        log = config.db.job_logs.find_one({'_id': _id})
+        return Logs.get(_id)
 
-        if log is None:
-            return { '_id': _id, 'logs': [] }
-        else:
-            return log
+    def get_logs_text(self, _id):
+        """Get a job's logs in raw text"""
+
+        try:
+            job = Job.get(_id)
+        except Exception: # pylint: disable=broad-except
+            self.abort(404, 'Job not found')
+
+        # Permission check
+        if not self.superuser_request:
+            for x in job.inputs:
+                job.inputs[x].check_access(self.uid, 'ro')
+            # Unlike jobs-add, explicitly not checking write access to destination.
+
+        self.response.headers['Content-Type'] = 'application/octet-stream'
+        self.response.headers['Content-Disposition'] = 'attachment; filename="job-' + _id + '-logs.txt"'
+
+        for output in Logs.get_text_generator(_id):
+            self.response.write(output)
+
+        return
+
+    def get_logs_html(self, _id):
+        """Get a job's logs in html"""
+
+        try:
+            job = Job.get(_id)
+        except Exception: # pylint: disable=broad-except
+            self.abort(404, 'Job not found')
+
+        # Permission check
+        if not self.superuser_request:
+            for x in job.inputs:
+                job.inputs[x].check_access(self.uid, 'ro')
+            # Unlike jobs-add, explicitly not checking write access to destination.
+
+        for output in Logs.get_html_generator(_id):
+            self.response.write(output)
+
+        return
 
     def add_logs(self, _id):
         """Add to a job's logs"""
@@ -364,14 +400,7 @@ class JobHandler(base.RequestHandler):
         except Exception: # pylint: disable=broad-except
             self.abort(404, 'Job not found')
 
-        log = config.db.job_logs.find_one({'_id': _id})
-
-        if log is None: # Race
-            config.db.job_logs.insert_one({'_id': _id, 'logs': []})
-
-        config.db.job_logs.update({'_id': _id}, {'$push':{'logs':{'$each':doc}}})
-        return
-
+        return Logs.add(_id, doc)
 
     def retry(self, _id):
         """ Retry a job.

@@ -274,3 +274,62 @@ class Job(object):
 
         self.request = r
         return self.request
+
+class Logs(object):
+
+    @staticmethod
+    def get(_id):
+        log = config.db.job_logs.find_one({'_id': _id})
+
+        if log is None:
+            return { '_id': _id, 'logs': [] }
+        else:
+            return log
+
+    @staticmethod
+    def get_text_generator(_id):
+        log = config.db.job_logs.find_one({'_id': _id})
+
+        if log is None:
+            yield '<span class="fd--1">No logs were found for this job.</span>'
+        else:
+            for stanza in log['logs']:
+                msg = stanza['msg']
+                yield msg
+
+    @staticmethod
+    def get_html_generator(_id):
+        log = config.db.job_logs.find_one({'_id': _id})
+
+        if log is None:
+            yield '<span class="fd--1">No logs were found for this job.</span>'
+
+        else:
+            open_span = False
+            last = None
+
+            for stanza in log['logs']:
+                fd = stanza['fd']
+                msg = stanza['msg']
+
+                if fd != last:
+                    if open_span:
+                        yield '</span>\n'
+
+                    yield '<span class="fd-' + str(fd) + '">'
+                    open_span = True
+                    last = fd
+
+                yield msg.replace('\n', '<br/>\n')
+
+            if open_span:
+                yield '</span>\n'
+
+    @staticmethod
+    def add(_id, doc):
+        log = config.db.job_logs.find_one({'_id': _id})
+
+        if log is None: # Race
+            config.db.job_logs.insert_one({'_id': _id, 'logs': []})
+
+        config.db.job_logs.update({'_id': _id}, {'$push':{'logs':{'$each':doc}}})
