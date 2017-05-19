@@ -30,12 +30,24 @@ def test_groups(as_admin, data_builder):
     r = as_admin.post('/groups/' + group + '/tags', json={'value': tag_name})
     assert r.ok
 
-    # Get the group again to compare timestamps for the Add tag test_groups
+    # Get the group again to compare timestamps for the Add tag test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     third_modified = r.json()['modified']
     d3 = parse(third_modified)
     assert d3 > d2
+
+    # Edit the tag
+    new_tag_name = 'Brown'
+    r = as_admin.put('/groups/' + group + '/tags/' + tag_name, json={'value': new_tag_name})
+    assert r.ok
+
+    # Get the group again to compare timestamps for the Edit tag test groups
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
+    fourth_modified = r.json()['modified']
+    d4 = parse(fourth_modified)
+    assert d4 > d3
 
     r = as_admin.get('/groups/' + group)
     assert r.ok

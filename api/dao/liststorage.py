@@ -183,7 +183,10 @@ class StringListStorage(ListStorage):
                 {self.list_name: {'$ne': payload} }
             ]
         }
-        update = {'$set': {self.list_name + '.$': payload}}
+        update = {
+            '$set': {self.list_name + '.$': payload,
+            'modified': datetime.datetime.utcnow()}
+        }
         log.debug('query {}'.format(query))
         log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
