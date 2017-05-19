@@ -16,6 +16,10 @@ def test_groups(as_admin, data_builder):
     group_name = 'New group name'
     r = as_admin.put('/groups/' + group, json={'name': group_name})
     assert r.ok
+
+    # Get the group again to compare timestamps
+    r = as_admin.get('/groups/' + group)
+    assert r.ok
     second_modified = r.json()['modified']
     d1 = parse(first_modified)
     d2 = parse(second_modified)
