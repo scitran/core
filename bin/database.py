@@ -963,29 +963,12 @@ def upgrade_to_26_closure(job):
     # This logic WILL NOT WORK in parallel mode
 
     gear_name = gear['gear']['name']
-    gear_name_tag_count = 0
 
     # Checks if the specific gear tag already exists for the job
-    # for tag in job['tags']:
-    #     if tag == gear_name:
-    #         # logging.info("Gear name tag already exists")
-    #         return True
-
-
-    # Update doc
-
-    # Check for multiples
-    for tag in job['tags']:
-        if tag == gear_name:
-            gear_name_tag_count = gear_name_tag_count + 1
-    if gear_name_tag_count > 1:
-        logging.info("job "+ job + " has multiple gear name tags")
-        config.db.jobs.update_one({'_id': job['_id']}, {'$pull': {'tags': gear_name}})
-        result = config.db.jobs.update_one({'_id': job['_id']}, {'$set': {'tags': gear_name}})
-    elif gear_name_tag_count == 1:
+    if gear_name in job['tags']:
         return True
-    else:
-        result = config.db.jobs.update_one({'_id': job['_id']}, {'$addToSet': {'tags': gear_name }})
+        
+    result = config.db.jobs.update_one({'_id': job['_id']}, {'$addToSet': {'tags': gear_name }})
 
     if result.modified_count == 1:
         return True
