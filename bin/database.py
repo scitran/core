@@ -969,6 +969,11 @@ def upgrade_to_26_closure(job):
         if tag == gear_name:
             logging.info("Gear name tag already exists")
             return True
+    for tag in job['tags']:
+        if tag == gear_name:
+            gear_name_tag_count = gear_name_tag_count + 1
+    if gear_name_tag_count > 1:
+        raise Exception("Job has multiple gear name tags")
 
     # Update doc
     result = config.db.jobs.update_one({'_id': job['_id']}, {'$push': {'tags': gear_name }})
@@ -977,28 +982,6 @@ def upgrade_to_26_closure(job):
     else:
         return 'Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count)
 
-def upgrade_to_26_test_closure(job):
-
-    gear = config.db.gears.find_one({'_id': bson.ObjectId(job['gear_id'])}, {'gear.name': 1})
-
-    # This logic WILL NOT WORK in parallel mode
-    if gear is None:
-        logging.info('No gear found for job ' + str(job['_id']))
-        return True
-    if gear.get('gear', {}).get('name', None) is None:
-        logging.info('No gear found for job ' + str(job['_id']))
-        return True
-    # This logic WILL NOT WORK in parallel mode
-
-    gear_name = gear['gear']['name']
-    gear_name_tag_count = 0
-    # Checks if the specific gear tag already exists for the job
-    for tag in job['tags']:
-        if tag == gear_name:
-            gear_name_tag_count = gear_name_tag_count + 1
-    if gear_name_tag_count > 1:
-        raise Exception("Job has multiple gear name tags")
-    return True
 
 def upgrade_to_26():
     """
