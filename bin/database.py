@@ -963,6 +963,7 @@ def upgrade_to_26_closure(job):
     # This logic WILL NOT WORK in parallel mode
 
     gear_name = gear['gear']['name']
+    gear_name_tag_count = 0
 
     # Checks if the specific gear tag already exists for the job
     for tag in job['tags']:
@@ -989,7 +990,10 @@ def upgrade_to_26():
 
     Add job tags back to the job document, and use a faster cursor-walking update method
     """
-    cursor = config.db.jobs.find({})
+    gear_names = []
+    for gear in config.db.gears.find({}):
+        gear_names.append(gear['gear']['name'])
+    cursor = config.db.jobs.find({'tags': {'$nin': gear_names}})
     process_cursor(cursor, upgrade_to_26_closure)
 
 
