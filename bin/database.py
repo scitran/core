@@ -967,7 +967,7 @@ def upgrade_to_26_closure(job):
     # Checks if the specific gear tag already exists for the job
     for tag in job['tags']:
         if tag == gear_name:
-            logging.info("Gear name tag already exists")
+            # logging.info("Gear name tag already exists")
             return True
     for tag in job['tags']:
         if tag == gear_name:
@@ -989,10 +989,8 @@ def upgrade_to_26():
 
     Add job tags back to the job document, and use a faster cursor-walking update method
     """
-    # cursor = config.db.jobs.find({'tags[1]': {'$exists': True}})
-    process_cursor(cursor, upgrade_to_26_closure)
     cursor = config.db.jobs.find({})
-    process_cursor(cursor,upgrade_to_26_test_closure)
+    process_cursor(cursor, upgrade_to_26_closure)
 
 
 def upgrade_to_27():
