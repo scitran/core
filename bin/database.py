@@ -974,7 +974,7 @@ def upgrade_to_26_closure(job):
         if tag == gear_name:
             gear_name_tag_count = gear_name_tag_count + 1
     if gear_name_tag_count > 1:
-        raise Exception("Job has multiple gear name tags")
+        logging.info("job "+ job + " has multiple gear name tags")
 
     # Update doc
     result = config.db.jobs.update_one({'_id': job['_id']}, {'$push': {'tags': gear_name }})
