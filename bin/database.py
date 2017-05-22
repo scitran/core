@@ -1025,6 +1025,8 @@ def upgrade_to_28():
         config.db.sessions.update({'_id': session['_id']}, session)
 
 
+
+
 def upgrade_to_29_closure(user):
 
     avatars = user['avatars']
@@ -1041,26 +1043,53 @@ def upgrade_to_29_closure(user):
 
 
 def upgrade_to_29():
-        """
+    """
     Enforces HTTPS urls for user avatars
     """
-    users = config.db.users.find({})
-    process_cursor(users, upgrade_to_29_closure)
-
+    # Uncomment to test
     config.db.users.insert_one({
         'firstname': 'Person',
         'created': datetime.datetime.utcnow(),
         'lastname': '1',
         'modified': datetime.datetime.utcnow(),
-        'avatars': {'custom': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg", 'provider': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg"},
+        'avatars': {
+            'custom': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg",
+            'provider': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg"
+        },
         'root': True,
         'avatar': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg",
         'email': 'p1@fakeemail.com'
     })
+    config.db.users.insert_one({
+        'firstname': 'Person',
+        'created': datetime.datetime.utcnow(),
+        'lastname': '2',
+        'modified': datetime.datetime.utcnow(),
+        'avatars': {
+            'custom': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg",
+            'provider': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg",
+            'gravitar': "https://i.ytimg.com/vi/q0ugLbzdmqc/maxresdefault.jpg"
+        },
+        'root': True,
+        'avatar': "https://i.ytimg.com/vi/q0ugLbzdmqc/maxresdefault.jpg",
+        'email': 'p2@fakeemail.com'
+    })
+    config.db.users.insert_one({
+        'firstname': 'Person',
+        'created': datetime.datetime.utcnow(),
+        'lastname': '3',
+        'modified': datetime.datetime.utcnow(),
+        'avatars': {
+            'custom': "http://vacationidea.com/pix/img25Hy8R/destinations/torpicalislandv_f_mobi.jpg",
+            'provider': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg",
+            'gravitar': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg"
+        },
+        'root': True,
+        'avatar': "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg",
+        'email': 'p3@fakeemail.com'
+    })
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
-
-    # raise Exception('Successful upgrade to 29')
 
 
 def upgrade_schema():
