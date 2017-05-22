@@ -973,7 +973,6 @@ def upgrade_to_26_closure(job):
 
 
     # Update doc
-    result = config.db.jobs.update_one({'_id': job['_id']}, {'$addToSet': {'tags': gear_name }})
 
     # Check for multiples
     for tag in job['tags']:
@@ -981,6 +980,12 @@ def upgrade_to_26_closure(job):
             gear_name_tag_count = gear_name_tag_count + 1
     if gear_name_tag_count > 1:
         logging.info("job "+ job + " has multiple gear name tags")
+        config.db.jobs.update_one({'_id': job['_id']}, {'$pull': {'tags': gear_name}})
+        result = config.db.jobs.update_one({'_id': job['_id']}, {'$set': {'tags': gear_name}})
+    elif gear_name_tag_count == 1:
+        return True
+    else:
+        result = config.db.jobs.update_one({'_id': job['_id']}, {'$addToSet': {'tags': gear_name }})
 
     if result.modified_count == 1:
         return True
@@ -994,10 +999,8 @@ def upgrade_to_26():
 
     Add job tags back to the job document, and use a faster cursor-walking update method
     """
-    gear_names = []
-    for gear in config.db.gears.find({}):
-        gear_names.append(gear['gear']['name'])
-    cursor = config.db.jobs.find({'tags': {'$nin': gear_names}})
+    config.db.jobs.insert({'gear_id': '591d40888d5c62001da820a0', 'tags': ['auto', 'afq-demo', 'afq-demo']})
+    cursor = config.db.jobs.find({})
     process_cursor(cursor, upgrade_to_26_closure)
 
 
