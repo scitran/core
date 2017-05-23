@@ -967,7 +967,7 @@ def upgrade_to_26_closure(job):
     # Checks if the specific gear tag already exists for the job
     if gear_name in job['tags']:
         return True
-        
+
     result = config.db.jobs.update_one({'_id': job['_id']}, {'$addToSet': {'tags': gear_name }})
 
     if result.modified_count == 1:
@@ -982,7 +982,6 @@ def upgrade_to_26():
 
     Add job tags back to the job document, and use a faster cursor-walking update method
     """
-    config.db.jobs.insert({'gear_id': '591d40888d5c62001da820a0', 'tags': ['auto', 'afq-demo', 'afq-demo']})
     cursor = config.db.jobs.find({})
     process_cursor(cursor, upgrade_to_26_closure)
 
