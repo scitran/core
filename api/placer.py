@@ -653,6 +653,7 @@ class AnalysisJobPlacer(Placer):
                     break
 
         file_attrs['output'] = True
+        file_attrs['created'] = file_attrs['modified']
         self.save_file(field)
         self.saved.append(file_attrs)
 

@@ -697,17 +697,17 @@ def test_analysis_upload(data_builder, file_form, as_admin):
 
 
 def test_analysis_engine_upload(data_builder, file_form, as_root):
-    acquisition = data_builder.create_acquisition()
+    session = data_builder.create_session()
 
     # create acquisition analysis
-    r = as_root.post('/acquisitions/' + acquisition + '/analyses', files=file_form(
+    r = as_root.post('/sessions/' + session + '/analyses', files=file_form(
         'one.csv', meta={'label': 'test analysis', 'inputs': [{'name': 'one.csv'}]}
     ))
     assert r.ok
-    acquisition_analysis = r.json()['_id']
+    session_analysis = r.json()['_id']
 
     r = as_root.post('/engine',
-        params={'level': 'analysis', 'id': acquisition_analysis},
+        params={'level': 'analysis', 'id': session_analysis},
         files=file_form('out.csv', meta={
             'type': 'text',
             'value': {'label': 'test'},
@@ -715,8 +715,14 @@ def test_analysis_engine_upload(data_builder, file_form, as_root):
     ))
     assert r.ok
 
+    # Check for created timestamps for output files
+    r = as_root.get('/sessions/'+ session + '/analyses/' + session_analysis).json()['files']
+    assert r[1].get('output')
+    assert r[1].get('created')
+
+
     # delete acquisition analysis
-    r = as_root.delete('/acquisitions/' + acquisition + '/analyses/' + acquisition_analysis)
+    r = as_root.delete('/sessions/' + session + '/analyses/' + session_analysis)
     assert r.ok
 
 
