@@ -1015,13 +1015,13 @@ def upgrade_to_28():
 
     sessions = config.db.sessions.find({'subject.age': {'$type': 'double'}})
     logging.info('Fixing {} subjects with age stored as double ...'.format(sessions.count()))
-    for x in sessions:
+    for session in sessions:
         try:
-            int_age = int(x['subject']['age'])
+            session['subject']['age'] = int(session['subject']['age'])
         except:
-            int_age = None
+            session['subject']['age'] = None
 
-        config.db.sessions.update({'_id': x['_id']}, {'$set': {'subject.age': int_age}})
+        config.db.sessions.update({'_id': session['_id']}, session)
 
 
 def upgrade_schema():
