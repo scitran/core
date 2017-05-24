@@ -1032,9 +1032,13 @@ def upgrade_to_29_closure(user):
     avatars = user['avatars']
     if avatars.get('custom') and not 'https:' in avatars['custom']:
         if user['avatar'] == user['avatars']['custom']:
-            config.db.users.update_one({'_id': user['_id']},
-                {'$set': {'avatar': user['avatars'].get('provider', None)}}
-            )
+            if(user['avatars'].get('provider') == None):
+                config.db.users.update_one({'_id': user['_id']},
+                    {'$unset': {'avatar': ""}})
+            else:    
+                config.db.users.update_one({'_id': user['_id']},
+                    {'$set': {'avatar': user['avatars'].get('provider')}}
+                )
         logging.info('Deleting custom ...')
         config.db.users.update_one({'_id': user['_id']},
             {'$unset': {"avatars.custom": ""}}
@@ -1046,7 +1050,7 @@ def upgrade_to_29():
     """
     Enforces HTTPS urls for user avatars
     """
-    
+
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
 
