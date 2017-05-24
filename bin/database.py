@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 28 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -960,6 +960,7 @@ def upgrade_to_26_closure(job):
     if gear.get('gear', {}).get('name', None) is None:
         logging.info('No gear found for job ' + str(job['_id']))
         return True
+
     # This logic WILL NOT WORK in parallel mode
 
     gear_name = gear['gear']['name']
@@ -1022,6 +1023,36 @@ def upgrade_to_28():
             session['subject']['age'] = None
 
         config.db.sessions.update({'_id': session['_id']}, session)
+
+
+
+
+def upgrade_to_29_closure(user):
+
+    avatars = user['avatars']
+    if avatars.get('custom') and not 'https:' in avatars['custom']:
+        if user['avatar'] == user['avatars']['custom']:
+            if(user['avatars'].get('provider') == None):
+                config.db.users.update_one({'_id': user['_id']},
+                    {'$unset': {'avatar': ""}})
+            else:    
+                config.db.users.update_one({'_id': user['_id']},
+                    {'$set': {'avatar': user['avatars'].get('provider')}}
+                )
+        logging.info('Deleting custom ...')
+        config.db.users.update_one({'_id': user['_id']},
+            {'$unset': {"avatars.custom": ""}}
+        )
+    return True
+
+
+def upgrade_to_29():
+    """
+    Enforces HTTPS urls for user avatars
+    """
+
+    users = config.db.users.find({})
+    process_cursor(users, upgrade_to_29_closure)
 
 
 def upgrade_schema():

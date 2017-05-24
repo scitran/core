@@ -67,6 +67,28 @@ def test_users(as_root, as_user, as_public):
     r = as_root.delete('/users/' + new_user_id)
     assert r.ok
 
+    # Test HTTPS enforcement on avatar urls
+    new_user_id = 'new@user.com'
+    r = as_root.post('/users', json={
+        '_id': new_user_id,
+        'firstname': 'New',
+        'lastname': 'User',
+    })
+    assert r.ok
+    r = as_root.get('/users/' + new_user_id)
+    assert r.ok
+
+    r = as_root.put('/users/' + new_user_id, json={'avatar': 'https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg'})
+    r = as_root.get('/users/' + new_user_id)
+    assert r.json()['avatar'] == 'https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg'
+
+    r = as_root.put('/users/' + new_user_id, json={'avatar': 'http://media.nomadicmatt.com/maldivestop001.jpg', 'avatars': {'custom': 'http://media.nomadicmatt.com/maldivestop001.jpg', 'provider': 'https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg'}})
+    assert r.status_code == 400
+    r = as_root.get('/users/' + new_user_id)
+    assert r.json()['avatar'] != 'http://media.nomadicmatt.com/maldivestop001.jpg'
+
+    r = as_root.delete('/users/' + new_user_id)
+    assert r.ok
 
 def test_generate_api_key(data_builder, as_public):
     # Try to generate new api key w/o logging in

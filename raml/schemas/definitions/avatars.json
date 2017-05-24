@@ -5,7 +5,7 @@
   "properties": {
     "gravatar":         {"type": ["string", "null"], "format": "uri" },
     "provider":         {"type": ["string", "null"], "format": "uri" },
-    "custom":           {"type": ["string", "null"], "format": "uri" }
+    "custom":           {"type": ["string", "null"], "pattern": "^https:", "format": "uri" }
   },
   "additionalProperties": false
 }
