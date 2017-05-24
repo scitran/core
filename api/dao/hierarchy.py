@@ -260,7 +260,7 @@ def upsert_fileinfo(cont_name, _id, fileinfo):
     # OPPORTUNITY: could potentially be atomic if we pass a closure to perform the modification
     result = config.db[cont_name].find_one({
         '_id': _id,
-        'files.name': fileinfo['name']
+        'files.name': fileinfo['name'],
     })
 
     if result is None:

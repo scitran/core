@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 30 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1035,7 +1035,7 @@ def upgrade_to_29_closure(user):
             if(user['avatars'].get('provider') == None):
                 config.db.users.update_one({'_id': user['_id']},
                     {'$unset': {'avatar': ""}})
-            else:    
+            else:
                 config.db.users.update_one({'_id': user['_id']},
                     {'$set': {'avatar': user['avatars'].get('provider')}}
                 )
@@ -1054,8 +1054,9 @@ def upgrade_to_29():
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
 
-def upgrade_to_29_closure(session):
+def upgrade_to_30_closure_analysis(session):
     analyses = session.get('analyses', None)
+
     if analyses is not None:
         for analysis_ in analyses:
             files = analysis_.get('files', [])
@@ -1066,7 +1067,31 @@ def upgrade_to_29_closure(session):
     # upgrade_to_29_test(session)
     return True
 
-def upgrade_to_29_test(session):
+def upgrade_to_30_closure_sessions(session):
+    session_files = session.get('files', [])
+    for sfile_ in session_files:
+        if 'created' not in sfile_:
+            sfile_['created'] = session['created']
+    config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'files': session_files}})
+    return True
+
+def upgrade_to_30_closure_projects(project):
+    files = project.get('files', [])
+    for file_ in files:
+        if 'created' not in file_:
+            file_['created'] = project['created']
+    config.db.projects.update_one({'_id': project['_id']}, {'$set': {'files': files}})
+    return True
+
+def upgrade_to_30_closure_acquisitions(acquisition):
+    files = acquisition.get('files', [])
+    for file_ in files:
+        if 'created' not in file_:
+            file_['created'] = acquisition['created']
+    config.db.acquisitions.update_one({'_id': acquisition['_id']}, {'$set': {'files': files}})
+    return True
+
+def upgrade_to_30_test(session):
     analyses = session.get('analyses', None)
     if analyses is not None:
         for a_index, analysis_ in enumerate(session['analyses']):
@@ -1078,21 +1103,25 @@ def upgrade_to_29_test(session):
                         logging.info(session + ', ' + analysis_ + ', ' + file_ + ' has no created timestamp')
     return True
 
-def upgrade_to_29():
+def upgrade_to_30():
     """
     scitran/core issue #759
 
     give created timestamps that are missing are given based on the parent object's timestamp
     """
-    config.db.sessions.insert_one({'created': datetime.datetime.utcnow(),
-                                        'analyses':[{'files': [{'type': 'dicom'}], 'created': datetime.datetime.utcnow()}]})
-    config.db.sessions.insert_one({'created': datetime.datetime.utcnow(),
-                                        'analyses': [{'files': []}]})
-    config.db.sessions.insert_one({'created': datetime.datetime.utcnow()})
+    config.db.projects.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
+    config.db.sessions.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
+    config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
+
     cursor = config.db.sessions.find({'analyses': {'$exists': True},
                                                        'analyses.files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_29_closure)
-
+    process_cursor(cursor, upgrade_to_30_closure_analysis)
+    cursor = config.db.sessions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_sessions)
+    cursor = config.db.acquisitions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_acquisitions)
+    cursor = config.db.projects.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_projects)
 
 
 def upgrade_schema():
