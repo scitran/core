@@ -3,7 +3,7 @@ import datetime
 import jsonschema
 import os
 import pymongo
-import requests
+# import requests
 import traceback
 import webapp2
 
@@ -420,48 +420,10 @@ class RequestHandler(webapp2.RequestHandler):
     def dispatch(self):
         """dispatching and request forwarding"""
 
-        site_id = config.get_item('site', 'id')
-        target_site = self.get_param('site', site_id)
-        if target_site == site_id:
-            self.request.logger.debug('from %s %s %s %s %s', self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
-            return super(RequestHandler, self).dispatch()
-        # NOTE cross-site feature unused and planned for removal
-        else: # pragma: no cover
-            if not site_id:
-                self.abort(500, 'api site.id is not configured')
-            if not config.get_item('site', 'ssl_cert'):
-                self.abort(500, 'api ssl_cert is not configured')
-            target = config.db.sites.find_one({'_id': target_site}, ['api_uri'])
-            if not target:
-                self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
-            # adjust headers
-            headers = self.request.headers
-            headers['User-Agent'] = 'SciTran Instance ' + site_id
-            headers['X-User'] = self.uid
-            headers['X-Site'] = site_id
-            headers['Content-Length'] = len(self.request.body)
-            del headers['Host']
-            if 'Authorization' in headers: del headers['Authorization']
-            # adjust params
-            params = self.request.GET.mixed()
-            if 'user' in params: del params['user']
-            del params['site']
-            self.request.logger.debug(' for %s %s %s %s %s', target_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
-            target_uri = target['api_uri'] + self.request.path.split('/api')[1]
-            r = requests.request(
-                    self.request.method,
-                    target_uri,
-                    stream=True,
-                    params=params,
-                    data=self.request.body_file,
-                    headers=headers,
-                    cert=config.get_item('site', 'ssl_cert'))
-            if r.status_code != 200:
-                self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
-            self.response.app_iter = r.iter_content(2**20)
-            for header in ['Content-' + h for h in 'Length', 'Type', 'Disposition']:
-                if header in r.headers:
-                    self.response.headers[header] = r.headers[header]
+
+        self.request.logger.debug('from %s %s %s %s', self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
+        return super(RequestHandler, self).dispatch()
+
 
     def abort(self, code, detail=None, **kwargs):
         if isinstance(detail, jsonschema.ValidationError):

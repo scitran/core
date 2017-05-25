@@ -80,9 +80,9 @@ def deep_update(d, u):
     return d
 
 
-def user_perm(permissions, _id, site=None):
+def user_perm(permissions, _id):
     for perm in permissions:
-        if perm['_id'] == _id and perm.get('site') == site:
+        if perm['_id'] == _id:
             return perm
     return {}
 

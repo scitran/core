@@ -19,7 +19,7 @@ class GroupHandler(base.RequestHandler):
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('GET', _id)
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_roles([result], self.uid, self.user_site)
+            self._filter_roles([result], self.uid)
         if self.is_true('join_avatars'):
             ContainerHandler.join_user_info([result])
         return result
@@ -41,7 +41,7 @@ class GroupHandler(base.RequestHandler):
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_roles(results, self.uid, self.user_site)
+            self._filter_roles(results, self.uid)
         if self.is_true('join_avatars'):
             results = ContainerHandler.join_user_info(results)
         return results
@@ -89,12 +89,12 @@ class GroupHandler(base.RequestHandler):
         else:
             self.abort(404, 'Group {} not found'.format(_id))
 
-    def _filter_roles(self, results, uid, site):
+    def _filter_roles(self, results, uid):
         """
         if the user is not admin only her role is returned.
         """
         for result in results:
-            user_perm = util.user_perm(result.get('roles', []), uid, site)
+            user_perm = util.user_perm(result.get('roles', []), uid)
             if user_perm.get('access') != 'admin':
                 result['roles'] = [user_perm] if user_perm else []
         return results

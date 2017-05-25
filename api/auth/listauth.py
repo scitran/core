@@ -17,7 +17,7 @@ def default_sublist(handler, container):
     The resulting permissions checker modifies the exec_op method by checking the user permissions
     on the container before actually executing this method.
     """
-    access = _get_access(handler.uid, handler.user_site, container)
+    access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params=None, payload=None, exclude_params=None):
             if method == 'GET' and container.get('public', False):
@@ -40,7 +40,7 @@ def group_roles_sublist(handler, container):
     """
     This is the customized permissions checker for group roles operations.
     """
-    access = _get_access(handler.uid, handler.user_site, container)
+    access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid:
@@ -56,7 +56,7 @@ def group_tags_sublist(handler, container):
     """
     This is the customized permissions checker for tags operations.
     """
-    access = _get_access(handler.uid, handler.user_site, container)
+    access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method == 'GET'  and access >= INTEGER_ROLES['ro']:
@@ -72,7 +72,7 @@ def permissions_sublist(handler, container):
     """
     the customized permissions checker for permissions operations.
     """
-    access = _get_access(handler.uid, handler.user_site, container)
+    access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             log.debug(query_params)
@@ -89,7 +89,7 @@ def notes_sublist(handler, container):
     """
     permissions checker for notes_sublist
     """
-    access = _get_access(handler.uid, handler.user_site, container)
+    access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if access >= INTEGER_ROLES['admin']:
