@@ -22,7 +22,7 @@
           "properties": {
             "_id":{"$ref":"#/definitions/_id"},
             "name":{"$ref":"#/definitions/name"},
-            "roles": {
+            "permissions": {
               "type": "array",
               "items": {"$ref": "../definitions/permission.json#/definitions/permission-output-default-required"},
               "uniqueItems": true
@@ -31,7 +31,7 @@
             "modified": {"$ref":"../definitions/created-modified.json#/definitions/modified"}
           },
           "additionalProperties":false,
-          "required": ["roles", "created","modified","_id"]
+          "required": ["permissions", "created","modified","_id"]
         },
         "group-output-list":{
             "type":"array",

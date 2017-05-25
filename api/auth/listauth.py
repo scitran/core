@@ -6,7 +6,7 @@ Purpose of this module is to define all the permissions checker decorators for t
 import sys
 
 from .. import config
-from . import _get_access, INTEGER_ROLES
+from . import _get_access, INTEGER_PERMISSIONS
 
 log = config.log
 
@@ -23,9 +23,9 @@ def default_sublist(handler, container):
             if method == 'GET' and container.get('public', False):
                 min_access = -1
             elif method == 'GET':
-                min_access = INTEGER_ROLES['ro']
+                min_access = INTEGER_PERMISSIONS['ro']
             elif method in ['POST', 'PUT', 'DELETE']:
-                min_access = INTEGER_ROLES['rw']
+                min_access = INTEGER_PERMISSIONS['rw']
             else:
                 min_access = sys.maxint
 
@@ -36,16 +36,16 @@ def default_sublist(handler, container):
         return f
     return g
 
-def group_roles_sublist(handler, container):
+def group_permissions_sublist(handler, container):
     """
-    This is the customized permissions checker for group roles operations.
+    This is the customized permissions checker for group permissions operations.
     """
     access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid:
                 return exec_op(method, _id, query_params, payload, exclude_params)
-            elif access >= INTEGER_ROLES['admin']:
+            elif access >= INTEGER_PERMISSIONS['admin']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
@@ -59,9 +59,9 @@ def group_tags_sublist(handler, container):
     access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
-            if method == 'GET'  and access >= INTEGER_ROLES['ro']:
+            if method == 'GET'  and access >= INTEGER_PERMISSIONS['ro']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
-            elif access >= INTEGER_ROLES['rw']:
+            elif access >= INTEGER_PERMISSIONS['rw']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
@@ -78,7 +78,7 @@ def permissions_sublist(handler, container):
             log.debug(query_params)
             if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid:
                 return exec_op(method, _id, query_params, payload, exclude_params)
-            elif access >= INTEGER_ROLES['admin']:
+            elif access >= INTEGER_PERMISSIONS['admin']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
@@ -92,11 +92,11 @@ def notes_sublist(handler, container):
     access = _get_access(handler.uid, container)
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
-            if access >= INTEGER_ROLES['admin']:
+            if access >= INTEGER_PERMISSIONS['admin']:
                 pass
-            elif method == 'POST' and access >= INTEGER_ROLES['rw'] and payload['user'] == handler.uid:
+            elif method == 'POST' and access >= INTEGER_PERMISSIONS['rw'] and payload['user'] == handler.uid:
                 pass
-            elif method == 'GET' and (access >= INTEGER_ROLES['ro'] or container.get('public')):
+            elif method == 'GET' and (access >= INTEGER_PERMISSIONS['ro'] or container.get('public')):
                 pass
             elif method in ['GET', 'DELETE', 'PUT'] and container['notes'][0]['user'] == handler.uid:
                 pass

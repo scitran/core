@@ -13,7 +13,7 @@ class Node(object):
     # Globally disable extraneous properties of unbounded length.
     projection = {'files': 0}
     # Version of same for debugging purposes.
-    # projection = {'roles': 0, 'permissions': 0, 'files': 0}
+    # projection = {'permissions': 0, 'files': 0}
 
     @staticmethod
     def get_children(parent):

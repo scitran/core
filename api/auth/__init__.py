@@ -1,7 +1,7 @@
 from ..dao import APIPermissionException
 from ..types import Origin
 
-ROLES = [
+PERMISSIONS = [
     {
         'rid': 'ro',
         'name': 'Read-Only',
@@ -16,17 +16,17 @@ ROLES = [
     },
 ]
 
-INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
+INTEGER_PERMISSIONS = {r['rid']: i for i, r in enumerate(PERMISSIONS)}
 
 def _get_access(uid, container):
-    permissions_list = container.get('roles', container.get('permissions', []))
+    permissions_list = container.get('permissions', [])
     for perm in permissions_list:
         if perm['_id'] == uid:
-            return INTEGER_ROLES[perm['access']]
+            return INTEGER_PERMISSIONS[perm['access']]
     return -1
 
 def has_access(uid, container, perm):
-    return _get_access(uid, container) >= INTEGER_ROLES[perm]
+    return _get_access(uid, container) >= INTEGER_PERMISSIONS[perm]
 
 class APIAuthProviderException(Exception):
     pass

@@ -12,6 +12,10 @@ def test_groups(as_admin, data_builder):
     assert r.ok
     first_modified = r.json()['modified']
 
+    # Test to make sure that list of roles does not exist in a newly created group
+    r = as_admin.get('/groups/' + group)
+    assert r.json().get('roles', 'No Roles') == 'No Roles'
+
     # Able to change group name
     group_name = 'New group name'
     r = as_admin.put('/groups/' + group, json={'name': group_name})
@@ -60,35 +64,35 @@ def test_groups(as_admin, data_builder):
     d5 = parse(fith_modified)
     assert d5 > d4
 
-    # Add a role to the group
+    # Add a permission to the group
     user = {'access': 'rw', '_id': 'newUser@fakeuser.com'}
-    r = as_admin.post('/groups/' + group + '/roles', json=user)
+    r = as_admin.post('/groups/' + group + '/permissions', json=user)
     assert r.ok
 
-    # Get the group again to compare timestamps for the Add role test groups
+    # Get the group again to compare timestamps for the Add permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     six_modified = r.json()['modified']
     d6 = parse(six_modified)
     assert d6 > d5
 
-    # Edit a role in the group
+    # Edit a permission in the group
     user = {'access': 'ro', '_id': 'newUser@fakeuser.com'}
-    r = as_admin.put('/groups/' + group + '/roles/' + user['_id'], json=user)
+    r = as_admin.put('/groups/' + group + '/permissions/' + user['_id'], json=user)
     assert r.ok
 
-    # Get the group again to compare timestamps for the Edit role test groups
+    # Get the group again to compare timestamps for the Edit permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     seven_modified = r.json()['modified']
     d7 = parse(seven_modified)
     assert d7 > d6
 
-    # Delete a role in the group
-    r = as_admin.delete('/groups/' + group + '/roles/' + user['_id'])
+    # Delete a permission in the group
+    r = as_admin.delete('/groups/' + group + '/permissions/' + user['_id'])
     assert r.ok
 
-    # Get the group again to compare timestamps for the Edit role test groups
+    # Get the group again to compare timestamps for the Edit permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     eight_modified = r.json()['modified']

@@ -245,7 +245,7 @@ def initialize_db():
     create_or_recreate_ttl_index('downloads', 'timestamp', 60)
 
     now = datetime.datetime.utcnow()
-    db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'roles': []}}, upsert=True)
+    db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'name': 'Unknown', 'permissions': []}}, upsert=True)
 
 def get_config():
     global __last_update, __config, __config_persisted #pylint: disable=global-statement

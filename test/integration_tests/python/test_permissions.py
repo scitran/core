@@ -47,3 +47,59 @@ def test_permissions(data_builder, as_admin):
     # Ensure user 2 is gone
     r = as_admin.get(user_2_path)
     assert r.status_code == 404
+
+def test_group_permissions(data_builder, as_admin, as_public):
+    # Test permissions for groups
+    api_key = '4hOn5aBx/nUiI0blDbTUPpKQsEbEn74rH9z5KctlXw6GrMKdicPGXKQg'
+    user = data_builder.create_user(api_key=api_key)
+    group = data_builder.create_group()
+
+    as_other_user = as_public
+    as_other_user.headers.update({'Authorization': 'scitran-user ' + api_key})
+
+    permissions_path = '/groups/' + group + '/permissions'
+    local_user_permissions_path = permissions_path + '/local/' + user
+    admin_user_permissions_path = permissions_path + '/local/' + as_admin.get('/users/self').json()['_id']
+
+    # Cannot retrieve permissions that don't exist
+    r = as_admin.get(local_user_permissions_path)
+    assert r.status_code == 404
+
+    # Create permission for user
+    r = as_admin.post(permissions_path, json={'_id': user, 'site': 'local', 'access': 'rw'})
+    assert r.ok
+
+    # Verify new user permission
+    r = as_admin.get(local_user_permissions_path)
+    assert r.ok
+    permission = r.json()
+    assert permission['_id'] == user
+    assert permission['access'] == 'rw'
+
+    # 'rw' users cannot access other user permissions
+    r = as_other_user.get(admin_user_permissions_path)
+    assert r.status_code == 403
+
+    # Upgrade user to admin
+    r = as_admin.put(local_user_permissions_path, json={'access': 'admin'})
+    assert r.ok
+
+    # User should now be able to access other permissions
+    r = as_other_user.get(admin_user_permissions_path)
+    assert r.ok
+
+    # Change user back to 'rw' access
+    r = as_admin.put(local_user_permissions_path, json={'access': 'rw'})
+    assert r.ok
+
+    # User is now forbidden again
+    r = as_other_user.get(admin_user_permissions_path)
+    assert r.status_code == 403
+
+    # Delete permission
+    r = as_admin.delete(local_user_permissions_path)
+    assert r.ok
+
+    # Verify delete
+    r = as_admin.get(local_user_permissions_path)
+    assert r.status_code == 404

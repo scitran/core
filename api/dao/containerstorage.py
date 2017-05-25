@@ -22,18 +22,18 @@ class GroupStorage(ContainerStorage):
     def _fill_default_values(self, cont):
         cont = super(GroupStorage,self)._fill_default_values(cont)
         if cont:
-            if 'roles' not in cont:
-                cont['roles'] = []
+            if 'permissions' not in cont:
+                cont['permissions'] = []
         return cont
 
     def create_el(self, payload):
         log.debug(payload)
-        roles = payload.pop('roles')
+        permissions = payload.pop('permissions')
         return self.dbc.update_one(
             {'_id': payload['_id']},
             {
                 '$set': payload,
-                '$setOnInsert': {'roles': roles}
+                '$setOnInsert': {'permissions': permissions}
             },
             upsert=True)
 

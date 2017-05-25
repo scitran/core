@@ -61,9 +61,9 @@ def initialize_list_configurations():
     }
     list_container_configurations = {
         'groups': {
-            'roles':{
+            'permissions':{
                 'storage': liststorage.ListStorage,
-                'permchecker': listauth.group_roles_sublist,
+                'permchecker': listauth.group_permissions_sublist,
                 'use_object_id': False,
                 'get_full_container': True,
                 'storage_schema_file': 'permission.json',
@@ -103,7 +103,7 @@ list_handler_configurations = initialize_list_configurations()
 
 class ListHandler(base.RequestHandler):
     """
-    This class handle operations on a generic sublist of a container like tags, group roles, user permissions, etc.
+    This class handle operations on a generic sublist of a container like tags, group permissions, user permissions, etc.
 
     The pattern used is:
     1) initialize request

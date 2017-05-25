@@ -212,7 +212,7 @@ hooks.before("DELETE /groups/{GroupId} -> 200", function(test, done) {
     done();
 });
 
-hooks.before("POST /groups/{GroupId}/roles -> 200", function(test, done) {
+hooks.before("POST /groups/{GroupId}/permissions -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id
     };
@@ -223,7 +223,7 @@ hooks.before("POST /groups/{GroupId}/roles -> 200", function(test, done) {
     done();
 });
 
-hooks.before("POST /groups/{GroupId}/roles -> 400", function(test, done) {
+hooks.before("POST /groups/{GroupId}/permissions -> 400", function(test, done) {
     test.request.params = {
         GroupId: group_id
     };
@@ -231,7 +231,7 @@ hooks.before("POST /groups/{GroupId}/roles -> 400", function(test, done) {
     done();
 });
 
-hooks.before("GET /groups/{GroupId}/roles/{UserId} -> 200", function(test, done) {
+hooks.before("GET /groups/{GroupId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id,
         UserId: "test@user.com"
@@ -239,7 +239,7 @@ hooks.before("GET /groups/{GroupId}/roles/{UserId} -> 200", function(test, done)
     done();
 });
 
-hooks.before("PUT /groups/{GroupId}/roles/{UserId} -> 200", function(test, done) {
+hooks.before("PUT /groups/{GroupId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id,
         UserId: "test@user.com"
@@ -251,7 +251,7 @@ hooks.before("PUT /groups/{GroupId}/roles/{UserId} -> 200", function(test, done)
     done();
 });
 
-hooks.before("PUT /groups/{GroupId}/roles/{UserId} -> 400", function(test, done) {
+hooks.before("PUT /groups/{GroupId}/permissions/{UserId} -> 400", function(test, done) {
     test.request.params = {
         GroupId: group_id,
         UserId:"test@user.com"
@@ -264,7 +264,7 @@ hooks.before("PUT /groups/{GroupId}/roles/{UserId} -> 400", function(test, done)
     done();
 });
 
-hooks.before("DELETE /groups/{GroupId}/roles/{UserId} -> 200", function(test, done) {
+hooks.before("DELETE /groups/{GroupId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id,
         UserId: "test@user.com"

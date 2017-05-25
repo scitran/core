@@ -13,10 +13,10 @@
                           "title": "Name",
                           "type": "string"
                         },
-    "roles":            {
+    "permissions":            {
                           "type": "array",
                           "items": {"$ref": "../definitions/permission.json"},
-                          "title": "Roles",
+                          "title": "Permissions",
                           "default": [],
                           "uniqueItems": true
                         }

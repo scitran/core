@@ -1128,8 +1128,8 @@ def upgrade_to_32():
 
     scitran/core #662
     """
-    cursor = config.db.groups.find({})
-    process_cursor(cursor, upgrade_to_30_closure)
+    cursor = config.db.groups.find({'roles': {'$exists': True}})
+    process_cursor(cursor, upgrade_to_31_closure)
 
 def upgrade_to_32_closure(coll_item, coll):
     permissions = coll_item.get('permissions', [])

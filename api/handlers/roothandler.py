@@ -110,7 +110,7 @@ class RootHandler(base.RequestHandler):
             /download                           | download
             [(/users)]                          | list of users
             [(/users/self)]                     | user identity
-            [(/users/roles)]                    | user roles
+            [(/users/permissions)]              | user permissions
             [(/users/*<uid>*)]                  | details for user *<uid>*
             [(/users/*<uid>*/groups)]           | groups for user *<uid>*
             [(/users/*<uid>*/projects)]         | projects for user *<uid>*

@@ -185,7 +185,7 @@ class ContainerHandler(base.RequestHandler):
     @staticmethod
     def join_user_info(results):
         """
-        Given a list of containers, adds avatar and name context to each member of the permissions/roles list
+        Given a list of containers, adds avatar and name context to each member of the permissions list
         """
 
         # Get list of all users, hash by uid
@@ -193,7 +193,7 @@ class ContainerHandler(base.RequestHandler):
         users = {user['_id']: user for user in users_list}
 
         for r in results:
-            permissions = r.get('permissions') or r.get('roles', [])
+            permissions = r.get('permissions') or r.get('permissions', [])
 
             for p in permissions:
                 user = users[p['_id']]
@@ -409,7 +409,7 @@ class ContainerHandler(base.RequestHandler):
         # for projects is to give admin permissions to the requestor.
         # The default for other containers is to inherit.
         if self.is_true('inherit') and cont_name == 'projects':
-            payload['permissions'] = parent_container.get('roles')
+            payload['permissions'] = parent_container.get('permissions')
         elif cont_name =='projects':
             payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}] if self.uid else []
         else:
