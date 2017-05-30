@@ -3,7 +3,6 @@ import datetime
 import jsonschema
 import os
 import pymongo
-# import requests
 import traceback
 import webapp2
 

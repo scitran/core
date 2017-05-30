@@ -1,7 +1,6 @@
 import webapp2
 import webapp2_extras.routes
 
-from .centralclient                 import CentralClient
 from .download                      import Download
 from .handlers.collectionshandler   import CollectionsHandler
 from .handlers.confighandler        import Config, Version
@@ -269,10 +268,6 @@ endpoints = [
         route('/<par_cont_name:groups>/<par_id:{gid}>/<cont_name:projects>', ContainerHandler, h='get_all', m=['GET']),
         route('/<par_cont_name:{cname}>/<par_id:{cid}>/<cont_name:{cname}>', ContainerHandler, h='get_all', m=['GET']),
 
-
-        # Multi - site
-        route('/sites',    CentralClient, h='sites',    m=['GET']),
-        route('/register', CentralClient, h='register', m=['POST']),
 
     ]),
 ]
