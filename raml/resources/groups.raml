@@ -55,11 +55,9 @@ post:
         application/json:
           example: !include ../examples/input/group-add-role.json
           schema: !include ../schemas/input/permission.json
-    /{SiteId}/{UserId}:
+    /{UserId}:
       type: container-item-list-property
       uriParameters:
-        SiteId:
-          description: Site where permission is granted
         UserId:
           description: User which is granted the permission
       get:
