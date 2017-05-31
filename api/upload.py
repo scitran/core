@@ -142,7 +142,17 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     elif placer.sse:
         response.headers['Content-Type'] = 'text/event-stream; charset=utf-8'
         response.headers['Connection']   = 'keep-alive'
-        response.app_iter = placer.finalize()
+
+        # Instead of handing the iterator off to response.app_iter, send it ourselves.
+        # This prevents disconnections from leaving the API in a partially-complete state.
+
+        for item in placer.finalize():
+            try:
+                response.write(item)
+            except Exception: # pylint: disable=broad-except
+                log.info('SSE upload progress failed to send; continuing')
+
+        return
     else:
         return placer.finalize()
 
