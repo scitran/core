@@ -1054,7 +1054,7 @@ def upgrade_to_29():
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
 
-def upgrade_to_30_closure_analysis(session):
+def upgrade_to_30_closure_session_analysis(session):
     analyses = session.get('analyses', None)
 
     if analyses is not None:
@@ -1062,45 +1062,82 @@ def upgrade_to_30_closure_analysis(session):
             files = analysis_.get('files', [])
             for file_ in files:
                 if 'created' not in file_:
-                    file_['created'] = analysis_['created']
-        config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'analyses': analyses}})
-    # upgrade_to_29_test(session)
-    return True
+                    file_['created'] = analysis_.get('created', datetime.datetime.utcnow())
+        result = config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'analyses': analyses}})
+        if result.modified_count == 1:
+            return True
+        else:
+            return "File timestamp creation failed for:" + str(session) + '/analyses' + str(analysis_) + '/files' + str(file_)
+
+def upgrade_to_30_closure_collection_analysis(collection):
+    analyses = collection.get('analyses', None)
+
+    if analyses is not None:
+        for analysis_ in analyses:
+            files = analysis_.get('files', [])
+            for file_ in files:
+                if 'created' not in file_:
+                    file_['created'] = analysis_.get('created', datetime.datetime.utcnow())
+        result = config.db.collections.update_one({'_id': collection['_id']}, {'$set': {'analyses': analyses}})
+        if result.modified_count == 1:
+            return True
+        else:
+            return "File timestamp creation failed for:" + 'str(collection)' + '/analyses' + 'str(analysis_)' + '/files' + 'str(file_)'
 
 def upgrade_to_30_closure_sessions(session):
     session_files = session.get('files', [])
     for sfile_ in session_files:
         if 'created' not in sfile_:
-            sfile_['created'] = session['created']
-    config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'files': session_files}})
-    return True
+            sfile_['created'] = session.get('created', datetime.datetime.utcnow())
+    result = config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'files': session_files}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return "File timestamp creation failed for:" + str(session) + '/files' + str(file_)
+
+def upgrade_to_30_closure_collections(collection):
+    collection_files = collection.get('files', [])
+    for sfile_ in collection_files:
+        if 'created' not in sfile_:
+            sfile_['created'] = collection.get('created', datetime.datetime.utcnow())
+    result = config.db.collections.update_one({'_id': collection['_id']}, {'$set': {'files': collection_files}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return "File timestamp creation failed for:" + str(collection) + '/files' + str(file_)
 
 def upgrade_to_30_closure_projects(project):
     files = project.get('files', [])
     for file_ in files:
         if 'created' not in file_:
-            file_['created'] = project['created']
-    config.db.projects.update_one({'_id': project['_id']}, {'$set': {'files': files}})
-    return True
+            file_['created'] = project.get('created', datetime.datetime.utcnow())
+    result = config.db.projects.update_one({'_id': project['_id']}, {'$set': {'files': files}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return "File timestamp creation failed for:" + str(project) + '/files' + str(file_)
 
 def upgrade_to_30_closure_acquisitions(acquisition):
     files = acquisition.get('files', [])
     for file_ in files:
         if 'created' not in file_:
-            file_['created'] = acquisition['created']
-    config.db.acquisitions.update_one({'_id': acquisition['_id']}, {'$set': {'files': files}})
-    return True
+            file_['created'] = acquisition.get('created', datetime.datetime.utcnow())
+    result = config.db.acquisitions.update_one({'_id': acquisition['_id']}, {'$set': {'files': files}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return "File timestamp creation failed for:" + str(acquisition) + '/files' + str(file_)
 
-def upgrade_to_30_test(session):
-    analyses = session.get('analyses', None)
+def upgrade_to_30_test(coll_item):
+    analyses = coll_item.get('analyses', None)
     if analyses is not None:
-        for a_index, analysis_ in enumerate(session['analyses']):
-            files = session['analyses'][a_index].get('files')
+        for a_index, analysis_ in enumerate(coll_item['analyses']):
+            files = coll_item['analyses'][a_index].get('files')
             if files is not None:
                 created_count = 0
                 for file_ in files:
                     if 'created' not in file_:
-                        logging.info(session + ', ' + analysis_ + ', ' + file_ + ' has no created timestamp')
+                        logging.info(coll_item + ', ' + analysis_ + ', ' + file_ + ' has no created timestamp')
     return True
 
 def upgrade_to_30():
@@ -1113,13 +1150,27 @@ def upgrade_to_30():
     config.db.sessions.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
     config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
 
+    config.db.projects.insert_one({'files': [{'name': "file2"}]})
+    config.db.collections.insert_one({'analyses': [{'files': [{'name': 'file1'}]}]})
+    config.db.collections.insert_one({'analyses': [{'created': datetime.datetime.utcnow(), 'files': [{'name': 'file2'}]}]})
+
+    cursor = config.db.collections.find({'analyses': {'$exists': True},
+                                                       'analyses.files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_collection_analysis)
+
     cursor = config.db.sessions.find({'analyses': {'$exists': True},
                                                        'analyses.files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_analysis)
+    process_cursor(cursor, upgrade_to_30_closure_session_analysis)
+
     cursor = config.db.sessions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_sessions)
+
+    cursor = config.db.collections.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_collections)
+
     cursor = config.db.acquisitions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_acquisitions)
+
     cursor = config.db.projects.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_projects)
 
