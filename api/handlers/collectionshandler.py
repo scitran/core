@@ -40,7 +40,6 @@ class CollectionsHandler(ContainerHandler):
         payload_validator(payload, 'POST')
         payload['permissions'] = [{
             '_id': self.uid,
-            'site': self.user_site,
             'access': 'admin'
         }]
         payload['curator'] = self.uid

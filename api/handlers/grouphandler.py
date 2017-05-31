@@ -71,7 +71,7 @@ class GroupHandler(base.RequestHandler):
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
-        payload['roles'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}] if self.uid else []
+        payload['roles'] = [{'_id': self.uid, 'access': 'admin'}] if self.uid else []
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             if result.upserted_id:
