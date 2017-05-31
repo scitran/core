@@ -2,5 +2,5 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "allOf":[{"$ref":"../definitions/permission.json#/definitions/permission"}],
   "required": ["_id", "access"],
-  "key_fields": ["_id", "site"]
+  "key_fields": ["_id"]
 }

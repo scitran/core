@@ -148,7 +148,7 @@ def test_add_and_remove_user_for_project_permissions(data_builder, as_admin):
 
     # Modify user permissions
     payload = {'access': 'rw', '_id': user_id}
-    r = as_admin.put('/projects/' + project + '/permissions/local/' + user_id, json=payload)
+    r = as_admin.put('/projects/' + project + '/permissions/' + user_id, json=payload)
     assert r.ok
 
     r = as_admin.get('/projects/' + project)
@@ -167,7 +167,7 @@ def test_add_and_remove_user_for_project_permissions(data_builder, as_admin):
     assert r.ok and user and user['access'] == 'rw'
 
     # Remove user from project permissions
-    r = as_admin.delete('/projects/' + project + '/permissions/local/' + user_id, json=payload)
+    r = as_admin.delete('/projects/' + project + '/permissions/' + user_id, json=payload)
     assert r.ok
 
     r = as_admin.get('/projects/' + project)

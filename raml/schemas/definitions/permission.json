@@ -16,7 +16,7 @@
     },
     "permission-output-default-required":{
       "allOf":[{"$ref":"#/definitions/permission"}],
-      "required":["_id", "access", "site"]
+      "required":["_id", "access"]
     }
   }
 }

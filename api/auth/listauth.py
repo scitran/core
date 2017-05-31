@@ -76,7 +76,7 @@ def permissions_sublist(handler, container):
     def g(exec_op):
         def f(method, _id, query_params = None, payload = None, exclude_params=None):
             log.debug(query_params)
-            if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid and query_params.get('site') == handler.user_site:
+            if method in ['GET', 'DELETE']  and query_params.get('_id') == handler.uid:
                 return exec_op(method, _id, query_params, payload, exclude_params)
             elif access >= INTEGER_ROLES['admin']:
                 return exec_op(method, _id, query_params, payload, exclude_params)
