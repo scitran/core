@@ -145,6 +145,11 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
         # Instead of handing the iterator off to response.app_iter, send it ourselves.
         # This prevents disconnections from leaving the API in a partially-complete state.
+        #
+        # Timing out between events or throwing an exception will result in undefinied behaviour.
+        # Right now, in our environment:
+        # - Timeouts may result in nginx-created 500 Bad Gateway HTML being added to the response.
+        # - Exceptions add some error json to the response, which is not SSE-sanitized.
 
         for item in placer.finalize():
             try:
