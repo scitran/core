@@ -70,7 +70,7 @@ def test_gear_add_invalid(default_payload, randstr, as_root):
     assert r.status_code == 400
 
 
-def test_gear_access(data_builder, as_public, as_admin):
+def test_gear_access(data_builder, as_public, as_admin, as_user):
     gear = data_builder.create_gear()
 
     # test login required
@@ -84,6 +84,13 @@ def test_gear_access(data_builder, as_public, as_admin):
     assert r.status_code == 403
 
     r = as_public.get('/gears/' + gear + '/suggest/test-container/test-id')
+    assert r.status_code == 403
+
+    # test superuser required with user
+    r = as_user.post('/gears/' + gear, json={'test': 'payload'})
+    assert r.status_code == 403
+
+    r = as_user.delete('/gears/' + gear)
     assert r.status_code == 403
 
     # test superuser required

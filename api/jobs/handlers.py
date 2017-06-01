@@ -102,8 +102,8 @@ class GearHandler(base.RequestHandler):
 
     def post(self, _id):
         """Upsert an entire gear document."""
-
-        if not self.superuser_request:
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
 
         doc = self.request.json
