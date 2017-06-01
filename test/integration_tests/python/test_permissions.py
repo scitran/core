@@ -14,7 +14,6 @@ def test_permissions(data_builder, as_admin):
     # Add permissions for user 1
     r = as_admin.post(permissions_path, json={
         '_id': user_1,
-        'site': 'local',
         'access': 'ro'
     })
     assert r.ok
@@ -24,7 +23,6 @@ def test_permissions(data_builder, as_admin):
     assert r.ok
     perms = r.json()
     assert perms['_id'] == user_1
-    assert perms['site'] == 'local'
     assert perms['access'] == 'ro'
 
     # Update user 1 to have admin access
@@ -34,7 +32,6 @@ def test_permissions(data_builder, as_admin):
     # Add user 2 to have ro access
     r = as_admin.post(permissions_path, json={
         '_id': user_2,
-        'site': 'local',
         'access': 'ro'
     })
     assert r.ok
@@ -42,18 +39,6 @@ def test_permissions(data_builder, as_admin):
     # Attempt to change user 2's id to user 1
     r = as_admin.put(user_2_path, json={'_id': user_1})
     assert r.status_code == 404
-
-    # # Change user 2's site # No Site
-    # r = as_admin.put(user_2_local_path, json={'site': 'another'})
-    # assert r.ok
-
-    # # Verify user 2's site changed
-    # r = as_admin.get(user_2_another_path)
-    # assert r.ok
-    # perms = r.json()
-    # assert perms['_id'] == user_2
-    # assert perms['site'] == 'another'
-    # assert perms['access'] == 'ro'
 
     # Delete user 2
     r = as_admin.delete(user_2_path)

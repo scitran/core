@@ -127,7 +127,7 @@ def test_add_and_remove_user_for_project_permissions(data_builder, as_admin):
     user_id = 'propagation@user.com'
 
     # Add user to project permissions
-    payload = {'_id': user_id, 'access': 'admin', 'site': 'local'}
+    payload = {'_id': user_id, 'access': 'admin'}
     r = as_admin.post('/projects/' + project + '/permissions', json=payload)
     assert r.ok
 

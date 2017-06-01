@@ -59,7 +59,6 @@ class RequestHandler(webapp2.RequestHandler):
 
     def initialization_auth(self, site_id):
         drone_request = False
-        user_agent = self.request.headers.get('User-Agent', '')
         session_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
         drone_method = self.request.headers.get('X-SciTran-Method', None)
@@ -89,18 +88,6 @@ class RequestHandler(webapp2.RequestHandler):
             if drone_secret != config.get_item('core', 'drone_secret'):
                 self.abort(401, 'invalid drone secret')
             drone_request = True
-
-        # Cross-site authentication
-        # NOTE cross-site feature unused and planned for removal
-        elif user_agent.startswith('SciTran Instance '): # pragma: no cover
-            if self.request.environ['SSL_CLIENT_VERIFY'] == 'SUCCESS':
-                self.uid = self.request.headers.get('X-User')
-                self.source_site = self.request.headers.get('X-Site')
-                remote_instance = user_agent.replace('SciTran Instance', '').strip()
-                if not config.db.sites.find_one({'_id': remote_instance}):
-                    self.abort(402, remote_instance + ' is not an authorized remote instance')
-            else:
-                self.abort(401, 'no valid SSL client certificate')
 
         self.user_site = self.source_site or site_id
         self.public_request = not drone_request and not self.uid

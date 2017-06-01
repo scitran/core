@@ -34,7 +34,6 @@ def user_on_permission(data_op, **kwargs): # pylint: disable=unused-argument
 
     Used before PUT operations.
     """
-    # if data_op['site'] == config.get_item('site', 'id'):
     if not config.db.users.find_one({'_id': data_op['_id']}):
         raise APIConsistencyException('user does not exist')
 

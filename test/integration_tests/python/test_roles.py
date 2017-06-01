@@ -15,7 +15,7 @@ def test_roles(data_builder, as_admin, as_public):
     assert r.status_code == 404
 
     # Create role for user
-    r = as_admin.post(roles_path, json={'_id': user, 'site': 'local', 'access': 'rw'})
+    r = as_admin.post(roles_path, json={'_id': user, 'access': 'rw'})
     assert r.ok
 
     # Verify new user role

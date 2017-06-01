@@ -30,9 +30,6 @@ routing_regexes = {
     # Container ID: 24-character hex
     'cid': '[0-9a-f]{24}',
 
-    # Site ID: <= 24-character alphanum
-    'sid': '[0-9a-z_]{0,24}',
-
     # User ID: any length, [0-9a-z.@_-]
     'uid': '[0-9a-zA-Z.@_-]*',
 
