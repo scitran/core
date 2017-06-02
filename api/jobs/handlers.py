@@ -126,8 +126,8 @@ class GearHandler(base.RequestHandler):
 
     def delete(self, _id):
         """Delete a gear. Generally not recommended."""
-
-        if not self.superuser_request:
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
 
         return remove_gear(_id)

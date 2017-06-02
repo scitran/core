@@ -20,7 +20,7 @@ def default(handler, group=None):
             elif method == 'GET' and _get_access(handler.uid, group) >= INTEGER_ROLES['ro']:
                 pass
             else:
-                handler.abort(403, 'Red not allowed to perform operation')
+                handler.abort(403, 'not allowed to perform operation')
             return exec_op(method, _id=_id, query=query, payload=payload, projection=projection)
         return f
     return g
