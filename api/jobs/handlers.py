@@ -288,8 +288,11 @@ class JobsHandler(base.RequestHandler):
         return Queue.get_statistics()
 
     def next(self):
-        if not self.superuser_request:
+
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
+
 
         tags = self.request.GET.getall('tags')
         if len(tags) <= 0:
@@ -314,8 +317,11 @@ class JobHandler(base.RequestHandler):
     """Provides /Jobs/<jid> routes."""
 
     def get(self, _id):
-        if not self.superuser_request:
+
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
+
 
         return Job.get(_id)
 
@@ -398,9 +404,10 @@ class JobHandler(base.RequestHandler):
 
     def add_logs(self, _id):
         """Add to a job's logs"""
-
-        if not self.superuser_request:
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
+
 
         doc = self.request.json
 
