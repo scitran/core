@@ -23,22 +23,14 @@ class RequestHandler(webapp2.RequestHandler):
     json_schema = None
 
     def __init__(self, request=None, response=None): # pylint: disable=super-init-not-called
-        """Set uid, source_site, public_request, and superuser"""
+        """Set uid, public_request, and superuser"""
         self.initialize(request, response)
 
-        site_id = config.get_item('site', 'id')
-        if site_id is None:
-            self.abort(503, 'Database not initialized')
-
-        self.source_site = None
         self.uid = None
         self.origin = None
 
         # If user is attempting to log in through `/login`, ignore Auth here:
         # In future updates, move login and logout handlers to class that overrides this init
-        if self.request.path == '/api/login':
-            self.source_site = site_id
-            return
 
         try:
             # TODO: This should be taken out of base.RequestHandler so `handle_exception()`
@@ -46,7 +38,7 @@ class RequestHandler(webapp2.RequestHandler):
             # For now, wrap in a try/catch to prevent stack traces from getting to the client
             # For more info see scitran/core #733
 
-            self.initialization_auth(site_id)
+            self.initialization_auth()
 
         except Exception as e: # pylint: disable=broad-except
             error = self.handle_exception(e, self.app.debug, return_json=True)
@@ -57,7 +49,7 @@ class RequestHandler(webapp2.RequestHandler):
         super(RequestHandler, self).initialize(request, response)
         request.logger.info("Initialized request")
 
-    def initialization_auth(self, site_id):
+    def initialization_auth(self):
         drone_request = False
         session_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
@@ -89,10 +81,9 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(401, 'invalid drone secret')
             drone_request = True
 
-        self.user_site = self.source_site or site_id
         self.public_request = not drone_request and not self.uid
 
-        if self.public_request or self.source_site:
+        if self.public_request:
             self.superuser_request = False
             self.user_is_admin = False
         elif drone_request:

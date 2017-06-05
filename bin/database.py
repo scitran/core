@@ -20,7 +20,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 31 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 32 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1115,65 +1115,20 @@ def upgrade_to_31():
     config.db.sessions.update_many({'subject.firstname_hash': {'$exists': True}}, {'$unset': {'subject.firstname_hash':""}})
     config.db.sessions.update_many({'subject.lastname_hash': {'$exists': True}}, {'$unset': {'subject.lastname_hash':""}})
 
-def upgrade_to_32_acquisitions_closure(acquisition):
-    permissions = acquisition.get('permissions', [])
+def upgrade_to_32_closure(coll_item, coll):
+    permissions = coll_item.get('permissions', [])
     for permission_ in permissions:
         if permission_.get('site', False):
             del permission_['site']
-
-    result = config.db.acquisitions.update_one({'_id': acquisition['_id']}, {'$set': {'permissions' : permissions}})
+    result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'permissions' : permissions}})
     if result.modified_count == 0:
         return "Failed to remove site field"
     return True
-
-def upgrade_to_32_groups_closure(group):
-    # Roles neeeds to be changed to permissions eventually
-    permissions = group.get('roles', [])
-    for permission_ in permissions:
-        if permission_.get('site', False):
-            del permission_['site']
-
-    result = config.db.groups.update_one({'_id': group['_id']}, {'$set': {'roles' : permissions}})
-    if result.modified_count == 0:
-        return "Failed to remove site field"
-    return True
-
-def upgrade_to_32_projects_closure(project):
-    permissions = project.get('permissions', [])
-    for permission_ in permissions:
-        if permission_.get('site', False):
-            del permission_['site']
-
-    result = config.db.projects.update_one({'_id': project['_id']}, {'$set': {'permissions' : permissions}})
-    if result.modified_count == 0:
-        return "Failed to remove site field"
-    return True
-
-def upgrade_to_32_sessions_closure(session):
-    permissions = session.get('permissions', [])
-    for permission_ in permissions:
-        if permission_.get('site', False):
-            del permission_['site']
-
-    result = config.db.sessions.update_one({'_id': session['_id']}, {'$set': {'permissions' : permissions}})
-    if result.modified_count == 0:
-        return "Failed to remove site field"
-    return True
-
 
 def upgrade_to_32():
-
-    cursor = config.db.acquisitions.find({'permissions.site' : {'$exists' : True}})
-    process_cursor(cursor, upgrade_to_30_acquisitions_closure)
-
-    cursor = config.db.groups.find({'roles.site': {'$exists': True}})
-    process_cursor(cursor, upgrade_to_30_groups_closure)
-
-    cursor = config.db.projects.find({'permissions.site' : {'$exists' : True}})
-    process_cursor(cursor, upgrade_to_30_projects_closure)
-
-    cursor = config.db.sessions.find({'permissions.site': {'$exists' : True}})
-    process_cursor(cursor, upgrade_to_30_sessions_closure)
+    for coll in ['acquisitions', 'groups', 'projects', 'sessions']:
+        cursor = config.db[coll].find({'permissions.site': {'$exists': True}})
+        process_cursor(cursor, upgrade_to_32_closure, context = coll)
 
 def upgrade_schema(force_from = None):
     """
