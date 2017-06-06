@@ -11,8 +11,6 @@ def default(handler, group=None):
                 pass
             elif handler.public_request:
                 handler.abort(400, 'public request is not valid')
-            elif config.db.users.find_one({'_id': handler.uid}).get('root'):
-                pass
             elif method in ['DELETE', 'POST']:
                 handler.abort(403, 'not allowed to perform operation')
             elif _get_access(handler.uid, group) >= INTEGER_ROLES['admin']:

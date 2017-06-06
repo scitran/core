@@ -126,8 +126,8 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     r = as_root.post('/jobs/' + next_job_id + '/retry')
     assert r.ok
 
-    # get next job
-    r = as_root.get('/jobs/next', params={'tags': 'test-tag'})
+    # get next job as admin
+    r = as_admin.get('/jobs/next', params={'tags': 'test-tag'})
     assert r.ok
     next_job_id = r.json()['id']
 

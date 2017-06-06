@@ -226,6 +226,12 @@ class RuleHandler(base.RequestHandler):
 
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
+    def get(self):
+        """List all jobs."""
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
+            self.abort(403, 'Request requires superuser')
+        return list(config.db.jobs.find())
 
     def add(self):
         """Add a job to the queue."""
@@ -282,7 +288,8 @@ class JobsHandler(base.RequestHandler):
         return { '_id': result }
 
     def stats(self):
-        if not self.superuser_request:
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
 
         return Queue.get_statistics()
@@ -306,7 +313,8 @@ class JobsHandler(base.RequestHandler):
             return job
 
     def reap_stale(self):
-        if not self.superuser_request:
+        user = config.db.users.find_one({'_id': self.uid})
+        if not self.superuser_request and not user.get('root'):
             self.abort(403, 'Request requires superuser')
 
         count = Queue.scan_for_orphans()
@@ -352,7 +360,7 @@ class JobHandler(base.RequestHandler):
         mutation = self.request.json
 
         # If user is not superuser, can only cancel jobs they spawned
-        if not self.superuser_request:
+        if not self.superuser_request and not self.user_is_admin:
             if j.origin.get('id') != self.uid:
                 raise APIPermissionException('User does not have permission to access job {}'.format(_id))
             if mutation != {'state': 'cancelled'}:
