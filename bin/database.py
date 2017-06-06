@@ -1066,7 +1066,7 @@ def upgrade_to_30_closure_analysis(coll_item, coll):
             for file_ in files:
                 if 'created' not in file_:
                     file_['created'] = analysis_.get('created', datetime.datetime(1970, 1, 1))
-        result = coll.update_one({'_id': coll_item['_id']}, {'$set': {'analyses': analyses}})
+        result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'analyses': analyses}})
         if result.modified_count == 1:
             return True
         else:
@@ -1077,7 +1077,7 @@ def upgrade_to_30_closure_coll(coll_item, coll):
     for file_ in files:
         if 'created' not in file_:
             file_['created'] = coll_item.get('created', datetime.datetime(1970, 1, 1))
-    result = coll.update_one({'_id': coll_item['_id']}, {'$set': {'files': files}})
+    result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'files': files}})
     if result.modified_count == 1:
         return True
     else:
@@ -1090,33 +1090,26 @@ def upgrade_to_30():
 
     give created timestamps that are missing are given based on the parent object's timestamp
     """
-    config.db.projects.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
-    config.db.sessions.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
-    config.db.acquisitions.insert_one({'created': datetime.datetime.utcnow(), 'files': [{'name': "file1"}]})
-
-    config.db.projects.insert_one({'files': [{'name': "file2"}]})
-    config.db.collections.insert_one({'analyses': [{'files': [{'name': 'file1'}]}]})
-    config.db.collections.insert_one({'analyses': [{'created': datetime.datetime.utcnow(), 'files': [{'name': 'file2'}]}]})
 
     cursor = config.db.collections.find({'analyses': {'$exists': True},
                                                        'analyses.files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_analysis, config.db.collections)
+    process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'collections')
 
     cursor = config.db.sessions.find({'analyses': {'$exists': True},
                                                        'analyses.files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_analysis, config.db.sessions)
+    process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'sessions')
 
     cursor = config.db.sessions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_coll, config.db.sessions)
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'sessions')
 
     cursor = config.db.collections.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_coll, config.db.collections)
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'collections')
 
     cursor = config.db.acquisitions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_coll, config.db.acquisitions)
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'acquisitions')
 
     cursor = config.db.projects.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
-    process_cursor(cursor, upgrade_to_30_closure_coll, config.db.projects)
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'projects')
 
 
 def upgrade_schema():
