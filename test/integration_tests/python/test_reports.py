@@ -1,3 +1,4 @@
+import calendar
 import copy
 import datetime
 
@@ -179,8 +180,11 @@ def test_usage_report(data_builder, file_form, as_user, as_admin):
     as_admin.put('/jobs/' + job, params={'root': 'true'}, json={'state': 'complete'})
 
     # get month-aggregated usage report
+    monthrange = calendar.monthrange(today.year, today.month)
+    start_ts = ts_format.format(today.replace(day=monthrange[0]))
+    end_ts = ts_format.format(today.replace(day=monthrange[1]))
     r = as_admin.get('/report/usage', params={
-        'type': 'month', 'start_date': yesterday_ts, 'end_date': tomorrow_ts
+        'type': 'month', 'start_date': start_ts, 'end_date': end_ts
     })
     assert r.ok
     usage = r.json()
