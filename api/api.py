@@ -156,7 +156,6 @@ endpoints = [
             route('/<:[^/]+>',          BatchHandler,   h='get',        m=['GET']),
             route('/<:[^/]+>/run',      BatchHandler,   h='run',        m=['POST']),
             route('/<:[^/]+>/cancel',   BatchHandler,   h='cancel',     m=['POST']),
-            route('/<:[^/]+>/jobs',     BatchHandler,   h='get_jobs',   m=['GET'])
         ]),
 
 
