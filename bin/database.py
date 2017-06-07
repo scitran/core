@@ -19,7 +19,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 29 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 30 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -58,7 +58,7 @@ def getMonotonicTime():
     # http://stackoverflow.com/a/7424304
     return os.times()[4]
 
-def process_cursor(cursor, closure):
+def process_cursor(cursor, closure, context = None):
     """
     Given an iterable (say, a mongo cursor) and a closure, call that closure in parallel over the iterable.
     Call order is undefined. Currently launches N python process workers, where N is the number of vcpu cores.
@@ -110,7 +110,10 @@ def process_cursor(cursor, closure):
         if 100 * (cursor_index / cursor_size) >= next_percent:
             logging.info('{} percent complete ...'.format(next_percent))
             next_percent = next_percent + percent_increment
-        result = closure(document)
+        if optional_param == None:
+            result = closure(document)
+        else:
+            result = closure(document, context)
         cursor_index = cursor_index + 1
         if result != True:
             failed = True
@@ -1035,7 +1038,7 @@ def upgrade_to_29_closure(user):
             if(user['avatars'].get('provider') == None):
                 config.db.users.update_one({'_id': user['_id']},
                     {'$unset': {'avatar': ""}})
-            else:    
+            else:
                 config.db.users.update_one({'_id': user['_id']},
                     {'$set': {'avatar': user['avatars'].get('provider')}}
                 )
@@ -1053,6 +1056,60 @@ def upgrade_to_29():
 
     users = config.db.users.find({})
     process_cursor(users, upgrade_to_29_closure)
+
+def upgrade_to_30_closure_analysis(coll_item, coll):
+    analyses = coll_item.get('analyses', None)
+
+    if analyses is not None:
+        for analysis_ in analyses:
+            files = analysis_.get('files', [])
+            for file_ in files:
+                if 'created' not in file_:
+                    file_['created'] = analysis_.get('created', datetime.datetime(1970, 1, 1))
+        result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'analyses': analyses}})
+        if result.modified_count == 1:
+            return True
+        else:
+            return "File timestamp creation failed for:" + str(session) + '/analyses' + str(analysis_) + '/files' + str(file_)
+
+def upgrade_to_30_closure_coll(coll_item, coll):
+    files = coll_item.get('files', [])
+    for file_ in files:
+        if 'created' not in file_:
+            file_['created'] = coll_item.get('created', datetime.datetime(1970, 1, 1))
+    result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'files': files}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return "File timestamp creation failed for:" + str(session) + '/files' + str(file_)
+
+
+def upgrade_to_30():
+    """
+    scitran/core issue #759
+
+    give created timestamps that are missing are given based on the parent object's timestamp
+    """
+
+    cursor = config.db.collections.find({'analyses': {'$exists': True},
+                                                       'analyses.files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'collections')
+
+    cursor = config.db.sessions.find({'analyses': {'$exists': True},
+                                                       'analyses.files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'sessions')
+
+    cursor = config.db.sessions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'sessions')
+
+    cursor = config.db.collections.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'collections')
+
+    cursor = config.db.acquisitions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'acquisitions')
+
+    cursor = config.db.projects.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    process_cursor(cursor, upgrade_to_30_closure_coll, context = 'projects')
 
 
 def upgrade_schema():
