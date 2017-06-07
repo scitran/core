@@ -110,7 +110,7 @@ def process_cursor(cursor, closure, context = None):
         if 100 * (cursor_index / cursor_size) >= next_percent:
             logging.info('{} percent complete ...'.format(next_percent))
             next_percent = next_percent + percent_increment
-        if optional_param == None:
+        if context == None:
             result = closure(document)
         else:
             result = closure(document, context)
