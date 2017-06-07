@@ -196,12 +196,6 @@ class RuleHandler(base.RequestHandler):
 
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
-    def get(self):
-        """List all jobs."""
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
-
-        return list(config.db.jobs.find())
 
     def add(self):
         """Add a job to the queue."""

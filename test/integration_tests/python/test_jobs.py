@@ -2,9 +2,6 @@ import copy
 
 
 def test_jobs_access(as_user):
-    r = as_user.get('/jobs')
-    assert r.status_code == 403
-
     r = as_user.get('/jobs/next')
     assert r.status_code == 403
 

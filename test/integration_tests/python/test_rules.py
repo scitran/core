@@ -1,4 +1,4 @@
-def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user):
+def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, api_db):
     # create versioned gear to cover code selecting latest gear
     gear_name = randstr()
     gear_1 = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
@@ -93,8 +93,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user):
     assert r.ok
 
     # test that job was created via rule
-    jobs = as_root.get('/jobs').json()
-    gear_jobs = [job for job in jobs if job['gear_id'] == gear_2]
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
     assert len(gear_jobs) == 1
     assert len(gear_jobs[0]['inputs']) == 1
     assert gear_jobs[0]['inputs'][0]['name'] == 'test2.csv'

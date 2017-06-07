@@ -3,7 +3,6 @@ var chai = require('chai');
 var assert = chai.assert;
 
 // Variables for passing results as input to subsequent tests
-var job_id = '';
 var gear_name = 'test-case-gear';
 var group_id = 'test-group';
 var delete_group_id = 'example_group';
@@ -43,6 +42,12 @@ hooks.skip("GET /jobs/{JobId} -> 404");
 
 // Can only retry a failed job
 hooks.skip("POST /jobs/{JobId}/retry -> 200");
+
+// Cannot get JobId without GET /jobs endpoint
+hooks.skip("GET /jobs/{JobId} -> 200");
+hooks.skip("GET /jobs/{JobId}/config.json -> 200");
+hooks.skip("POST /jobs/{JobId}/retry -> 200");
+hooks.skip("GET /jobs/{JobId} -> 404");
 
 // https://github.com/cybertk/abao/issues/160
 hooks.skip("GET /users/self/avatar -> 307");
@@ -107,40 +112,6 @@ hooks.before("POST /login -> 200", function(test, done) {
 hooks.beforeEach(function (test, done) {
     test.request.query.root = "true"
     test.request.headers.Authorization = "scitran-user XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK";
-    done();
-});
-
-hooks.after("GET /jobs -> 200", function(test, done) {
-    job_id = test.response.body[0]._id;
-    done();
-});
-
-hooks.before("GET /jobs/{JobId} -> 200", function(test, done) {
-    test.request.params = {
-        JobId: job_id
-    };
-    done();
-});
-
-hooks.before("GET /jobs/{JobId}/config.json -> 200", function(test, done) {
-    test.request.params = {
-        JobId: job_id
-    };
-    done();
-});
-
-
-hooks.before("POST /jobs/{JobId}/retry -> 200", function(test, done) {
-    test.request.params = {
-        JobId: job_id
-    };
-    done();
-});
-
-hooks.before("GET /jobs/{JobId} -> 404", function(test, done) {
-    test.request.params = {
-        JobId: '57ace4479e512c61bc6e006f' // fake ID, 404
-    };
     done();
 });
 
