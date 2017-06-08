@@ -37,7 +37,7 @@ class GroupHandler(base.RequestHandler):
         return result
 
     def get_all(self, uid=None):
-        projection = {'name': 1, 'created': 1, 'modified': 1, 'roles': 1, 'tags': 1}
+        projection = {'label': 1, 'created': 1, 'modified': 1, 'permissions': 1, 'tags': 1}
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
         if not self.superuser_request and not self.is_true('join_avatars'):

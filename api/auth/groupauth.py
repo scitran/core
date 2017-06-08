@@ -29,14 +29,14 @@ def list_permission_checker(handler, uid=None):
     def g(exec_op):
         def f(method, query=None, projection=None):
             if uid is not None:
-                if uid != handler.uid and not handler.superuser_request:
+                if uid != handler.uid and not handler.superuser_request and not handler.user_is_admin:
                     handler.abort(403, 'User ' + handler.uid + ' may not see the Groups of User ' + uid)
                 query = query or {}
                 query['permissions._id'] = uid
                 projection = projection or {}
                 projection['permissions.$'] = 1
             else:
-                if not handler.superuser_request:
+                if not handler.superuser_request and not handler.user_is_admin:
                     query = query or {}
                     projection = projection or {}
                     if handler.is_true('admin'):
