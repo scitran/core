@@ -31,7 +31,7 @@ def get_db_version():
         return 0
     return version.get('database')
 
-def confirm_schema_match():
+def confirm_schema_match(force_from = None):
     """
     Checks version of database schema
 
@@ -45,6 +45,8 @@ def confirm_schema_match():
     """
 
     db_version = get_db_version()
+    if force_from:
+        db_version = int(force_from)
     if not isinstance(db_version, int) or db_version > CURRENT_DATABASE_VERSION:
         logging.error('The stored db schema version of %s is incompatible with required version %s',
                        str(db_version), CURRENT_DATABASE_VERSION)
@@ -1067,10 +1069,10 @@ def upgrade_to_30_closure_analysis(coll_item, coll):
                 if 'created' not in file_:
                     file_['created'] = analysis_.get('created', datetime.datetime(1970, 1, 1))
         result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'analyses': analyses}})
-        if result.modified_count == 1:
+        if result.modified_count == 1 or files == []:
             return True
         else:
-            return "File timestamp creation failed for:" + str(session) + '/analyses' + str(analysis_) + '/files' + str(file_)
+            return "File timestamp creation failed for:" + str(coll_item)
 
 def upgrade_to_30_closure_coll(coll_item, coll):
     files = coll_item.get('files', [])
@@ -1078,10 +1080,10 @@ def upgrade_to_30_closure_coll(coll_item, coll):
         if 'created' not in file_:
             file_['created'] = coll_item.get('created', datetime.datetime(1970, 1, 1))
     result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'files': files}})
-    if result.modified_count == 1:
+    if result.modified_count == 1 or files == []:
         return True
     else:
-        return "File timestamp creation failed for:" + str(session) + '/files' + str(file_)
+        return "File timestamp creation failed for:" + str(coll_item)
 
 
 def upgrade_to_30():
@@ -1092,11 +1094,11 @@ def upgrade_to_30():
     """
 
     cursor = config.db.collections.find({'analyses': {'$exists': True},
-                                                       'analyses.files.created': {'$exists': False}})
+                                         'analyses.files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'collections')
 
     cursor = config.db.sessions.find({'analyses': {'$exists': True},
-                                                       'analyses.files.created': {'$exists': False}})
+                                      'analyses.files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'sessions')
 
     cursor = config.db.sessions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
@@ -1112,7 +1114,7 @@ def upgrade_to_30():
     process_cursor(cursor, upgrade_to_30_closure_coll, context = 'projects')
 
 
-def upgrade_schema():
+def upgrade_schema(force_from = None):
     """
     Upgrades db to the current schema version
 
@@ -1120,6 +1122,10 @@ def upgrade_schema():
     """
 
     db_version = get_db_version()
+
+    if(force_from):
+        db_version = int(force_from)
+
     try:
         while db_version < CURRENT_DATABASE_VERSION:
             db_version += 1
@@ -1141,9 +1147,17 @@ if __name__ == '__main__':
     try:
         if len(sys.argv) > 1:
             if sys.argv[1] == 'confirm_schema_match':
-                confirm_schema_match()
+                try:
+                    reupgrade = sys.argv[2]
+                    confirm_schema_match(force_from = reupgrade)
+                except IndexError:
+                    confirm_schema_match()
             elif sys.argv[1] == 'upgrade_schema':
-                upgrade_schema()
+                try:
+                    reupgrade = sys.argv[2]
+                    upgrade_schema(force_from = reupgrade)
+                except IndexError:
+                    upgrade_schema()
             else:
                 logging.error('Unknown method name given as argv to database.py')
                 sys.exit(1)
