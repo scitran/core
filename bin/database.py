@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import bson
 import copy
 import datetime
@@ -31,7 +32,7 @@ def get_db_version():
         return 0
     return version.get('database')
 
-def confirm_schema_match(force_from = None):
+def confirm_schema_match():
     """
     Checks version of database schema
 
@@ -45,8 +46,6 @@ def confirm_schema_match(force_from = None):
     """
 
     db_version = get_db_version()
-    if force_from:
-        db_version = int(force_from)
     if not isinstance(db_version, int) or db_version > CURRENT_DATABASE_VERSION:
         logging.error('The stored db schema version of %s is incompatible with required version %s',
                        str(db_version), CURRENT_DATABASE_VERSION)
@@ -1124,7 +1123,12 @@ def upgrade_schema(force_from = None):
     db_version = get_db_version()
 
     if(force_from):
-        db_version = int(force_from)
+        db_version = force_from
+
+    if not isinstance(db_version, int) or db_version > CURRENT_DATABASE_VERSION:
+        logging.error('The stored db schema version of %s is incompatible with required version %s',
+                       str(db_version), CURRENT_DATABASE_VERSION)
+        sys.exit(43)
 
     try:
         while db_version < CURRENT_DATABASE_VERSION:
@@ -1145,24 +1149,20 @@ def upgrade_schema(force_from = None):
 
 if __name__ == '__main__':
     try:
-        if len(sys.argv) > 1:
-            if sys.argv[1] == 'confirm_schema_match':
-                try:
-                    reupgrade = sys.argv[2]
-                    confirm_schema_match(force_from = reupgrade)
-                except IndexError:
-                    confirm_schema_match()
-            elif sys.argv[1] == 'upgrade_schema':
-                try:
-                    reupgrade = sys.argv[2]
-                    upgrade_schema(force_from = reupgrade)
-                except IndexError:
-                    upgrade_schema()
+        parser = argparse.ArgumentParser()
+        parser.add_argument("function", help="function to be called from database.py")
+        parser.add_argument("-f", "--force_from", help="force database to upgrade from previous version", type=int)
+        args = parser.parse_args()
+
+        if args.function == 'confirm_schema_match':
+            confirm_schema_match()
+        elif args.function == 'upgrade_schema':
+            if args.force_from:
+                upgrade_schema(args.force_from)
             else:
-                logging.error('Unknown method name given as argv to database.py')
-                sys.exit(1)
+                upgrade_schema()
         else:
-            logging.error('No method name given as argv to database.py')
+            logging.error('Unknown method name given as argv to database.py')
             sys.exit(1)
     except Exception as e:
         logging.exception('Unexpected error in database.py')
