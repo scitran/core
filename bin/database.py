@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import bson
 import copy
 import datetime
@@ -1058,19 +1059,18 @@ def upgrade_to_29():
     process_cursor(users, upgrade_to_29_closure)
 
 def upgrade_to_30_closure_analysis(coll_item, coll):
-    analyses = coll_item.get('analyses', None)
+    analyses = coll_item.get('analyses', [])
 
-    if analyses is not None:
-        for analysis_ in analyses:
-            files = analysis_.get('files', [])
-            for file_ in files:
-                if 'created' not in file_:
-                    file_['created'] = analysis_.get('created', datetime.datetime(1970, 1, 1))
-        result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'analyses': analyses}})
-        if result.modified_count == 1:
-            return True
-        else:
-            return "File timestamp creation failed for:" + str(session) + '/analyses' + str(analysis_) + '/files' + str(file_)
+    for analysis_ in analyses:
+        files = analysis_.get('files', [])
+        for file_ in files:
+            if 'created' not in file_:
+                file_['created'] = analysis_.get('created', datetime.datetime(1970, 1, 1))
+    result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'analyses': analyses}})
+    if result.modified_count == 1:
+        return True
+    else:
+        return "File timestamp creation failed for:" + str(coll_item)
 
 def upgrade_to_30_closure_coll(coll_item, coll):
     files = coll_item.get('files', [])
@@ -1081,7 +1081,7 @@ def upgrade_to_30_closure_coll(coll_item, coll):
     if result.modified_count == 1:
         return True
     else:
-        return "File timestamp creation failed for:" + str(session) + '/files' + str(file_)
+        return "File timestamp creation failed for:" + str(coll_item)
 
 
 def upgrade_to_30():
@@ -1091,28 +1091,28 @@ def upgrade_to_30():
     give created timestamps that are missing are given based on the parent object's timestamp
     """
 
-    cursor = config.db.collections.find({'analyses': {'$exists': True},
-                                                       'analyses.files.created': {'$exists': False}})
+    cursor = config.db.collections.find({'analyses.files.name': {'$exists': True},
+                                         'analyses.files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'collections')
 
-    cursor = config.db.sessions.find({'analyses': {'$exists': True},
-                                                       'analyses.files.created': {'$exists': False}})
+    cursor = config.db.sessions.find({'analyses.files.name': {'$exists': True},
+                                      'analyses.files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_analysis, context = 'sessions')
 
-    cursor = config.db.sessions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    cursor = config.db.sessions.find({'files.name': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_coll, context = 'sessions')
 
-    cursor = config.db.collections.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    cursor = config.db.collections.find({'files.name': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_coll, context = 'collections')
 
-    cursor = config.db.acquisitions.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    cursor = config.db.acquisitions.find({'files.name': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_coll, context = 'acquisitions')
 
-    cursor = config.db.projects.find({'files': {'$exists': True}, 'files.created': {'$exists': False}})
+    cursor = config.db.projects.find({'files.name': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_coll, context = 'projects')
 
 
-def upgrade_schema():
+def upgrade_schema(force_from = None):
     """
     Upgrades db to the current schema version
 
@@ -1120,6 +1120,23 @@ def upgrade_schema():
     """
 
     db_version = get_db_version()
+
+    if force_from:
+        if isinstance(db_version,int) and db_version >= force_from:
+            db_version = force_from
+        else:
+            logging.error('Cannot force from future version %s. Database only at version %s', str(force_from), str(db_version))
+            sys.exit(43)
+
+
+    if not isinstance(db_version, int) or db_version > CURRENT_DATABASE_VERSION:
+        logging.error('The stored db schema version of %s is incompatible with required version %s',
+                       str(db_version), CURRENT_DATABASE_VERSION)
+        sys.exit(43)
+    elif db_version == CURRENT_DATABASE_VERSION:
+        logging.error('Database already up to date.')
+        sys.exit(43)
+
     try:
         while db_version < CURRENT_DATABASE_VERSION:
             db_version += 1
@@ -1139,16 +1156,20 @@ def upgrade_schema():
 
 if __name__ == '__main__':
     try:
-        if len(sys.argv) > 1:
-            if sys.argv[1] == 'confirm_schema_match':
-                confirm_schema_match()
-            elif sys.argv[1] == 'upgrade_schema':
-                upgrade_schema()
+        parser = argparse.ArgumentParser()
+        parser.add_argument("function", help="function to be called from database.py")
+        parser.add_argument("-f", "--force_from", help="force database to upgrade from previous version", type=int)
+        args = parser.parse_args()
+
+        if args.function == 'confirm_schema_match':
+            confirm_schema_match()
+        elif args.function == 'upgrade_schema':
+            if args.force_from:
+                upgrade_schema(args.force_from)
             else:
-                logging.error('Unknown method name given as argv to database.py')
-                sys.exit(1)
+                upgrade_schema()
         else:
-            logging.error('No method name given as argv to database.py')
+            logging.error('Unknown method name given as argv to database.py')
             sys.exit(1)
     except Exception as e:
         logging.exception('Unexpected error in database.py')
