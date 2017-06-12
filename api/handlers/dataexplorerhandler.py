@@ -61,16 +61,11 @@ FACET_QUERY = {
                     }
                 },
                 "session.timestamp" : {
-                    "date_histogram" : {
-                        "field" : "session.timestamp",
-                        "interval" : "month"
-                    }
+                    "stats" : { "field" : "session.timestamp"}
+
                 },
                 "session.created" : {
-                    "date_histogram" : {
-                        "field" : "session.created",
-                        "interval" : "month"
-                    }
+                    "stats" : { "field" : "session.created"}
                 }
             }
         },
