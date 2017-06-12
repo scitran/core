@@ -26,8 +26,8 @@ ANALYSIS = {
     "tokenizer": {
         "my_tokenizer": {
             "type": "ngram",
-            "min_gram": 3,
-            "max_gram": 3,
+            "min_gram": 2,
+            "max_gram": 100,
             "token_chars": [
                 "letter",
                 "digit"

@@ -14,31 +14,50 @@ MATCH_ALL= {"match_all": {}}
 FACET_QUERY = {
     "size": 0,
     "aggs" : {
+        "session_count" : {
+            "cardinality" : {
+                "field" : "session._id"
+            }
+        },
+        "acquisition_count" : {
+            "cardinality" : {
+                "field" : "acquisition._id"
+            }
+        },
+        "file_count" : {
+            "cardinality" : {
+                "field" : "file.name.raw"
+            }
+        },
         "by_session": {
             "filter": {"term": {"container_type": "session"}},
             "aggs": {
                 "subject.sex" : {
                     "terms" : {
                         "field" : "subject.sex.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "N/A"
                     }
                 },
                 "subject.code" : {
                     "terms" : {
                         "field" : "subject.code.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "N/A"
                     }
                 },
                 "session.tags" : {
                     "terms" : {
                         "field" : "session.tags.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "N/A"
                     }
                 },
                 "project.label" : {
                     "terms" : {
                         "field" : "project.label.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "N/A"
                     }
                 },
                 "session.timestamp" : {
@@ -84,13 +103,15 @@ FACET_QUERY = {
                 "file.measurements" : {
                     "terms" : {
                         "field" : "file.measurements.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "N/A"
                     }
                 },
                 "file.type" : {
                     "terms" : {
                         "field" : "file.type.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "N/A"
                     }
                 }
             }
