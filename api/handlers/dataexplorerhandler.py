@@ -232,6 +232,33 @@ class DataExplorerHandler(base.RequestHandler):
         aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
 
+    @require_login
+    def search_fields(self):
+        field_query = self.request.json_body.get('field')
+
+        try:
+            field_query = str(field_query)
+        except:
+            self.abort(400, 'Must specify string for field query')
+
+        es_query = {
+            "size": 20,
+            "query": {
+                "match" : { "name" : field_query }
+            }
+        }
+        es_results = config.es.search(
+            index='data_explorer_fields',
+            doc_type='flywheel_field',
+            body=es_query
+        )
+
+        results = []
+        for result in es_results['hits']['hits']:
+            results.append(result['_source'])
+
+        return results
+
 
     @require_login
     def search(self):

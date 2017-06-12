@@ -111,7 +111,7 @@ endpoints = [
         route('/search/<cont_name:{cname}>', SearchHandler,                                     m=['GET']),
         route('/dataexplorer/search',        DataExplorerHandler,   h='search',                 m=['POST']),
         route('/dataexplorer/facets',        DataExplorerHandler,   h='get_facets',             m=['POST']),
-
+        route('/dataexplorer/search/fields', DataExplorerHandler,   h='search_fields',          m=['POST']),
 
         # Users
 
