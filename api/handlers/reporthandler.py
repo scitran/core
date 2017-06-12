@@ -437,6 +437,8 @@ class AccessLogReport(Report):
         :end_date:      ISO formatted timestamp
         :uid:           user id of the target user
         :limit:         number of records to return
+        :subject:       subject code of session accessed
+        :access_types:  list of access_types to filter logs
         """
 
         super(AccessLogReport, self).__init__(params)
@@ -445,6 +447,8 @@ class AccessLogReport(Report):
         end_date = params.get('end_date')
         uid = params.get('user')
         limit= params.get('limit', 100)
+        subject = params.get('subject', None)
+        access_types = params.getall('access_types')
 
         if start_date:
             start_date = dateutil.parser.parse(start_date)
@@ -460,12 +464,16 @@ class AccessLogReport(Report):
             raise APIReportParamsException('Limit must be an integer greater than 0.')
         if limit < 1:
             raise APIReportParamsException('Limit must be an integer greater than 0.')
+        for access_type in access_types:
+            if access_type not in ['user_login', 'view_container']:
+                raise APIReportParamsException('Not a valid access type')
 
         self.start_date     = start_date
         self.end_date       = end_date
         self.uid            = uid
         self.limit          = limit
-
+        self.subject        = subject
+        self.access_types   = access_types
 
     def user_can_generate(self, uid):
         """
@@ -487,6 +495,10 @@ class AccessLogReport(Report):
             query['timestamp']['$gte'] = self.start_date
         if self.end_date:
             query['timestamp']['$lte'] = self.end_date
+        if self.subject:
+            query['context.subject.label'] = self.subject
+        if self.access_types:
+            query['access_type'] = {'$in': self.access_types}
 
         return config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
 
