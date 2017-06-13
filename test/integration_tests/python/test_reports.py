@@ -1,6 +1,7 @@
 import calendar
 import copy
 import datetime
+from api.web.request import AccessTypeList
 
 # create timestamps for report filtering
 today = datetime.datetime.today()
@@ -144,6 +145,8 @@ def test_access_log_report(data_builder, with_user, as_user, as_admin):
     })
     assert r.ok
     session = r.json()['_id']
+
+    # In order to have two logs of this subject (POST does not create a log)
     r = as_admin.get('/sessions/' + session)
     assert r.ok
     session = r.json()['_id']
@@ -176,7 +179,12 @@ def test_access_log_report(data_builder, with_user, as_user, as_admin):
     r = as_admin.get('/report/accesslog', params={'csv': 'true'})
     assert r.ok
 
-    r.content[0][:3] == '_id' 
+    r.content[0][:3] == '_id'
+
+    # get the access types
+    r = as_admin.get('/report/accesslog/types')
+    assert r.ok
+    assert r.json() == AccessTypeList
 
 
 def test_usage_report(data_builder, file_form, as_user, as_admin):

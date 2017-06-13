@@ -97,6 +97,7 @@ endpoints = [
         route('/resolve',                                       ResolveHandler, h='resolve',  m=['POST']),
         route('/schemas/<schema:{schema}>',                     SchemaHandler,                m=['GET']),
         route('/report/<report_type:site|project|accesslog|usage>',   ReportHandler,                m=['GET']),
+        route('/report/accesslog/types',                        ReportHandler,  h='get_types',  m=['GET']),
 
 
         # Search

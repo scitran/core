@@ -12,6 +12,8 @@ from .. import tempdir as tempfile
 from .. import util
 from ..web import base
 
+from ..web.request import AccessTypeList
+
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 BYTES_IN_MEGABYTE = float(1<<20)
@@ -48,6 +50,9 @@ class ReportHandler(base.RequestHandler):
     def __init__(self, request=None, response=None):
         super(ReportHandler, self).__init__(request, response)
 
+    def get_types(self):
+        return AccessTypeList
+
     def get(self, report_type):
 
         report = None
@@ -62,6 +67,7 @@ class ReportHandler(base.RequestHandler):
             raise NotImplementedError('Report type {} is not supported'.format(report_type))
 
         if self.superuser_request or report.user_can_generate(self.uid):
+            # If csv is true create a temp file to respond with
             if report_type == 'accesslog' and self.request.params.get('csv') == 'true':
                 tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
                 csv_file = open(os.path.join(tempdir.name, 'acceslog.csv'), 'w+')
@@ -505,7 +511,7 @@ class AccessLogReport(Report):
         if limit < 1:
             raise APIReportParamsException('Limit must be an integer greater than 0.')
         for access_type in access_types:
-            if access_type not in ['user_login', 'view_container', 'download_file']:
+            if access_type not in AccessTypeList:
                 raise APIReportParamsException('Not a valid access type')
 
         self.start_date     = start_date
@@ -526,7 +532,7 @@ class AccessLogReport(Report):
 
     def flatten(self, json_obj, flat, prefix = ""):
         """
-        flattens a
+        flattens a document to not have nested objects
         """
         for field in json_obj.keys():
             if isinstance(json_obj[field], dict):
@@ -535,7 +541,7 @@ class AccessLogReport(Report):
                 flat[prefix + field] = json_obj[field]
         return flat
 
-    def make_csv(self, cursor):
+    def make_csv_ready(self, cursor):
         return [self.flatten(json_obj, {}) for json_obj in cursor]
 
     def build(self):
@@ -557,7 +563,7 @@ class AccessLogReport(Report):
         cursor = config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
 
         if self.csv_bool:
-            return self.make_csv(cursor)
+            return self.make_csv_ready(cursor)
 
         return cursor
 
