@@ -2,7 +2,6 @@ import calendar
 import copy
 import datetime
 
-
 # create timestamps for report filtering
 today = datetime.datetime.today()
 ts_format = '{:%Y-%m-%dT%H:%M:%S+00:00}'
@@ -93,7 +92,7 @@ def test_project_report(data_builder, as_admin, as_user):
     assert len(project_report['projects']) == 2
 
 
-def test_access_log_report(with_user, as_user, as_admin):
+def test_access_log_report(data_builder, with_user, as_user, as_admin):
     # try to get access log report as user
     r = as_user.get('/report/accesslog')
     assert r.status_code == 403
@@ -134,6 +133,50 @@ def test_access_log_report(with_user, as_user, as_admin):
     accesslog = r.json()
     assert len(accesslog) == 1
     assert accesslog[0]['access_type'] == 'user_login'
+
+    # get access log report of certain subject
+    project = data_builder.create_project()
+    r = as_admin.post('/sessions', json={
+        'project': project,
+        'label': 'test-accesslog-session',
+        'timestamp': '1979-01-01T00:00:00+00:00',
+        'subject': {'code': 'compliant5'}
+    })
+    assert r.ok
+    session = r.json()['_id']
+    r = as_admin.get('/sessions/' + session)
+    assert r.ok
+    session = r.json()['_id']
+    r = as_admin.get('/sessions/' + session)
+    assert r.ok
+
+    r = as_admin.get('/report/accesslog', params={'subject': 'compliant5'})
+    assert r.ok
+    for count,log in enumerate(r.json(), start = 1):
+        assert log.get('context', {}).get('subject', {}).get('label') == 'compliant5'
+    assert count == 2
+    r = as_admin.delete('/sessions/' + session)
+    data_builder.delete_project(project, recursive=True)
+
+    # get access log report of certain access types
+    r = as_admin.get('/report/accesslog', params={'access_types': ['user_login', 'view_container']})
+    assert r.ok
+    ul, vc = False, False
+
+    # test that each item in log is either view_container or user_login
+    for log in r.json():
+        assert log.get('access_type') in ['user_login', 'view_container']
+        if log.get('access_type') == 'user_login':
+            ul = True
+        elif log.get('access_type') == 'view_container':
+            vc = True
+    assert ul and vc
+
+    # Download .csv file
+    r = as_admin.get('/report/accesslog', params={'csv': 'true'})
+    assert r.ok
+
+    r.content[0][:3] == '_id' 
 
 
 def test_usage_report(data_builder, file_form, as_user, as_admin):

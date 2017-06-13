@@ -16,24 +16,24 @@ from ..web import base
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 BYTES_IN_MEGABYTE = float(1<<20)
 ACCESS_LOG_FIELDS = [
-    "context.session.label",
-    "context.project.id",
-    "context.subject.label",
-    "context.ticket_id",
+    "_id",
+    "access_type",
     "context.acquisition.id",
     "context.acquisition.label",
-    "timestamp",
-    "access_type",
     "context.group.id",
-    "request_method",
-    "context.subject.id",
-    "request_path",
     "context.group.label",
+    "context.project.id",
     "context.project.label",
-    "origin.id",
-    "_id",
     "context.session.id",
-    "origin.type"
+    "context.session.label",
+    "context.subject.id",
+    "context.subject.label",
+    "context.ticket_id",
+    "origin.id",
+    "origin.type",
+    "request_method",
+    "request_path",
+    "timestamp"
 ]
 
 class APIReportException(Exception):
@@ -71,6 +71,7 @@ class ReportHandler(base.RequestHandler):
                 for doc in report.build():
                     writer.writerow(doc)
 
+                # Need to close and reopen file to flush buffer into file
                 csv_file.close()
                 self.response.app_iter = open(os.path.join(tempdir.name, 'acceslog.csv'), 'r')
                 self.response.headers['Content-Type'] = 'text/csv'
@@ -504,7 +505,7 @@ class AccessLogReport(Report):
         if limit < 1:
             raise APIReportParamsException('Limit must be an integer greater than 0.')
         for access_type in access_types:
-            if access_type not in ['user_login', 'view_container']:
+            if access_type not in ['user_login', 'view_container', 'download_file']:
                 raise APIReportParamsException('Not a valid access type')
 
         self.start_date     = start_date
