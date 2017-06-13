@@ -1,4 +1,5 @@
 import copy
+import csv
 import datetime
 
 import bson
@@ -12,6 +13,26 @@ from ..web import base
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 BYTES_IN_MEGABYTE = float(1<<20)
+ACCESS_LOG_FIELDS = [
+    "context.session.label",
+    "context.project.id",
+    "context.subject.label",
+    "context.ticket_id",
+    "context.acquisition.id",
+    "context.acquisition.label",
+    "timestamp",
+    "access_type",
+    "context.group.id",
+    "request_method",
+    "context.subject.id",
+    "request_path",
+    "context.group.label",
+    "context.project.label",
+    "origin.id",
+    "_id",
+    "context.session.id",
+    "origin.type"
+]
 
 class APIReportException(Exception):
     pass
@@ -39,7 +60,19 @@ class ReportHandler(base.RequestHandler):
             raise NotImplementedError('Report type {} is not supported'.format(report_type))
 
         if self.superuser_request or report.user_can_generate(self.uid):
-            return report.build()
+            if report_type == 'accesslog' and self.request.params.get('csv') == 'true':
+                csv_file = open("acceslog.csv", 'w+')
+                writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
+                writer.writeheader()
+
+                for doc in report.build():
+                    writer.writerow(doc)
+
+                self.response.app_iter = csv_file
+                self.response.headers['Content-Type'] = 'text/csv'
+                self.response.headers['Content-Disposition'] = 'attachment; filename="acceslog.csv"'
+            else:
+                return report.build()
         else:
             self.abort(403, 'User {} does not have required permissions to generate report'.format(self.uid))
 
@@ -439,6 +472,7 @@ class AccessLogReport(Report):
         :limit:         number of records to return
         :subject:       subject code of session accessed
         :access_types:  list of access_types to filter logs
+        :csv:           Boolean if user wants csv file
         """
 
         super(AccessLogReport, self).__init__(params)
@@ -449,6 +483,7 @@ class AccessLogReport(Report):
         limit= params.get('limit', 100)
         subject = params.get('subject', None)
         access_types = params.getall('access_types')
+        csv_bool = params.get('csv') == 'true'
 
         if start_date:
             start_date = dateutil.parser.parse(start_date)
@@ -474,6 +509,7 @@ class AccessLogReport(Report):
         self.limit          = limit
         self.subject        = subject
         self.access_types   = access_types
+        self.csv_bool       = csv_bool
 
     def user_can_generate(self, uid):
         """
@@ -483,6 +519,19 @@ class AccessLogReport(Report):
             return True
         return False
 
+    def flatten(self, json_obj, flat, prefix = ""):
+        """
+        flattens a
+        """
+        for field in json_obj.keys():
+            if isinstance(json_obj[field], dict):
+                flat = self.flatten(json_obj[field], flat, prefix = prefix + field + ".")
+            else:
+                flat[prefix + field] = json_obj[field]
+        return flat
+
+    def make_csv(self, cursor):
+        return [self.flatten(json_obj, {}) for json_obj in cursor]
 
     def build(self):
         query = {}
@@ -500,7 +549,12 @@ class AccessLogReport(Report):
         if self.access_types:
             query['access_type'] = {'$in': self.access_types}
 
-        return config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
+        cursor = config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
+
+        if self.csv_bool:
+            return self.make_csv(cursor)
+
+        return cursor
 
 class UsageReport(Report):
     """
