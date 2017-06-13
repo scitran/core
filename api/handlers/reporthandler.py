@@ -1,12 +1,14 @@
 import copy
 import csv
 import datetime
+import os
 
 import bson
 import dateutil
 import pymongo
 
 from .. import config
+from .. import tempdir as tempfile
 from .. import util
 from ..web import base
 
@@ -61,14 +63,16 @@ class ReportHandler(base.RequestHandler):
 
         if self.superuser_request or report.user_can_generate(self.uid):
             if report_type == 'accesslog' and self.request.params.get('csv') == 'true':
-                csv_file = open("acceslog.csv", 'w+')
+                tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
+                csv_file = open(os.path.join(tempdir.name, 'acceslog.csv'), 'w+')
                 writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
                 writer.writeheader()
 
                 for doc in report.build():
                     writer.writerow(doc)
 
-                self.response.app_iter = csv_file
+                csv_file.close()
+                self.response.app_iter = open(os.path.join(tempdir.name, 'acceslog.csv'), 'r')
                 self.response.headers['Content-Type'] = 'text/csv'
                 self.response.headers['Content-Disposition'] = 'attachment; filename="acceslog.csv"'
             else:
