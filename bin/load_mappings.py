@@ -44,6 +44,7 @@ DYNAMIC_TEMPLATES = [
             'mapping' : {
                 'type': 'text',
                 'analyzer': 'my_analyzer',
+                'search_analyzer': 'standard',
                 "fields": {
                     "raw": {
                         "type": "keyword",
