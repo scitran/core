@@ -11,8 +11,8 @@ tomorrow_ts = ts_format.format(today + datetime.timedelta(days=1))
 
 
 def test_site_report(data_builder, randstr, as_admin, as_user):
-    group_name = randstr()
-    group = data_builder.create_group(name=group_name)
+    group_label = randstr()
+    group = data_builder.create_group(label=group_label)
     project = data_builder.create_project()
     session = data_builder.create_session()
 
@@ -25,7 +25,7 @@ def test_site_report(data_builder, randstr, as_admin, as_user):
     assert r.ok
 
     site_report = r.json()
-    group_report = next((g for g in site_report['groups'] if g['name'] == group_name), None)
+    group_report = next((g for g in site_report['groups'] if g['label'] == group_label), None)
     assert group_report is not None
     assert group_report['project_count'] == 1
     assert group_report['session_count'] == 1

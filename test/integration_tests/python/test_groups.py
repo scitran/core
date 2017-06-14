@@ -16,9 +16,9 @@ def test_groups(as_admin, data_builder):
     r = as_admin.get('/groups/' + group)
     assert r.json().get('roles', 'No Roles') == 'No Roles'
 
-    # Able to change group name
-    group_name = 'New group name'
-    r = as_admin.put('/groups/' + group, json={'name': group_name})
+    # Able to change group label
+    group_label = 'New group label'
+    r = as_admin.put('/groups/' + group, json={'label': group_label})
     assert r.ok
 
     # Get the group again to compare timestamps
@@ -105,4 +105,4 @@ def test_groups(as_admin, data_builder):
 
     r = as_admin.get('/groups/' + group)
     assert r.ok
-    assert r.json()['name'] == group_name
+    assert r.json()['label'] == group_label

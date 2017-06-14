@@ -1114,13 +1114,6 @@ def upgrade_to_30():
 def upgrade_to_31():
     config.db.sessions.update_many({'subject.firstname_hash': {'$exists': True}}, {'$unset': {'subject.firstname_hash':""}})
     config.db.sessions.update_many({'subject.lastname_hash': {'$exists': True}}, {'$unset': {'subject.lastname_hash':""}})
-def upgrade_to_32_closure(group):
-    result = config.db.groups.update_one({'_id': group['_id']}, {'$rename': {'roles': 'permissions'}})
-
-    if result.modified_count == 1:
-        return True
-    else:
-        return 'Parallel failed: update doc ' + str(job['_id']) + ' resulted modified ' + str(result.modified_count)
 
 def upgrade_to_32():
     """
@@ -1128,8 +1121,8 @@ def upgrade_to_32():
 
     scitran/core #662
     """
-    cursor = config.db.groups.find({'roles': {'$exists': True}})
-    process_cursor(cursor, upgrade_to_31_closure)
+    config.db.groups.update_many({'roles': {'$exists': True}}, {'$rename': {'roles': 'permissions'}})
+    config.db.groups.update_many({'name': {'$exists': True}}, {'$rename': {'name': 'label'}})
 
 def upgrade_to_32_closure(coll_item, coll):
     permissions = coll_item.get('permissions', [])

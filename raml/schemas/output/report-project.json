@@ -65,7 +65,7 @@
                                 "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
                             },
                             "male_count": {"type":"integer"},
-                            "group_name": {"$ref":"../definitions/group.json#/definitions/name"},
+                            "group_label": {"$ref":"../definitions/container.json#/definitions/label"},
                             "over_18_count": {"type":"integer"},
                             "under_18_count": {"type":"integer"},
                             "female_count": {"type":"integer"},

@@ -9,10 +9,7 @@
                         },
     "created":          {},
     "modified":         {},
-    "name":             {
-                          "title": "Name",
-                          "type": "string"
-                        },
+    "label":             {},
     "permissions":            {
                           "type": "array",
                           "items": {"$ref": "../definitions/permission.json"},

@@ -2,18 +2,18 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
         "_id":{"$ref":"../definitions/string-id.json#"},
-        "name": {
+        "label": {
             "maxLength": 64,
             "minLength": 1,
             "pattern": "^[0-9A-Za-z][0-9A-Za-z .@_-]{0,30}[0-9A-Za-z]$",
-            "title": "Name",
+            "title": "label",
             "type": "string"
         },
         "group-input":{
           "type": "object",
           "properties": {
             "_id":{"$ref":"#/definitions/_id"},
-            "name":{"$ref":"#/definitions/name"}
+            "label": {"$ref": "../definitions/container.json#/definitions/label"}
           },
           "additionalProperties": false
         },
@@ -21,7 +21,7 @@
           "type": "object",
           "properties": {
             "_id":{"$ref":"#/definitions/_id"},
-            "name":{"$ref":"#/definitions/name"},
+            "label": {"$ref": "../definitions/container.json#/definitions/label"},
             "permissions": {
               "type": "array",
               "items": {"$ref": "../definitions/permission.json#/definitions/permission-output-default-required"},
