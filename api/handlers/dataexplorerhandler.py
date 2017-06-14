@@ -294,10 +294,10 @@ class DataExplorerHandler(base.RequestHandler):
             return self._construct_file_query(search_string, filters, size)
 
         source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp",
-                   "subject.code", "project.label", "group.label", "group._id", "project._id" ]
+                   "subject.code", "project.label", "group.label", "group._id", "project._id", "session.archived", "project.archived" ]
 
         if return_type == 'acquisition':
-            source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp"])
+            source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp", "acquisition.archived"])
 
         if return_type == 'analysis':
             source.extend(["analysis._id", "analysis.label", "analysis.created"])
@@ -355,7 +355,8 @@ class DataExplorerHandler(base.RequestHandler):
     def _construct_file_query(self, search_string, filters, size=100):
         source = [ "permissions.*", "session._id", "session.label", "session.created",
         "session.timestamp", "subject.code", "project.label", "group.label", "acquisition.label",
-        "acquisition._id", "group._id", "project._id", "analysis._id", "analysis.label" ]
+        "acquisition._id", "group._id", "project._id", "analysis._id", "analysis.label",
+        "session.archived", "acquisition.archived", "project.archived" ]
         source.extend(["file.name", "file.created", "file.type", "file.measurements", "file.size", "parent"])
         query = {
           "size": size,
