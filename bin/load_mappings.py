@@ -30,7 +30,9 @@ ANALYSIS = {
             "max_gram": 100,
             "token_chars": [
                 "letter",
-                "digit"
+                "digit",
+                "symbol",
+                "punctuation"
             ]
         }
     }
