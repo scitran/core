@@ -49,13 +49,8 @@ class RequestHandler(webapp2.RequestHandler):
 
             self.initialization_auth(site_id)
 
-        except webapp2.HTTPException:
-            raise
-        except Exception: # pylint: disable=broad-except
-            tb = traceback.format_exc()
-            self.request.logger.error(tb)
-            self.abort(500, 'Unexpected error.')
-
+        except Exception as e: # pylint: disable=broad-except
+            self.handle_exception(e, self.app.debug)
 
 
     def initialize(self, request, response):
