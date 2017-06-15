@@ -226,6 +226,10 @@ class AnalysesStorage(ListStorage):
         else:
             return files
 
+    def get_analysis_label(self, _id, analysis_id):
+        _id = bson.ObjectId(_id)
+        return self._get_el(_id, {'_id': analysis_id}).get('label', 'No Label')
+
     def add_note(self, _id, analysis_id, payload):
         _id = bson.ObjectId(_id)
         query = {
