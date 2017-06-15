@@ -20,7 +20,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 30 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 31 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1110,6 +1110,10 @@ def upgrade_to_30():
 
     cursor = config.db.projects.find({'files.name': {'$exists': True}, 'files.created': {'$exists': False}})
     process_cursor(cursor, upgrade_to_30_closure_coll, context = 'projects')
+
+def upgrade_to_31():
+    config.db.sessions.update_many({'subject.firstname_hash': {'$exists': True}}, {'$unset': {'subject.firstname_hash':""}})
+    config.db.sessions.update_many({'subject.lastname_hash': {'$exists': True}}, {'$unset': {'subject.lastname_hash':""}})
 
 
 def upgrade_schema(force_from = None):

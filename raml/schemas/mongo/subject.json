@@ -5,8 +5,6 @@
     "_id":              {},
     "firstname":        { "type": "string" },
     "lastname":         { "type": "string" },
-    "firstname_hash":   { "type": "string" },
-    "lastname_hash":    { "type": "string" },
 
     "age":              { "type": ["number", "null"] },
     "sex":              { "enum": ["male", "female", "other", "unknown", null] },

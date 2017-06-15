@@ -342,3 +342,19 @@ def test_subject_age_must_be_int(data_builder, as_admin):
 
     r = as_admin.get('/sessions/' + session)
     assert subject_age == r.json()['subject']['age']
+
+def test_subject_no_name_hashes(data_builder, as_admin):
+    # Test that subjects no longer take first and lastname hashes
+    session = data_builder.create_session()
+    r = as_admin.get('/sessions/' + session)
+    assert r.ok
+    assert not r.json().get('firstname_hash')
+    assert not r.json().get('lastname_hash')
+
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'firstname_hash': 'hash',
+            'lastname_hash': 'hash_2'
+        }
+    })
+    assert r.status_code == 400
