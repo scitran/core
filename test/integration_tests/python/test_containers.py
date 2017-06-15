@@ -42,6 +42,7 @@ def test_switching_acquisition_between_sessions(data_builder, as_admin):
 
 def test_project_template(data_builder, file_form, as_admin):
     project = data_builder.create_project()
+    project2 = data_builder.create_project()
     session = data_builder.create_session(subject={'code': 'compliant'})
     # NOTE adding acquisition_1 to cover code that's skipping non-matching containers
     acquisition_1 = data_builder.create_acquisition(label='non-compliant')
@@ -72,6 +73,20 @@ def test_project_template(data_builder, file_form, as_admin):
     assert r.ok
     assert r.json()['modified'] == 1
 
+    # create template for the project2
+    r = as_admin.post('/projects/' + project2 + '/template', json={
+        'session': {'subject': {'code': '^compliant$'}},
+        'acquisitions': [{
+            'minimum': 100, # Session won't comply
+            'label': '^compliant$',
+            'tags': '^compliant$',
+            'files': [{
+                'minimum': 2,
+                'mimetype': 'text/csv',
+            }]
+        }]
+    })
+
     # test session compliance
     r = as_admin.get('/sessions/' + session)
     assert r.ok
@@ -88,6 +103,13 @@ def test_project_template(data_builder, file_form, as_admin):
     assert as_admin.put('/sessions/' + session, json={'subject': {'code': 'non-compliant'}}).ok
     assert not satisfies_template()
     assert as_admin.put('/sessions/' + session, json={'subject': {'code': 'compliant'}}).ok
+
+    # test that moving session to another project correctly updates session.satisfies_template
+    assert satisfies_template()
+    assert as_admin.put('/sessions/' + session, json={'project': project2})
+    assert not satisfies_template()
+    assert as_admin.put('/sessions/' + session, json={'project': project})
+    assert satisfies_template
 
     # acquisitions.label
     assert satisfies_template()
