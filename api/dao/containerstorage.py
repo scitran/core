@@ -294,6 +294,12 @@ class SessionStorage(ContainerStorage):
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(_id))
 
+
+        # if payload.get('subject') == None:
+        #     raise APIStorageException('Idk whats going on fam, subject is None')
+        if payload and payload.get('subject') and payload.get('subject',{}).get('code') and payload.get('subject', {}).get('code') != session.get('subject', {}).get('code'):
+            payload['subject']['_id'] = bson.ObjectId()
+
         # Determine if we need to calc session compliance
         payload_has_template = (payload and payload.get('project_has_template'))
         session_has_template = session.get('project_has_template') is not None
