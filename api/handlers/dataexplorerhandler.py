@@ -36,36 +36,19 @@ FACET_QUERY = {
                     "terms" : {
                         "field" : "subject.sex.raw",
                         "size" : 15,
-                        "missing": "N/A"
+                        "missing": "(null)"
                     }
                 },
                 "subject.code" : {
                     "terms" : {
                         "field" : "subject.code.raw",
                         "size" : 15,
-                        "missing": "N/A"
-                    }
-                },
-                "session.tags" : {
-                    "terms" : {
-                        "field" : "session.tags.raw",
-                        "size" : 15,
-                        "missing": "N/A"
-                    }
-                },
-                "project.label" : {
-                    "terms" : {
-                        "field" : "project.label.raw",
-                        "size" : 15,
-                        "missing": "N/A"
+                        "missing": "(null)"
                     }
                 },
                 "session.timestamp" : {
                     "stats" : { "field" : "session.timestamp"}
 
-                },
-                "session.created" : {
-                    "stats" : { "field" : "session.created"}
                 }
             }
         },
@@ -99,14 +82,14 @@ FACET_QUERY = {
                     "terms" : {
                         "field" : "file.measurements.raw",
                         "size" : 15,
-                        "missing": "N/A"
+                        "missing": "(null)"
                     }
                 },
                 "file.type" : {
                     "terms" : {
                         "field" : "file.type.raw",
                         "size" : 15,
-                        "missing": "N/A"
+                        "missing": "(null)"
                     }
                 }
             }
