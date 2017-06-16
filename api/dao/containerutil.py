@@ -6,7 +6,7 @@ from ..auth import INTEGER_ROLES
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
 
 
-def getPerm(name):
+def get_perm(name):
     return INTEGER_ROLES[name]
 
 def add_id_to_subject(subject, pid):
@@ -100,16 +100,15 @@ class ContainerReference(object):
     def __init__(self, type, id):
         if type not in CONT_TYPES:
             raise Exception('Container type must be one of {}'.format(CONT_TYPES))
-        if type == 'analysis':
-            self.__class__ = AnalysisReference
 
         if not isinstance(type, basestring):
             raise Exception('Container type must be of type str')
         if not isinstance(id, basestring):
             raise Exception('Container id must be of type str')
 
-        self.type   = type
-        self.id     = id
+        self.type = type
+        self.collection = singular_to_plural[type]
+        self.id = id
 
     @classmethod
     def from_dictionary(cls, d):
@@ -126,7 +125,7 @@ class ContainerReference(object):
         )
 
     def get(self):
-        result = config.db[self.type + 's'].find_one({'_id': bson.ObjectId(self.id)})
+        result = config.db[self.collection].find_one({'_id': bson.ObjectId(self.id)})
         if result is None:
             raise Exception('No such {} {} in database'.format(self.type, self.id))
         return result
@@ -139,32 +138,18 @@ class ContainerReference(object):
         return None
 
     def file_uri(self, filename):
-        return '/' + self.type + 's/' + self.id + '/files/' + filename
+        if self.type == 'analysis':
+            analysis = self.get()
+            par_coll, par_id = singular_to_plural[analysis['parent']['type']], analysis['parent']['id']
+            return '/{}/{}/analyses/{}/files/{}'.format(par_coll, par_id, self.id, filename)
+        return '/{}/{}/files/{}'.format(self.collection, self.id, filename)
 
-    def check_access(self, userID, perm_name):
-        perm = getPerm(perm_name)
+    def check_access(self, uid, perm_name):
+        perm = get_perm(perm_name)
         for p in self.get()['permissions']:
-            if p['_id'] == userID and getPerm(p['access']) > perm:
+            if p['_id'] == uid and get_perm(p['access']) > perm:
                 return
-
-        raise Exception('User {} does not have {} access to {} {}'.format(userID, perm_name, self.type, self.id))
-
-class AnalysisReference(ContainerReference):
-    # pylint: disable=redefined-builtin
-    # TODO: refactor to resolve pylint warning
-
-    def get(self):
-        result = config.db.sessions.find_one({'analyses._id': self.id}, {'permissions':1, 'analyses': {'$elemMatch': {'_id': self.id}}})
-        if result is None or result.get('analyses') is None:
-            raise Exception('No such analysis {} in database'.format(self.id))
-        analysis = result['analyses'][0]
-        analysis['permissions'] = result['permissions']
-        analysis['session_id'] = result['_id']
-        return analysis
-
-    def file_uri(self, filename):
-        analysis = self.get()
-        return '/sessions/' + str(analysis['session_id']) + '/analyses/' + self.id + '/files/' + filename
+        raise Exception('User {} does not have {} access to {} {}'.format(uid, perm_name, self.type, self.id))
 
 
 class FileReference(ContainerReference):
@@ -192,3 +177,15 @@ def create_containerreference_from_dictionary(d):
 
 def create_containerreference_from_filereference(fr):
     return ContainerReference.from_filereference(fr)
+
+
+singular_to_plural = {
+    'group':       'groups',
+    'project':     'projects',
+    'session':     'sessions',
+    'acquisition': 'acquisitions',
+    'analysis':    'analyses',
+    'file':        'files',
+}
+
+plural_to_singular = {p: s for s, p in singular_to_plural.iteritems()}
