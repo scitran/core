@@ -301,6 +301,7 @@ def test_post_container(data_builder, as_admin):
 
 def test_put_container(data_builder, as_admin):
     session = data_builder.create_session()
+    session_2 = data_builder.create_session()
 
     # update session w/ timestamp
     r = as_admin.put('/sessions/' + session, json={
@@ -343,6 +344,27 @@ def test_put_container(data_builder, as_admin):
         'label': 'patience_343'
     })
     assert r.ok
+
+    # update session.subject.code to that of session_2
+    # first set session_2.subject.code to something
+    r = as_admin.put('/sessions/' + session_2, json={
+        'subject': {
+            'code': 'subject2'
+        }
+    })
+    assert r.ok
+    r = as_admin.get('/sessions/'+session_2)
+    assert r.ok
+    subject2Id = r.json().get('subject').get('_id')
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'code': 'subject2'
+        }
+    })
+    assert r.ok
+    r = as_admin.get('/sessions/'+session)
+    assert r.ok
+    assert r.json().get('subject').get('_id') == subject2Id
 
     # update subject w/ oid
     r = as_admin.put('/sessions/' + session, json={
