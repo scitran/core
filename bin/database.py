@@ -1116,6 +1116,28 @@ def upgrade_to_31():
     config.db.sessions.update_many({'subject.lastname_hash': {'$exists': True}}, {'$unset': {'subject.lastname_hash':""}})
 
 
+def upgrade_to_32_closure(cont, cont_name):
+    cont_type = cont_name[:-1]
+    for analysis in cont['analyses']:
+        analysis['_id'] = bson.ObjectId(analysis['_id'])
+        analysis['parent'] = {'type': cont_type, 'id': cont['_id']}
+        analysis['permissions'] = cont_type['permissions'] = cont['permissions']
+    config.db['analyses'].insert_many(cont['analyses'])
+    config.db[cont_name].update_one(
+        {'_id': cont['_id']},
+        {'$unset': {'analyses': ''}})
+    return True
+
+
+def upgrade_to_32():
+    """
+    scitran/core issue #808 - make analyses use their own collection
+    """
+    for cont_name in ['projects', 'sessions', 'acquisitions', 'collections']:
+        cursor = config.db[cont_name].find({'analyses': {'$exists': True}})
+        process_cursor(cursor, upgrade_to_31_closure, context=cont_name)
+
+
 def upgrade_schema(force_from = None):
     """
     Upgrades db to the current schema version
