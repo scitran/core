@@ -2,12 +2,55 @@ import bson
 import copy
 import dateutil
 import elasticsearch
+import json
 
 from ..web import base
 from .. import config
 from ..auth import require_login, require_superuser
 
 log = config.log
+
+ANALYSIS = {
+    "analyzer": {
+        "my_analyzer": {
+            "tokenizer": "my_tokenizer"
+        }
+    },
+    "tokenizer": {
+        "my_tokenizer": {
+            "type": "ngram",
+            "min_gram": 2,
+            "max_gram": 100,
+            "token_chars": [
+                "letter",
+                "digit",
+                "symbol",
+                "punctuation"
+            ]
+        }
+    }
+}
+
+DYNAMIC_TEMPLATES = [
+    {
+        'string_fields' : {
+            'match': '*',
+            'match_mapping_type' : 'string',
+            'mapping' : {
+                'type': 'text',
+                'analyzer': 'my_analyzer',
+                'search_analyzer': 'standard',
+                "fields": {
+                    "raw": {
+                        "type": "keyword",
+                        "index": "not_analyzed",
+                        "ignore_above": 256
+                    }
+                }
+            }
+        }
+    }
+]
 
 MATCH_ALL= {"match_all": {}}
 
@@ -396,3 +439,94 @@ class DataExplorerHandler(base.RequestHandler):
 
     def _process_file_results(self, results):
         return results['hits']['hits']
+
+
+
+
+
+### Field mapping index helper functions
+    @classmethod
+    def _get_field_type(cls, field_type):
+        if field_type in ['text', 'keyword']:
+            return 'string'
+        elif field_type in ['long', 'integer', 'short', 'byte']:
+            return 'integer'
+        elif field_type in ['double', 'float']:
+            return 'float'
+        elif field_type in ['date', 'boolean', 'object']:
+            return field_type
+        else:
+            config.log.debug('Didnt recognize this field type {}, setting as string'.format(field_type))
+
+    @classmethod
+    def _handle_properties(cls, properties, current_field_name):
+
+        for field_name, field in properties.iteritems():
+
+            # Ignore some fields
+            if field_name in ['_all', 'dynamic_templates', 'analysis_reference', 'file_reference', 'parent', 'container_type', 'origin', 'permissions', '_id']:
+                continue
+
+            elif 'properties' in field:
+                new_curr_field = current_field_name+'.'+field_name if current_field_name != '' else field_name
+                cls._handle_properties(field['properties'], new_curr_field)
+
+            else:
+                field_type = cls._get_field_type(field['type'])
+                if field_type == 'object':
+                    # empty objects don't get added
+                    continue
+
+                field_name = current_field_name+'.'+field_name if current_field_name != '' else field_name
+
+                doc = {
+                    'name':                 field_name,
+                    'type':                 field_type
+                }
+
+                doc_s = json.dumps(doc)
+                config.es.index(index='data_explorer_fields', id=field_name, doc_type='flywheel_field', body=doc_s)
+
+    def index_field_names(self):
+
+        if not config.es.indices.exists('data_explorer'):
+            self.abort(404, 'data_explorer index not yet available')
+
+        # Sometimes we might want to clear out what is there...
+        if self.is_true('hard-reset') and config.es.indices.exists('data_explorer_fields'):
+            config.log.debug('Removing existing data explorer fields index...')
+            try:
+                res = config.es.indices.delete(index='data_explorer_fields')
+            except:
+                self.abort(500, 'Unable to clear data_explorer_fields index')
+
+        # Check to see if fields index exists, if not - create it:
+        if not config.es.indices.exists('data_explorer_fields'):
+            request = {
+                'settings': {
+                    'number_of_shards': 1,
+                    'number_of_replicas': 0,
+                    'analysis' : ANALYSIS
+                },
+                'mappings': {
+                    '_default_' : {
+                        '_all' : {'enabled' : True},
+                        'dynamic_templates': DYNAMIC_TEMPLATES
+                    },
+                    'flywheel': {}
+                }
+            }
+
+            config.log.debug('creating data_explorer_fields index ...')
+            try:
+                res = config.es.indices.create(index='data_explorer_fields', body=request)
+            except:
+                self.abort(500, 'Unable to create data_explorer_fields index')
+
+        try:
+            mappings = config.es.indices.get_mapping(index='data_explorer', doc_type='flywheel')
+            fw_mappings = mappings['data_explorer']['mappings']['flywheel']['properties']
+        except:
+            self.abort(404, 'Could not find mappings, exiting ...')
+
+        self._handle_properties(fw_mappings, '')

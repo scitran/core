@@ -104,14 +104,10 @@ endpoints = [
 
 
         # Search
-
-        route('/search',                     SearchHandler,         h='advanced_search',        m=['POST']),
-        route('/search/field',               SearchHandler,         h='get_terms_for_field',    m=['POST']),
-        route('/search/files',               SearchHandler,         h='get_datatree',           m=['GET']),
-        route('/search/<cont_name:{cname}>', SearchHandler,                                     m=['GET']),
         route('/dataexplorer/search',        DataExplorerHandler,   h='search',                 m=['POST']),
         route('/dataexplorer/facets',        DataExplorerHandler,   h='get_facets',             m=['POST']),
         route('/dataexplorer/search/fields', DataExplorerHandler,   h='search_fields',          m=['POST']),
+        route('/dataexplorer/index/fields',  DataExplorerHandler,   h='index_field_names',      m=['POST']),
 
         # Users
 
