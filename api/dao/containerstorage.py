@@ -294,6 +294,16 @@ class SessionStorage(ContainerStorage):
         if session is None:
             raise APINotFoundException('Could not find session {}'.format(_id))
 
+        # If the subject code is changed, change the subject id to either
+        # the Id of the new subject code if there is another session in the same project
+        # that has that subject code or a new Id
+        if payload and payload.get('subject',{}).get('code') and payload.get('subject', {}).get('code') != session.get('subject', {}).get('code'):
+            sibling_session = self.dbc.find_one({'project': session.get('project'), 'subject.code': payload.get('subject', {}).get('code')})
+            if sibling_session:
+                payload['subject']['_id'] = sibling_session.get('subject').get('_id')
+            else:
+                payload['subject']['_id'] = bson.ObjectId()
+
         # Determine if we need to calc session compliance
         payload_has_template = (payload and payload.get('project_has_template'))
         session_has_template = session.get('project_has_template') is not None

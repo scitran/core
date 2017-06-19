@@ -301,6 +301,7 @@ def test_post_container(data_builder, as_admin):
 
 def test_put_container(data_builder, as_admin):
     session = data_builder.create_session()
+    session_2 = data_builder.create_session()
 
     # update session w/ timestamp
     r = as_admin.put('/sessions/' + session, json={
@@ -308,11 +309,69 @@ def test_put_container(data_builder, as_admin):
     })
     assert r.ok
 
+    # test that an update to subject.code
+    # will create a new subject._id
+    r = as_admin.get('/sessions/'+session)
+    assert r.ok
+    old_subject_id = r.json().get('subject',{}).get('_id')
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'code': 'newCode'
+        }
+    })
+    assert r.ok
+    r = as_admin.get('/sessions/' + session)
+    new_subject_id = r.json().get('subject',{}).get('_id')
+    assert new_subject_id != old_subject_id
+
+    # check that an update to subject.First Name
+    # will not create a new subject._id
+    r = as_admin.get('/sessions/'+session)
+    assert r.ok
+    old_subject_id = r.json().get('subject',{}).get('_id')
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'firstname': 'NewName'
+        }
+    })
+    assert r.ok
+    r = as_admin.get('/sessions/' + session)
+    new_subject_id = r.json().get('subject',{}).get('_id')
+    assert new_subject_id == old_subject_id
+
+    # update session and not the subject
+    r = as_admin.put('/sessions/' + session, json={
+        'label': 'patience_343'
+    })
+    assert r.ok
+
+    # update session.subject.code to that of session_2
+    # first set session_2.subject.code to something
+    r = as_admin.put('/sessions/' + session_2, json={
+        'subject': {
+            'code': 'subject2'
+        }
+    })
+    assert r.ok
+    r = as_admin.get('/sessions/'+session_2)
+    assert r.ok
+    subject2Id = r.json().get('subject').get('_id')
+    r = as_admin.put('/sessions/' + session, json={
+        'subject': {
+            'code': 'subject2'
+        }
+    })
+    assert r.ok
+    r = as_admin.get('/sessions/'+session)
+    assert r.ok
+    assert r.json().get('subject').get('_id') == subject2Id
+
     # update subject w/ oid
     r = as_admin.put('/sessions/' + session, json={
         'subject': {'_id': '000000000000000000000000'}
     })
     assert r.ok
+
 
 def test_subject_age_must_be_int(data_builder, as_admin):
     # Ensure subject age can only be set as int (and None)
