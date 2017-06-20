@@ -91,7 +91,7 @@ class GearHandler(base.RequestHandler):
 
         dl_id = kwargs.pop('cid')
         gear = get_gear(dl_id)
-        hash_ = gear['hash']
+        hash_ = gear['exchange']['rootfs-hash']
         filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(hash_))
         self.response.app_iter = open(filepath, 'rb')
         self.response.headers['Content-Length'] = str(gear['size']) # must be set after setting app_iter

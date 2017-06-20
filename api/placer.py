@@ -685,12 +685,14 @@ class GearPlacer(Placer):
     def process_file_field(self, field, file_attrs):
         if self.metadata:
             file_attrs.update(self.metadata)
-            self.metadata.update({'hash': file_attrs.get('hash')})
+            self.metadata.update({'exchange': {'rootfs-hash': file_attrs.get('hash'),
+                                               'git-commit': 'local',
+                                               'rootfs-url': '/api/gears/temp/'+file_attrs.get('hash')}})
         # self.metadata['hash'] = file_attrs.get('hash')
         self.save_file(field, file_attrs)
         self.saved.append(file_attrs)
         self.saved.append(self.metadata)
-        
+
 
 
     def finalize(self):
