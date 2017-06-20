@@ -6,6 +6,7 @@ import json
 import StringIO
 from jsonschema import ValidationError
 
+from .. import upload
 from ..auth import require_login, has_access
 from ..dao import APIPermissionException
 from ..dao.containerstorage import AcquisitionStorage
@@ -70,10 +71,19 @@ class GearHandler(base.RequestHandler):
         gear = get_gear(_id)
         return suggest_container(gear, cont_name+'s', cid)
 
+    def upload(self):
+        """Upload new gear file"""
+        if not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
+
+        r = upload.process_upload(self.request, upload.Strategy.gear, container_type='gear', origin=self.origin, metadata=self.request.headers.get('metadata'))
+        id = upsert_gear(r[1])
+        return {'_id': str(id)}
+
     def post(self, _id):
         """Upsert an entire gear document."""
 
-        if not self.superuser_request:
+        if not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
         doc = self.request.json
@@ -549,4 +559,3 @@ class BatchHandler(base.RequestHandler):
         if not self.superuser_request:
             if batch_job['origin'].get('id') != self.uid:
                 raise APIPermissionException('User does not have permission to access batch {}'.format(batch_job.get('_id')))
-

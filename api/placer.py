@@ -93,8 +93,9 @@ class Placer(object):
         if file_attrs is not None:
             self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, file_attrs)
 
-            # Queue any jobs as a result of this upload
-            rules.create_jobs(config.db, self.container, self.container_type, file_attrs)
+            # Queue any jobs as a result of this upload, uploading to a gear will not make jobs though
+            if self.container_type != 'gear':
+                rules.create_jobs(config.db, self.container, self.container_type, file_attrs)
 
     def recalc_session_compliance(self):
         if self.container_type in ['session', 'acquisition'] and self.id_:
@@ -674,3 +675,23 @@ class AnalysisJobPlacer(Placer):
 
             config.db.sessions.update_one(q, u)
             return self.saved
+
+class GearPlacer(Placer):
+    def check(self):
+        pass
+        # self.requireTarget()
+        # validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
+
+    def process_file_field(self, field, file_attrs):
+        if self.metadata:
+            file_attrs.update(self.metadata)
+            self.metadata.update({'hash': file_attrs.get('hash')})
+        # self.metadata['hash'] = file_attrs.get('hash')
+        self.save_file(field, file_attrs)
+        self.saved.append(file_attrs)
+        self.saved.append(self.metadata)
+        
+
+
+    def finalize(self):
+        return self.saved

@@ -142,6 +142,7 @@ endpoints = [
             route('/<:[^/]+>/logs',        JobHandler,  h='add_logs',      m=['POST']),
         ]),
         route('/gears',                                  GearsHandler),
+        route('/gears/temp',                                   GearHandler, h='upload', m=['POST']),
         prefix('/gears', [
             route('/<:[^/]+>',                           GearHandler),
             route('/<:[^/]+>/invocation',                GearHandler, h='get_invocation'),
