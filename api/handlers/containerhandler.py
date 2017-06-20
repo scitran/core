@@ -12,6 +12,7 @@ from ..dao.liststorage import AnalysesStorage
 from ..types import Origin
 from ..jobs.queue import Queue
 from ..jobs.jobs import Job
+from ..jobs.gears import get_gear
 from ..web.request import log_access, AccessType
 
 log = config.log
@@ -251,6 +252,7 @@ class ContainerHandler(base.RequestHandler):
         states      = self.request.GET.getall('states')
         tags        = self.request.GET.getall('tags')
         join_cont   = 'containers' in self.request.params.getall('join')
+        join_gears  = 'gears' in self.request.params.getall('join')
 
         # search for jobs
         if acquisitions:
@@ -265,16 +267,23 @@ class ContainerHandler(base.RequestHandler):
 
         # Ensure job uniqueness
         seen_jobs = []
+        seen_gears = []
         jobs = []
         for j in results:
             if j['_id'] not in seen_jobs:
                 job  = Job.load(j)
                 jobs.append(job)
                 seen_jobs.append(job.id_)
+            if j.get('gear_id') and j['gear_id'] not in seen_gears:
+                seen_gears.append(j['gear_id'])
 
         jobs.sort(key=lambda j: j.created)
 
         response = {'jobs': jobs}
+        if join_gears:
+            response['gears'] = {}
+            for g_id in seen_gears:
+                response['gears'][g_id] = get_gear(g_id)
         if join_cont:
             # create a map of analyses and acquisitions by _id
             containers = dict((str(c['_id']), c) for c in analyses+acquisitions)
