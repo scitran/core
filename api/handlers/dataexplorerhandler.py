@@ -75,15 +75,13 @@ FACET_QUERY = {
                 "subject.sex" : {
                     "terms" : {
                         "field" : "subject.sex.raw",
-                        "size" : 15,
-                        "missing": "(null)"
+                        "size" : 15
                     }
                 },
                 "subject.code" : {
                     "terms" : {
                         "field" : "subject.code.raw",
-                        "size" : 15,
-                        "missing": "(null)"
+                        "size" : 15
                     }
                 },
                 "session.timestamp" : {
@@ -121,15 +119,13 @@ FACET_QUERY = {
                 "file.measurements" : {
                     "terms" : {
                         "field" : "file.measurements.raw",
-                        "size" : 15,
-                        "missing": "(null)"
+                        "size" : 15
                     }
                 },
                 "file.type" : {
                     "terms" : {
                         "field" : "file.type.raw",
-                        "size" : 15,
-                        "missing": "(null)"
+                        "size" : 15
                     }
                 }
             }
