@@ -3,10 +3,12 @@ API request handlers for the jobs module
 """
 import bson
 import json
+import os
 import StringIO
 from jsonschema import ValidationError
 
 from .. import upload
+from .. import util
 from ..auth import require_login, has_access
 from ..dao import APIPermissionException
 from ..dao.containerstorage import AcquisitionStorage
@@ -73,7 +75,7 @@ class GearHandler(base.RequestHandler):
 
     # Temporary Function
     def upload(self):
-        """Upload new gear file"""
+        """Upload new gear tarball file"""
         if not self.user_is_admin:
             self.abort(403, 'Request requires admin')
 
@@ -83,8 +85,18 @@ class GearHandler(base.RequestHandler):
 
     # Temporary Function
     def download(self, **kwargs):
+        """Download gear tarball file"""
+        if not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
+
         dl_id = kwargs.pop('cid')
-        return {'_id':str(dl_id)}
+        gear = get_gear(dl_id)
+        hash_ = gear['hash']
+        filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(hash_))
+        self.response.app_iter = open(filepath, 'rb')
+        self.response.headers['Content-Length'] = str(gear['size']) # must be set after setting app_iter
+        self.response.headers['Content-Type'] = 'application/octet-stream'
+        self.response.headers['Content-Disposition'] = 'attachment; filename="' + gear['filename'] + '"'
 
 
     def post(self, _id):
