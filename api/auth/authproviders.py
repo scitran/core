@@ -332,7 +332,7 @@ class APIKeyAuthProvider(AuthProvider):
         if user:
             return user['_id']
         else:
-            raise APIAuthProviderException('Invalid scitran-user API key')
+            raise APIAuthProviderException('Invalid API key')
 
 
 AuthProviders = {
