@@ -1,7 +1,4 @@
-import bson
 import copy
-import dateutil
-import elasticsearch
 import json
 
 from ..web import base
@@ -211,6 +208,7 @@ EXAMPLE_FILE_QUERY = {
 
 
 class DataExplorerHandler(base.RequestHandler):
+    # pylint: disable=broad-except
 
     def __init__(self, request=None, response=None):
         super(DataExplorerHandler, self).__init__(request, response)
@@ -219,7 +217,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         try:
             request = self.request.json_body
-        except:
+        except Exception:
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
             return None, None, None
@@ -289,7 +287,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         try:
             field_query = str(field_query)
-        except:
+        except ValueError:
             self.abort(400, 'Must specify string for field query')
 
         es_query = {
@@ -496,6 +494,7 @@ class DataExplorerHandler(base.RequestHandler):
                 doc_s = json.dumps(doc)
                 config.es.index(index='data_explorer_fields', id=field_name, doc_type='flywheel_field', body=doc_s)
 
+    @require_superuser
     def index_field_names(self):
 
         if not config.es.indices.exists('data_explorer'):
@@ -505,9 +504,9 @@ class DataExplorerHandler(base.RequestHandler):
         if self.is_true('hard-reset') and config.es.indices.exists('data_explorer_fields'):
             config.log.debug('Removing existing data explorer fields index...')
             try:
-                res = config.es.indices.delete(index='data_explorer_fields')
-            except:
-                self.abort(500, 'Unable to clear data_explorer_fields index')
+                config.es.indices.delete(index='data_explorer_fields')
+            except Exception:
+                self.abort(500, 'Unable to clear data_explorer_fields index.')
 
         # Check to see if fields index exists, if not - create it:
         if not config.es.indices.exists('data_explorer_fields'):
@@ -528,14 +527,14 @@ class DataExplorerHandler(base.RequestHandler):
 
             config.log.debug('creating data_explorer_fields index ...')
             try:
-                res = config.es.indices.create(index='data_explorer_fields', body=request)
-            except:
+                config.es.indices.create(index='data_explorer_fields', body=request)
+            except Exception:
                 self.abort(500, 'Unable to create data_explorer_fields index')
 
         try:
             mappings = config.es.indices.get_mapping(index='data_explorer', doc_type='flywheel')
             fw_mappings = mappings['data_explorer']['mappings']['flywheel']['properties']
-        except:
+        except Exception:
             self.abort(404, 'Could not find mappings, exiting ...')
 
         self._handle_properties(fw_mappings, '')

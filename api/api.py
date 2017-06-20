@@ -14,7 +14,6 @@ from .handlers.reporthandler        import ReportHandler
 from .handlers.resolvehandler       import ResolveHandler
 from .handlers.roothandler          import RootHandler
 from .handlers.schemahandler        import SchemaHandler
-from .handlers.searchhandler        import SearchHandler
 from .handlers.userhandler          import UserHandler
 from .jobs.handlers                 import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler, RuleHandler
 from .upload                        import Upload
