@@ -235,9 +235,18 @@ class DataExplorerHandler(base.RequestHandler):
         if type(filters) is not list:
             self.abort(400, 'filters must be a list')
 
+        modified_filters = []
+
+        for f in filters:
+            if f.get('terms'):
+                for k,v in f['terms'].iteritems():
+                    modified_filters.append({'terms': {k+'.raw': v}})
+            else:
+                modified_filters.append(f)
+
         # Add permissions filter to list if user is not requesting all data
         if not request.get('all_data', False):
-            filters.append({'term': {'permissions._id': self.uid}})
+            modified_filters.append({'term': {'permissions._id': self.uid}})
 
         # Parse and "validate" search_string, allowed to be non-existent
         search_string = request.get('search_string', '')
@@ -246,7 +255,7 @@ class DataExplorerHandler(base.RequestHandler):
         except Exception:
             self.abort(400, 'search_string must be of type string')
 
-        return return_type, filters, search_string
+        return return_type, modified_filters, search_string
 
 
     @require_login
