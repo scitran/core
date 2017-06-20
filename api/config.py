@@ -19,6 +19,7 @@ log = logging.getLogger('scitran.api')
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown library
 logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library
 logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence Paste library
+logging.getLogger('elasticsearch').setLevel(logging.WARNING) # silence Elastic library
 
 
 # NOTE: Keep in sync with environment variables in sample.config file.

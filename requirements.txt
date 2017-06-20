@@ -1,4 +1,4 @@
-elasticsearch==1.9.0
+elasticsearch==5.3.0
 enum==0.4.6
 jsonschema==2.6.0
 Markdown==2.6.5
