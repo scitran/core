@@ -71,19 +71,26 @@ class GearHandler(base.RequestHandler):
         gear = get_gear(_id)
         return suggest_container(gear, cont_name+'s', cid)
 
+    # Temporary Function
     def upload(self):
         """Upload new gear file"""
         if not self.user_is_admin:
             self.abort(403, 'Request requires admin')
 
         r = upload.process_upload(self.request, upload.Strategy.gear, container_type='gear', origin=self.origin, metadata=self.request.headers.get('metadata'))
-        id = upsert_gear(r[1])
-        return {'_id': str(id)}
+        gear_id = upsert_gear(r[1])
+        return {'_id': str(gear_id)}
+
+    # Temporary Function
+    def download(self, **kwargs):
+        dl_id = kwargs.pop('cid')
+        return {'_id':str(dl_id)}
+
 
     def post(self, _id):
         """Upsert an entire gear document."""
 
-        if not self.user_is_admin:
+        if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
         doc = self.request.json

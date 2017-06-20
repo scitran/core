@@ -91,8 +91,6 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
     # Non-file form fields may have an empty string as filename, check for 'falsy' values
     file_fields = [x for x in form if form[x].filename]
-    # if file_fields:
-    #     return file_fields
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
