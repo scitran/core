@@ -81,22 +81,23 @@ class GearHandler(base.RequestHandler):
 
         r = upload.process_upload(self.request, upload.Strategy.gear, container_type='gear', origin=self.origin, metadata=self.request.headers.get('metadata'))
         gear_id = upsert_gear(r[1])
+        config.db.gears.update_one({'_id': gear_id}, {'$set': {
+            'exchange.rootfs-url': '/api/gears/temp/' + str(gear_id)}
+        })
+
         return {'_id': str(gear_id)}
 
     # Temporary Function
     def download(self, **kwargs):
         """Download gear tarball file"""
-        if not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         dl_id = kwargs.pop('cid')
         gear = get_gear(dl_id)
         hash_ = gear['exchange']['rootfs-hash']
-        filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash(hash_))
+        filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash('v0-' + hash_.replace(':', '-')))
         self.response.app_iter = open(filepath, 'rb')
-        self.response.headers['Content-Length'] = str(gear['size']) # must be set after setting app_iter
+        # self.response.headers['Content-Length'] = str(gear['size']) # must be set after setting app_iter
         self.response.headers['Content-Type'] = 'application/octet-stream'
-        self.response.headers['Content-Disposition'] = 'attachment; filename="' + gear['filename'] + '"'
+        self.response.headers['Content-Disposition'] = 'attachment; filename="gear.tar"'
 
 
     def post(self, _id):

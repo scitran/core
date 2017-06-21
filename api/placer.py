@@ -128,7 +128,6 @@ class TargetedPlacer(Placer):
         self.recalc_session_compliance()
         return self.saved
 
-
 class UIDPlacer(Placer):
     """
     A placer that can accept multiple files.
@@ -228,7 +227,6 @@ class LabelPlacer(UIDPlacer):
     create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
     match_type = 'label'
 
-
 class UIDMatchPlacer(UIDPlacer):
     """
     A placer that uploads to an existing hierarchy it finds based on uid.
@@ -237,7 +235,6 @@ class UIDMatchPlacer(UIDPlacer):
     metadata_schema = 'uidmatchupload.json'
     create_hierarchy = staticmethod(hierarchy.find_existing_hierarchy)
     match_type = 'uid'
-
 
 class EnginePlacer(Placer):
     """
@@ -314,7 +311,6 @@ class EnginePlacer(Placer):
         self.recalc_session_compliance()
         return self.saved
 
-
 class TokenPlacer(Placer):
     """
     A placer that can accept N files and save them to a persistent directory across multiple requests.
@@ -354,7 +350,6 @@ class TokenPlacer(Placer):
             shutil.move(path, dest)
         self.recalc_session_compliance()
         return self.saved
-
 
 class PackfilePlacer(Placer):
     """
@@ -678,22 +673,19 @@ class AnalysisJobPlacer(Placer):
 
 class GearPlacer(Placer):
     def check(self):
-        pass
-        # self.requireTarget()
-        # validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
+        self.requireMetadata()
 
     def process_file_field(self, field, file_attrs):
         if self.metadata:
             file_attrs.update(self.metadata)
-            self.metadata.update({'exchange': {'rootfs-hash': file_attrs.get('hash'),
+            proper_hash = file_attrs.get('hash')[3:].replace('-', ':')
+            self.metadata.update({'exchange': {'rootfs-hash': proper_hash,
                                                'git-commit': 'local',
-                                               'rootfs-url': '/api/gears/temp/'+file_attrs.get('hash')}})
+                                               'rootfs-url': 'INVALID'}})
         # self.metadata['hash'] = file_attrs.get('hash')
         self.save_file(field)
         self.saved.append(file_attrs)
         self.saved.append(self.metadata)
-
-
 
     def finalize(self):
         return self.saved
