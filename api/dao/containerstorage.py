@@ -308,12 +308,19 @@ class SessionStorage(ContainerStorage):
         payload_has_template = (payload and payload.get('project_has_template'))
         session_has_template = session.get('project_has_template') is not None
         unset_payload_has_template = (unset_payload and 'project_has_template'in unset_payload)
-
+        if payload_has_template or (session_has_template and not unset_payload_has_template):
+            project = ProjectStorage().get_container(session['project'])
+            session.update(payload)
+        pre_result = super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
         if payload_has_template or (session_has_template and not unset_payload_has_template):
             project = ProjectStorage().get_container(session['project'])
             session.update(payload)
             payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
-        return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
+        post_result = super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
+        if(post_result.modified_count == 1):
+            return post_result
+        else:
+            return pre_result
 
     def recalc_session_compliance(self, session_id, session=None, template=None, hard=False):
         """
