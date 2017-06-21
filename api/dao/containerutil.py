@@ -4,6 +4,14 @@ from .. import config
 from ..auth import INTEGER_ROLES
 
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
+SINGULAR_TO_PLURAL = {
+    'group':       'groups',
+    'project':     'projects',
+    'session':     'sessions',
+    'acquisition': 'acquisitions',
+    'analysis':    'analyses',
+}
+PLURAL_TO_SINGULAR = {p: s for s, p in singular_to_plural.iteritems()}
 
 
 def get_perm(name):
@@ -128,6 +136,13 @@ class ContainerReference(object):
         result = config.db[self.collection].find_one({'_id': bson.ObjectId(self.id)})
         if result is None:
             raise Exception('No such {} {} in database'.format(self.type, self.id))
+        if 'parent' in result:
+            parent_collection = singular_to_plural[result['parent']['type']]
+            parent = config.db[parent_collection].find_one({'_id': bson.ObjectId(result['parent']['id'])})
+            if parent is None:
+                raise Exception('Cannot find parent {} {} of {} {}'.format(
+                    result['parent']['type'], result['parent']['id'], self.type, self.id))
+            result['permissions'] = parent['permissions']
         return result
 
     def find_file(self, filename):
@@ -138,10 +153,10 @@ class ContainerReference(object):
         return None
 
     def file_uri(self, filename):
-        if self.type == 'analysis':
-            analysis = self.get()
-            par_coll, par_id = singular_to_plural[analysis['parent']['type']], analysis['parent']['id']
-            return '/{}/{}/analyses/{}/files/{}'.format(par_coll, par_id, self.id, filename)
+        cont = self.get()
+        if 'parent' in cont:
+            par_coll, par_id = singular_to_plural[cont['parent']['type']], cont['parent']['id']
+            return '/{}/{}/{}/{}/files/{}'.format(par_coll, par_id, self.collection, self.id, filename)
         return '/{}/{}/files/{}'.format(self.collection, self.id, filename)
 
     def check_access(self, uid, perm_name):
@@ -179,13 +194,16 @@ def create_containerreference_from_filereference(fr):
     return ContainerReference.from_filereference(fr)
 
 
-singular_to_plural = {
-    'group':       'groups',
-    'project':     'projects',
-    'session':     'sessions',
-    'acquisition': 'acquisitions',
-    'analysis':    'analyses',
-    'file':        'files',
-}
+def pluralize(cont_name):
+    if cont_name in SINGULAR_TO_PLURAL:
+        return SINGULAR_TO_PLURAL[cont_name]
+    elif cont_name in PLURAL_TO_SINGULAR:
+        return cont_name
+    raise Exception('Could not pluralize unknown container name {}'.format(cont_name))
 
-plural_to_singular = {p: s for s, p in singular_to_plural.iteritems()}
+def singularize(cont_name):
+    if cont_name in PLURAL_TO_SINGULAR:
+        return PLURAL_TO_SINGULAR[cont_name]
+    elif cont_name in SINGULAR_TO_PLURAL:
+        return cont_name
+    raise Exception('Could not singularize unknown container name {}'.format(cont_name))
