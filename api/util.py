@@ -183,16 +183,19 @@ def format_hash(hash_alg, hash_):
     return '-'.join(('v0', hash_alg, hash_))
 
 
-def send_json_http_exception(response, message, code, custom=None):
-    response.set_status(code)
+def create_json_http_exception_response(message, code, custom=None):
     content = {
         'message': message,
         'status_code': code
     }
     if custom:
         content.update(custom)
+    return content
 
-    json_content = json.dumps(content)
+
+def send_json_http_exception(response, message, code, custom=None):
+    response.set_status(code)
+    json_content = json.dumps(create_json_http_exception_response(message, code, custom))
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.write(json_content)
 
