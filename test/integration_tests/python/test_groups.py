@@ -1,6 +1,6 @@
 from dateutil.parser import parse
 
-def test_groups(as_admin, data_builder):
+def test_groups(as_user, as_admin, data_builder):
     # Cannot find a non-existant group
     r = as_admin.get('/groups/non-existent')
     assert r.status_code == 404
@@ -12,9 +12,10 @@ def test_groups(as_admin, data_builder):
     assert r.ok
     first_modified = r.json()['modified']
 
-    # Test to make sure that list of roles does not exist in a newly created group
+    # Test to make sure that list of roles nor name exists in a newly created group
     r = as_admin.get('/groups/' + group)
     assert r.json().get('roles', 'No Roles') == 'No Roles'
+    assert r.json().get('name', 'No Name') == 'No Name'
 
     # Able to change group label
     group_label = 'New group label'
@@ -98,6 +99,17 @@ def test_groups(as_admin, data_builder):
     eight_modified = r.json()['modified']
     d8 = parse(eight_modified)
     assert d8 > d7
+
+    group2 = data_builder.create_group()
+    r = as_admin.post('/groups/' + group2 + '/permissions', json={'access':'admin','_id':'user@user.com'})
+    assert r.ok
+    r = as_user.get('/groups')
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json()[0].get('permissions', []) != []
+    r = as_admin.get('/groups')
+    assert r.ok
+    assert len(r.json()) > 1
 
     # Empty put request should 400
     r = as_admin.put('/groups/' + group, json={})

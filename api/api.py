@@ -178,7 +178,7 @@ endpoints = [
 
         prefix('/<cont_name:groups>', [
             route('/<cid:{gid}>/<list_name:permissions>',                          PermissionsListHandler,     m=['POST']),
-            route('/<cid:{gid}>/<list_name:permissions>/<site:{sid}>/<_id:{uid}>', PermissionsListHandler,     m=['GET', 'PUT', 'DELETE']),
+            route('/<cid:{gid}>/<list_name:permissions>/<_id:{uid}>', PermissionsListHandler,     m=['GET', 'PUT', 'DELETE']),
 
             route('/<cid:{gid}>/<list_name:tags>',                           TagsListHandler, m=['POST']),
             route('/<cid:{gid}>/<list_name:tags>/<value:{tag}>',             TagsListHandler, m=['GET', 'PUT', 'DELETE']),

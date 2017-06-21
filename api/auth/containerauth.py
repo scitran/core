@@ -92,9 +92,9 @@ def default_referer(handler, parent_container=None):
             if method == 'GET' and parent_container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = access >= INTEGER_ROLES['ro']
+                has_access = access >= INTEGER_PERMISSIONS['ro']
             elif method in ['POST', 'PUT', 'DELETE']:
-                has_access = access >= INTEGER_ROLES['rw']
+                has_access = access >= INTEGER_PERMISSIONS['rw']
             else:
                 has_access = False
 

@@ -58,15 +58,15 @@ def test_group_permissions(data_builder, as_admin, as_public):
     as_other_user.headers.update({'Authorization': 'scitran-user ' + api_key})
 
     permissions_path = '/groups/' + group + '/permissions'
-    local_user_permissions_path = permissions_path + '/local/' + user
-    admin_user_permissions_path = permissions_path + '/local/' + as_admin.get('/users/self').json()['_id']
+    local_user_permissions_path = permissions_path + '/' + user
+    admin_user_permissions_path = permissions_path + '/' + as_admin.get('/users/self').json()['_id']
 
     # Cannot retrieve permissions that don't exist
     r = as_admin.get(local_user_permissions_path)
     assert r.status_code == 404
 
     # Create permission for user
-    r = as_admin.post(permissions_path, json={'_id': user, 'site': 'local', 'access': 'rw'})
+    r = as_admin.post(permissions_path, json={'_id': user, 'access': 'rw'})
     assert r.ok
 
     # Verify new user permission

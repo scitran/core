@@ -4,7 +4,6 @@ from .. import config
 from ..auth import INTEGER_PERMISSIONS
 
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
-<<<<<<< HEAD
 SINGULAR_TO_PLURAL = {
     'group':       'groups',
     'project':     'projects',
@@ -15,7 +14,7 @@ SINGULAR_TO_PLURAL = {
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
 
-def getPerm(name):
+def get_perm(name):
     return INTEGER_PERMISSIONS[name]
 
 def add_id_to_subject(subject, pid):
