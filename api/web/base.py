@@ -50,7 +50,8 @@ class RequestHandler(webapp2.RequestHandler):
             self.initialization_auth(site_id)
 
         except Exception as e: # pylint: disable=broad-except
-            self.handle_exception(e, self.app.debug)
+            error = self.handle_exception(e, self.app.debug, return_json=True)
+            self.abort(error['status_code'], error['message'])
 
 
     def initialize(self, request, response):
@@ -311,7 +312,7 @@ class RequestHandler(webapp2.RequestHandler):
     def get_param(self, param, default=None):
         return self.request.GET.get(param, default)
 
-    def handle_exception(self, exception, debug):
+    def handle_exception(self, exception, debug, return_json=False):
         """
         Send JSON response for exception
 
@@ -351,6 +352,9 @@ class RequestHandler(webapp2.RequestHandler):
         if code == 500:
             tb = traceback.format_exc()
             self.request.logger.error(tb)
+
+        if return_json:
+            return util.create_json_http_exception_response(str(exception), code, custom=custom_errors)
 
         util.send_json_http_exception(self.response, str(exception), code, custom=custom_errors)
 
