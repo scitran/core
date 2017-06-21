@@ -23,7 +23,8 @@ Strategy = util.Enum('Strategy', {
     'uidmatch'    : pl.UIDMatchPlacer,
     'reaper'      : pl.UIDReaperPlacer,
     'analysis'    : pl.AnalysisPlacer,      # Upload N files to an analysis as input and output (no db updates)
-    'analysis_job': pl.AnalysisJobPlacer   # Upload N files to an analysis as output from job results
+    'analysis_job': pl.AnalysisJobPlacer,   # Upload N files to an analysis as output from job results
+    'gear'        : pl.GearPlacer
 })
 
 def process_upload(request, strategy, container_type=None, id_=None, origin=None, context=None, response=None, metadata=None):
@@ -61,7 +62,7 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     if id_ is not None and container_type == None:
         raise Exception('Unspecified container type')
 
-    if container_type is not None and container_type not in ('acquisition', 'session', 'project', 'collection', 'analysis'):
+    if container_type is not None and container_type not in ('acquisition', 'session', 'project', 'collection', 'analysis', 'gear'):
         raise Exception('Unknown container type')
 
     timestamp = datetime.datetime.utcnow()
@@ -90,15 +91,14 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
     # Non-file form fields may have an empty string as filename, check for 'falsy' values
     file_fields = [x for x in form if form[x].filename]
-
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
         raise Exception("Targeted uploads can only send one file")
 
+
     for field in file_fields:
         field = form[field]
-
         # Augment the cgi.FieldStorage with a variety of custom fields.
         # Not the best practice. Open to improvements.
         # These are presumbed to be required by every function later called with field as a parameter.

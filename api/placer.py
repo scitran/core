@@ -93,8 +93,9 @@ class Placer(object):
         if file_attrs is not None:
             self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, file_attrs)
 
-            # Queue any jobs as a result of this upload
-            rules.create_jobs(config.db, self.container, self.container_type, file_attrs)
+            # Queue any jobs as a result of this upload, uploading to a gear will not make jobs though
+            if self.container_type != 'gear':
+                rules.create_jobs(config.db, self.container, self.container_type, file_attrs)
 
     def recalc_session_compliance(self):
         if self.container_type in ['session', 'acquisition'] and self.id_:
@@ -126,7 +127,6 @@ class TargetedPlacer(Placer):
     def finalize(self):
         self.recalc_session_compliance()
         return self.saved
-
 
 class UIDPlacer(Placer):
     """
@@ -227,7 +227,6 @@ class LabelPlacer(UIDPlacer):
     create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
     match_type = 'label'
 
-
 class UIDMatchPlacer(UIDPlacer):
     """
     A placer that uploads to an existing hierarchy it finds based on uid.
@@ -236,7 +235,6 @@ class UIDMatchPlacer(UIDPlacer):
     metadata_schema = 'uidmatchupload.json'
     create_hierarchy = staticmethod(hierarchy.find_existing_hierarchy)
     match_type = 'uid'
-
 
 class EnginePlacer(Placer):
     """
@@ -313,7 +311,6 @@ class EnginePlacer(Placer):
         self.recalc_session_compliance()
         return self.saved
 
-
 class TokenPlacer(Placer):
     """
     A placer that can accept N files and save them to a persistent directory across multiple requests.
@@ -353,7 +350,6 @@ class TokenPlacer(Placer):
             shutil.move(path, dest)
         self.recalc_session_compliance()
         return self.saved
-
 
 class PackfilePlacer(Placer):
     """
@@ -674,3 +670,22 @@ class AnalysisJobPlacer(Placer):
 
             config.db.sessions.update_one(q, u)
             return self.saved
+
+class GearPlacer(Placer):
+    def check(self):
+        self.requireMetadata()
+
+    def process_file_field(self, field, file_attrs):
+        if self.metadata:
+            file_attrs.update(self.metadata)
+            proper_hash = file_attrs.get('hash')[3:].replace('-', ':')
+            self.metadata.update({'exchange': {'rootfs-hash': proper_hash,
+                                               'git-commit': 'local',
+                                               'rootfs-url': 'INVALID'}})
+        # self.metadata['hash'] = file_attrs.get('hash')
+        self.save_file(field)
+        self.saved.append(file_attrs)
+        self.saved.append(self.metadata)
+
+    def finalize(self):
+        return self.saved
