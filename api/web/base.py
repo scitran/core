@@ -312,7 +312,7 @@ class RequestHandler(webapp2.RequestHandler):
     def get_param(self, param, default=None):
         return self.request.GET.get(param, default)
 
-    def handle_exception(self, exception, debug, return_json=False):
+    def handle_exception(self, exception, debug, return_json=False): # pylint: disable=arguments-differ
         """
         Send JSON response for exception
 
