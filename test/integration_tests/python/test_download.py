@@ -179,6 +179,9 @@ def test_analysis_download(data_builder, file_form, as_admin):
     assert r.ok
     ticket = r.json()['ticket']
 
+    # filename is analysis_<label> not analysis_<_id>
+    assert r.json()['filename'] == 'analysis_test.tar'
+
     # batch download analysis files w/ ticket
     r = as_admin.get(analysis_files, params={'ticket': ticket})
     assert r.ok

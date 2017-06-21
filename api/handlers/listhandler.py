@@ -797,7 +797,8 @@ class AnalysesHandler(ListHandler):
                 ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, total_size, origin=self.origin)
             else:
                 targets, total_size, file_cnt = self._prepare_batch(fileinfo)
-                filename = 'analysis_' + analysis_id + '.tar'
+                analysis_label = util.sanitize_string_to_filename(storage.get_analysis(_id, analysis_id).get('label', 'No Label'))
+                filename = 'analysis_' + analysis_label + '.tar'
                 ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
             return {
                 'ticket': config.db.downloads.insert_one(ticket).inserted_id,
