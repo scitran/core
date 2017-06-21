@@ -99,7 +99,7 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     assert r.ok
     assert 'jobs' in r.json()
 
-    # try to cancel non-launched batch
+    # try to cancel non-running batch
     r = as_admin.post('/batch/' + batch_id + '/cancel')
     assert r.status_code == 400
 
@@ -109,7 +109,7 @@ def test_batch(data_builder, as_user, as_admin, as_root):
 
     # test batch.state after calling run
     r = as_admin.get('/batch/' + batch_id)
-    assert r.json()['state'] == 'launched'
+    assert r.json()['state'] == 'running'
 
     # try to run non-pending batch
     r = as_admin.post('/batch/' + batch_id + '/run')

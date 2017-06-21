@@ -560,7 +560,7 @@ class BatchHandler(base.RequestHandler):
     def run(self, _id):
         """
         Creates jobs from proposed inputs, returns jobs enqueued.
-        Moves 'pending' batch job to 'launched'.
+        Moves 'pending' batch job to 'running'.
         """
 
         batch_job = batch.get(_id)
@@ -573,12 +573,12 @@ class BatchHandler(base.RequestHandler):
     def cancel(self, _id):
         """
         Cancels jobs that are still pending, returns number of jobs cancelled.
-        Moves a 'launched' batch job to 'cancelled'.
+        Moves a 'running' batch job to 'cancelled'.
         """
 
         batch_job = batch.get(_id)
         self._check_permission(batch_job)
-        if batch_job.get('state') != 'launched':
+        if batch_job.get('state') != 'running':
             self.abort(400, 'Can only cancel started batch jobs.')
         return {'number_cancelled': batch.cancel(batch_job)}
 

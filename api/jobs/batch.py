@@ -16,8 +16,8 @@ log = config.log
 
 BATCH_JOB_TRANSITIONS = {
     # To  <-------  #From
-    'launched':     'pending',
-    'cancelled':    'launched'
+    'running':     'pending',
+    'cancelled':    'running'
 }
 
 
@@ -184,7 +184,7 @@ def run(batch_job):
         jobs.append(job)
         job_ids.append(job_id)
 
-    update(batch_job['_id'], {'state': 'launched', 'jobs': job_ids})
+    update(batch_job['_id'], {'state': 'running', 'jobs': job_ids})
     return jobs
 
 def cancel(batch_job):
