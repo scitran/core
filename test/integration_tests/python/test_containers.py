@@ -87,6 +87,7 @@ def test_project_template(data_builder, file_form, as_admin):
         }]
     })
 
+
     # test session compliance
     r = as_admin.get('/sessions/' + session)
     assert r.ok
@@ -109,7 +110,17 @@ def test_project_template(data_builder, file_form, as_admin):
     assert as_admin.put('/sessions/' + session, json={'project': project2})
     assert not satisfies_template()
     assert as_admin.put('/sessions/' + session, json={'project': project})
-    assert satisfies_template
+    assert satisfies_template()
+
+    # test moving session to project without template
+    assert as_admin.delete('/projects/' + project2 + '/template')
+    r = as_admin.put('/sessions/' + session, json={'project': project2})
+    assert r.ok
+    r = as_admin.get('/sessions/' + session)
+    assert r.ok
+    assert 'project_has_template' not in r.json()
+    assert 'satisfies_template' not in r.json()
+    assert as_admin.put('/sessions/' + session, json={'project': project})
 
     # acquisitions.label
     assert satisfies_template()

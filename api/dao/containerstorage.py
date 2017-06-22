@@ -305,22 +305,30 @@ class SessionStorage(ContainerStorage):
                 payload['subject']['_id'] = bson.ObjectId()
 
         # Determine if we need to calc session compliance
-        payload_has_template = (payload and payload.get('project_has_template'))
+        # First check if project is being changed
+        if payload and payload.get('project'):
+            project = ProjectStorage().get_container(payload['project'])
+            if not project:
+                raise APINotFoundException("Could not find project {}".format(payload['project']))
+        else:
+            project = ProjectStorage().get_container(session['project'])
+
+        # Check if new (if project is changed) or current project has template
+        payload_has_template = project.get('template', False)
         session_has_template = session.get('project_has_template') is not None
         unset_payload_has_template = (unset_payload and 'project_has_template'in unset_payload)
+
         if payload_has_template or (session_has_template and not unset_payload_has_template):
-            project = ProjectStorage().get_container(session['project'])
             session.update(payload)
-        pre_result = super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
-        if payload_has_template or (session_has_template and not unset_payload_has_template):
-            project = ProjectStorage().get_container(session['project'])
-            session.update(payload)
-            payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
-        post_result = super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
-        if(post_result.modified_count == 1):
-            return post_result
-        else:
-            return pre_result
+            if project and project.get('template'):
+                payload['project_has_template'] = True
+                payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
+            elif project:
+                if not unset_payload:
+                    unset_payload = {}
+                unset_payload['satisfies_template'] = ""
+                unset_payload['project_has_template'] = ""
+        return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
 
     def recalc_session_compliance(self, session_id, session=None, template=None, hard=False):
         """
