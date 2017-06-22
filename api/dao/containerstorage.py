@@ -60,6 +60,8 @@ class ContainerStorage(object):
             return SessionStorage()
         elif cont_name in ['acquisition', 'acquisitions']:
             return AcquisitionStorage()
+        elif cont_name in ['analysis', 'analyses']:
+            return AnalysisStorage()
         else:
             return ContainerStorage(cont_name, use_object_id)
 
@@ -429,3 +431,140 @@ class AcquisitionStorage(ContainerStorage):
         if collection_id:
             query['collections'] = collection_id
         return self.get_all_el(query, user, projection)
+
+
+class AnalysisStorage(ContainerStorage):
+    def __init__(self):
+        super(AcquisitionStorage, self).__init__('analyses', use_object_id=True)
+
+
+    def get_parent(self, parent_type, parent_id):
+        parent_storage = ContainerStorage.factory(parent_type)
+        return parent_storage.get_container(parent_id)
+
+
+    def get_fileinfo(self, _id, filename=None):
+        analysis = self.get_container(_id)
+        files = analysis.get('files')
+        if files is None:
+            return None
+        if filename:
+            for f in files:
+                if f.get('name') == filename:
+                    return [f]
+        else:
+            return files
+
+
+    @staticmethod
+    def default_analysis(origin):
+        analysis_obj = {}
+        analysis_obj['_id'] = str(bson.objectid.ObjectId())
+        analysis_obj['created'] = datetime.datetime.utcnow()
+        analysis_obj['modified'] = datetime.datetime.utcnow()
+        analysis_obj['user'] = origin.get('id')
+
+        return analysis_obj
+
+
+    def create_job_and_analysis(self, cont_name, cid, analysis, job, origin):
+        """
+        Create and insert job and analysis.
+        """
+
+        cid = bson.objectid.ObjectId(cid)
+
+        default = self.default_analysis(origin)
+        default.update(analysis)
+        analysis = default
+
+        # Save inputs to analysis and job
+        inputs = {} # For Job object (map of FileReferences)
+        files = [] # For Analysis object (list of file objects)
+        for x in job['inputs'].keys():
+            input_map = job['inputs'][x]
+            fileref = create_filereference_from_dictionary(input_map)
+            inputs[x] = fileref
+
+            contref = create_containerreference_from_filereference(fileref)
+            file_ = contref.find_file(fileref.name)
+            if file_:
+                file_.pop('output', None) # If file was from an analysis
+                file_['input'] = True
+                files.append(file_)
+        analysis['files'] = files
+
+        result = self._create_el(cid, analysis, None)
+        if result.modified_count != 1:
+            raise APIStorageException('Element not added in list analyses of container {} {}'.format(cont_name, cid))
+
+        # Prepare job
+        tags = job.get('tags', [])
+        if 'analysis' not in tags:
+            tags.append('analysis')
+
+        gear_id = job['gear_id']
+
+        # Config manifest check
+        gear = get_gear(gear_id)
+        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
+            raise APIConflictException('Gear marked as invalid, will not run!')
+        validate_gear_config(gear, job.get('config'))
+
+        destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
+
+        job = Job(gear_id, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=origin)
+        job_id = job.insert()
+
+        if not job_id:
+            raise APIStorageException(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
+
+        result = self._update_el(cid, {'_id': analysis['_id']}, {'job': job_id}, None)
+        return { 'analysis': analysis, 'job_id':job_id, 'job': job}
+
+
+    @staticmethod
+    def inflate_job_info(analysis):
+        """
+        Inflate job from id ref in analysis
+
+        Lookup job via id stored on analysis
+        Lookup input filerefs and inflate into files array with 'input': True
+        If job is in failed state, look for most recent job referencing this analysis
+        Update analysis if new job is found
+        """
+
+        if analysis.get('job') is None:
+            return analysis
+        try:
+            job = Job.get(analysis['job'])
+        except:
+            raise Exception('No job with id {} found.'.format(analysis['job']))
+
+        # If the job currently tied to the analysis failed, try to find one that didn't
+        while job.state == 'failed' and job.id_ is not None:
+            next_job = config.db.jobs.find_one({'previous_job_id': job.id_})
+            if next_job is None:
+                break
+            job = Job.load(next_job)
+        if job.id_ != str(analysis['job']):
+            # Update analysis if job has changed
+            # Remove old inputs and replace with new job inputs
+            # (In practice these should never change)
+            files = analysis.get('files', [])
+            files[:] = [x for x in files if x.get('output')]
+
+            for i in getattr(job, 'inputs',{}):
+                fileref = job.inputs[i]
+                contref = containerutil.create_containerreference_from_filereference(job.inputs[i])
+                file_ = contref.find_file(fileref.name)
+                if file_:
+                    file_['input'] = True
+                    files.append(file_)
+
+            q = {'analyses._id': analysis['_id']}
+            u = {'$set': {'analyses.$.job': job.id_, 'analyses.$.files': files}}
+            config.db.sessions.update_one(q, u)
+
+        analysis['job'] = job
+        return analysis

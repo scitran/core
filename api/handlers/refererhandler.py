@@ -1,25 +1,24 @@
 """
 Module defining RefererHandler and it's subclasses. RefererHandler
-generalizes the handling of documents that have their own collection
-and always have an associated parent container they refer to.
+generalizes the handling of documents that are not part of the container
+hierarchy, are always associated with (referencing) a parent container,
+and are stored in their own collection instead of an embedded list on the
+container (eg. ListHandler)
 """
 
 from .. import config
 from .. import upload
 from ..auth import refererauth, always_ok
-from ..dao import containerutil, noop
+from ..dao import containerstorage, noop
 from ..web import base
 from ..web.request import log_access, AccessType
-from .collectionshandler import CollectionsHandler
 
 
 log = config.log
 
 
 class RefererHandler(base.RequestHandler):
-    container_storages = {
-        cont_name: handler_config['storage']
-        for cont_name, handler_config in CollectionsHandler.container_handler_configurations.iteritems()}
+    def __init__()
 
     referer_handler_configurations = {
         'analyses': {
@@ -30,13 +29,8 @@ class RefererHandler(base.RequestHandler):
         },
     }
 
-    @classmethod
-    def _get_container(cls, cont_name, _id):
-        cont_name = containerutil.pluralize(cont_name)
-        storage = cls.container_storages[cont_name]
-        storage.get_container(_id)
 
-    def _get_permchecker(container):
+    def _get_permchecker(self, container):
         if self.superuser_request:
             return always_ok
         elif self.public_request:
@@ -57,7 +51,7 @@ class AnalysesHandler(RefererHandler):
             each other via ``job`` and ``destination`` fields. Job based
             analyses are only allowed at the session level.
         """
-        container = self._get_container(cont_name, cid)
+        parent = self.storage.get_parent(cont_name, cid)
         permchecker = self._get_permchecker(container=container)
         permchecker(noop)('POST', container)
 
@@ -69,7 +63,7 @@ class AnalysesHandler(RefererHandler):
                 job = payload.get('job')
                 if job is None or analysis is None:
                     self.abort(400, 'JSON body must contain map for "analysis" and "job"')
-                result = storage.create_job_and_analysis(cont_name, _id, analysis, job, self.origin)
+                result = self.storage.create_job_and_analysis(cont_name, _id, analysis, job, self.origin)
                 return {'_id': result['analysis']['_id']}
             else:
                 self.abort(400, 'Analysis created via a job must be at the session level')
@@ -79,9 +73,10 @@ class AnalysesHandler(RefererHandler):
         # permchecker(noop)('POST', _id=_id)
 
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        analysis = storage.default_analysis(self.origin)
+        analysis = self.storage.default_analysis(self.origin)
         analysis.update(payload)
-        result = storage.exec_op('POST', _id=_id, payload=analysis)
+        result = self.storage.exec_op('POST', _id=_id, payload=analysis)
+
         if result.modified_count == 1:
             return {'_id': analysis['_id']}
         else:

@@ -230,7 +230,7 @@ def initialize_db():
     db.acquisitions.create_index('session')
     db.acquisitions.create_index('uid')
     db.acquisitions.create_index('collections')
-    db.analyses.create_index([('container.level', 1), ('container.id', 1)])
+    db.analyses.create_index([('parent.type', 1), ('parent.id', 1)])
     db.jobs.create_index([('inputs.id', 1), ('inputs.type', 1)])
     db.jobs.create_index([('state', 1), ('now', 1), ('modified', 1)])
     db.gears.create_index('name')

@@ -67,7 +67,7 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
             # Remove subject first/last from list view to better log access to this information
-            'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0},
+            'list_projection': {'info': 0, 'subject.firstname': 0, 'subject.lastname': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -240,7 +240,7 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker(noop)('GET', cid)
 
-        analyses = cont.get('analyses', [])
+        analyses = config.db.analyses.find({'parent.type': 'session', 'parent.id': cont['_id']}).sort('created', -1)
         acquisitions = cont.get('acquisitions', [])
 
         results = []
@@ -501,7 +501,7 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        container= self._get_container(_id)
+        container = self._get_container(_id)
         if self.config.get('children_cont'):
             container['has_children'] = bool(self.storage.get_children(_id))
         else:
