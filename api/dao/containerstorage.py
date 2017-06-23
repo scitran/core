@@ -461,14 +461,19 @@ class AnalysisStorage(ContainerStorage):
 
 
     @staticmethod
-    def default_analysis(origin):
-        analysis_obj = {}
-        analysis_obj['_id'] = str(bson.objectid.ObjectId())
-        analysis_obj['created'] = datetime.datetime.utcnow()
-        analysis_obj['modified'] = datetime.datetime.utcnow()
-        analysis_obj['user'] = origin.get('id')
-
-        return analysis_obj
+    def fill_values(analysis, cont_name, cid, origin):
+        defaults = {
+            'parent':   {
+                'type': containerutil.singularize(cont_name),
+                'id':   bson.objectid.ObjectId(cid)
+            },
+            '_id':      bson.objectid.ObjectId(),
+            'created':  datetime.datetime.utcnow(),
+            'modified': datetime.datetime.utcnow(),
+            'user':     origin.get('id'),
+        }
+        defaults.update(analysis)
+        return defaults
 
 
     def create_job_and_analysis(self, cont_name, cid, analysis, job, origin):
@@ -480,11 +485,7 @@ class AnalysisStorage(ContainerStorage):
         from ..jobs.gears import validate_gear_config, get_gear
         from ..jobs.jobs import Job
 
-        cid = bson.objectid.ObjectId(cid)
-
-        default = self.default_analysis(origin)
-        default.update(analysis)
-        analysis = default
+        self.fill_values(analysis, cont_name, cid, origin)
 
         # Save inputs to analysis and job
         inputs = {} # For Job object (map of FileReferences)
@@ -502,33 +503,35 @@ class AnalysisStorage(ContainerStorage):
                 files.append(file_)
         analysis['files'] = files
 
-        result = self._create_el(cid, analysis, None)
-        if result.modified_count != 1:
-            raise APIStorageException('Element not added in list analyses of container {} {}'.format(cont_name, cid))
+        result = self.create_el(analysis)
+        if not result.acknowledged:
+            raise APIStorageException('Analysis not created for container {} {}'.format(cont_name, cid))
 
         # Prepare job
         tags = job.get('tags', [])
         if 'analysis' not in tags:
             tags.append('analysis')
 
-        gear_id = job['gear_id']
-
         # Config manifest check
-        gear = get_gear(gear_id)
+        gear = get_gear(job['gear_id'])
         if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             raise APIConflictException('Gear marked as invalid, will not run!')
         validate_gear_config(gear, job.get('config'))
 
-        destination = containerutil.create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
+        destination = containerutil.create_containerreference_from_dictionary(
+            {'type': 'analysis', 'id': str(analysis['_id'])})
 
-        job = Job(gear_id, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=origin)
+        job = Job(job['gear_id'], inputs,
+            destination=destination, tags=tags, config_=job.get('config'), origin=origin)
         job_id = job.insert()
 
         if not job_id:
-            raise APIStorageException(500, 'Job not created for analysis {} of container {} {}'.format(analysis['_id'], cont_name, cid))
+            # NOTE #775 remove unusable analysis - until jobs have a 'hold' state
+            self.delete_el(analysis['_id'])
+            raise APIStorageException(500, 'Job not created for analysis of container {} {}'.format(cont_name, cid))
 
-        result = self._update_el(cid, {'_id': analysis['_id']}, {'job': job_id}, None)
-        return { 'analysis': analysis, 'job_id':job_id, 'job': job}
+        result = self.update_el(analysis['_id'], {'job': job_id}, None)
+        return {'analysis': analysis, 'job_id': job_id, 'job': job}
 
 
     @staticmethod

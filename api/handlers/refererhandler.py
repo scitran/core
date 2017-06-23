@@ -50,7 +50,8 @@ class RefererHandler(base.RequestHandler):
         elif self.public_request:
             return containerauth.public_request(self, container=parent_container)
         else:
-            return self.permchecker(self, parent_container=parent_container)
+            # NOTE The handler (self) is passed implicitly
+            return self.permchecker(parent_container=parent_container)
 
 
 class AnalysesHandler(RefererHandler):
@@ -69,26 +70,26 @@ class AnalysesHandler(RefererHandler):
             analyses are only allowed at the session level.
         """
         parent = self.storage.get_parent(cont_name, cid)
-        permchecker = self._get_permchecker(parent)
+        permchecker = self.get_permchecker(parent)
         permchecker(noop)('POST')
 
         if self.is_true('job'):
-            if cont_name == 'sessions':
-                payload = self.request.json_body
-                self.input_validator(payload.get('analysis', {}), 'POST')
-                analysis = payload.get('analysis')
-                job = payload.get('job')
-                if job is None or analysis is None:
-                    self.abort(400, 'JSON body must contain map for "analysis" and "job"')
-                result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin)
-                return {'_id': result['analysis']['_id']}
-            else:
+            if cont_name != 'sessions':
                 self.abort(400, 'Analysis created via a job must be at the session level')
 
-        payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        analysis = self.storage.default_analysis(self.origin)
-        analysis.update(payload)
-        result = self.storage.exec_op('POST', payload=analysis)
+            payload = self.request.json_body
+            analysis = payload.get('analysis')
+            job = payload.get('job')
+            if not analysis or not job:
+                self.abort(400, 'JSON body must contain map for "analysis" and "job"')
+            self.input_validator(analysis, 'POST')
+            result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin)
+            return {'_id': result['analysis']['_id']}
+
+        analysis = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
+        self.storage.fill_values(analysis, cont_name, cid, self.origin)
+        self.input_validator(analysis, 'POST')
+        result = self.storage.create_el(analysis)
 
         if result.acknowledged:
             return {'_id': result.inserted_id}

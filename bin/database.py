@@ -20,7 +20,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 31 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 32 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
