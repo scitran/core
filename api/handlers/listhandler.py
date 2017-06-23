@@ -10,7 +10,6 @@ import zipfile
 from ..web import base
 from .. import config
 from .. import upload
-from .. import download
 from .. import util
 from .. import validators
 from ..auth import listauth, always_ok
@@ -81,7 +80,10 @@ def initialize_list_configurations():
         'projects': copy.deepcopy(container_default_configurations),
         'sessions': copy.deepcopy(container_default_configurations),
         'acquisitions': copy.deepcopy(container_default_configurations),
-        'collections': copy.deepcopy(container_default_configurations)
+        'collections': copy.deepcopy(container_default_configurations),
+        'analyses': {
+            'notes': copy.deepcopy(container_default_configurations['notes']),
+        },
     }
     # preload the Storage instances for all configurations
     for cont_name, cont_config in list_container_configurations.iteritems():

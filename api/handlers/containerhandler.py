@@ -2,17 +2,17 @@ import bson
 import datetime
 import dateutil
 
-from ..web import base
-from .. import util
 from .. import config
+from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage, containerutil, noop
-from ..dao.liststorage import AnalysesStorage
-from ..types import Origin
-from ..jobs.queue import Queue
-from ..jobs.jobs import Job
+from ..dao.containerstorage import AnalysisStorage
 from ..jobs.gears import get_gear
+from ..jobs.jobs import Job
+from ..jobs.queue import Queue
+from ..types import Origin
+from ..web import base
 from ..web.request import log_access, AccessType
 
 log = config.log
@@ -208,7 +208,7 @@ class ContainerHandler(base.RequestHandler):
         Given an object with an `analyses` array key, inflate job info for job-based analyses
         """
         for analysis in result.get('analyses', []):
-            AnalysesStorage.inflate_job_info(analysis)
+            AnalysisStorage.inflate_job_info(analysis)
         return result
 
     def _filter_permissions(self, result, uid, site):

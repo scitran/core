@@ -1,12 +1,16 @@
+import datetime
+
 import bson.errors
 import bson.objectid
 import pymongo.errors
 
-from .. import util
-from .. import config
-from . import consistencychecker
 from . import APIStorageException, APIConflictException, APINotFoundException
+from . import consistencychecker
+from . import containerutil
 from . import hierarchy
+from .. import config
+from .. import util
+
 
 log = config.log
 
@@ -435,7 +439,7 @@ class AcquisitionStorage(ContainerStorage):
 
 class AnalysisStorage(ContainerStorage):
     def __init__(self):
-        super(AcquisitionStorage, self).__init__('analyses', use_object_id=True)
+        super(AnalysisStorage, self).__init__('analyses', use_object_id=True)
 
 
     def get_parent(self, parent_type, parent_id):
@@ -472,6 +476,10 @@ class AnalysisStorage(ContainerStorage):
         Create and insert job and analysis.
         """
 
+        # TODO fix import cycle - separate analysisstorage module?
+        from ..jobs.gears import validate_gear_config, get_gear
+        from ..jobs.jobs import Job
+
         cid = bson.objectid.ObjectId(cid)
 
         default = self.default_analysis(origin)
@@ -483,10 +491,10 @@ class AnalysisStorage(ContainerStorage):
         files = [] # For Analysis object (list of file objects)
         for x in job['inputs'].keys():
             input_map = job['inputs'][x]
-            fileref = create_filereference_from_dictionary(input_map)
+            fileref = containerutil.create_filereference_from_dictionary(input_map)
             inputs[x] = fileref
 
-            contref = create_containerreference_from_filereference(fileref)
+            contref = containerutil.create_containerreference_from_filereference(fileref)
             file_ = contref.find_file(fileref.name)
             if file_:
                 file_.pop('output', None) # If file was from an analysis
@@ -511,7 +519,7 @@ class AnalysisStorage(ContainerStorage):
             raise APIConflictException('Gear marked as invalid, will not run!')
         validate_gear_config(gear, job.get('config'))
 
-        destination = create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
+        destination = containerutil.create_containerreference_from_dictionary({'type': 'analysis', 'id': analysis['_id']})
 
         job = Job(gear_id, inputs, destination=destination, tags=tags, config_=job.get('config'), origin=origin)
         job_id = job.insert()
@@ -533,6 +541,9 @@ class AnalysisStorage(ContainerStorage):
         If job is in failed state, look for most recent job referencing this analysis
         Update analysis if new job is found
         """
+
+        # TODO fix import cycle - separate analysisstorage module?
+        from ..jobs.jobs import Job
 
         if analysis.get('job') is None:
             return analysis

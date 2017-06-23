@@ -2,13 +2,10 @@ import bson.errors
 import bson.objectid
 import datetime
 
-from .. import config
-from . import consistencychecker, containerutil
 from . import APIStorageException, APIConflictException
+from . import consistencychecker
+from .. import config
 from .containerstorage import SessionStorage, AcquisitionStorage
-from .containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
-from ..jobs.jobs import Job
-from ..jobs.gears import validate_gear_config, get_gear
 
 log = config.log
 

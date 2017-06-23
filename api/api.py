@@ -248,18 +248,24 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>',      FileListHandler,                     m=['GET', 'DELETE']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
 
-                route( '/<child_name:analyses>',                AnalysesHandler,                  m=['POST']),
-                prefix('/<child_name:analyses>', [
+                route( '/analyses>',                            AnalysesHandler,                  m=['POST']),
+                prefix('/analyses>', [
                     route('/<_id:{cid}>',                       AnalysesHandler,                  m=['GET', 'DELETE']),
                     route('/<_id:{cid}>/files',                 AnalysesHandler, h='download',    m=['GET']),
                     route('/<_id:{cid}>/files/<name:{fname}>',  AnalysesHandler, h='download',    m=['GET']),
-                    route('/<_id:{cid}>/notes',                 AnalysesHandler, h='add_note',    m=['POST']),
-                    route('/<_id:{cid}>/notes/<note_id:{cid}>', AnalysesHandler, h='delete_note', m=['DELETE']),
                 ]),
 
                 route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
                 route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
             ])
+        ]),
+
+
+        # Analysis notes
+
+        prefix('/{cname}/{cid}/<cont_name:analyses>/<cid:{cid}>', [
+            route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
+            route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
         ]),
 
 

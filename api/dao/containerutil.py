@@ -11,7 +11,7 @@ SINGULAR_TO_PLURAL = {
     'acquisition': 'acquisitions',
     'analysis':    'analyses',
 }
-PLURAL_TO_SINGULAR = {p: s for s, p in singular_to_plural.iteritems()}
+PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
 
 
 def get_perm(name):
@@ -115,7 +115,7 @@ class ContainerReference(object):
             raise Exception('Container id must be of type str')
 
         self.type = type
-        self.collection = singular_to_plural[type]
+        self.collection = pluralize(type)
         self.id = id
 
     @classmethod
@@ -137,7 +137,7 @@ class ContainerReference(object):
         if result is None:
             raise Exception('No such {} {} in database'.format(self.type, self.id))
         if 'parent' in result:
-            parent_collection = singular_to_plural[result['parent']['type']]
+            parent_collection = pluralize(result['parent']['type'])
             parent = config.db[parent_collection].find_one({'_id': bson.ObjectId(result['parent']['id'])})
             if parent is None:
                 raise Exception('Cannot find parent {} {} of {} {}'.format(
@@ -155,7 +155,7 @@ class ContainerReference(object):
     def file_uri(self, filename):
         cont = self.get()
         if 'parent' in cont:
-            par_coll, par_id = singular_to_plural[cont['parent']['type']], cont['parent']['id']
+            par_coll, par_id = pluralize(cont['parent']['type']), cont['parent']['id']
             return '/{}/{}/{}/{}/files/{}'.format(par_coll, par_id, self.collection, self.id, filename)
         return '/{}/{}/files/{}'.format(self.collection, self.id, filename)
 

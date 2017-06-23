@@ -85,7 +85,7 @@ def collection_permissions(handler, container=None, _=None):
     return g
 
 
-def analysis_permissions(handler, container=None, _=None):
+def default_referer(handler, parent_container=None):
     def g(exec_op):
         def f(method, _id=None, payload=None):
             access = _get_access(handler.uid, handler.user_site, parent_container)
@@ -99,7 +99,7 @@ def analysis_permissions(handler, container=None, _=None):
                 has_access = False
 
             if has_access:
-                return exec_op(method, _id=None, payload=None)
+                return exec_op(method, _id=_id, payload=payload)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on parent container'.format(method))
         return f

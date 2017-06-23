@@ -6,9 +6,16 @@ and are stored in their own collection instead of an embedded list on the
 container (eg. ListHandler)
 """
 
+import os
+import zipfile
+from abc import ABCMeta, abstractproperty
+
 from .. import config
+from .. import download
 from .. import upload
-from ..auth import refererauth, always_ok
+from .. import util
+from .. import validators
+from ..auth import containerauth, always_ok
 from ..dao import containerstorage, noop
 from ..web import base
 from ..web.request import log_access, AccessType
@@ -18,30 +25,40 @@ log = config.log
 
 
 class RefererHandler(base.RequestHandler):
-    def __init__()
+    __metaclass__ = ABCMeta
 
-    referer_handler_configurations = {
-        'analyses': {
-            'storage': 
-            'storage_schema_file': 'analysis.json',
-            'payload_schema_file': 'analysis.json',
-            'permchecker': refererauth.default_referer,
-        },
-    }
+    storage = abstractproperty()
+    storage_schema_file = abstractproperty()
+    payload_schema_file = abstractproperty()
+    permchecker = containerauth.default_referer
 
+    @property
+    def mongo_validator(self):
+        mongo_schema_uri = validators.schema_uri('mongo', self.storage_schema_file)
+        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
+        return mongo_validator
 
-    def _get_permchecker(self, container):
+    @property
+    def input_validator(self):
+        input_schema_uri = validators.schema_uri('input', self.payload_schema_file)
+        input_validator = validators.from_schema_path(input_schema_uri)
+        return input_validator
+
+    def get_permchecker(self, parent_container):
         if self.superuser_request:
             return always_ok
         elif self.public_request:
-            return refererauth.public_request(self, container)
+            return containerauth.public_request(self, container=parent_container)
         else:
-            permchecker = self.config['permchecker']
-            return permchecker(self, container)
+            return self.permchecker(self, parent_container=parent_container)
 
 
 class AnalysesHandler(RefererHandler):
-    def post(self, cont_name, cid, **kwargs):
+    storage = containerstorage.AnalysisStorage()
+    storage_schema_file = 'analysis.json'
+    payload_schema_file = 'analysis.json'
+
+    def post(self, cont_name, cid):
         """
         Default behavior:
             Creates an analysis object and uploads supplied input
@@ -52,51 +69,31 @@ class AnalysesHandler(RefererHandler):
             analyses are only allowed at the session level.
         """
         parent = self.storage.get_parent(cont_name, cid)
-        permchecker = self._get_permchecker(container=container)
-        permchecker(noop)('POST', container)
+        permchecker = self._get_permchecker(parent)
+        permchecker(noop)('POST')
 
         if self.is_true('job'):
             if cont_name == 'sessions':
                 payload = self.request.json_body
-                payload_validator(payload.get('analysis',{}), 'POST')
+                self.input_validator(payload.get('analysis', {}), 'POST')
                 analysis = payload.get('analysis')
                 job = payload.get('job')
                 if job is None or analysis is None:
                     self.abort(400, 'JSON body must contain map for "analysis" and "job"')
-                result = self.storage.create_job_and_analysis(cont_name, _id, analysis, job, self.origin)
+                result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin)
                 return {'_id': result['analysis']['_id']}
             else:
                 self.abort(400, 'Analysis created via a job must be at the session level')
 
-        # _id = kwargs.pop('cid')
-        # permchecker, storage, _, payload_validator, _ = self._initialize_request(cont_name, list_name, _id)
-        # permchecker(noop)('POST', _id=_id)
-
         payload = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
         analysis = self.storage.default_analysis(self.origin)
         analysis.update(payload)
-        result = self.storage.exec_op('POST', _id=_id, payload=analysis)
+        result = self.storage.exec_op('POST', payload=analysis)
 
-        if result.modified_count == 1:
-            return {'_id': analysis['_id']}
+        if result.acknowledged:
+            return {'_id': result.inserted_id}
         else:
-            self.abort(500, 'Element not added in list analyses of container {} {}'.format(cont_name, _id))
-
-
-    def _get_parent_container(self, payload):
-        if not self.config.get('parent_storage'):
-            return None, None
-        parent_storage = self.config['parent_storage']
-        parent_id_property = parent_storage.cont_name[:-1]
-        parent_id = payload.get(parent_id_property)
-        if parent_id:
-            parent_storage.dbc = config.db[parent_storage.cont_name]
-            parent_container = parent_storage.get_container(parent_id)
-            if parent_container is None:
-                self.abort(404, 'Element {} not found in container {}'.format(parent_id, parent_storage.cont_name))
-        else:
-            parent_container = None
-        return parent_container, parent_id_property
+            self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
 
     @log_access(AccessType.delete_analysis)

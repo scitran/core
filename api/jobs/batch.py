@@ -6,9 +6,8 @@ import datetime
 
 from .. import config
 from ..dao import APINotFoundException, APIStorageException
-from ..dao.containerstorage import AcquisitionStorage
+from ..dao.containerstorage import AcquisitionStorage, AnalysisStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_filereference
-from ..dao.liststorage import AnalysesStorage
 from .jobs import Job
 from .queue import Queue
 from . import gears
@@ -149,7 +148,7 @@ def run(batch_job):
         if not analysis.get('label'):
             time_now = datetime.datetime.utcnow()
             analysis['label'] = {'label': '{} {}'.format(gear_name, time_now)}
-        an_storage = AnalysesStorage('sessions', 'analyses', use_object_id=True)
+        an_storage = AnalysisStorage()
         acq_storage = AcquisitionStorage()
 
     jobs = []
