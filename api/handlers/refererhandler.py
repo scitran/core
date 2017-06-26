@@ -102,7 +102,7 @@ class AnalysesHandler(RefererHandler):
         parent = self.storage.get_parent(cont_name, cid)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET')
-        return self._get_container(_id)
+        return self.storage.get_container(_id)
 
 
     @log_access(AccessType.delete_analysis)
@@ -122,7 +122,7 @@ class AnalysesHandler(RefererHandler):
             self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 
 
-    def download(self, cont_name, cid, _id, fname=None):
+    def download(self, cont_name, cid, _id, filename=None):
         """
         .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
 
@@ -225,46 +225,46 @@ class AnalysesHandler(RefererHandler):
         if ticket_id is None:
             permchecker(noop)('GET')
         elif ticket_id != '':
-            ticket = self._check_ticket(ticket_id, cid, fname)
+            ticket = self._check_ticket(ticket_id, cid, filename)
             if not self.origin.get('id'):
                 self.origin = ticket.get('origin')
-        fileinfo = self.storage.get_fileinfo(_id, fname)
+        fileinfo = self.storage.get_fileinfo(_id, filename)
         if fileinfo is None:
             error_msg = 'No files on analysis {}'.format(_id)
-            if fname:
-                error_msg = 'Could not find file {} on analysis {}'.format(fname, _id)
+            if filename:
+                error_msg = 'Could not find file {} on analysis {}'.format(filename, _id)
             self.abort(404, error_msg)
         if ticket_id == '':
-            if fname:
+            if filename:
                 total_size = fileinfo[0]['size']
                 file_cnt = 1
-                ticket = util.download_ticket(self.request.client_addr, 'file', cid, fname, total_size, origin=self.origin)
+                ticket = util.download_ticket(self.request.client_addr, 'file', cid, filename, total_size, origin=self.origin)
             else:
                 targets, total_size, file_cnt = self._prepare_batch(fileinfo)
                 label = util.sanitize_string_to_filename(self.storage.get_container(_id).get('label', 'No Label'))
-                fname = 'analysis_' + label + '.tar'
-                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, fname, total_size, origin=self.origin)
+                filename = 'analysis_' + label + '.tar'
+                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
             return {
                 'ticket': config.db.downloads.insert_one(ticket).inserted_id,
                 'size': total_size,
                 'file_cnt': file_cnt,
-                'filename': fname
+                'filename': filename
             }
         else:
-            if not fname:
+            if not filename:
                 if ticket:
                     self._send_batch(ticket)
                 else:
                     self.abort(400, 'batch downloads require a ticket')
             elif not fileinfo:
-                self.abort(404, "{} doesn't exist".format(fname))
+                self.abort(404, "{} doesn't exist".format(filename))
             else:
                 fileinfo = fileinfo[0]
                 filepath = os.path.join(
                     config.get_item('persistent', 'data_path'),
                     util.path_from_hash(fileinfo['hash'])
                 )
-                fname = fileinfo['name']
+                filename = fileinfo['name']
 
                 # Request for info about zipfile
                 if self.is_true('info'):
@@ -301,7 +301,7 @@ class AnalysesHandler(RefererHandler):
                         self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
                     else:
                         self.response.headers['Content-Type'] = 'application/octet-stream'
-                        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(fname)
+                        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
 
             # log download if we haven't already for this ticket
             if ticket:

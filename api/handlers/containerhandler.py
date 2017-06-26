@@ -110,8 +110,8 @@ class ContainerHandler(base.RequestHandler):
             for fileinfo in result['files']:
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
 
-        if cont_name == 'sessions':
-            result = self.handle_analyses(result)
+        inflate_job_info = cont_name == 'sessions'
+        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info)
         return self.handle_origin(result)
 
     def handle_origin(self, result):
@@ -203,14 +203,6 @@ class ContainerHandler(base.RequestHandler):
 
         return results
 
-    def handle_analyses(self, result):
-        """
-        Given an object with an `analyses` array key, inflate job info for job-based analyses
-        """
-        for analysis in result.get('analyses', []):
-            AnalysisStorage.inflate_job_info(analysis)
-        return result
-
     def _filter_permissions(self, result, uid, site):
         """
         if the user is not admin only her permissions are returned.
@@ -240,7 +232,7 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker(noop)('GET', cid)
 
-        analyses = config.db.analyses.find({'parent.type': 'session', 'parent.id': cont['_id']}).sort('created', -1)
+        analyses = list(config.db.analyses.find({'parent.type': 'session', 'parent.id': cont['_id']}).sort('created', -1))
         acquisitions = cont.get('acquisitions', [])
 
         results = []
@@ -343,8 +335,6 @@ class ContainerHandler(base.RequestHandler):
 
         modified_results = []
         for result in results:
-            if cont_name == 'sessions':
-                result = self.handle_analyses(result)
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, cont_name)
             result = self.handle_origin(result)

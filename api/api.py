@@ -248,11 +248,11 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>',      FileListHandler,                     m=['GET', 'DELETE']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
 
-                route( '/analyses',                            AnalysesHandler,                  m=['POST']),
+                route( '/analyses',                                AnalysesHandler,                  m=['POST']),
                 prefix('/analyses', [
-                    route('/<_id:{cid}>',                      AnalysesHandler,                  m=['GET', 'DELETE']),
-                    route('/<_id:{cid}>/files',                AnalysesHandler, h='download',    m=['GET']),
-                    route('/<_id:{cid}>/files/<name:{fname}>', AnalysesHandler, h='download',    m=['GET']),
+                    route('/<_id:{cid}>',                          AnalysesHandler,                  m=['GET', 'DELETE']),
+                    route('/<_id:{cid}>/files',                    AnalysesHandler, h='download',    m=['GET']),
+                    route('/<_id:{cid}>/files/<filename:{fname}>', AnalysesHandler, h='download',    m=['GET']),
                 ]),
 
                 route('/<list_name:notes>',             NotesListHandler,               m=['POST']),

@@ -447,6 +447,16 @@ class AnalysisStorage(ContainerStorage):
         return parent_storage.get_container(parent_id)
 
 
+    def get_analyses(self, parent_type, parent_id, inflate_job_info=False):
+        parent_type = containerutil.singularize(parent_type)
+        parent_id = bson.objectid.ObjectId(parent_id)
+        analyses = self.get_all_el({'parent.type': parent_type, 'parent.id': parent_id}, None, None)
+        if inflate_job_info:
+            for analysis in analyses:
+                self.inflate_job_info(analysis)
+        return analyses
+
+
     def get_fileinfo(self, _id, filename=None):
         analysis = self.get_container(_id)
         files = analysis.get('files')
