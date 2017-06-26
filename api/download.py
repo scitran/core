@@ -7,6 +7,7 @@ import datetime
 import cStringIO
 
 from .web import base
+from .web.request import AccessType
 from . import config
 from . import util
 from . import validators
@@ -24,29 +25,6 @@ def _filter_check(property_filter, property_values):
     if plus and plus.isdisjoint(property_values):
         return False
     return True
-
-
-def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, filters):
-    for f in container.get('files', []):
-        if filters:
-            filtered = True
-            for filter_ in filters:
-                type_as_list = [f['type']] if f.get('type') else []
-                if (
-                    _filter_check(filter_.get('tags', {}), f.get('tags', [])) and
-                    _filter_check(filter_.get('types', {}), type_as_list)
-                    ):
-                    filtered = False
-                    break
-            if filtered:
-                continue
-        if optional or not f.get('optional', False):
-            filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
-            if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, prefix + '/' + f['name'], f['size']))
-                total_size += f['size']
-                total_cnt += 1
-    return total_size, total_cnt
 
 def symlinkarchivestream(ticket, data_path):
     for filepath, arcpath, _ in ticket['target']:
@@ -77,6 +55,29 @@ def archivestream(ticket):
     stream.close()
 
 class Download(base.RequestHandler):
+
+    def _append_targets(self, targets, cont_name, container, prefix, total_size, total_cnt, optional, data_path, filters):
+        for f in container.get('files', []):
+            if filters:
+                filtered = True
+                for filter_ in filters:
+                    type_as_list = [f['type']] if f.get('type') else []
+                    if (
+                        _filter_check(filter_.get('tags', {}), f.get('tags', [])) and
+                        _filter_check(filter_.get('types', {}), type_as_list)
+                        ):
+                        filtered = False
+                        break
+                if filtered:
+                    continue
+            if optional or not f.get('optional', False):
+                filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
+                if os.path.exists(filepath): # silently skip missing files
+                    targets.append((filepath, prefix + '/' + f['name'], f['size']))
+                    total_size += f['size']
+                    total_cnt += 1
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=container.get('_id'))
+        return total_size, total_cnt
 
     def _bulk_preflight_archivestream(self, file_refs):
         data_path = config.get_item('persistent', 'data_path')
@@ -154,7 +155,7 @@ class Download(base.RequestHandler):
                     continue
 
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
-                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'projects', project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 session_dict = {session['_id']: session for session in sessions}
@@ -173,19 +174,19 @@ class Download(base.RequestHandler):
                 for code, subject in subject_dict.iteritems():
                     subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, project['_id'])
                     subject_prefixes[code] = subject_prefix
-                    total_size, file_cnt = _append_targets(targets, subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'subjects', subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 for session in session_dict.itervalues():
                     subject_code = session['subject'].get('code', 'unknown_subject')
                     subject = subject_dict[subject_code]
                     session_prefix = subject_prefixes[subject_code] + '/' + self._path_from_container(session, used_subpaths, subject_code)
                     session_prefixes[session['_id']] = session_prefix
-                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'sessions', session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
                     acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
 
             elif item['level'] == 'session':
@@ -199,7 +200,7 @@ class Download(base.RequestHandler):
                 if not subject.get('code'):
                     subject['code'] = 'unknown_subject'
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id'])
-                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'sessions', session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
                 a_query = {'session': item_id}
@@ -209,7 +210,7 @@ class Download(base.RequestHandler):
 
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'acquisition':
                 acq = config.db.acquisitions.find_one(base_query, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
@@ -224,7 +225,7 @@ class Download(base.RequestHandler):
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'analysis':
                 analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'files', 'uid', 'timestamp'])
