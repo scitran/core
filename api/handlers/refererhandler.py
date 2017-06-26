@@ -19,6 +19,7 @@ from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage, noop
 from ..web import base
 from ..web.request import log_access, AccessType
+from .listhandler import FileListHandler
 
 
 log = config.log
@@ -121,7 +122,7 @@ class AnalysesHandler(RefererHandler):
             self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 
 
-    def download(self, **kwargs):
+    def download(self, cont_name, cid, _id, fname=None):
         """
         .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
 
@@ -217,55 +218,53 @@ class AnalysesHandler(RefererHandler):
 
 
         """
-        _id = kwargs.pop('cid')
-        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
-        filename = kwargs.get('name')
+        parent = self.storage.get_parent(cont_name, cid)
+        permchecker = self.get_permchecker(parent)
         ticket_id = self.get_param('ticket')
         ticket = None
         if ticket_id is None:
-            permchecker(noop)('GET', _id=_id)
+            permchecker(noop)('GET')
         elif ticket_id != '':
-            ticket = self._check_ticket(ticket_id, _id, filename)
+            ticket = self._check_ticket(ticket_id, cid, fname)
             if not self.origin.get('id'):
                 self.origin = ticket.get('origin')
-        analysis_id = kwargs.get('_id')
-        fileinfo = storage.get_fileinfo(_id, analysis_id, filename)
+        fileinfo = self.storage.get_fileinfo(_id, fname)
         if fileinfo is None:
-            error_msg = 'No files on analysis {}'.format(analysis_id)
-            if filename:
-                error_msg = 'Could not find file {} on analysis {}'.format(filename, analysis_id)
+            error_msg = 'No files on analysis {}'.format(_id)
+            if fname:
+                error_msg = 'Could not find file {} on analysis {}'.format(fname, _id)
             self.abort(404, error_msg)
         if ticket_id == '':
-            if filename:
+            if fname:
                 total_size = fileinfo[0]['size']
                 file_cnt = 1
-                ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, total_size, origin=self.origin)
+                ticket = util.download_ticket(self.request.client_addr, 'file', cid, fname, total_size, origin=self.origin)
             else:
                 targets, total_size, file_cnt = self._prepare_batch(fileinfo)
                 label = util.sanitize_string_to_filename(self.storage.get_container(_id).get('label', 'No Label'))
-                filename = 'analysis_' + label + '.tar'
-                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
+                fname = 'analysis_' + label + '.tar'
+                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, fname, total_size, origin=self.origin)
             return {
                 'ticket': config.db.downloads.insert_one(ticket).inserted_id,
                 'size': total_size,
                 'file_cnt': file_cnt,
-                'filename': filename
+                'filename': fname
             }
         else:
-            if not filename:
+            if not fname:
                 if ticket:
                     self._send_batch(ticket)
                 else:
                     self.abort(400, 'batch downloads require a ticket')
             elif not fileinfo:
-                self.abort(404, "{} doesn't exist".format(filename))
+                self.abort(404, "{} doesn't exist".format(fname))
             else:
                 fileinfo = fileinfo[0]
                 filepath = os.path.join(
                     config.get_item('persistent', 'data_path'),
                     util.path_from_hash(fileinfo['hash'])
                 )
-                filename = fileinfo['name']
+                fname = fileinfo['name']
 
                 # Request for info about zipfile
                 if self.is_true('info'):
@@ -289,10 +288,10 @@ class AnalysesHandler(RefererHandler):
                     # log download if we haven't already for this ticket
                     if ticket:
                         if not ticket.get('logged', False):
-                            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
                             config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
                     else:
-                        self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                        self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
 
                 # Request to download the file itself
                 else:
@@ -302,16 +301,16 @@ class AnalysesHandler(RefererHandler):
                         self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
                     else:
                         self.response.headers['Content-Type'] = 'application/octet-stream'
-                        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
+                        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(fname)
 
             # log download if we haven't already for this ticket
             if ticket:
                 ticket = config.db.downloads.find_one({'_id': ticket_id})
                 if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
                     config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
             else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
 
 
     def _check_ticket(self, ticket_id, _id, filename):
