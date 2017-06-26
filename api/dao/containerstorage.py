@@ -460,20 +460,22 @@ class AnalysisStorage(ContainerStorage):
             return files
 
 
-    @staticmethod
-    def fill_values(analysis, cont_name, cid, origin):
+    def fill_values(self, analysis, cont_name, cid, origin):
+        parent = self.get_parent(cont_name, cid)
         defaults = {
-            'parent':   {
+            'parent': {
                 'type': containerutil.singularize(cont_name),
-                'id':   bson.objectid.ObjectId(cid)
+                'id': bson.objectid.ObjectId(cid)
             },
-            '_id':      bson.objectid.ObjectId(),
-            'created':  datetime.datetime.utcnow(),
+            '_id': bson.objectid.ObjectId(),
+            'created': datetime.datetime.utcnow(),
             'modified': datetime.datetime.utcnow(),
-            'user':     origin.get('id'),
+            'user': origin.get('id'),
+            'permissions': parent['permissions'],
+            'public': parent.get('public', False),
         }
-        defaults.update(analysis)
-        return defaults
+        for key in defaults:
+            analysis.setdefault(key, defaults[key])
 
 
     def create_job_and_analysis(self, cont_name, cid, analysis, job, origin):

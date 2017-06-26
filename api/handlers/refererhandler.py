@@ -16,7 +16,7 @@ from .. import upload
 from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import containerstorage, noop
+from ..dao import APIStorageException, containerstorage, noop
 from ..web import base
 from ..web.request import log_access, AccessType
 
@@ -59,6 +59,7 @@ class AnalysesHandler(RefererHandler):
     storage_schema_file = 'analysis.json'
     payload_schema_file = 'analysis.json'
 
+
     def post(self, cont_name, cid):
         """
         Default behavior:
@@ -88,7 +89,6 @@ class AnalysesHandler(RefererHandler):
 
         analysis = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
         self.storage.fill_values(analysis, cont_name, cid, self.origin)
-        self.input_validator(analysis, 'POST')
         result = self.storage.create_el(analysis)
 
         if result.acknowledged:
@@ -97,57 +97,28 @@ class AnalysesHandler(RefererHandler):
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
 
-    @log_access(AccessType.delete_analysis)
-    def delete(self, **kwargs):
-        # Overriding base class delete to audit action before completion
-        _id = kwargs.pop('cid')
-        permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+    def get(self, cont_name, cid, _id):
+        parent = self.storage.get_parent(cont_name, cid)
+        permchecker = self.get_permchecker(parent)
+        permchecker(noop)('GET')
+        return self._get_container(_id)
 
-        permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
-        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+
+    @log_access(AccessType.delete_analysis)
+    def delete(self, cont_name, cid, _id):
+        parent = self.storage.get_parent(cont_name, cid)
+        permchecker = self.get_permchecker(parent)
+        permchecker(noop)('DELETE')
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=cid)
+
         try:
-            result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
+            result = self.storage.delete_el(_id)
         except APIStorageException as e:
             self.abort(400, e.message)
-        if result.modified_count == 1:
-            return {'modified': result.modified_count}
+        if result.deleted_count == 1:
+            return {'deleted': result.deleted_count}
         else:
-            self.abort(404, 'Element not removed from list {} in container {} {}'.format(storage.list_name, storage.cont_name, _id))
-
-
-    def add_note(self, cont_name, cid, child_name, _id):
-        _id = kwargs.pop('cid')
-        analysis_id = kwargs.get('_id')
-        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
-        payload = self.request.json_body
-
-        notes_schema_file = list_handler_configurations[cont_name]['notes']['storage_schema_file']
-        input_schema_uri = validators.schema_uri('input', notes_schema_file)
-        input_validator = validators.from_schema_path(input_schema_uri)
-        input_validator(payload, 'POST')
-
-        payload['_id'] = str(bson.objectid.ObjectId())
-        payload['user'] = payload.get('user', self.uid)
-        payload['created'] = datetime.datetime.utcnow()
-        permchecker(noop)('POST', _id=_id)
-        result = storage.add_note(_id=_id, analysis_id=analysis_id, payload=payload)
-        if result.modified_count == 1:
-            return {'modified':result.modified_count}
-        else:
-            self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-
-
-    def delete_note(self, cont_name, list_name, **kwargs):
-        _id = kwargs.pop('cid')
-        analysis_id = kwargs.pop('_id')
-        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id)
-        note_id = kwargs.get('note_id')
-        permchecker(noop)('DELETE', _id=_id)
-        result = storage.delete_note(_id=_id, analysis_id=analysis_id, note_id=note_id)
-        if result.modified_count == 1:
-            return {'modified': result.modified_count}
-        else:
-            self.abort(404, 'Note not removed from analysis {}'.format(analysis_id))
+            self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 
 
     def download(self, **kwargs):

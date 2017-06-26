@@ -1121,6 +1121,8 @@ def upgrade_to_32_closure(cont, cont_name):
     for analysis in cont['analyses']:
         analysis['_id'] = bson.ObjectId(analysis['_id'])
         analysis['parent'] = {'type': cont_type, 'id': cont['_id']}
+        analysis['permissions'] = cont['permissions']
+        analysis['public'] = cont.get('public', False)
     config.db['analyses'].insert_many(cont['analyses'])
     config.db[cont_name].update_one(
         {'_id': cont['_id']},
