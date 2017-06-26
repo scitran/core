@@ -1129,6 +1129,7 @@ def upgrade_to_32():
     for coll in ['acquisitions', 'groups', 'projects', 'sessions']:
         cursor = config.db[coll].find({'permissions.site': {'$exists': True}})
         process_cursor(cursor, upgrade_to_32_closure, context = coll)
+    config.db.sites.drop()
 
 def upgrade_schema(force_from = None):
     """

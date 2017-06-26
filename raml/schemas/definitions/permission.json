@@ -4,13 +4,11 @@
   "definitions": {
     "_id":            { "type": "string" },
     "access":         { "enum": ["ro", "rw", "admin"] },
-    "site":           { "type": "string" },
     "permission":{
       "type":"object",
       "properties":{
         "_id":{"$ref":"#/definitions/_id"},
-        "access":{"$ref":"#/definitions/access"},
-        "site":{"$ref":"#/definitions/site"}
+        "access":{"$ref":"#/definitions/access"}
       },
       "additionalProperties": false
     },
