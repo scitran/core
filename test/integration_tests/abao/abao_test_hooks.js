@@ -347,6 +347,8 @@ hooks.before("GET /groups/{GroupId}/projects -> 200", function(test, done) {
     done();
 });
 
+
+// set initial test_collection_1
 hooks.after("GET /collections -> 200", function(test, done) {
     test_collection_1 = test.response.body[0];
     collection_id = test.response.body[0]._id;
@@ -356,6 +358,12 @@ hooks.after("GET /collections -> 200", function(test, done) {
 
 hooks.before("GET /collections/{CollectionId} -> 200", function(test, done) {
     test.request.params.CollectionId = collection_id;
+    done();
+});
+
+// set detailed test_collection_1 (including analyses, that are omitted during listing)
+hooks.after("GET /collections/{CollectionId} -> 200", function(test, done) {
+    test_collection_1 = test.response.body;
     done();
 });
 
@@ -636,6 +644,8 @@ hooks.before("DELETE /collections/{CollectionId}/analyses/{AnalysisId}/notes/{No
     done();
 });
 
+
+// set initial test_session_1
 hooks.after("GET /sessions -> 200", function(test, done) {
     test_session_1 = test.response.body[0];
     assert.equal(test_session_1.label, "test-session-1");
@@ -644,6 +654,12 @@ hooks.after("GET /sessions -> 200", function(test, done) {
 
 hooks.before("GET /sessions/{SessionId} -> 200", function(test, done) {
     test.request.params.SessionId = test_session_1._id;
+    done();
+});
+
+// set detailed test_session_1 (including analyses, that are omitted during listing)
+hooks.after("GET /sessions/{SessionId} -> 200", function(test, done) {
+    test_session_1 = test.response.body;
     done();
 });
 
@@ -899,6 +915,7 @@ hooks.before("DELETE /sessions/{SessionId}/analyses/{AnalysisId}/notes/{NoteId} 
 
 
 
+// set initial test_acquisition_1
 hooks.after("GET /acquisitions -> 200", function(test, done) {
     test_acquisition_1 = test.response.body[0];
     assert.equal(test_acquisition_1.label, "test-acquisition-1");
@@ -907,6 +924,12 @@ hooks.after("GET /acquisitions -> 200", function(test, done) {
 
 hooks.before("GET /acquisitions/{AcquisitionId} -> 200", function(test, done) {
     test.request.params.AcquisitionId = test_acquisition_1._id;
+    done();
+});
+
+// set detailed test_acquisition_1 (including analyses, that are omitted during listing)
+hooks.after("GET /acquisitions/{AcquisitionId} -> 200", function(test, done) {
+    test_acquisition_1 = test.response.body;
     done();
 });
 
@@ -1137,6 +1160,8 @@ hooks.before("DELETE /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/notes/{
     done();
 });
 
+
+// set initial test_project_1
 hooks.after("GET /projects -> 200", function(test, done) {
     test_project_1 = test.response.body[0];
     assert.equal(test_project_1.label, "test-project-1");
@@ -1155,6 +1180,12 @@ hooks.before("POST /projects -> 400", function(test, done) {
 
 hooks.before("GET /projects/{ProjectId} -> 200", function(test, done) {
     test.request.params.ProjectId = test_project_1._id;
+    done();
+});
+
+// set detailed test_project_1 (including analyses, that are omitted during listing)
+hooks.after("GET /projects/{ProjectId} -> 200", function(test, done) {
+    test_project_1 = test.response.body;
     done();
 });
 
