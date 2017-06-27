@@ -151,6 +151,44 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
     assert most_recent_log['access_type'] == AccessType.download_file.value
 
 
+    # Upload another file
+    r = as_admin.post('/sessions/' + session + '/files', files={
+        'file': (file_name, 'test-content')
+    })
+    assert r.ok
+
+
+    ###
+    # Test container bulk download
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+    r = as_admin.post('/download', json={'optional': True, 'nodes':[{'level': 'project', '_id': project}]})
+    assert r.ok
+    ticket_id = r.json()['ticket']
+    file_count = r.json()['file_cnt']
+    r = as_admin.get('/download', params={'ticket':ticket_id})
+    assert r.ok
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before + file_count == log_records_count_after
+
+    ###
+    # Test search bulk download
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+    r = as_admin.post('/download', params={'bulk':True},
+                      json={"files":[{"container_name":"project","container_id":project,"filename":file_name},
+                                     {"container_name":"session","container_id":session,"filename":file_name}]})
+    assert r.ok
+    ticket_id = r.json()['ticket']
+    file_count = r.json()['file_cnt']
+    r = as_admin.get('/download', params={'ticket':ticket_id})
+    assert r.ok
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before + file_count == log_records_count_after
+
+
     ###
     # Test file info access is logged
     ###
