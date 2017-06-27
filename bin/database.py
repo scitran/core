@@ -1136,7 +1136,7 @@ def upgrade_to_32():
     """
     for cont_name in ['projects', 'sessions', 'acquisitions', 'collections']:
         cursor = config.db[cont_name].find({'analyses': {'$exists': True}})
-        process_cursor(cursor, upgrade_to_31_closure, context=cont_name)
+        process_cursor(cursor, upgrade_to_32_closure, context=cont_name)
 
 
 def upgrade_schema(force_from = None):
