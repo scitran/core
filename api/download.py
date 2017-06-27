@@ -73,10 +73,10 @@ class Download(base.RequestHandler):
             if optional or not f.get('optional', False):
                 filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
                 if os.path.exists(filepath): # silently skip missing files
-                    targets.append((filepath, prefix + '/' + f['name'], f['size']))
+                    targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                     total_size += f['size']
                     total_cnt += 1
-            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=container.get('_id'))
+            # self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=container.get('_id'))
         return total_size, total_cnt
 
     def _bulk_preflight_archivestream(self, file_refs):
@@ -110,6 +110,7 @@ class Download(base.RequestHandler):
                         'name': filename
                     }}
                 })['files'][0]
+                # self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id)
             except Exception: # pylint: disable=broad-except
                 # self.abort(404, 'File {} on Container {} {} not found'.format(filename, cont_name, cont_id))
                 # silently skip missing files/files user does not have access to
@@ -117,7 +118,7 @@ class Download(base.RequestHandler):
 
             filepath = os.path.join(data_path, util.path_from_hash(file_obj['hash']))
             if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, cont_name+'/'+cont_id+'/'+file_obj['name'], file_obj['size']))
+                targets.append((filepath, cont_name+'/'+cont_id+'/'+file_obj['name'], cont_name, cont_id, file_obj['size']))
                 total_size += file_obj['size']
                 file_cnt += 1
 
@@ -277,6 +278,23 @@ class Download(base.RequestHandler):
         used_subpaths[parent_id] = used_subpaths.get(parent_id, []) + [path]
         return path
 
+    def archivestream(self, ticket):
+        BLOCKSIZE = 512
+        CHUNKSIZE = 2**20  # stream files in 1MB chunks
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as archive:
+            for filepath, arcpath, cont_name, cont_id, _ in ticket['target']:
+                yield archive.gettarinfo(filepath, arcpath).tobuf()
+                with open(filepath, 'rb') as fd:
+                    chunk = ''
+                    for chunk in iter(lambda: fd.read(CHUNKSIZE), ''): # pylint: disable=cell-var-from-loop
+                        yield chunk
+                    if len(chunk) % BLOCKSIZE != 0:
+                        yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True)
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
     def download(self):
         """Download files or create a download ticket"""
         ticket_id = self.get_param('ticket')
@@ -289,7 +307,7 @@ class Download(base.RequestHandler):
             if self.get_param('symlinks'):
                 self.response.app_iter = symlinkarchivestream(ticket, config.get_item('persistent', 'data_path'))
             else:
-                self.response.app_iter = archivestream(ticket)
+                self.response.app_iter = self.archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
             for project_id in ticket['projects']:
