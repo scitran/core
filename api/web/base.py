@@ -31,6 +31,8 @@ class RequestHandler(webapp2.RequestHandler):
 
         # If user is attempting to log in through `/login`, ignore Auth here:
         # In future updates, move login and logout handlers to class that overrides this init
+        if self.request.path == '/api/login':
+            return
 
         try:
             # TODO: This should be taken out of base.RequestHandler so `handle_exception()`
