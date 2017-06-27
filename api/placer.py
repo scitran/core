@@ -656,8 +656,8 @@ class AnalysisJobPlacer(Placer):
     def finalize(self):
         # Search the sessions table for analysis, replace file field
         if self.saved:
-            q = {'analyses._id': str(self.id_)}
-            u = {'$push': {'analyses.$.files': {'$each': self.saved}}}
+            q = {'_id': self.id_}
+            u = {'$push': {'files': {'$each': self.saved}}}
             job_id = self.context.get('job_id')
             if job_id:
                 # If the original job failed, update the analysis with the job that succeeded
@@ -668,7 +668,7 @@ class AnalysisJobPlacer(Placer):
                 job.saved_files = [f['name'] for f in self.saved]
                 job.save()
 
-            config.db.sessions.update_one(q, u)
+            config.db.analyses.update_one(q, u)
             return self.saved
 
 class GearPlacer(Placer):
