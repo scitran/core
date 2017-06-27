@@ -50,24 +50,24 @@ class ContainerStorage(object):
         self.use_object_id = use_object_id
         self.dbc = config.db[cont_name]
 
-    @staticmethod
-    def factory(cont_name, use_object_id = False):
+    @classmethod
+    def factory(cls, cont_name, use_object_id=False):
         """
         Factory method to aid in the creation of a ContainerStorage instance
         when cont_name is dynamic.
         """
-        if cont_name in ['group', 'groups']:
-            return GroupStorage()
-        elif cont_name in ['project', 'projects']:
-            return ProjectStorage()
-        elif cont_name in ['session', 'sessions']:
-            return SessionStorage()
-        elif cont_name in ['acquisition', 'acquisitions']:
-            return AcquisitionStorage()
-        elif cont_name in ['analysis', 'analyses']:
-            return AnalysisStorage()
-        else:
-            return ContainerStorage(cont_name, use_object_id)
+        cont_name = containerutil.pluralize(cont_name)
+        factories = {
+            'default': lambda: cls(cont_name, use_object_id=use_object_id),
+            'groups': GroupStorage,
+            'projects': ProjectStorage,
+            'sessions': SessionStorage,
+            'acquisitions': AcquisitionStorage,
+            'collections': lambda: cls(cont_name, use_object_id=True),
+            'analyses': AnalysisStorage,
+        }
+        storage_factory = factories.get(cont_name, factories['default'])
+        return storage_factory()
 
     def _fill_default_values(self, cont):
         if cont:
