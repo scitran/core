@@ -535,8 +535,7 @@ class AnalysisStorage(ContainerStorage):
         return {'analysis': analysis, 'job_id': job_id, 'job': job}
 
 
-    @staticmethod
-    def inflate_job_info(analysis):
+    def inflate_job_info(self, analysis):
         """
         Inflate job from id ref in analysis
 
@@ -577,9 +576,7 @@ class AnalysisStorage(ContainerStorage):
                     file_['input'] = True
                     files.append(file_)
 
-            q = {'analyses._id': analysis['_id']}
-            u = {'$set': {'analyses.$.job': job.id_, 'analyses.$.files': files}}
-            config.db.sessions.update_one(q, u)
+            self.update_el(analysis['_id'], {'job': job.id_, 'files': files})
 
         analysis['job'] = job
         return analysis
