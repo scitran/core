@@ -457,19 +457,6 @@ class AnalysisStorage(ContainerStorage):
         return analyses
 
 
-    def get_fileinfo(self, _id, filename=None):
-        analysis = self.get_container(_id)
-        files = analysis.get('files')
-        if files is None:
-            return None
-        if filename:
-            for f in files:
-                if f.get('name') == filename:
-                    return [f]
-        else:
-            return files
-
-
     def fill_values(self, analysis, cont_name, cid, origin):
         parent = self.get_parent(cont_name, cid)
         defaults = {

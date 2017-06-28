@@ -220,8 +220,13 @@ class AnalysesHandler(RefererHandler):
             ticket = self._check_ticket(ticket_id, cid, filename)
             if not self.origin.get('id'):
                 self.origin = ticket.get('origin')
-        fileinfo = self.storage.get_fileinfo(_id, filename)
-        if fileinfo is None:
+
+        analysis = self.storage.get_container(_id)
+        fileinfo = analysis.get('files', [])
+        if filename:
+            fileinfo = [fi for fi in fileinfo if fi['name'] == filename]
+
+        if not fileinfo:
             error_msg = 'No files on analysis {}'.format(_id)
             if filename:
                 error_msg = 'Could not find file {} on analysis {}'.format(filename, _id)
