@@ -232,7 +232,7 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker(noop)('GET', cid)
 
-        analyses = list(config.db.analyses.find({'parent.type': 'session', 'parent.id': cont['_id']}).sort('created', -1))
+        analyses = AnalysisStorage().get_analyses('session', cont['_id'])
         acquisitions = cont.get('acquisitions', [])
 
         results = []
