@@ -29,15 +29,8 @@ class RefererHandler(base.RequestHandler):
     __metaclass__ = ABCMeta
 
     storage = abstractproperty()
-    storage_schema_file = abstractproperty()
     payload_schema_file = abstractproperty()
     permchecker = containerauth.default_referer
-
-    @property
-    def mongo_validator(self):
-        mongo_schema_uri = validators.schema_uri('mongo', self.storage_schema_file)
-        mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
-        return mongo_validator
 
     @property
     def input_validator(self):
@@ -57,7 +50,6 @@ class RefererHandler(base.RequestHandler):
 
 class AnalysesHandler(RefererHandler):
     storage = containerstorage.AnalysisStorage()
-    storage_schema_file = 'analysis.json'
     payload_schema_file = 'analysis.json'
 
 
