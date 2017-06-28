@@ -482,10 +482,12 @@ class AnalysisStorage(ContainerStorage):
             'modified': datetime.datetime.utcnow(),
             'user': origin.get('id'),
             'permissions': parent['permissions'],
-            'public': parent.get('public', False),
         }
         for key in defaults:
             analysis.setdefault(key, defaults[key])
+        for key in ('public', 'archived'):
+            if key in parent:
+                analysis.setdefault(key, parent[key])
 
 
     def create_job_and_analysis(self, cont_name, cid, analysis, job, origin):
