@@ -102,8 +102,7 @@ class GearHandler(base.RequestHandler):
 
     def post(self, _id):
         """Upsert an entire gear document."""
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
         doc = self.request.json
@@ -126,8 +125,7 @@ class GearHandler(base.RequestHandler):
 
     def delete(self, _id):
         """Delete a gear. Generally not recommended."""
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
         return remove_gear(_id)
@@ -228,8 +226,7 @@ class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
     def get(self):
         """List all jobs."""
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
         return list(config.db.jobs.find())
 
@@ -288,16 +285,14 @@ class JobsHandler(base.RequestHandler):
         return { '_id': result }
 
     def stats(self):
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
         return Queue.get_statistics()
 
     def next(self):
 
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
 
@@ -313,8 +308,7 @@ class JobsHandler(base.RequestHandler):
             return job
 
     def reap_stale(self):
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
         count = Queue.scan_for_orphans()
@@ -326,8 +320,7 @@ class JobHandler(base.RequestHandler):
 
     def get(self, _id):
 
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
 
@@ -412,8 +405,7 @@ class JobHandler(base.RequestHandler):
 
     def add_logs(self, _id):
         """Add to a job's logs"""
-        user = config.db.users.find_one({'_id': self.uid})
-        if not self.superuser_request and not user.get('root'):
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
 
