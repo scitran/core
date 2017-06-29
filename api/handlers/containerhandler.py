@@ -70,7 +70,7 @@ class ContainerHandler(base.RequestHandler):
             'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0,
                                 'subject.lastname': 0, 'subject.sex': 0, 'subject.age': 0,
                                 'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0,
-                                'file.info': 0, 'session.tag': 0, 'acquisition.tag': 0},
+                                'files.info': 0, 'tags': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -80,7 +80,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
             'payload_schema_file': 'acquisition.json',
-            'list_projection': {'info': 0, 'collections': 0, 'files.info': 0}
+            'list_projection': {'info': 0, 'collections': 0, 'files.info': 0, 'tag': 0}
         }
     }
 

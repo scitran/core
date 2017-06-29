@@ -26,33 +26,6 @@ def _filter_check(property_filter, property_values):
         return False
     return True
 
-def symlinkarchivestream(ticket, data_path):
-    for filepath, arcpath, _ in ticket['target']:
-        t = tarfile.TarInfo(name=arcpath)
-        t.type = tarfile.SYMTYPE
-        t.linkname = os.path.relpath(filepath, data_path)
-        yield t.tobuf()
-    stream = cStringIO.StringIO()
-    with tarfile.open(mode='w|', fileobj=stream) as _:
-        pass
-    yield stream.getvalue() # get tar stream trailer
-    stream.close()
-
-def archivestream(ticket):
-    BLOCKSIZE = 512
-    CHUNKSIZE = 2**20  # stream files in 1MB chunks
-    stream = cStringIO.StringIO()
-    with tarfile.open(mode='w|', fileobj=stream) as archive:
-        for filepath, arcpath, _ in ticket['target']:
-            yield archive.gettarinfo(filepath, arcpath).tobuf()
-            with open(filepath, 'rb') as fd:
-                chunk = ''
-                for chunk in iter(lambda: fd.read(CHUNKSIZE), ''): # pylint: disable=cell-var-from-loop
-                    yield chunk
-                if len(chunk) % BLOCKSIZE != 0:
-                    yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
-    yield stream.getvalue() # get tar stream trailer
-    stream.close()
 
 class Download(base.RequestHandler):
 
@@ -76,7 +49,6 @@ class Download(base.RequestHandler):
                     targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                     total_size += f['size']
                     total_cnt += 1
-            # self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=container.get('_id'))
         return total_size, total_cnt
 
     def _bulk_preflight_archivestream(self, file_refs):
@@ -110,7 +82,6 @@ class Download(base.RequestHandler):
                         'name': filename
                     }}
                 })['files'][0]
-                # self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id)
             except Exception: # pylint: disable=broad-except
                 # self.abort(404, 'File {} on Container {} {} not found'.format(filename, cont_name, cont_id))
                 # silently skip missing files/files user does not have access to
@@ -291,7 +262,20 @@ class Download(base.RequestHandler):
                         yield chunk
                     if len(chunk) % BLOCKSIZE != 0:
                         yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True) # log download
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
+    def symlinkarchivestream(self, ticket, data_path):
+        for filepath, arcpath, cont_name, cont_id, _ in ticket['target']:
+            t = tarfile.TarInfo(name=arcpath)
+            t.type = tarfile.SYMTYPE
+            t.linkname = os.path.relpath(filepath, data_path)
+            yield t.tobuf()
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True) # log download
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as _:
+            pass
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
@@ -305,7 +289,7 @@ class Download(base.RequestHandler):
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
             if self.get_param('symlinks'):
-                self.response.app_iter = symlinkarchivestream(ticket, config.get_item('persistent', 'data_path'))
+                self.response.app_iter = self.symlinkarchivestream(ticket, config.get_item('persistent', 'data_path'))
             else:
                 self.response.app_iter = self.archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'

@@ -11,7 +11,6 @@ import zipfile
 from abc import ABCMeta, abstractproperty
 
 from .. import config
-from .. import download
 from .. import upload
 from .. import util
 from .. import validators
@@ -345,6 +344,4 @@ class AnalysesHandler(RefererHandler):
 
 
     def _send_batch(self, ticket):
-        self.response.app_iter = download.archivestream(ticket)
-        self.response.headers['Content-Type'] = 'application/octet-stream'
-        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+        self.abort(400, 'This endpoint does not download files, only returns ticket {} for the download'.format(ticket))
