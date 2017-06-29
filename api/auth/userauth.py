@@ -9,7 +9,7 @@ def default(handler, user=None):
                 pass
             elif method == 'PUT' and handler.uid == _id:
                 if 'root' in payload and payload['root'] != user['root']:
-                    handler.abort(400, 'user cannot alter own superuser privilege')
+                    handler.abort(400, 'user cannot alter own admin privilege')
                 elif 'disabled' in payload and payload['disabled'] != user.get('disabled'):
                     handler.abort(400, 'user cannot alter own disabled status')
                 else:
@@ -17,7 +17,7 @@ def default(handler, user=None):
             elif method == 'PUT' and handler.user_is_admin:
                 pass
             elif method == 'POST' and not handler.superuser_request and not handler.user_is_admin:
-                handler.abort(403, 'only superuser are allowed to create users')
+                handler.abort(403, 'only admins are allowed to create users')
             elif method == 'POST' and (handler.superuser_request or handler.user_is_admin):
                 pass
             elif method == 'GET':
