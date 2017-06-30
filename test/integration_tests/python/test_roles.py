@@ -7,15 +7,15 @@ def test_roles(data_builder, as_admin, as_public):
     as_other_user.headers.update({'Authorization': 'scitran-user ' + api_key})
 
     roles_path = '/groups/' + group + '/roles'
-    local_user_roles_path = roles_path + '/local/' + user
-    admin_user_roles_path = roles_path + '/local/' + as_admin.get('/users/self').json()['_id']
+    local_user_roles_path = roles_path + '/' + user
+    admin_user_roles_path = roles_path + '/' + as_admin.get('/users/self').json()['_id']
 
     # Cannot retrieve roles that don't exist
     r = as_admin.get(local_user_roles_path)
     assert r.status_code == 404
 
     # Create role for user
-    r = as_admin.post(roles_path, json={'_id': user, 'site': 'local', 'access': 'rw'})
+    r = as_admin.post(roles_path, json={'_id': user, 'access': 'rw'})
     assert r.ok
 
     # Verify new user role

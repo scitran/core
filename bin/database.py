@@ -20,7 +20,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 31 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 32 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1115,6 +1115,21 @@ def upgrade_to_31():
     config.db.sessions.update_many({'subject.firstname_hash': {'$exists': True}}, {'$unset': {'subject.firstname_hash':""}})
     config.db.sessions.update_many({'subject.lastname_hash': {'$exists': True}}, {'$unset': {'subject.lastname_hash':""}})
 
+def upgrade_to_32_closure(coll_item, coll):
+    permissions = coll_item.get('permissions', [])
+    for permission_ in permissions:
+        if permission_.get('site', False):
+            del permission_['site']
+    result = config.db[coll].update_one({'_id': coll_item['_id']}, {'$set': {'permissions' : permissions}})
+    if result.modified_count == 0:
+        return "Failed to remove site field"
+    return True
+
+def upgrade_to_32():
+    for coll in ['acquisitions', 'groups', 'projects', 'sessions']:
+        cursor = config.db[coll].find({'permissions.site': {'$exists': True}})
+        process_cursor(cursor, upgrade_to_32_closure, context = coll)
+    config.db.sites.drop()
 
 def upgrade_schema(force_from = None):
     """

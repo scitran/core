@@ -1,7 +1,6 @@
 import webapp2
 import webapp2_extras.routes
 
-from .centralclient                 import CentralClient
 from .download                      import Download
 from .handlers.collectionshandler   import CollectionsHandler
 from .handlers.confighandler        import Config, Version
@@ -30,9 +29,6 @@ routing_regexes = {
 
     # Container ID: 24-character hex
     'cid': '[0-9a-f]{24}',
-
-    # Site ID: <= 24-character alphanum
-    'sid': '[0-9a-z_]{0,24}',
 
     # User ID: any length, [0-9a-z.@_-]
     'uid': '[0-9a-zA-Z.@_-]*',
@@ -180,7 +176,7 @@ endpoints = [
 
         prefix('/<cont_name:groups>', [
             route('/<cid:{gid}>/<list_name:roles>',                          ListHandler,     m=['POST']),
-            route('/<cid:{gid}>/<list_name:roles>/<site:{sid}>/<_id:{uid}>', ListHandler,     m=['GET', 'PUT', 'DELETE']),
+            route('/<cid:{gid}>/<list_name:roles>/<_id:{uid}>',              ListHandler,     m=['GET', 'PUT', 'DELETE']),
 
             route('/<cid:{gid}>/<list_name:tags>',                           TagsListHandler, m=['POST']),
             route('/<cid:{gid}>/<list_name:tags>/<value:{tag}>',             TagsListHandler, m=['GET', 'PUT', 'DELETE']),
@@ -225,7 +221,7 @@ endpoints = [
         prefix('/<cont_name:collections|projects>', [
             prefix('/<cid:{cid}>', [
                 route('/<list_name:permissions>',                          PermissionsListHandler, m=['POST']),
-                route('/<list_name:permissions>/<site:{sid}>/<_id:{uid}>', PermissionsListHandler, m=['GET', 'PUT', 'DELETE']),
+                route('/<list_name:permissions>/<_id:{uid}>',              PermissionsListHandler, m=['GET', 'PUT', 'DELETE']),
             ]),
         ]),
 
@@ -269,10 +265,6 @@ endpoints = [
         route('/<par_cont_name:groups>/<par_id:{gid}>/<cont_name:projects>', ContainerHandler, h='get_all', m=['GET']),
         route('/<par_cont_name:{cname}>/<par_id:{cid}>/<cont_name:{cname}>', ContainerHandler, h='get_all', m=['GET']),
 
-
-        # Multi - site
-        route('/sites',    CentralClient, h='sites',    m=['GET']),
-        route('/register', CentralClient, h='register', m=['POST']),
 
     ]),
 ]

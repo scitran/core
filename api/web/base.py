@@ -3,7 +3,6 @@ import datetime
 import jsonschema
 import os
 import pymongo
-import requests
 import traceback
 import webapp2
 
@@ -24,21 +23,15 @@ class RequestHandler(webapp2.RequestHandler):
     json_schema = None
 
     def __init__(self, request=None, response=None): # pylint: disable=super-init-not-called
-        """Set uid, source_site, public_request, and superuser"""
+        """Set uid, public_request, and superuser"""
         self.initialize(request, response)
 
-        site_id = config.get_item('site', 'id')
-        if site_id is None:
-            self.abort(503, 'Database not initialized')
-
-        self.source_site = None
         self.uid = None
         self.origin = None
 
         # If user is attempting to log in through `/login`, ignore Auth here:
         # In future updates, move login and logout handlers to class that overrides this init
         if self.request.path == '/api/login':
-            self.source_site = site_id
             return
 
         try:
@@ -47,7 +40,7 @@ class RequestHandler(webapp2.RequestHandler):
             # For now, wrap in a try/catch to prevent stack traces from getting to the client
             # For more info see scitran/core #733
 
-            self.initialization_auth(site_id)
+            self.initialization_auth()
 
         except Exception as e: # pylint: disable=broad-except
             error = self.handle_exception(e, self.app.debug, return_json=True)
@@ -58,9 +51,8 @@ class RequestHandler(webapp2.RequestHandler):
         super(RequestHandler, self).initialize(request, response)
         request.logger.info("Initialized request")
 
-    def initialization_auth(self, site_id):
+    def initialization_auth(self):
         drone_request = False
-        user_agent = self.request.headers.get('User-Agent', '')
         session_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
         drone_method = self.request.headers.get('X-SciTran-Method', None)
@@ -91,22 +83,9 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(401, 'invalid drone secret')
             drone_request = True
 
-        # Cross-site authentication
-        # NOTE cross-site feature unused and planned for removal
-        elif user_agent.startswith('SciTran Instance '): # pragma: no cover
-            if self.request.environ['SSL_CLIENT_VERIFY'] == 'SUCCESS':
-                self.uid = self.request.headers.get('X-User')
-                self.source_site = self.request.headers.get('X-Site')
-                remote_instance = user_agent.replace('SciTran Instance', '').strip()
-                if not config.db.sites.find_one({'_id': remote_instance}):
-                    self.abort(402, remote_instance + ' is not an authorized remote instance')
-            else:
-                self.abort(401, 'no valid SSL client certificate')
-
-        self.user_site = self.source_site or site_id
         self.public_request = not drone_request and not self.uid
 
-        if self.public_request or self.source_site:
+        if self.public_request:
             self.superuser_request = False
             self.user_is_admin = False
         elif drone_request:
@@ -420,48 +399,10 @@ class RequestHandler(webapp2.RequestHandler):
     def dispatch(self):
         """dispatching and request forwarding"""
 
-        site_id = config.get_item('site', 'id')
-        target_site = self.get_param('site', site_id)
-        if target_site == site_id:
-            self.request.logger.debug('from %s %s %s %s %s', self.source_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
-            return super(RequestHandler, self).dispatch()
-        # NOTE cross-site feature unused and planned for removal
-        else: # pragma: no cover
-            if not site_id:
-                self.abort(500, 'api site.id is not configured')
-            if not config.get_item('site', 'ssl_cert'):
-                self.abort(500, 'api ssl_cert is not configured')
-            target = config.db.sites.find_one({'_id': target_site}, ['api_uri'])
-            if not target:
-                self.abort(402, 'remote host ' + target_site + ' is not an authorized remote')
-            # adjust headers
-            headers = self.request.headers
-            headers['User-Agent'] = 'SciTran Instance ' + site_id
-            headers['X-User'] = self.uid
-            headers['X-Site'] = site_id
-            headers['Content-Length'] = len(self.request.body)
-            del headers['Host']
-            if 'Authorization' in headers: del headers['Authorization']
-            # adjust params
-            params = self.request.GET.mixed()
-            if 'user' in params: del params['user']
-            del params['site']
-            self.request.logger.debug(' for %s %s %s %s %s', target_site, self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
-            target_uri = target['api_uri'] + self.request.path.split('/api')[1]
-            r = requests.request(
-                    self.request.method,
-                    target_uri,
-                    stream=True,
-                    params=params,
-                    data=self.request.body_file,
-                    headers=headers,
-                    cert=config.get_item('site', 'ssl_cert'))
-            if r.status_code != 200:
-                self.abort(r.status_code, 'InterNIMS p2p err: ' + r.reason)
-            self.response.app_iter = r.iter_content(2**20)
-            for header in ['Content-' + h for h in 'Length', 'Type', 'Disposition']:
-                if header in r.headers:
-                    self.response.headers[header] = r.headers[header]
+
+        self.request.logger.debug('from %s %s %s %s', self.uid, self.request.method, self.request.path, str(self.request.GET.mixed()))
+        return super(RequestHandler, self).dispatch()
+
 
     def abort(self, code, detail=None, **kwargs):
         if isinstance(detail, jsonschema.ValidationError):

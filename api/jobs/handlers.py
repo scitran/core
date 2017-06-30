@@ -139,7 +139,7 @@ class RulesHandler(base.RequestHandler):
 
         project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
-        if project and (self.superuser_request or has_access(self.uid, project, 'ro', self.user_site)):
+        if project and (self.superuser_request or has_access(self.uid, project, 'ro')):
             return config.db.project_rules.find({'project_id' : cid})
         else:
             self.abort(404, 'Project not found')
@@ -150,7 +150,7 @@ class RulesHandler(base.RequestHandler):
         project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
         if project:
-            if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
+            if self.superuser_request or has_access(self.uid, project, 'admin'):
                 doc = self.request.json
 
                 validate_data(doc, 'rule-add.json', 'input', 'POST', optional=True)
@@ -160,7 +160,7 @@ class RulesHandler(base.RequestHandler):
                 result = config.db.project_rules.insert_one(doc)
                 return { '_id': result.inserted_id }
 
-            elif has_access(self.uid, project, 'ro', self.user_site):
+            elif has_access(self.uid, project, 'ro'):
                 self.abort(403, 'Adding rules to a project can only be done by a project admin.')
 
         self.abort(404, 'Project not found')
@@ -172,7 +172,7 @@ class RuleHandler(base.RequestHandler):
 
         project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
-        if project and (self.superuser_request or has_access(self.uid, project, 'ro', self.user_site)):
+        if project and (self.superuser_request or has_access(self.uid, project, 'ro')):
             result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
             if result:
                 return result
@@ -187,7 +187,7 @@ class RuleHandler(base.RequestHandler):
         project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
         if project:
-            if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
+            if self.superuser_request or has_access(self.uid, project, 'admin'):
                 result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
                 if result is None:
                     self.abort(404, 'Rule not found')
@@ -201,7 +201,7 @@ class RuleHandler(base.RequestHandler):
                 config.db.project_rules.update_one({'_id': bson.ObjectId(rid)}, {'$set': doc })
                 return
 
-            elif has_access(self.uid, project, 'ro', self.user_site):
+            elif has_access(self.uid, project, 'ro'):
                 self.abort(403, 'Changing project rules can only be done by a project admin.')
 
         self.abort(404, 'Project not found')
@@ -212,14 +212,14 @@ class RuleHandler(base.RequestHandler):
         project = config.db.projects.find_one({'_id': bson.ObjectId(cid)})
 
         if project:
-            if self.superuser_request or has_access(self.uid, project, 'admin', self.user_site):
+            if self.superuser_request or has_access(self.uid, project, 'admin'):
 
                 result = config.db.project_rules.delete_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
                 if result.deleted_count != 1:
                     self.abort(404, 'Rule not found')
                 return
 
-            elif has_access(self.uid, project, 'ro', self.user_site):
+            elif has_access(self.uid, project, 'ro'):
                 self.abort(403, 'Changing project rules can only be done by a project admin.')
 
         self.abort(404, 'Project not found')
@@ -508,7 +508,7 @@ class BatchHandler(base.RequestHandler):
 
         # Make sure user has read-write access, add those to acquisition list
         for c in containers:
-            if self.superuser_request or has_access(self.uid, c, 'rw', self.user_site):
+            if self.superuser_request or has_access(self.uid, c, 'rw'):
                 c.pop('permissions')
                 acquisitions.append(c)
             else:

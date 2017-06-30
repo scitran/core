@@ -102,7 +102,7 @@ class ContainerHandler(base.RequestHandler):
         if result is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, _id))
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_permissions(result, self.uid, self.user_site)
+            self._filter_permissions(result, self.uid)
         if self.is_true('join_avatars'):
             self.join_user_info([result])
         # build and insert file paths if they are requested
@@ -211,11 +211,11 @@ class ContainerHandler(base.RequestHandler):
             AnalysesStorage.inflate_job_info(analysis)
         return result
 
-    def _filter_permissions(self, result, uid, site):
+    def _filter_permissions(self, result, uid):
         """
         if the user is not admin only her permissions are returned.
         """
-        user_perm = util.user_perm(result.get('permissions', []), uid, site)
+        user_perm = util.user_perm(result.get('permissions', []), uid)
         if user_perm.get('access') != 'admin':
             result['permissions'] = [user_perm] if user_perm else []
 
@@ -332,7 +332,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(404, 'No elements found in container {}'.format(self.storage.cont_name))
         # return only permissions of the current user unless superuser or getting avatars
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_all_permissions(results, self.uid, self.user_site)
+            self._filter_all_permissions(results, self.uid)
         # the "count" flag add a count for each container returned
         if self.is_true('counts'):
             self._add_results_counts(results, cont_name)
@@ -355,9 +355,9 @@ class ContainerHandler(base.RequestHandler):
 
         return modified_results
 
-    def _filter_all_permissions(self, results, uid, site):
+    def _filter_all_permissions(self, results, uid):
         for result in results:
-            user_perm = util.user_perm(result.get('permissions', []), uid, site)
+            user_perm = util.user_perm(result.get('permissions', []), uid)
             result['permissions'] = [user_perm] if user_perm else []
         return results
 
@@ -386,8 +386,7 @@ class ContainerHandler(base.RequestHandler):
             permchecker = containerauth.list_permission_checker(self)
         query = {}
         user = {
-            '_id': uid,
-            'site': config.get_item('site', 'id')
+            '_id': uid
         }
         try:
             results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
@@ -395,7 +394,7 @@ class ContainerHandler(base.RequestHandler):
             self.abort(400, e.message)
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, uid))
-        self._filter_all_permissions(results, uid, user['site'])
+        self._filter_all_permissions(results, uid)
         return results
 
     def post(self, cont_name):
@@ -422,7 +421,7 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('inherit') and cont_name == 'projects':
             payload['permissions'] = parent_container.get('roles')
         elif cont_name =='projects':
-            payload['permissions'] = [{'_id': self.uid, 'access': 'admin', 'site': self.user_site}] if self.uid else []
+            payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}] if self.uid else []
         else:
             payload['permissions'] = parent_container.get('permissions', [])
         # Created and modified timestamps are added here to the payload

@@ -58,7 +58,7 @@ def _upsert_role(request_session, api_url, role_doc, group_id):
         return new_role_resp
 
     # Already exists, update instead
-    full_role_url = "{0}/{1}/{2}".format(base_role_url, role_doc['site'], role_doc['_id'])
+    full_role_url = "{0}/{1}/{2}".format(base_role_url, role_doc['_id'])
     return request_session.put(full_role_url, json=role_doc)
 
 
@@ -84,14 +84,12 @@ def users(filepath, api_url, http_headers, insecure):
         log.info('bootstrapping groups...')
         r = rs.get(api_url + '/config')
         r.raise_for_status()
-        site_id = r.json()['site']['id']
         for g in input_data.get('groups', []):
             roles = g.pop('roles')
             log.info('    {0}'.format(g['_id']))
             r = rs.post(api_url + '/groups' , json=g)
             r.raise_for_status()
             for role in roles:
-                role.setdefault('site', site_id)
                 r = _upsert_role(request_session=rs, api_url=api_url, role_doc=role, group_id=g['_id'])
                 r.raise_for_status()
 

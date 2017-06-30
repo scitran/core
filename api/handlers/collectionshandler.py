@@ -40,7 +40,6 @@ class CollectionsHandler(ContainerHandler):
         payload_validator(payload, 'POST')
         payload['permissions'] = [{
             '_id': self.uid,
-            'site': self.user_site,
             'access': 'admin'
         }]
         payload['curator'] = self.uid
@@ -110,7 +109,7 @@ class CollectionsHandler(ContainerHandler):
         query = {}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_all_permissions(results, self.uid, self.user_site)
+            self._filter_all_permissions(results, self.uid)
         if self.is_true('join_avatars'):
             results = ContainerHandler.join_user_info(results)
         for result in results:
@@ -147,7 +146,7 @@ class CollectionsHandler(ContainerHandler):
         log.debug(query)
         log.debug(projection)
         sessions = list(config.db.sessions.find(query, projection))
-        self._filter_all_permissions(sessions, self.uid, self.user_site)
+        self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
         for sess in sessions:
@@ -171,7 +170,7 @@ class CollectionsHandler(ContainerHandler):
             self.abort(400, sid + ' is not a valid ObjectId')
         projection = self.container_handler_configurations['acquisitions']['list_projection']
         acquisitions = list(config.db.acquisitions.find(query, projection))
-        self._filter_all_permissions(acquisitions, self.uid, self.user_site)
+        self._filter_all_permissions(acquisitions, self.uid)
         for acq in acquisitions:
             acq.setdefault('timestamp', datetime.datetime.utcnow())
         for acquisition in acquisitions:
