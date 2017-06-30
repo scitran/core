@@ -10,7 +10,8 @@ log = config.log
 ANALYSIS = {
     "analyzer": {
         "my_analyzer": {
-            "tokenizer": "my_tokenizer"
+            "tokenizer": "my_tokenizer",
+            "filters": ["lowercase"]
         }
     },
     "tokenizer": {
@@ -78,6 +79,12 @@ FACET_QUERY = {
                         "size" : 15
                     }
                 },
+                "session.tags" : {
+                    "terms" : {
+                        "field" : "subject.tags.raw",
+                        "size" : 15
+                    }
+                },
                 "subject.code" : {
                     "terms" : {
                         "field" : "subject.code.raw",
@@ -87,7 +94,14 @@ FACET_QUERY = {
                 "session.timestamp" : {
                     "stats" : { "field" : "session.timestamp"}
 
-                }
+                },
+                "session.archived" : {
+                    "terms" : {
+                        "field" : "session.archived.raw",
+                        "size" : 2,
+                        "missing": "false"
+                    }
+                },
             }
         },
         "session_age": {
@@ -287,16 +301,20 @@ class DataExplorerHandler(base.RequestHandler):
             self.abort(400, 'Must specify string for field query')
 
         es_query = {
-            "size": 20,
+            "size": 15,
             "query": {
                 "match" : { "name" : field_query }
             }
         }
-        es_results = config.es.search(
-            index='data_explorer_fields',
-            doc_type='flywheel_field',
-            body=es_query
-        )
+        try:
+            es_results = config.es.search(
+                index='data_explorer_fields',
+                doc_type='flywheel_field',
+                body=es_query
+            )
+        except:
+            config.log.warning('Fields not yet indexed for search')
+            return []
 
         results = []
         for result in es_results['hits']['hits']:
@@ -464,10 +482,16 @@ class DataExplorerHandler(base.RequestHandler):
     @classmethod
     def _handle_properties(cls, properties, current_field_name):
 
+        ignore_fields = [
+            '_all', 'dynamic_templates', 'analysis_reference', 'file_reference',
+            'parent', 'container_type', 'origin', 'permissions', '_id',
+            'project_has_template', 'hash'
+        ]
+
         for field_name, field in properties.iteritems():
 
             # Ignore some fields
-            if field_name in ['_all', 'dynamic_templates', 'analysis_reference', 'file_reference', 'parent', 'container_type', 'origin', 'permissions', '_id']:
+            if field_name in ignore_fields:
                 continue
 
             elif 'properties' in field:
@@ -493,8 +517,11 @@ class DataExplorerHandler(base.RequestHandler):
     @require_superuser
     def index_field_names(self):
 
-        if not config.es.indices.exists('data_explorer'):
-            self.abort(404, 'data_explorer index not yet available')
+        try:
+            if not config.es.indices.exists('data_explorer'):
+                self.abort(404, 'data_explorer index not yet available')
+        except:
+            self.abort(404, 'elastic search not available')
 
         # Sometimes we might want to clear out what is there...
         if self.is_true('hard-reset') and config.es.indices.exists('data_explorer_fields'):
