@@ -181,7 +181,7 @@ def test_usage_report(data_builder, file_form, as_user, as_admin):
 
     # get month-aggregated usage report
     monthrange = calendar.monthrange(today.year, today.month)
-    start_ts = ts_format.format(today.replace(day=monthrange[0]))
+    start_ts = ts_format.format(today.replace(day=1))
     end_ts = ts_format.format(today.replace(day=monthrange[1]))
     r = as_admin.get('/report/usage', params={
         'type': 'month', 'start_date': start_ts, 'end_date': end_ts
