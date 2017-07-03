@@ -70,7 +70,7 @@ def test_gear_add_invalid(default_payload, randstr, as_root):
     assert r.status_code == 400
 
 
-def test_gear_access(data_builder, as_public, as_admin):
+def test_gear_access(data_builder, as_public, as_admin, as_user):
     gear = data_builder.create_gear()
 
     # test login required
@@ -86,12 +86,21 @@ def test_gear_access(data_builder, as_public, as_admin):
     r = as_public.get('/gears/' + gear + '/suggest/test-container/test-id')
     assert r.status_code == 403
 
-    # test superuser required
-    r = as_admin.post('/gears/' + gear, json={'test': 'payload'})
+    # test superuser required with user
+    r = as_user.post('/gears/' + gear, json={'test': 'payload'})
     assert r.status_code == 403
 
-    r = as_admin.delete('/gears/' + gear)
+    r = as_user.delete('/gears/' + gear)
     assert r.status_code == 403
+
+    # as_admin has root set to True so it's the same as as_root
+    # As far as I can tell this is because the update to set root to True in as_root doesn't work
+    # # test superuser required
+    # r = as_admin.post('/gears/' + gear, json={'test': 'payload'})
+    # assert r.status_code == 403
+    #
+    # r = as_admin.delete('/gears/' + gear)
+    # assert r.status_code == 403
 
 
 def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):

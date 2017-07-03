@@ -102,9 +102,8 @@ class GearHandler(base.RequestHandler):
 
     def post(self, _id):
         """Upsert an entire gear document."""
-
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
 
         doc = self.request.json
 
@@ -126,9 +125,8 @@ class GearHandler(base.RequestHandler):
 
     def delete(self, _id):
         """Delete a gear. Generally not recommended."""
-
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
 
         return remove_gear(_id)
 
@@ -226,6 +224,11 @@ class RuleHandler(base.RequestHandler):
 
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
+    def get(self):
+        """List all jobs."""
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
+        return list(config.db.jobs.find())
 
     def add(self):
         """Add a job to the queue."""
@@ -282,14 +285,16 @@ class JobsHandler(base.RequestHandler):
         return { '_id': result }
 
     def stats(self):
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
 
         return Queue.get_statistics()
 
     def next(self):
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
+
 
         tags = self.request.GET.getall('tags')
         if len(tags) <= 0:
@@ -303,8 +308,8 @@ class JobsHandler(base.RequestHandler):
             return job
 
     def reap_stale(self):
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
 
         count = Queue.scan_for_orphans()
         return { 'orphaned': count }
@@ -314,8 +319,10 @@ class JobHandler(base.RequestHandler):
     """Provides /Jobs/<jid> routes."""
 
     def get(self, _id):
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
+
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
+
 
         return Job.get(_id)
 
@@ -346,7 +353,7 @@ class JobHandler(base.RequestHandler):
         mutation = self.request.json
 
         # If user is not superuser, can only cancel jobs they spawned
-        if not self.superuser_request:
+        if not self.superuser_request and not self.user_is_admin:
             if j.origin.get('id') != self.uid:
                 raise APIPermissionException('User does not have permission to access job {}'.format(_id))
             if mutation != {'state': 'cancelled'}:
@@ -398,9 +405,9 @@ class JobHandler(base.RequestHandler):
 
     def add_logs(self, _id):
         """Add to a job's logs"""
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
 
-        if not self.superuser_request:
-            self.abort(403, 'Request requires superuser')
 
         doc = self.request.json
 

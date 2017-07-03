@@ -61,8 +61,9 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     assert r.json()['logs'] == []
 
     # try to add job log w/o root
+    # needed to use as_user because root = true for as_admin
     job_logs = [{'fd': 1, 'msg': 'Hello'}, {'fd': 2, 'msg': 'World'}]
-    r = as_admin.post('/jobs/' + job1_id + '/logs', json=job_logs)
+    r = as_user.post('/jobs/' + job1_id + '/logs', json=job_logs)
     assert r.status_code == 403
 
     # try to add job log to non-existent job
@@ -87,7 +88,8 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     assert r.ok
 
     # try to update job (user may only cancel)
-    r = as_admin.put('/jobs/' + job1_id, json={'test': 'invalid'})
+    # root = true for as_admin, until thats fixed, using user
+    r = as_user.put('/jobs/' + job1_id, json={'test': 'invalid'})
     assert r.status_code == 403
 
     # try to cancel job w/o permission (different user)
@@ -124,8 +126,8 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     r = as_root.post('/jobs/' + next_job_id + '/retry')
     assert r.ok
 
-    # get next job
-    r = as_root.get('/jobs/next', params={'tags': 'test-tag'})
+    # get next job as admin
+    r = as_admin.get('/jobs/next', params={'tags': 'test-tag'})
     assert r.ok
     next_job_id = r.json()['id']
 

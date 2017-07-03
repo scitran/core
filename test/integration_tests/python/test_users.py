@@ -1,4 +1,4 @@
-def test_users(as_root, as_user, as_public):
+def test_users(as_root, as_admin, as_user, as_public):
     # List users
     r = as_user.get('/users')
     assert r.ok
@@ -50,6 +50,21 @@ def test_users(as_root, as_user, as_public):
     r = as_root.get('/users/' + new_user_id)
     assert r.ok
 
+    # Add new user as admin
+    new_user_id_admin = 'new2@user.com'
+    r = as_admin.post('/users', json={
+        '_id': new_user_id_admin,
+        'firstname': 'New2',
+        'lastname': 'User2',
+    })
+    assert r.ok
+    r = as_root.get('/users/' + new_user_id)
+    assert r.ok
+
+    #Get another user as user
+    r = as_user.get('/users/' + new_user_id)
+    assert r.ok
+
     # Try to update non-existent user
     r = as_root.put('/users/nonexistent@user.com', json={'firstname': 'Realname'})
     assert r.status_code == 404
@@ -59,12 +74,21 @@ def test_users(as_root, as_user, as_public):
     assert r.ok
     assert r.json()['modified'] == 1
 
+    # Update existing user as admin
+    r = as_admin.put('/users/' + new_user_id_admin, json={'firstname': 'Realname2'})
+    assert r.ok
+    assert r.json()['modified'] == 1
+
     # Try to delete non-existent user
     r = as_root.delete('/users/nonexistent@user.com')
     assert r.status_code == 404
 
     # Delete user
     r = as_root.delete('/users/' + new_user_id)
+    assert r.ok
+
+    # Delete user
+    r = as_admin.delete('/users/' + new_user_id_admin)
     assert r.ok
 
     # Test HTTPS enforcement on avatar urls
