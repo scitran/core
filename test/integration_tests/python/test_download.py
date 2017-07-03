@@ -171,11 +171,11 @@ def test_analysis_download(data_builder, file_form, as_admin):
     analysis_files = '/sessions/' + session + '/analyses/' + analysis + '/files'
 
     # try to download analysis files w/ non-existent ticket
-    r = as_admin.get(analysis_files, params={'ticket': '000000000000000000000000'})
+    r = as_admin.get('/download', params={'ticket': '000000000000000000000000'})
     assert r.status_code == 404
 
     # get analysis batch download ticket for all files
-    r = as_admin.get(analysis_files, params={'ticket': ''})
+    r = as_admin.get('/download', params={'ticket': ''}, json={"optional":True,"nodes":[{"level":"analysis","_id":analysis}]})
     assert r.ok
     ticket = r.json()['ticket']
 
@@ -183,7 +183,7 @@ def test_analysis_download(data_builder, file_form, as_admin):
     assert r.json()['filename'] == 'analysis_test.tar'
 
     # batch download analysis files w/ ticket
-    r = as_admin.get(analysis_files, params={'ticket': ticket})
+    r = as_admin.get('/download', params={'ticket': ticket})
     assert r.ok
 
     # try to get download ticket for non-existent analysis file

@@ -11,12 +11,7 @@ from . import config
 from . import util
 from . import validators
 import os
-import zipfile
-from .dao import containerstorage, noop
 from .dao.containerutil import SINGULAR_TO_PLURAL
-from .web.request import AccessType
-from .handlers.listhandler import FileListHandler
-from .auth import always_ok, containerauth
 
 log = config.log
 
@@ -136,6 +131,7 @@ class Download(base.RequestHandler):
         file_cnt = 0
         total_size = 0
         targets = []
+        filename = None
 
         used_subpaths = {}
         base_query = {}
@@ -231,22 +227,17 @@ class Download(base.RequestHandler):
                 if not analysis:
                     # silently skip missing objects/objects user does not have access to
                     continue
-
-                session = config.db.sessions.find_one({'_id': analysis['parent']['id']}, ['project', 'label', 'uid', 'timestamp', 'timezone', 'subject'])
-                subject = session.get('subject', {'code': 'unknown_subject'})
-                if not subject.get('code'):
-                    subject['code'] = 'unknown_subject'
-
-                project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(analysis, used_subpaths, session['_id'])
+                prefix = self._path_from_container(analysis, used_subpaths, util.sanitize_string_to_filename(analysis['label']))
+                filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
                 total_size, file_cnt = _append_targets(targets, analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
         if len(targets) > 0:
             log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-            filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+            if not filename:
+                filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
             ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
             config.db.downloads.insert_one(ticket)
-            return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+            return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size, 'filename': filename}
         else:
             self.abort(404, 'No requested containers could be found')
 
@@ -310,251 +301,3 @@ class Download(base.RequestHandler):
                 log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
 
                 return self._preflight_archivestream(req_spec, collection=self.get_param('collection'))
-
-    def analysis_download(self, cont_name, cid, _id, filename=None):
-        """
-        .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
-
-            Download a file from an analysis or download a tar of all files
-
-            When no filename is provided, a tar of all input and output files is created.
-            The first request to this endpoint without a ticket ID generates a download ticket.
-            A request to this endpoint with a ticket ID downloads the file(s).
-            If the analysis object is tied to a job, the input file(s) are inlfated from
-            the job's ``input`` array.
-
-            :param cont_name: one of ``projects``, ``sessions``, ``collections``
-            :type cont_name: string
-
-            :param cid: Container ID
-            :type cid: string
-
-            :param analysis_id: Analysis ID
-            :type analysis_id: string
-
-            :param filename: (Optional) Filename of specific file to download
-            :type cid: string
-
-            :query string ticket: Download ticket ID
-
-            :statuscode 200: no error
-            :statuscode 404: No files on analysis ``analysis_id``
-            :statuscode 404: Could not find file ``filename`` on analysis ``analysis_id``
-
-            **Example request without ticket ID**:
-
-            .. sourcecode:: http
-
-                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
-
-            **Response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                {
-                  "ticket": "57f2af23-a94c-426d-8521-11b2e8782020",
-                  "filename": "analysis_5751cd3781460100a66405c8.tar",
-                  "file_cnt": 3,
-                  "size": 4525137
-                }
-
-            **Example request with ticket ID**:
-
-            .. sourcecode:: http
-
-                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files?ticket=57f2af23-a94c-426d-8521-11b2e8782020 HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
-
-            **Response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/octet-stream
-                Content-Disposition: attachment; filename=analysis_5751cd3781460100a66405c8.tar;
-
-            **Example Request with filename**:
-
-            .. sourcecode:: http
-
-                GET /api/sessions/57081d06b386a6dc79ca383c/analyses/5751cd3781460100a66405c8/files/exampledicom.zip?ticket= HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
-
-            **Response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                {
-                  "ticket": "57f2af23-a94c-426d-8521-11b2e8782020",
-                  "filename": "exampledicom.zip",
-                  "file_cnt": 1,
-                  "size": 4525137
-                }
-
-
-        """
-        storage = containerstorage.AnalysisStorage()
-        permchecker = containerauth.default_container(storage)
-        ticket_id = self.get_param('ticket')
-        ticket = None
-        if ticket_id is None:
-            permchecker(noop)('GET')
-        elif ticket_id != '':
-            ticket = self._check_ticket(ticket_id, cid, filename)
-            if not self.origin.get('id'):
-                self.origin = ticket.get('origin')
-
-        analysis = storage.get_container(_id)
-        fileinfo = analysis.get('files', [])
-        if filename:
-            fileinfo = [fi for fi in fileinfo if fi['name'] == filename]
-
-        if not fileinfo:
-            error_msg = 'No files on analysis {}'.format(_id)
-            if filename:
-                error_msg = 'Could not find file {} on analysis {}'.format(filename, _id)
-            self.abort(404, error_msg)
-        if ticket_id == '':
-            if filename:
-                total_size = fileinfo[0]['size']
-                file_cnt = 1
-                ticket = util.download_ticket(self.request.client_addr, 'file', cid, filename, total_size, origin=self.origin)
-            else:
-                targets, total_size, file_cnt = self._prepare_batch(fileinfo)
-                label = util.sanitize_string_to_filename(storage.get_container(_id).get('label', 'No Label'))
-                filename = 'analysis_' + label + '.tar'
-                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
-            return {
-                'ticket': config.db.downloads.insert_one(ticket).inserted_id,
-                'size': total_size,
-                'file_cnt': file_cnt,
-                'filename': filename
-            }
-        else:
-            if not filename:
-                if ticket:
-                    self._send_batch(ticket)
-                else:
-                    self.abort(400, 'batch downloads require a ticket')
-            elif not fileinfo:
-                self.abort(404, "{} doesn't exist".format(filename))
-            else:
-                fileinfo = fileinfo[0]
-                filepath = os.path.join(
-                    config.get_item('persistent', 'data_path'),
-                    util.path_from_hash(fileinfo['hash'])
-                )
-                filename = fileinfo['name']
-
-                # Request for info about zipfile
-                if self.is_true('info'):
-                    try:
-                        info = FileListHandler.build_zip_info(filepath)
-                    except zipfile.BadZipfile:
-                        self.abort(400, 'not a zip file')
-                    return info
-
-                # Request to download zipfile member
-                elif self.get_param('member') is not None:
-                    zip_member = self.get_param('member')
-                    try:
-                        with zipfile.ZipFile(filepath) as zf:
-                            self.response.headers['Content-Type'] = util.guess_mimetype(zip_member)
-                            self.response.write(zf.open(zip_member).read())
-                    except zipfile.BadZipfile:
-                        self.abort(400, 'not a zip file')
-                    except KeyError:
-                        self.abort(400, 'zip file contains no such member')
-                    # log download if we haven't already for this ticket
-                    if ticket:
-                        if not ticket.get('logged', False):
-                            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
-                            config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
-                    else:
-                        self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
-
-                # Request to download the file itself
-                else:
-                    self.response.app_iter = open(filepath, 'rb')
-                    self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-                    if self.is_true('view'):
-                        self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
-                    else:
-                        self.response.headers['Content-Type'] = 'application/octet-stream'
-                        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(filename)
-
-            # log download if we haven't already for this ticket
-            if ticket:
-                ticket = config.db.downloads.find_one({'_id': ticket_id})
-                if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
-                    config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
-            else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
-
-
-    def _check_ticket(self, ticket_id, _id, filename):
-        ticket = config.db.downloads.find_one({'_id': ticket_id})
-        if not ticket:
-            self.abort(404, 'no such ticket')
-        if ticket['ip'] != self.request.client_addr:
-            self.abort(400, 'ticket not for this source IP')
-        if not filename:
-            return self._check_ticket_for_batch(ticket)
-        if ticket.get('filename') != filename or ticket['target'] != _id:
-            self.abort(400, 'ticket not for this resource')
-        return ticket
-
-
-    def _check_ticket_for_batch(self, ticket):
-        if ticket.get('type') != 'batch':
-            self.abort(400, 'ticket not for this resource')
-        return ticket
-
-
-    def _prepare_batch(self, fileinfo):
-        ## duplicated code from download.py
-        ## we need a way to avoid this
-        targets = []
-        total_size = total_cnt = 0
-        data_path = config.get_item('persistent', 'data_path')
-        for f in fileinfo:
-            filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
-            if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, 'analyses/' + f['name'], f['size']))
-                total_size += f['size']
-                total_cnt += 1
-        return targets, total_size, total_cnt
-
-    def input_validator(self):
-        input_schema_uri = validators.schema_uri('input', self.payload_schema_file)
-        input_validator = validators.from_schema_path(input_schema_uri)
-        return input_validator
-
-    def get_permchecker(self, container, permchecker):
-        if self.superuser_request:
-            return always_ok
-        elif self.public_request:
-            return containerauth.public_request(self, container=container)
-        else:
-            # NOTE The handler (self) is passed implicitly
-            return permchecker(container=container)
-
-    def _send_batch(self, ticket):
-        self.response.app_iter = archivestream(ticket)
-        self.response.headers['Content-Type'] = 'application/octet-stream'
-        self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
