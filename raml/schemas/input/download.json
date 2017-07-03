@@ -31,7 +31,7 @@
                 "properties": {
                     "level": {
                         "type": "string",
-                        "enum": ["project", "session", "acquisition"]
+                        "enum": ["project", "session", "acquisition", "analysis"]
                     },
                     "_id": {
                         "type": "string",
