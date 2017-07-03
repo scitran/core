@@ -107,7 +107,6 @@ class RootHandler(base.RequestHandler):
         resources = """
             Resource                            | Description
             :-----------------------------------|:-----------------------
-            [(/sites)]                          | local and remote sites
             /download                           | download
             [(/users)]                          | list of users
             [(/users/self)]                     | user identity

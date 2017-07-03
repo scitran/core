@@ -18,15 +18,15 @@ ROLES = [
 
 INTEGER_ROLES = {r['rid']: i for i, r in enumerate(ROLES)}
 
-def _get_access(uid, site, container):
+def _get_access(uid, container):
     permissions_list = container.get('roles', container.get('permissions', []))
     for perm in permissions_list:
-        if perm['_id'] == uid and perm['site'] == site:
+        if perm['_id'] == uid:
             return INTEGER_ROLES[perm['access']]
     return -1
 
-def has_access(uid, container, perm, site):
-    return _get_access(uid, site, container) >= INTEGER_ROLES[perm]
+def has_access(uid, container, perm):
+    return _get_access(uid, container) >= INTEGER_ROLES[perm]
 
 class APIAuthProviderException(Exception):
     pass

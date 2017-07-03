@@ -94,8 +94,8 @@ def key_check(schema_url):
     The uniqueness is checked on the combination of all the elements of "key_fields".
 
     For an example check api/schemas/input/permission.json:
-    The key fields are the _id and the site. Uniqueness is checked on the combination
-    of the values of the _id and the site of the permissions.
+    The key fields are the _id. Uniqueness is checked on the combination
+    of the values of the _id of the permissions.
 
     So this method ensures that:
     1. after a POST and PUT request we don't have two items with the same values for the key set

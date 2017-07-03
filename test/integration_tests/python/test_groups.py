@@ -61,7 +61,7 @@ def test_groups(as_admin, data_builder):
     assert d5 > d4
 
     # Add a role to the group
-    user = {'access': 'rw', 'site': 'local', '_id': 'newUser@fakeuser.com'}
+    user = {'access': 'rw', '_id': 'newUser@fakeuser.com'}
     r = as_admin.post('/groups/' + group + '/roles', json=user)
     assert r.ok
 
@@ -73,8 +73,8 @@ def test_groups(as_admin, data_builder):
     assert d6 > d5
 
     # Edit a role in the group
-    user = {'access': 'ro', 'site': 'local', '_id': 'newUser@fakeuser.com'}
-    r = as_admin.put('/groups/' + group + '/roles/' + user['site'] + '/' + user['_id'], json=user)
+    user = {'access': 'ro', '_id': 'newUser@fakeuser.com'}
+    r = as_admin.put('/groups/' + group + '/roles/' + user['_id'], json=user)
     assert r.ok
 
     # Get the group again to compare timestamps for the Edit role test groups
@@ -85,7 +85,7 @@ def test_groups(as_admin, data_builder):
     assert d7 > d6
 
     # Delete a role in the group
-    r = as_admin.delete('/groups/' + group + '/roles/' + user['site'] + '/' + user['_id'])
+    r = as_admin.delete('/groups/' + group + '/roles/' + user['_id'])
     assert r.ok
 
     # Get the group again to compare timestamps for the Edit role test groups

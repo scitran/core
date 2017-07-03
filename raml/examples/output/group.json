@@ -3,18 +3,15 @@
   "roles": [
     {
       "access": "admin",
-      "_id": "group_admin@fakeuser.com",
-      "site": "local"
+      "_id": "group_admin@fakeuser.com"
     },
     {
       "access": "rw",
-      "_id": "group_member_read-write@fakeuser.com",
-      "site": "local"
+      "_id": "group_member_read-write@fakeuser.com"
     },
     {
       "access": "ro",
-      "_id": "group_member_read-only@fakeuser.com",
-      "site": "local"
+      "_id": "group_member_read-only@fakeuser.com"
     }
   ],
   "created": "2016-08-19T11:41:15.360000+00:00",

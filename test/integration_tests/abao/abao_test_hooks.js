@@ -217,7 +217,6 @@ hooks.before("POST /groups/{GroupId}/roles -> 200", function(test, done) {
         GroupId: group_id
     };
     test.request.body = {
-        site: "local",
         _id: "test@user.com",
         access: "ro"
     }
@@ -232,37 +231,32 @@ hooks.before("POST /groups/{GroupId}/roles -> 400", function(test, done) {
     done();
 });
 
-hooks.before("GET /groups/{GroupId}/roles/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("GET /groups/{GroupId}/roles/{UserId} -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     done();
 });
 
-hooks.before("PUT /groups/{GroupId}/roles/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("PUT /groups/{GroupId}/roles/{UserId} -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     test.request.body = {
-        site: "local",
         _id: "test@user.com",
         access: "admin"
     };
     done();
 });
 
-hooks.before("PUT /groups/{GroupId}/roles/{SiteId}/{UserId} -> 400", function(test, done) {
+hooks.before("PUT /groups/{GroupId}/roles/{UserId} -> 400", function(test, done) {
     test.request.params = {
         GroupId: group_id,
-        SiteId: "local",
         UserId:"test@user.com"
     };
     test.request.body = {
-        site: "local",
         _id: "test@user.com",
         access: "rw",
         not_a_real_property: "foo"
@@ -270,10 +264,9 @@ hooks.before("PUT /groups/{GroupId}/roles/{SiteId}/{UserId} -> 400", function(te
     done();
 });
 
-hooks.before("DELETE /groups/{GroupId}/roles/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("DELETE /groups/{GroupId}/roles/{UserId} -> 200", function(test, done) {
     test.request.params = {
         GroupId: group_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     done();
@@ -466,7 +459,6 @@ hooks.before("POST /collections/{CollectionId}/permissions -> 200", function(tes
     };
     test.request.body = {
         "_id":"test@user.com",
-        "site":"local",
         "access":"ro"
     };
     done();
@@ -482,33 +474,29 @@ hooks.before("POST /collections/{CollectionId}/permissions -> 400", function(tes
     done();
 });
 
-hooks.before("GET /collections/{CollectionId}/permissions/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("GET /collections/{CollectionId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         CollectionId : collection_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     done();
 });
 
-hooks.before("PUT /collections/{CollectionId}/permissions/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("PUT /collections/{CollectionId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         CollectionId : collection_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     test.request.body = {
-        "site":"local",
         "access":"rw",
         "_id":"test@user.com"
     };
     done();
 });
 
-hooks.before("PUT /collections/{CollectionId}/permissions/{SiteId}/{UserId} -> 400", function(test, done) {
+hooks.before("PUT /collections/{CollectionId}/permissions/{UserId} -> 400", function(test, done) {
     test.request.params = {
         CollectionId : collection_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     test.request.body = {
@@ -517,10 +505,9 @@ hooks.before("PUT /collections/{CollectionId}/permissions/{SiteId}/{UserId} -> 4
     done();
 });
 
-hooks.before("DELETE /collections/{CollectionId}/permissions/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("DELETE /collections/{CollectionId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         CollectionId : collection_id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     done();
@@ -1272,7 +1259,6 @@ hooks.before("POST /projects/{ProjectId}/permissions -> 200", function(test, don
     };
     test.request.body = {
         "_id":"test@user.com",
-        "site":"local",
         "access":"ro"
     };
     done();
@@ -1288,33 +1274,29 @@ hooks.before("POST /projects/{ProjectId}/permissions -> 400", function(test, don
     done();
 });
 
-hooks.before("GET /projects/{ProjectId}/permissions/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("GET /projects/{ProjectId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         ProjectId : test_project_1._id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     done();
 });
 
-hooks.before("PUT /projects/{ProjectId}/permissions/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("PUT /projects/{ProjectId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         ProjectId : test_project_1._id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     test.request.body = {
-        "site":"local",
         "access":"rw",
         "_id":"test@user.com"
     };
     done();
 });
 
-hooks.before("PUT /projects/{ProjectId}/permissions/{SiteId}/{UserId} -> 400", function(test, done) {
+hooks.before("PUT /projects/{ProjectId}/permissions/{UserId} -> 400", function(test, done) {
     test.request.params = {
         ProjectId : test_project_1._id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     test.request.body = {
@@ -1323,10 +1305,9 @@ hooks.before("PUT /projects/{ProjectId}/permissions/{SiteId}/{UserId} -> 400", f
     done();
 });
 
-hooks.before("DELETE /projects/{ProjectId}/permissions/{SiteId}/{UserId} -> 200", function(test, done) {
+hooks.before("DELETE /projects/{ProjectId}/permissions/{UserId} -> 200", function(test, done) {
     test.request.params = {
         ProjectId : test_project_1._id,
-        SiteId: "local",
         UserId: "test@user.com"
     };
     done();
