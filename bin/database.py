@@ -20,7 +20,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 32 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 33 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1130,6 +1130,31 @@ def upgrade_to_32():
         cursor = config.db[coll].find({'permissions.site': {'$exists': True}})
         process_cursor(cursor, upgrade_to_32_closure, context = coll)
     config.db.sites.drop()
+
+def upgrade_to_33_closure(cont, cont_name):
+    cont_type = cont_name[:-1]
+    for analysis in cont['analyses']:
+        analysis['_id'] = bson.ObjectId(analysis['_id'])
+        analysis['parent'] = {'type': cont_type, 'id': cont['_id']}
+        analysis['permissions'] = cont['permissions']
+        for key in ('public', 'archived'):
+            if key in parent:
+                analysis[key] = parent[key]
+    config.db['analyses'].insert_many(cont['analyses'])
+    config.db[cont_name].update_one(
+        {'_id': cont['_id']},
+        {'$unset': {'analyses': ''}})
+    return True
+
+
+def upgrade_to_33():
+    """
+    scitran/core issue #808 - make analyses use their own collection
+    """
+    for cont_name in ['projects', 'sessions', 'acquisitions', 'collections']:
+        cursor = config.db[cont_name].find({'analyses': {'$exists': True}})
+        process_cursor(cursor, upgrade_to_33_closure, context=cont_name)
+
 
 def upgrade_schema(force_from = None):
     """

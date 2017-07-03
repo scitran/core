@@ -85,6 +85,26 @@ def collection_permissions(handler, container=None, _=None):
     return g
 
 
+def default_referer(handler, parent_container=None):
+    def g(exec_op):
+        def f(method, _id=None, payload=None):
+            access = _get_access(handler.uid, parent_container)
+            if method == 'GET' and parent_container.get('public', False):
+                has_access = True
+            elif method == 'GET':
+                has_access = access >= INTEGER_ROLES['ro']
+            elif method in ['POST', 'PUT', 'DELETE']:
+                has_access = access >= INTEGER_ROLES['rw']
+            else:
+                has_access = False
+
+            if has_access:
+                return exec_op(method, _id=_id, payload=payload)
+            else:
+                handler.abort(403, 'user not authorized to perform a {} operation on parent container'.format(method))
+        return f
+    return g
+
 
 def public_request(handler, container=None):
     """

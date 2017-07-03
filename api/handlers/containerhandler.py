@@ -2,17 +2,17 @@ import bson
 import datetime
 import dateutil
 
-from ..web import base
-from .. import util
 from .. import config
+from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import APIStorageException, containerstorage, containerutil, noop
-from ..dao.liststorage import AnalysesStorage
-from ..types import Origin
-from ..jobs.queue import Queue
-from ..jobs.jobs import Job
+from ..dao.containerstorage import AnalysisStorage
 from ..jobs.gears import get_gear
+from ..jobs.jobs import Job
+from ..jobs.queue import Queue
+from ..types import Origin
+from ..web import base
 from ..web.request import log_access, AccessType
 
 log = config.log
@@ -67,7 +67,7 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
             # Remove subject first/last from list view to better log access to this information
-            'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0, 'subject.lastname': 0},
+            'list_projection': {'info': 0, 'subject.firstname': 0, 'subject.lastname': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -110,8 +110,8 @@ class ContainerHandler(base.RequestHandler):
             for fileinfo in result['files']:
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
 
-        if cont_name == 'sessions':
-            result = self.handle_analyses(result)
+        inflate_job_info = cont_name == 'sessions'
+        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info)
         return self.handle_origin(result)
 
     def handle_origin(self, result):
@@ -203,14 +203,6 @@ class ContainerHandler(base.RequestHandler):
 
         return results
 
-    def handle_analyses(self, result):
-        """
-        Given an object with an `analyses` array key, inflate job info for job-based analyses
-        """
-        for analysis in result.get('analyses', []):
-            AnalysesStorage.inflate_job_info(analysis)
-        return result
-
     def _filter_permissions(self, result, uid):
         """
         if the user is not admin only her permissions are returned.
@@ -240,7 +232,7 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker(noop)('GET', cid)
 
-        analyses = cont.get('analyses', [])
+        analyses = AnalysisStorage().get_analyses('session', cont['_id'])
         acquisitions = cont.get('acquisitions', [])
 
         results = []
@@ -343,8 +335,6 @@ class ContainerHandler(base.RequestHandler):
 
         modified_results = []
         for result in results:
-            if cont_name == 'sessions':
-                result = self.handle_analyses(result)
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, cont_name)
             result = self.handle_origin(result)
@@ -500,7 +490,7 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        container= self._get_container(_id)
+        container = self._get_container(_id)
         if self.config.get('children_cont'):
             container['has_children'] = bool(self.storage.get_children(_id))
         else:

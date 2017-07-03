@@ -8,7 +8,8 @@ from .handlers.containerhandler     import ContainerHandler
 from .handlers.dataexplorerhandler  import DataExplorerHandler
 from .handlers.devicehandler        import DeviceHandler
 from .handlers.grouphandler         import GroupHandler
-from .handlers.listhandler          import AnalysesHandler, ListHandler, FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
+from .handlers.listhandler          import ListHandler, FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
+from .handlers.refererhandler       import AnalysesHandler
 from .handlers.reporthandler        import ReportHandler
 from .handlers.resolvehandler       import ResolveHandler
 from .handlers.roothandler          import RootHandler
@@ -228,16 +229,13 @@ endpoints = [
 
         # Containers
 
-        route('/<cont_name:{cname}>', ContainerHandler, name='cont_list', h='get_all', m=['GET']),
-        route('/<cont_name:{cname}>', ContainerHandler, m=['POST']),
-
+        route( '/<cont_name:{cname}>', ContainerHandler, name='cont_list', h='get_all', m=['GET']),
+        route( '/<cont_name:{cname}>', ContainerHandler,                                m=['POST']),
         prefix('/<cont_name:{cname}>', [
-            route('/<cid:{cid}>',                          ContainerHandler,                    m=['GET','PUT','DELETE']),
-
+            route( '/<cid:{cid}>',     ContainerHandler,                                m=['GET','PUT','DELETE']),
             prefix('/<cid:{cid}>', [
-
-                route('/<list_name:tags>',                      TagsListHandler,                     m=['POST']),
-                route('/<list_name:tags>/<value:{tag}>',        TagsListHandler,                     m=['GET', 'PUT', 'DELETE']),
+                route('/<list_name:tags>',               TagsListHandler, m=['POST']),
+                route('/<list_name:tags>/<value:{tag}>', TagsListHandler, m=['GET', 'PUT', 'DELETE']),
 
                 route('/packfile-start',                        FileListHandler, h='packfile_start', m=['POST']),
                 route('/packfile',                              FileListHandler, h='packfile',       m=['POST']),
@@ -246,17 +244,24 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>',      FileListHandler,                     m=['GET', 'DELETE']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
 
+                route( '/analyses',                                AnalysesHandler,                  m=['POST']),
+                prefix('/analyses', [
+                    route('/<_id:{cid}>',                          AnalysesHandler,                  m=['GET', 'DELETE']),
+                    route('/<_id:{cid}>/files',                    AnalysesHandler, h='download',    m=['GET']),
+                    route('/<_id:{cid}>/files/<filename:{fname}>', AnalysesHandler, h='download',    m=['GET']),
+                ]),
 
-                route('/<list_name:analyses>', AnalysesHandler, m=['POST']),
-                # Could be in a prefix. Had weird syntax highlighting issues so leaving for another day
-                route('/<list_name:analyses>/<_id:{cid}>',                       AnalysesHandler,                  m=['GET', 'DELETE']),
-                route('/<list_name:analyses>/<_id:{cid}>/files',                 AnalysesHandler, h='download',    m=['GET']),
-                route('/<list_name:analyses>/<_id:{cid}>/files/<name:{fname}>',  AnalysesHandler, h='download',    m=['GET']),
-                route('/<list_name:analyses>/<_id:{cid}>/notes',                 AnalysesHandler, h='add_note',    m=['POST']),
-                route('/<list_name:analyses>/<_id:{cid}>/notes/<note_id:{cid}>', AnalysesHandler, h='delete_note', m=['DELETE']),
-                route('/<list_name:notes>',                                      NotesListHandler,                 m=['POST']),
-                route('/<list_name:notes>/<_id:{nid}>',                          NotesListHandler, name='notes',   m=['GET', 'PUT', 'DELETE']),
+                route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
+                route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
             ])
+        ]),
+
+
+        # Analysis notes
+
+        prefix('/<:{cname}>/<:{cid}>/<cont_name:analyses>/<cid:{cid}>', [
+            route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
+            route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
         ]),
 
 
