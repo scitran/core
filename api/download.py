@@ -11,7 +11,7 @@ from . import config
 from . import util
 from . import validators
 import os
-from .dao.containerutil import SINGULAR_TO_PLURAL
+from .dao.containerutil import pluralize
 
 log = config.log
 
@@ -86,7 +86,7 @@ class Download(base.RequestHandler):
         targets = []
 
         for fref in file_refs:
-            cont_name   = SINGULAR_TO_PLURAL.get(fref.get('container_name',''))
+            cont_name   = pluralize(fref.get('container_name',''))
             cont_id     = fref.get('container_id', '')
             filename    = fref.get('filename', '')
 

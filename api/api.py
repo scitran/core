@@ -35,7 +35,7 @@ routing_regexes = {
     'uid': '[0-9a-zA-Z.@_-]*',
 
     # Container name
-    'cname': 'projects|sessions|acquisitions|collections',
+    'cname': 'projects|sessions|acquisitions|collections|analyses',
 
     # Tag name
     'tag': '[^/]{1,32}',

@@ -66,7 +66,7 @@ class TargetContainer(object):
 
 # TODO: already in code elsewhere? Location?
 def get_container(cont_name, _id):
-    cont_name += 's'
+    cont_name = containerutil.pluralize(cont_name)
     if cont_name != 'groups':
         _id = bson.ObjectId(_id)
 
@@ -85,21 +85,31 @@ def get_parent_tree(cont_name, _id):
         'group':    <group>
     }
     """
-    if cont_name not in ['acquisitions', 'acquisition', 'sessions', 'session', 'projects', 'project', 'groups', 'group']:
-        raise ValueError('Can only construct tree from group, project, session or acquisition level')
+    cont_name = containerutil.singularize(cont_name)
 
+
+    if cont_name not in ['acquisition', 'session', 'project', 'group', 'analysis']:
+        raise ValueError('Can only construct tree from group, project, session, analysis or acquisition level')
+
+    analysis_id     = None
     acquisition_id  = None
     session_id      = None
     project_id      = None
     group_id        = None
     tree            = {}
 
-    if cont_name in ['acquisition', 'acquisitions']:
+    if cont_name == 'analysis':
+        analysis_id = bson.ObjectId(_id)
+        analysis = get_container('analysis', analysis_id)
+        tree['analysis'] = analysis
+        if analysis['parent']['type'] == 'session':
+            session_id = analysis['parent']['id']
+    if cont_name == 'acquisition':
         acquisition_id = bson.ObjectId(_id)
         acquisition = get_container('acquisition', acquisition_id)
         tree['acquisition'] = acquisition
         session_id = acquisition['session']
-    if cont_name in ['session', 'sessions'] or session_id:
+    if cont_name == 'session' or session_id:
         if not session_id:
             session_id = bson.ObjectId(_id)
         session = get_container('session', session_id)
@@ -108,13 +118,13 @@ def get_parent_tree(cont_name, _id):
         if subject:
             tree['subject'] = subject
         project_id = session['project']
-    if cont_name in ['project', 'projects'] or project_id:
+    if cont_name == 'project' or project_id:
         if not project_id:
             project_id = bson.ObjectId(_id)
         project = get_container('project', project_id)
         tree['project'] = project
         group_id = project['group']
-    if cont_name in ['group', 'groups'] or group_id:
+    if cont_name == 'group' or group_id:
         if not group_id:
             group_id = _id
         tree['group'] = get_container('group', group_id)
