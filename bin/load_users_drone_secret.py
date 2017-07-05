@@ -58,7 +58,7 @@ def _upsert_role(request_session, api_url, role_doc, group_id):
         return new_role_resp
 
     # Already exists, update instead
-    full_role_url = "{0}/{1}/{2}".format(base_role_url, role_doc['_id'])
+    full_role_url = "{0}/{1}".format(base_role_url, role_doc['_id'])
     return request_session.put(full_role_url, json=role_doc)
 
 
