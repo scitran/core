@@ -16,7 +16,9 @@ log = config.log
 
 BATCH_JOB_TRANSITIONS = {
     # To  <-------  #From
-    'running':     'pending',
+    'failed':       'running',
+    'complete':     'running',
+    'running':      'pending',
     'cancelled':    'running'
 }
 
@@ -161,7 +163,8 @@ def run(batch_job):
                 'config':   config_,
                 'gear_id':  gear_id,
                 'inputs':   inputs,
-                'tags':     tags
+                'tags':     tags,
+                'batch':    "batch is" + str(batch_job.get('_id'))
             }
 
             # Create analysis
@@ -178,7 +181,7 @@ def run(batch_job):
                 inputs[input_name] = create_filereference_from_dictionary(fr)
             destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
 
-            job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, origin=origin)
+            job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, origin=origin, batch=str(batch_job.get('_id')))
             job_id = job.insert()
 
         jobs.append(job)
@@ -206,6 +209,25 @@ def cancel(batch_job):
     update(batch_job['_id'], {'state': 'cancelled'})
     return cancelled_jobs
 
+def check_state(batch_id):
+    """
+    Return True if all jobs are complete or failed
+    """    
+
+    batch = config.db.batch.find_one({'_id': batch_id})
+
+    if batch.get('state') == 'cancelled':
+        return False
+    batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs')}, 'state': {'$nin': ['complete', 'failed']}})
+    failed_batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs')}, 'state': 'failed'})
+
+    if batch_jobs.count() == 0:
+        if failed_batch_jobs.count() > 0:
+            return 'failed'
+        else:
+            return 'complete'
+    else:
+        return False
 
 def get_stats():
     """

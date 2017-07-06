@@ -72,7 +72,6 @@ class Queue(object):
         if result.modified_count != 1:
             raise Exception('Job modification not saved')
 
-        # If the job did not succeed, check to see if job should be retried.
         if 'state' in mutation and mutation['state'] == 'failed' and retry_on_explicit_fail():
             job.state = 'failed'
             Queue.retry(job)

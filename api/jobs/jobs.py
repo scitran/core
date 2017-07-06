@@ -17,7 +17,7 @@ class Job(object):
                  attempt=1, previous_job_id=None, created=None,
                  modified=None, state='pending', request=None,
                  id_=None, config_=None, now=False, origin=None,
-                 saved_files=None, produced_metadata=None):
+                 saved_files=None, produced_metadata=None, batch=None):
         """
         Creates a job.
 
@@ -95,6 +95,7 @@ class Job(object):
         self.origin             = origin
         self.saved_files        = saved_files
         self.produced_metadata  = produced_metadata
+        self.batch              = batch
 
 
     def intention_equals(self, other_job):
@@ -154,7 +155,8 @@ class Job(object):
             now=d.get('now', False),
             origin=d.get('origin'),
             saved_files=d.get('saved_files'),
-            produced_metadata=d.get('produced_metadata'))
+            produced_metadata=d.get('produced_metadata'),
+            batch=d.get('batch'))
 
     @classmethod
     def get(cls, _id):

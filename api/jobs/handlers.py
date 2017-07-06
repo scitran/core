@@ -21,6 +21,7 @@ from ..validators import validate_data
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job, Logs
+from .batch import check_state, update
 from .queue import Queue
 
 
@@ -360,6 +361,14 @@ class JobHandler(base.RequestHandler):
                 raise APIPermissionException('User can only cancel jobs.')
 
         Queue.mutate(j, mutation)
+
+        # If the job did failed or succeeded, check state of the batch
+        if 'state' in mutation and mutation['state'] in ['complete', 'failed'] and j.batch:
+            batch_id = bson.ObjectId(j.batch)
+            new_state = check_state(batch_id)
+            if new_state:
+                update(batch_id, {'state': new_state})
+
 
     def _log_read_check(self, _id):
         try:
