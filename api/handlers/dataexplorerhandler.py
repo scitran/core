@@ -251,6 +251,34 @@ class DataExplorerHandler(base.RequestHandler):
 
         return return_type, modified_filters, search_string
 
+    @require_login
+    def get_type_ahead_values(self):
+        """
+        Return list of type ahead values for a key given a value 
+        that the user has already started to type in for the value of 
+        a custom string field
+        """
+        user_value = self.request.json_body['value']
+        custom_field = self.request.json_body['field_name']
+        body = {
+            "size": 0, 
+            "query": {"match" : { custom_field : user_value}},
+            "aggs" : {
+                "results" : {
+                    "terms" : {
+                        "field" : custom_field + ".raw",
+                        "size" : 15
+                    }
+                }
+            }
+        }
+        aggs = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body
+        )['aggregations']['results']['buckets']
+        aggs = [bucket['key'] for bucket in aggs]
+        return {'type_aheads': aggs}
 
     @require_login
     def get_facets(self):
