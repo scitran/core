@@ -219,13 +219,13 @@ def check_state(batch_id):
     if batch.get('state') == 'cancelled':
         return False
     batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs')}, 'state': {'$nin': ['complete', 'failed']}})
-    failed_batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs')}, 'state': 'failed'})
+    non_failed_batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs')}, 'state': {'$ne': 'failed'}})
 
     if batch_jobs.count() == 0:
-        if failed_batch_jobs.count() > 0:
-            return 'failed'
-        else:
+        if non_failed_batch_jobs.count() > 0:
             return 'complete'
+        else:
+            return 'failed'
     else:
         return False
 
