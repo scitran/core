@@ -206,7 +206,7 @@ class Download(base.RequestHandler):
                     continue
                 prefix = self._path_from_container(analysis, used_subpaths, util.sanitize_string_to_filename(analysis['label']))
                 filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
-                total_size, file_cnt = _append_targets(targets, analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'analyses', analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
         if len(targets) > 0:
             log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
