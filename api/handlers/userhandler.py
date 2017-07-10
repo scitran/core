@@ -70,7 +70,7 @@ class UserHandler(base.RequestHandler):
         permchecker = userauth.default(self, user)
         payload = self.request.json_body
         if not payload:
-            self.abort(400, 'Bad Request')
+            self.abort(400, 'PUT request body cannot be empty')
         mongo_schema_uri = validators.schema_uri('mongo', 'user.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
         payload_schema_uri = validators.schema_uri('input', 'user-update.json')

@@ -58,7 +58,7 @@ class CollectionsHandler(ContainerHandler):
 
         payload = self.request.json_body or {}
         if not payload:
-            self.abort(400, 'Bad Request')
+            self.abort(400, 'PUT request body cannot be empty')
         contents = payload.pop('contents', None)
         payload_validator(payload, 'PUT')
         permchecker = self._get_permchecker(container=container)

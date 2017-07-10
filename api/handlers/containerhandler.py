@@ -436,7 +436,7 @@ class ContainerHandler(base.RequestHandler):
 
         payload = self.request.json_body
         if not payload:
-            self.abort(400, 'Bad Request')
+            self.abort(400, 'PUT request body cannot be empty')
         payload_validator(payload, 'PUT')
 
         # Check if any payload keys are any propogated property, add to r_payload
