@@ -164,7 +164,7 @@ def run(batch_job):
                 'gear_id':  gear_id,
                 'inputs':   inputs,
                 'tags':     tags,
-                'batch':    "batch is" + str(batch_job.get('_id'))
+                'batch':    str(batch_job.get('_id'))
             }
 
             # Create analysis
@@ -211,10 +211,11 @@ def cancel(batch_job):
 
 def check_state(batch_id):
     """
-    Return True if all jobs are complete or failed
+    Returns state of batch based on state of each of its jobs
+    are complete or failed
     """    
 
-    batch = config.db.batch.find_one({'_id': batch_id})
+    batch = get(str(batch_id))
 
     if batch.get('state') == 'cancelled':
         return False
@@ -227,7 +228,7 @@ def check_state(batch_id):
         else:
             return 'failed'
     else:
-        return False
+        return None
 
 def get_stats():
     """

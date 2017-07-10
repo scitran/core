@@ -129,6 +129,11 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     r = as_admin.post('/batch/' + analysis_batch_id + '/run')
     assert r.ok
 
+    # test batch.state after calling run
+    r = as_admin.get('/batch/' + analysis_batch_id)
+    assert r.json()['state'] == 'running'
+
+
     # Test batch complete
     # create a batch w/ acquisition target and target_context
     r = as_admin.post('/batch', json={
@@ -157,12 +162,66 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     r = as_admin.get('/batch/' + batch_id)
     assert r.json()['state'] == 'complete'
 
-    # Test batch failed
+    # Test batch failed with acquisition target
     # create a batch w/ acquisition target and target_context
     r = as_admin.post('/batch', json={
         'gear_id': gear,
         'targets': [{'type': 'acquisition', 'id': acquisition}],
         'target_context': {'type': 'session', 'id': session}
+    })
+    assert r.ok
+    batch_id = r.json()['_id']
+
+    # run batch
+    r = as_admin.post('/batch/' + batch_id + '/run')
+    assert r.ok
+
+    # test batch.state after calling run
+    r = as_admin.get('/batch/' + batch_id)
+    assert r.json()['state'] == 'running'
+
+    for job in r.json()['jobs']:
+        # set jobs to failed
+        r = as_root.put('/jobs/' + job, json={'state': 'running'})
+        r = as_root.put('/jobs/' + job, json={'state': 'failed'})
+        assert r.ok
+
+    # test batch is complete
+    r = as_admin.get('/batch/' + batch_id)
+    assert r.json()['state'] == 'failed'
+
+    # Test batch complete with analysis target
+    # create a batch w/ analysis gear
+    r = as_admin.post('/batch', json={
+        'gear_id': analysis_gear,
+        'targets': [{'type': 'session', 'id': session}]
+    })
+    assert r.ok
+    batch_id = r.json()['_id']
+
+    # run batch
+    r = as_admin.post('/batch/' + batch_id + '/run')
+    assert r.ok
+
+    # test batch.state after calling run
+    r = as_admin.get('/batch/' + batch_id)
+    assert r.json()['state'] == 'running'
+
+    for job in r.json()['jobs']:
+        # set jobs to complete
+        r = as_root.put('/jobs/' + job, json={'state': 'running'})
+        r = as_root.put('/jobs/' + job, json={'state': 'complete'})
+        assert r.ok
+
+    # test batch is complete
+    r = as_admin.get('/batch/' + batch_id)
+    assert r.json()['state'] == 'complete'
+
+    # Test batch failed with analysis target
+    # create a batch w/ analysis gear
+    r = as_admin.post('/batch', json={
+        'gear_id': analysis_gear,
+        'targets': [{'type': 'session', 'id': session}]
     })
     assert r.ok
     batch_id = r.json()['_id']

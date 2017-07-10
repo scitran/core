@@ -342,7 +342,7 @@ class AnalysisStorage(ContainerStorage):
             {'type': 'analysis', 'id': str(analysis['_id'])})
 
         job = Job(job['gear_id'], inputs,
-            destination=destination, tags=tags, config_=job.get('config'), origin=origin)
+            destination=destination, tags=tags, config_=job.get('config'), origin=origin, batch=job.get('batch'))
         job_id = job.insert()
 
         if not job_id:

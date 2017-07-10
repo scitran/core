@@ -362,9 +362,9 @@ class JobHandler(base.RequestHandler):
 
         Queue.mutate(j, mutation)
 
-        # If the job did failed or succeeded, check state of the batch
+        # If the job failed or succeeded, check state of the batch
         if 'state' in mutation and mutation['state'] in ['complete', 'failed'] and j.batch:
-            batch_id = bson.ObjectId(j.batch)
+            batch_id = j.batch
             new_state = check_state(batch_id)
             if new_state:
                 update(batch_id, {'state': new_state})
