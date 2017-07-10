@@ -42,12 +42,23 @@ def log_db(app):
     return api.config.log_db
 
 
+@pytest.fixture(scope='session')
+def es(app):
+    """Return Elasticsearch mock (MagickMock instance)"""
+    return api.config.es
+
+
 @pytest.yield_fixture(scope='session')
 def app():
-    """Return api instance that uses mocked os.environ and MongoClient"""
-    env_patch = mock.patch.dict(
-        os.environ, {'SCITRAN_CORE_DRONE_SECRET': SCITRAN_CORE_DRONE_SECRET}, clear=True)
+    """Return api instance that uses mocked os.environ, ElasticSearch and MongoClient"""
+    test_env = {
+        'SCITRAN_CORE_DRONE_SECRET': SCITRAN_CORE_DRONE_SECRET,
+        'TERM': 'xterm', # enable terminal features - useful for pdb sessions
+    }
+    env_patch = mock.patch.dict(os.environ, test_env, clear=True)
     env_patch.start()
+    es_patch = mock.patch('elasticsearch.Elasticsearch')
+    es_patch.start()
     mongo_patch = mock.patch('pymongo.MongoClient', new=mongomock.MongoClient)
     mongo_patch.start()
     # NOTE db and log_db is created at import time in api.config
@@ -55,6 +66,7 @@ def app():
     reload(api.config)
     yield api.web.start.app_factory()
     mongo_patch.stop()
+    es_patch.stop()
     env_patch.stop()
 
 
