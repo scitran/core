@@ -260,9 +260,26 @@ class DataExplorerHandler(base.RequestHandler):
         """
         user_value = self.request.json_body['value']
         custom_field = self.request.json_body['field_name']
+        modified_filters = []
+        # Add permissions filter to list if user is not requesting all data
+        if not self.request.json_body.get('all_data', False):
+            modified_filters.append({'term': {'permissions._id': self.uid}})
+
         body = {
             "size": 0, 
-            "query": {"match" : { custom_field : user_value}},
+            "query": {
+                "bool": {
+                    "must" : {
+                        "match" : { custom_field : user_value}
+                    },
+                    "filter" : {
+                        "bool" : {
+                            "must" : modified_filters
+                        }
+                    }
+                    
+                }
+            },
             "aggs" : {
                 "results" : {
                     "terms" : {
@@ -272,6 +289,7 @@ class DataExplorerHandler(base.RequestHandler):
                 }
             }
         }
+
         aggs = config.es.search(
             index='data_explorer',
             doc_type='flywheel',
