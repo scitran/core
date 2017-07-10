@@ -347,7 +347,7 @@ class DataExplorerHandler(base.RequestHandler):
             source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp", "acquisition.archived"])
 
         if return_type == 'analysis':
-            source.extend(["analysis._id", "analysis.label", "analysis.created"])
+            source.extend(["analysis._id", "analysis.label", "analysis.created", "analysis.parent", "analysis.user"])
 
         query = {
             "size": 0,
