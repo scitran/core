@@ -298,6 +298,45 @@ class DataExplorerHandler(base.RequestHandler):
         aggs = [bucket['key'] for bucket in aggs]
         return {'type_aheads': aggs}
 
+    def get_type_ahead_numbers(self):
+        # user_value = self.request.json_body['value']
+        custom_field = self.request.json_body['field_name']
+        modified_filters = []
+        # Add permissions filter to list if user is not requesting all data
+        if not self.request.json_body.get('all_data', False):
+            modified_filters.append({'term': {'permissions._id': self.uid}})
+
+        body = {
+            "size": 0, 
+            "query": {
+                "bool": {
+                    "must" : {
+                        "match_all" : {}
+                    },
+                    "filter" : {
+                        "bool" : {
+                            "must" : modified_filters
+                        }
+                    }
+                    
+                }
+            },
+            "aggs" : {
+                "results" : {
+                    "stats" : {
+                        "field" : custom_field
+                    }
+                }
+            }
+        }
+
+        aggs = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body
+        )['aggregations']['results']
+        return aggs
+
     @require_login
     def get_facets(self):
 
