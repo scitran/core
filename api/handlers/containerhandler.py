@@ -435,6 +435,8 @@ class ContainerHandler(base.RequestHandler):
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body
+        if not payload:
+            self.abort(400, 'Bad Request')
         payload_validator(payload, 'PUT')
 
         # Check if any payload keys are any propogated property, add to r_payload

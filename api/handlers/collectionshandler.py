@@ -57,6 +57,8 @@ class CollectionsHandler(ContainerHandler):
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body or {}
+        if not payload:
+            self.abort(400, 'Bad Request')
         contents = payload.pop('contents', None)
         payload_validator(payload, 'PUT')
         permchecker = self._get_permchecker(container=container)

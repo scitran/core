@@ -69,6 +69,10 @@ def test_users(as_root, as_admin, as_user, as_public):
     r = as_root.put('/users/nonexistent@user.com', json={'firstname': 'Realname'})
     assert r.status_code == 404
 
+    # Try empty update
+    r = as_root.put('/users/' + new_user_id, json={})
+    assert r.status_code == 400
+
     # Update existing user
     r = as_root.put('/users/' + new_user_id, json={'firstname': 'Realname'})
     assert r.ok
