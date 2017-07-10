@@ -95,6 +95,10 @@ def test_groups(as_admin, data_builder):
     d8 = parse(eight_modified)
     assert d8 > d7
 
+    # Empty put request should 500
+    r = as_admin.put('/groups/' + group, json={})
+    assert r.status_code == 500
+
     r = as_admin.get('/groups/' + group)
     assert r.ok
     assert r.json()['name'] == group_name
