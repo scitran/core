@@ -1,138 +1,15 @@
 import copy
 import json
 
+from elasticsearch import ElasticsearchException, TransportError
+
 from ..web import base
 from .. import config
 from ..auth import require_login, require_superuser
 
 log = config.log
 
-ANALYSIS = {
-    "analyzer": {
-        "my_analyzer": {
-            "tokenizer": "my_tokenizer"
-        }
-    },
-    "tokenizer": {
-        "my_tokenizer": {
-            "type": "ngram",
-            "min_gram": 2,
-            "max_gram": 100,
-            "token_chars": [
-                "letter",
-                "digit",
-                "symbol",
-                "punctuation"
-            ]
-        }
-    }
-}
-
-DYNAMIC_TEMPLATES = [
-    {
-        'string_fields' : {
-            'match': '*',
-            'match_mapping_type' : 'string',
-            'mapping' : {
-                'type': 'text',
-                'analyzer': 'my_analyzer',
-                'search_analyzer': 'standard',
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "index": "not_analyzed",
-                        "ignore_above": 256
-                    }
-                }
-            }
-        }
-    }
-]
-
-MATCH_ALL= {"match_all": {}}
-
-FACET_QUERY = {
-    "size": 0,
-    "aggs" : {
-        "session_count" : {
-            "cardinality" : {
-                "field" : "session._id"
-            }
-        },
-        "acquisition_count" : {
-            "cardinality" : {
-                "field" : "acquisition._id"
-            }
-        },
-        "file_count" : {
-            "cardinality" : {
-                "field" : "file.name.raw"
-            }
-        },
-        "by_session": {
-            "filter": {"term": {"container_type": "session"}},
-            "aggs": {
-                "subject.sex" : {
-                    "terms" : {
-                        "field" : "subject.sex.raw",
-                        "size" : 15
-                    }
-                },
-                "subject.code" : {
-                    "terms" : {
-                        "field" : "subject.code.raw",
-                        "size" : 15
-                    }
-                },
-                "session.timestamp" : {
-                    "stats" : { "field" : "session.timestamp"}
-
-                }
-            }
-        },
-        "session_age": {
-            "filter": {
-                "bool" : {
-                  "must" : [
-                     {"range": {"subject.age": {"gte": -31556952, "lte": 3155695200}}},
-                     {"term": {"container_type": "session"}}
-                  ]
-                }
-            },
-            "aggs": {
-                "subject.age" : {
-                    "histogram" : {
-                        "field" : "subject.age",
-                        "interval" : 31556952,
-                        "extended_bounds" : {
-                            "min" : -31556952,
-                            "max" : 3155695200
-                        }
-                    }
-                }
-            }
-        },
-        "by_file": {
-            "filter": {"term": {"container_type": "file"}},
-            "aggs": {
-
-                "file.measurements" : {
-                    "terms" : {
-                        "field" : "file.measurements.raw",
-                        "size" : 15
-                    }
-                },
-                "file.type" : {
-                    "terms" : {
-                        "field" : "file.type.raw",
-                        "size" : 15
-                    }
-                }
-            }
-        }
-    }
-}
-
+"""
 EXAMPLE_SESSION_QUERY = {
   "size": 0,
   "query": {
@@ -201,6 +78,149 @@ EXAMPLE_FILE_QUERY = {
     }
   }
 }
+"""
+
+
+ANALYSIS = {
+    "analyzer": {
+        "my_analyzer": {
+            "tokenizer": "my_tokenizer",
+            "filter": ["lowercase"]
+        }
+    },
+    "tokenizer": {
+        "my_tokenizer": {
+            "type": "ngram",
+            "min_gram": 2,
+            "max_gram": 100,
+            "token_chars": [
+                "letter",
+                "digit",
+                "symbol",
+                "punctuation"
+            ]
+        }
+    }
+}
+
+DYNAMIC_TEMPLATES = [
+    {
+        'string_fields' : {
+            'match': '*',
+            'match_mapping_type' : 'string',
+            'mapping' : {
+                'type': 'text',
+                'analyzer': 'my_analyzer',
+                'search_analyzer': 'standard',
+                'index': True,
+                "fields": {
+                    "raw": {
+                        "type": "keyword",
+                        "index": True,
+                        "ignore_above": 256
+                    }
+                }
+            }
+        }
+    }
+]
+
+MATCH_ALL= {"match_all": {}}
+
+FACET_QUERY = {
+    "size": 0,
+    "aggs" : {
+        "session_count" : {
+            "cardinality" : {
+                "field" : "session._id"
+            }
+        },
+        "acquisition_count" : {
+            "cardinality" : {
+                "field" : "acquisition._id"
+            }
+        },
+        "file_count" : {
+            "cardinality" : {
+                "field" : "file.name.raw"
+            }
+        },
+        "by_session": {
+            "filter": {"term": {"container_type": "session"}},
+            "aggs": {
+                "subject.sex" : {
+                    "terms" : {
+                        "field" : "subject.sex.raw",
+                        "size" : 15
+                    }
+                },
+                "session.tags" : {
+                    "terms" : {
+                        "field" : "subject.tags.raw",
+                        "size" : 15
+                    }
+                },
+                "subject.code" : {
+                    "terms" : {
+                        "field" : "subject.code.raw",
+                        "size" : 15
+                    }
+                },
+                "session.timestamp" : {
+                    "stats" : { "field" : "session.timestamp"}
+
+                },
+                "session.archived" : {
+                    "terms" : {
+                        "field" : "session.archived.raw",
+                        "size" : 2,
+                        "missing": "false"
+                    }
+                },
+            }
+        },
+        "session_age": {
+            "filter": {
+                "bool" : {
+                  "must" : [
+                     {"range": {"subject.age": {"gte": -31556952, "lte": 3155695200}}},
+                     {"term": {"container_type": "session"}}
+                  ]
+                }
+            },
+            "aggs": {
+                "subject.age" : {
+                    "histogram" : {
+                        "field" : "subject.age",
+                        "interval" : 31556952,
+                        "extended_bounds" : {
+                            "min" : -31556952,
+                            "max" : 3155695200
+                        }
+                    }
+                }
+            }
+        },
+        "by_file": {
+            "filter": {"term": {"container_type": "file"}},
+            "aggs": {
+
+                "file.measurements" : {
+                    "terms" : {
+                        "field" : "file.measurements.raw",
+                        "size" : 15
+                    }
+                },
+                "file.type" : {
+                    "terms" : {
+                        "field" : "file.type.raw",
+                        "size" : 15
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 class DataExplorerHandler(base.RequestHandler):
@@ -213,7 +233,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         try:
             request = self.request.json_body
-        except Exception:
+        except (ValueError):
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
             return None, None, None
@@ -243,14 +263,79 @@ class DataExplorerHandler(base.RequestHandler):
             modified_filters.append({'term': {'permissions._id': self.uid}})
 
         # Parse and "validate" search_string, allowed to be non-existent
-        search_string = request.get('search_string', '')
-        try:
-            search_string = str(search_string)
-        except Exception:
-            self.abort(400, 'search_string must be of type string')
+        search_string = str(request.get('search_string', ''))
 
         return return_type, modified_filters, search_string
 
+    @require_login
+    def aggregate_field_values(self):
+        """
+        Return list of type ahead values for a key given a value
+        that the user has already started to type in for the value of
+        a custom string field or a set of statistics if the field type is
+        a number.
+        """
+        try:
+            field_name = self.request.json_body['field_name']
+        except (KeyError, ValueError):
+            self.abort(400, 'Field name is required')
+
+        filters = [{'term': {'permissions._id': self.uid}}]
+        try:
+            field = config.es.get(index='data_explorer_fields', id=field_name, doc_type='flywheel_field')
+        except TransportError as e:
+            log.warning(e)
+            self.abort(404, 'Could not find mapping for field {}.'.format(field_name))
+        field_type = field['_source']['type']
+        search_string = self.request.json_body.get('search_string', None)
+
+
+        # If the field type is a string, return a list of type-ahead values
+        body = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must" : {
+                        "match" : { field_name : search_string}
+                    },
+                    "filter" : filters
+                }
+            }
+        }
+        if not filters:
+            body['query']['bool'].pop('filter')
+        if search_string is None:
+            body['query']['bool']['must'] = MATCH_ALL
+
+        if field_type in ['string', 'boolean']:
+            body['aggs'] = {
+                "results" : {
+                    "terms" : {
+                        "field" : field_name + ".raw",
+                        "size" : 15
+                    }
+                }
+            }
+
+        # If it is a number (int, date, or some other type), return various statistics on the values of the field
+        elif field_type in ['integer', 'float', 'date']:
+            body['aggs'] = {
+                "results" : {
+                    "stats" : {
+                        "field" : field_name
+                    }
+                }
+            }
+        else:
+            self.abort(400, 'Aggregations are only allowed on string, integer, float, data and boolean fields.')
+
+        aggs = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body
+        )['aggregations']['results']
+
+        return aggs
 
     @require_login
     def get_facets(self):
@@ -287,16 +372,20 @@ class DataExplorerHandler(base.RequestHandler):
             self.abort(400, 'Must specify string for field query')
 
         es_query = {
-            "size": 20,
+            "size": 15,
             "query": {
                 "match" : { "name" : field_query }
             }
         }
-        es_results = config.es.search(
-            index='data_explorer_fields',
-            doc_type='flywheel_field',
-            body=es_query
-        )
+        try:
+            es_results = config.es.search(
+                index='data_explorer_fields',
+                doc_type='flywheel_field',
+                body=es_query
+            )
+        except TransportError as e:
+            config.log.warning('Fields not yet indexed for search: {}'.format(e))
+            return []
 
         results = []
         for result in es_results['hits']['hits']:
@@ -329,7 +418,7 @@ class DataExplorerHandler(base.RequestHandler):
             source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp", "acquisition.archived"])
 
         if return_type == 'analysis':
-            source.extend(["analysis._id", "analysis.label", "analysis.created"])
+            source.extend(["analysis._id", "analysis.label", "analysis.created", "analysis.parent", "analysis.user"])
 
         query = {
             "size": 0,
@@ -464,10 +553,16 @@ class DataExplorerHandler(base.RequestHandler):
     @classmethod
     def _handle_properties(cls, properties, current_field_name):
 
+        ignore_fields = [
+            '_all', 'dynamic_templates', 'analysis_reference', 'file_reference',
+            'parent', 'container_type', 'origin', 'permissions', '_id',
+            'project_has_template', 'hash'
+        ]
+
         for field_name, field in properties.iteritems():
 
             # Ignore some fields
-            if field_name in ['_all', 'dynamic_templates', 'analysis_reference', 'file_reference', 'parent', 'container_type', 'origin', 'permissions', '_id']:
+            if field_name in ignore_fields:
                 continue
 
             elif 'properties' in field:
@@ -476,15 +571,51 @@ class DataExplorerHandler(base.RequestHandler):
 
             else:
                 field_type = cls._get_field_type(field['type'])
+                facet_status = False
                 if field_type == 'object':
                     # empty objects don't get added
                     continue
 
                 field_name = current_field_name+'.'+field_name if current_field_name != '' else field_name
 
+                if field_type == 'string':
+                    # if >85% of values fall in top 15 results, mark as a facet
+                    body = {
+                        "size": 0,
+                        "aggs" : {
+                            "results" : {
+                                "terms" : {
+                                    "field" : field_name + ".raw",
+                                    "size" : 15
+                                }
+                            }
+                        }
+                    }
+
+                    aggs = config.es.search(
+                        index='data_explorer',
+                        doc_type='flywheel',
+                        body=body
+                    )['aggregations']['results']
+
+                    other_doc_count = aggs['sum_other_doc_count']
+                    facet_doc_count = sum([bucket['doc_count'] for bucket in aggs['buckets']])
+                    total_doc_count = other_doc_count+facet_doc_count
+
+                    if other_doc_count == 0 and facet_doc_count > 0:
+                        # All values fit in 15 or fewer buckets
+                        facet_status = True
+                    elif other_doc_count > 0 and facet_doc_count > 0 and (facet_doc_count/total_doc_count) > 0.85:
+                        # Greater than 85% of values fit in 15 or fewer buckets
+                        facet_status = True
+                    else:
+                        # There are no values or too diverse of values
+                        facet_status = False
+
                 doc = {
                     'name':                 field_name,
-                    'type':                 field_type
+                    'type':                 field_type,
+                    'facet':                facet_status
                 }
 
                 doc_s = json.dumps(doc)
@@ -493,16 +624,19 @@ class DataExplorerHandler(base.RequestHandler):
     @require_superuser
     def index_field_names(self):
 
-        if not config.es.indices.exists('data_explorer'):
-            self.abort(404, 'data_explorer index not yet available')
+        try:
+            if not config.es.indices.exists('data_explorer'):
+                self.abort(404, 'data_explorer index not yet available')
+        except TransportError as e:
+            self.abort(404, 'elastic search not available: {}'.format(e))
 
         # Sometimes we might want to clear out what is there...
         if self.is_true('hard-reset') and config.es.indices.exists('data_explorer_fields'):
             config.log.debug('Removing existing data explorer fields index...')
             try:
                 config.es.indices.delete(index='data_explorer_fields')
-            except Exception:
-                self.abort(500, 'Unable to clear data_explorer_fields index.')
+            except ElasticsearchException as e:
+                self.abort(500, 'Unable to clear data_explorer_fields index: {}'.format(e))
 
         # Check to see if fields index exists, if not - create it:
         if not config.es.indices.exists('data_explorer_fields'):
@@ -524,13 +658,13 @@ class DataExplorerHandler(base.RequestHandler):
             config.log.debug('creating data_explorer_fields index ...')
             try:
                 config.es.indices.create(index='data_explorer_fields', body=request)
-            except Exception:
-                self.abort(500, 'Unable to create data_explorer_fields index')
+            except ElasticsearchException:
+                self.abort(500, 'Unable to create data_explorer_fields index: {}'.format(e))
 
         try:
             mappings = config.es.indices.get_mapping(index='data_explorer', doc_type='flywheel')
             fw_mappings = mappings['data_explorer']['mappings']['flywheel']['properties']
-        except Exception:
+        except (TransportError, KeyError):
             self.abort(404, 'Could not find mappings, exiting ...')
 
         self._handle_properties(fw_mappings, '')
