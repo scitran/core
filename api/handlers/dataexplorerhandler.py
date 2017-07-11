@@ -1,6 +1,8 @@
 import copy
 import json
 
+from elasticsearch import ElasticsearchException, TransportError
+
 from ..web import base
 from .. import config
 from ..auth import require_login, require_superuser
@@ -228,7 +230,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         try:
             request = self.request.json_body
-        except Exception:
+        except KeyError:
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
             return None, None, None
@@ -258,11 +260,7 @@ class DataExplorerHandler(base.RequestHandler):
             modified_filters.append({'term': {'permissions._id': self.uid}})
 
         # Parse and "validate" search_string, allowed to be non-existent
-        search_string = request.get('search_string', '')
-        try:
-            search_string = str(search_string)
-        except Exception:
-            self.abort(400, 'search_string must be of type string')
+        search_string = str(request.get('search_string', ''))
 
         return return_type, modified_filters, search_string
 
@@ -313,8 +311,8 @@ class DataExplorerHandler(base.RequestHandler):
                 doc_type='flywheel_field',
                 body=es_query
             )
-        except:
-            config.log.warning('Fields not yet indexed for search')
+        except TransportError as e:
+            config.log.warning('Fields not yet indexed for search: {}'.format(e))
             return []
 
         results = []
@@ -501,15 +499,51 @@ class DataExplorerHandler(base.RequestHandler):
 
             else:
                 field_type = cls._get_field_type(field['type'])
+                facet_status = False
                 if field_type == 'object':
                     # empty objects don't get added
                     continue
 
                 field_name = current_field_name+'.'+field_name if current_field_name != '' else field_name
 
+                if field_type == 'string':
+                    # if >85% of values fall in top 15 results, mark as a facet
+                    body = {
+                        "size": 0,
+                        "aggs" : {
+                            "results" : {
+                                "terms" : {
+                                    "field" : field_name + ".raw",
+                                    "size" : 15
+                                }
+                            }
+                        }
+                    }
+
+                    aggs = config.es.search(
+                        index='data_explorer',
+                        doc_type='flywheel',
+                        body=body
+                    )['aggregations']['results']
+
+                    other_doc_count = aggs['sum_other_doc_count']
+                    facet_doc_count = sum([bucket['doc_count'] for bucket in aggs['buckets']])
+                    total_doc_count = other_doc_count+facet_doc_count
+
+                    if other_doc_count == 0 and facet_doc_count > 0:
+                        # All values fit in 15 or fewer buckets
+                        facet_status = True
+                    elif other_doc_count > 0 and facet_doc_count > 0 and (facet_doc_count/total_doc_count) > 0.85:
+                        # Greater than 85% of values fit in 15 or fewer buckets
+                        facet_status = True
+                    else:
+                        # There are no values or too diverse of values
+                        facet_status = False
+
                 doc = {
                     'name':                 field_name,
-                    'type':                 field_type
+                    'type':                 field_type,
+                    'facet':                facet_status
                 }
 
                 doc_s = json.dumps(doc)
@@ -521,16 +555,16 @@ class DataExplorerHandler(base.RequestHandler):
         try:
             if not config.es.indices.exists('data_explorer'):
                 self.abort(404, 'data_explorer index not yet available')
-        except:
-            self.abort(404, 'elastic search not available')
+        except TransportError as e:
+            self.abort(404, 'elastic search not available: {}'.format(e))
 
         # Sometimes we might want to clear out what is there...
         if self.is_true('hard-reset') and config.es.indices.exists('data_explorer_fields'):
             config.log.debug('Removing existing data explorer fields index...')
             try:
                 config.es.indices.delete(index='data_explorer_fields')
-            except Exception:
-                self.abort(500, 'Unable to clear data_explorer_fields index.')
+            except ElasticsearchException as e:
+                self.abort(500, 'Unable to clear data_explorer_fields index: {}'.format(e))
 
         # Check to see if fields index exists, if not - create it:
         if not config.es.indices.exists('data_explorer_fields'):
@@ -552,13 +586,13 @@ class DataExplorerHandler(base.RequestHandler):
             config.log.debug('creating data_explorer_fields index ...')
             try:
                 config.es.indices.create(index='data_explorer_fields', body=request)
-            except Exception:
-                self.abort(500, 'Unable to create data_explorer_fields index')
+            except ElasticsearchException:
+                self.abort(500, 'Unable to create data_explorer_fields index: {}'.format(e))
 
         try:
             mappings = config.es.indices.get_mapping(index='data_explorer', doc_type='flywheel')
             fw_mappings = mappings['data_explorer']['mappings']['flywheel']['properties']
-        except Exception:
+        except (TransportError, KeyError):
             self.abort(404, 'Could not find mappings, exiting ...')
 
         self._handle_properties(fw_mappings, '')
