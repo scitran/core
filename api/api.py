@@ -103,7 +103,7 @@ endpoints = [
         route('/dataexplorer/search',                   DataExplorerHandler,   h='search',                 m=['POST']),
         route('/dataexplorer/facets',                   DataExplorerHandler,   h='get_facets',             m=['POST']),
         route('/dataexplorer/search/fields',            DataExplorerHandler,   h='search_fields',          m=['POST']),
-        route('/dataexplorer/search/fields/aggregate',  DataExplorerHandler,   h='custom_field_values',    m=['POST']),
+        route('/dataexplorer/search/fields/aggregate',  DataExplorerHandler,   h='aggregate_field_values', m=['POST']),
         route('/dataexplorer/index/fields',             DataExplorerHandler,   h='index_field_names',      m=['POST']),
 
         # Users

@@ -9,6 +9,78 @@ from ..auth import require_login, require_superuser
 
 log = config.log
 
+"""
+EXAMPLE_SESSION_QUERY = {
+  "size": 0,
+  "query": {
+    "match": {
+      "_all": "test'"
+    }
+  },
+  "aggs": {
+    "by_session": {
+      "terms": {
+        "field": "session._id",
+        "size": 100
+      },
+      "aggs": {
+        "by_top_hit": {
+          "top_hits": {
+            "size": 1
+          }
+        }
+      }
+    }
+  }
+}
+
+EXAMPLE_ACQUISITION_QUERY = {
+  "size": 0,
+  "query": {
+    "match": {
+      "_all": "megan'"
+    }
+  },
+  "aggs": {
+    "by_session": {
+      "terms": {
+        "field": "acquisition._id",
+        "size": 100
+      },
+      "aggs": {
+        "by_top_hit": {
+          "top_hits": {
+            "size": 1
+          }
+        }
+      }
+    }
+  }
+}
+
+EXAMPLE_FILE_QUERY = {
+  "size": 100,
+  "query": {
+    "bool": {
+      "must": {
+        "match": {
+          "_all": "brain"
+        }
+      },
+      "filter": {
+        "bool" : {
+          "must" : [
+             { "term" : {"file.type" : "dicom"}},
+             { "term" : {"container_type" : "file"}}
+          ]
+        }
+      }
+    }
+  }
+}
+"""
+
+
 ANALYSIS = {
     "analyzer": {
         "my_analyzer": {
@@ -150,75 +222,6 @@ FACET_QUERY = {
     }
 }
 
-EXAMPLE_SESSION_QUERY = {
-  "size": 0,
-  "query": {
-    "match": {
-      "_all": "test'"
-    }
-  },
-  "aggs": {
-    "by_session": {
-      "terms": {
-        "field": "session._id",
-        "size": 100
-      },
-      "aggs": {
-        "by_top_hit": {
-          "top_hits": {
-            "size": 1
-          }
-        }
-      }
-    }
-  }
-}
-
-EXAMPLE_ACQUISITION_QUERY = {
-  "size": 0,
-  "query": {
-    "match": {
-      "_all": "megan'"
-    }
-  },
-  "aggs": {
-    "by_session": {
-      "terms": {
-        "field": "acquisition._id",
-        "size": 100
-      },
-      "aggs": {
-        "by_top_hit": {
-          "top_hits": {
-            "size": 1
-          }
-        }
-      }
-    }
-  }
-}
-
-EXAMPLE_FILE_QUERY = {
-  "size": 100,
-  "query": {
-    "bool": {
-      "must": {
-        "match": {
-          "_all": "brain"
-        }
-      },
-      "filter": {
-        "bool" : {
-          "must" : [
-             { "term" : {"file.type" : "dicom"}},
-             { "term" : {"container_type" : "file"}}
-          ]
-        }
-      }
-    }
-  }
-}
-
 
 class DataExplorerHandler(base.RequestHandler):
     # pylint: disable=broad-except
@@ -230,7 +233,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         try:
             request = self.request.json_body
-        except KeyError:
+        except (ValueError):
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
             return None, None, None
@@ -265,85 +268,74 @@ class DataExplorerHandler(base.RequestHandler):
         return return_type, modified_filters, search_string
 
     @require_login
-    def custom_field_values(self):
+    def aggregate_field_values(self):
         """
-        Return list of type ahead values for a key given a value 
-        that the user has already started to type in for the value of 
+        Return list of type ahead values for a key given a value
+        that the user has already started to type in for the value of
         a custom string field or a set of statistics if the field type is
         a number.
         """
-        
-        custom_field = self.request.json_body['field_name']
+        try:
+            field_name = self.request.json_body['field_name']
+        except (KeyError, ValueError):
+            self.abort(400, 'Field name is required')
+
         filters = [{'term': {'permissions._id': self.uid}}]
-        field = config.es.indices.get_field_mapping(custom_field,
-                                                    index='data_explorer',
-                                                    doc_type='flywheel')['data_explorer']['mappings']['flywheel'][custom_field]
-        field_type = self._get_field_type(field['mapping'][custom_field.split('.')[-1]]['type'])
+        try:
+            field = config.es.get(index='data_explorer_fields', id=field_name, doc_type='flywheel_field')
+        except TransportError as e:
+            log.warning(e)
+            self.abort(404, 'Could not find mapping for field {}.'.format(field_name))
+        field_type = field['_source']['type']
+        search_string = self.request.json_body.get('search_string', None)
+
 
         # If the field type is a string, return a list of type-ahead values
-        if field_type == 'string':
-            user_value = self.request.json_body['value']
-            body = {
-                "size": 0, 
-                "query": {
-                    "bool": {
-                        "must" : {
-                            "match" : { custom_field : user_value}
-                        },
-                        "filter" : filters
-                    }
-                },
-                "aggs" : {
-                    "results" : {
-                        "terms" : {
-                            "field" : custom_field + ".raw",
-                            "size" : 15
-                        }
+        body = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must" : {
+                        "match" : { field_name : search_string}
+                    },
+                    "filter" : filters
+                }
+            }
+        }
+        if not filters:
+            body['query']['bool'].pop('filter')
+        if search_string is None:
+            body['query']['bool']['must'] = MATCH_ALL
+
+        if field_type in ['string', 'boolean']:
+            body['aggs'] = {
+                "results" : {
+                    "terms" : {
+                        "field" : field_name + ".raw",
+                        "size" : 15
                     }
                 }
             }
-
-            if not filters:
-                body['query']['bool'].pop('filter')
-
-            aggs = config.es.search(
-                index='data_explorer',
-                doc_type='flywheel',
-                body=body
-            )['aggregations']['results']['buckets']
-            aggs = [bucket['key'] for bucket in aggs]
-            return {'type_aheads': aggs}
 
         # If it is a number (int, date, or some other type), return various statistics on the values of the field
-        else:
-            body = {
-                "size": 0, 
-                "query": {
-                    "bool": {
-                        "must" : {
-                            "match_all" : {}
-                        },
-                        "filter" :  filters  
-                    }
-                },
-                "aggs" : {
-                    "results" : {
-                        "stats" : {
-                            "field" : custom_field
-                        }
+        elif field_type in ['integer', 'float', 'date']:
+            body['aggs'] = {
+                "results" : {
+                    "stats" : {
+                        "field" : field_name
                     }
                 }
             }
-            if not filters:
-                body['query']['bool'].pop('filter')
+        else:
+            self.abort(400, 'Aggregations are only allowed on string, integer, float, data and boolean fields.')
 
-            aggs = config.es.search(
-                index='data_explorer',
-                doc_type='flywheel',
-                body=body
-            )['aggregations']['results']
+        aggs = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body
+        )['aggregations']['results']
 
-            return aggs          
+        return aggs
 
     @require_login
     def get_facets(self):
