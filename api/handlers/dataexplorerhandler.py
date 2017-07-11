@@ -252,90 +252,85 @@ class DataExplorerHandler(base.RequestHandler):
         return return_type, modified_filters, search_string
 
     @require_login
-    def get_type_ahead_values(self):
+    def custom_field_values(self):
         """
         Return list of type ahead values for a key given a value 
         that the user has already started to type in for the value of 
-        a custom string field
+        a custom string field or a set of statistics if the field type is
+        a number.
         """
-        user_value = self.request.json_body['value']
+        
         custom_field = self.request.json_body['field_name']
-        modified_filters = []
-        # Add permissions filter to list if user is not requesting all data
-        if not self.request.json_body.get('all_data', False):
-            modified_filters.append({'term': {'permissions._id': self.uid}})
+        filters = [{'term': {'permissions._id': self.uid}}]
+        field = config.es.indices.get_field_mapping(custom_field,
+                                                    index='data_explorer',
+                                                    doc_type='flywheel')['data_explorer']['mappings']['flywheel'][custom_field]
+        field_type = self._get_field_type(field['mapping'][custom_field.split('.')[-1]]['type'])
 
-        body = {
-            "size": 0, 
-            "query": {
-                "bool": {
-                    "must" : {
-                        "match" : { custom_field : user_value}
-                    },
-                    "filter" : {
-                        "bool" : {
-                            "must" : modified_filters
-                        }
+        # If the field type is a string, return a list of type-ahead values
+        if field_type == 'string':
+            user_value = self.request.json_body['value']
+            body = {
+                "size": 0, 
+                "query": {
+                    "bool": {
+                        "must" : {
+                            "match" : { custom_field : user_value}
+                        },
+                        "filter" : filters
                     }
-                    
-                }
-            },
-            "aggs" : {
-                "results" : {
-                    "terms" : {
-                        "field" : custom_field + ".raw",
-                        "size" : 15
+                },
+                "aggs" : {
+                    "results" : {
+                        "terms" : {
+                            "field" : custom_field + ".raw",
+                            "size" : 15
+                        }
                     }
                 }
             }
-        }
 
-        aggs = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=body
-        )['aggregations']['results']['buckets']
-        aggs = [bucket['key'] for bucket in aggs]
-        return {'type_aheads': aggs}
+            if not filters:
+                body['query']['bool'].pop('filter')
 
-    def get_type_ahead_numbers(self):
-        # user_value = self.request.json_body['value']
-        custom_field = self.request.json_body['field_name']
-        modified_filters = []
-        # Add permissions filter to list if user is not requesting all data
-        if not self.request.json_body.get('all_data', False):
-            modified_filters.append({'term': {'permissions._id': self.uid}})
+            aggs = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=body
+            )['aggregations']['results']['buckets']
+            aggs = [bucket['key'] for bucket in aggs]
+            return {'type_aheads': aggs}
 
-        body = {
-            "size": 0, 
-            "query": {
-                "bool": {
-                    "must" : {
-                        "match_all" : {}
-                    },
-                    "filter" : {
-                        "bool" : {
-                            "must" : modified_filters
-                        }
+        # If it is a number (int, date, or some other type), return various statistics on the values of the field
+        else:
+            body = {
+                "size": 0, 
+                "query": {
+                    "bool": {
+                        "must" : {
+                            "match_all" : {}
+                        },
+                        "filter" :  filters  
                     }
-                    
-                }
-            },
-            "aggs" : {
-                "results" : {
-                    "stats" : {
-                        "field" : custom_field
+                },
+                "aggs" : {
+                    "results" : {
+                        "stats" : {
+                            "field" : custom_field
+                        }
                     }
                 }
             }
-        }
+            if not filters:
+                body['query']['bool'].pop('filter')
 
-        aggs = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=body
-        )['aggregations']['results']
-        return aggs
+            aggs = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=body
+            )['aggregations']['results']
+
+            return aggs          
 
     @require_login
     def get_facets(self):
