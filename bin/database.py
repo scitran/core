@@ -19,8 +19,9 @@ from api.dao.containerstorage import ProjectStorage
 from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
+from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 34 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 35 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1163,6 +1164,29 @@ def upgrade_to_34():
     """
     config.db.groups.update_many({'roles': {'$exists': True}}, {'$rename': {'roles': 'permissions'}})
     config.db.groups.update_many({'name': {'$exists': True}}, {'$rename': {'name': 'label'}})
+
+def upgrade_to_35_closure(batch_job):
+    if batch_job.get('state') in ['cancelled', 'running', 'complete', 'failed']:
+        return True
+    batch_id = batch_job.get('_id')
+    config.db.jobs.update_many({'_id': {'$in': batch_job.get('jobs',[])}}, {'$set': {'batch':batch_id}})
+    new_state = batch.check_state(batch_id)
+    if new_state:
+        result = config.db.batch.update_one({'_id': batch_id}, {'$set': {"state": new_state}})
+        if result.modified_count != 1:
+            raise Exception('Batch job not updated')
+    else:
+        result = config.db.batch.update_one({'_id': batch_id}, {'$set': {"state": "running"}})
+        if result.modified_count != 1:
+            raise Exception('Batch job not updated')
+    return True
+
+def upgrade_to_35():
+    """
+    scitran/core issue #710 - give batch stable states
+    """
+    cursor = config.db.batch.find({})
+    process_cursor(cursor, upgrade_to_35_closure)
 
 def upgrade_schema(force_from = None):
     """
