@@ -11,7 +11,7 @@ ANALYSIS = {
     "analyzer": {
         "my_analyzer": {
             "tokenizer": "my_tokenizer",
-            "filters": ["lowercase"]
+            "filter": ["lowercase"]
         }
     },
     "tokenizer": {
@@ -38,10 +38,11 @@ DYNAMIC_TEMPLATES = [
                 'type': 'text',
                 'analyzer': 'my_analyzer',
                 'search_analyzer': 'standard',
+                'index': True,
                 "fields": {
                     "raw": {
                         "type": "keyword",
-                        "index": "not_analyzed",
+                        "index": True,
                         "ignore_above": 256
                     }
                 }
