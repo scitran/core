@@ -336,6 +336,10 @@ def test_put_container(data_builder, as_admin):
     session = data_builder.create_session()
     session_2 = data_builder.create_session()
 
+    # test empty update
+    r = as_admin.put('/sessions/' + session, json={})
+    assert r.status_code == 400
+
     # update session w/ timestamp
     r = as_admin.put('/sessions/' + session, json={
         'timestamp': '1979-01-01T00:00:00+00:00'

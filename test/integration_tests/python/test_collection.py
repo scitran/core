@@ -19,6 +19,10 @@ def test_collections(data_builder, as_admin):
     r = as_admin.get('/collections/' + collection)
     assert r.ok
 
+    # test empty update
+    r = as_admin.put('/collections/' + collection, json={})
+    assert r.status_code == 400
+
     # add session to collection
     r = as_admin.put('/collections/' + collection, json={
         'contents': {
