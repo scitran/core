@@ -354,6 +354,7 @@ class DataExplorerHandler(base.RequestHandler):
             }
         }
         if not filters:
+            # NOTE unreachable
             body['query']['bool'].pop('filter')
         if search_string is None:
             body['query']['bool']['must'] = MATCH_ALL

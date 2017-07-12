@@ -57,7 +57,7 @@ def test_search(as_public, as_drone, es):
         },
         doc_type='flywheel',
         index='data_explorer')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json['results'] == [results]
 
     # acquisition search
@@ -77,7 +77,7 @@ def test_search(as_public, as_drone, es):
         },
         doc_type='flywheel',
         index='data_explorer')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json['results'] == [results]
 
     # analysis search
@@ -97,7 +97,7 @@ def test_search(as_public, as_drone, es):
         },
         doc_type='flywheel',
         index='data_explorer')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json['results'] == [results]
 
     # file search
@@ -111,7 +111,7 @@ def test_search(as_public, as_drone, es):
             'size': 100},
         doc_type='flywheel',
         index='data_explorer')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json['results'] == results
 
     # file search w/ search string and filter
@@ -133,7 +133,7 @@ def test_search(as_public, as_drone, es):
             'size': 100},
         doc_type='flywheel',
         index='data_explorer')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json['results'] == results
 
 
@@ -151,7 +151,7 @@ def test_get_facets(as_public, as_drone, es):
     body = copy.deepcopy(deh.FACET_QUERY)
     body.update({'query': {'match_all': {}}})
     es.search.assert_called_with(body=body, doc_type='flywheel', index='data_explorer')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json == {'facets': {'by_session': {'subject.age': subject_age}}}
 
 
@@ -168,7 +168,7 @@ def test_search_fields(as_public, as_drone, es):
         body={'size': 15, 'query': {'match': {'name': query_field}}},
         doc_type='flywheel_field',
         index='data_explorer_fields')
-    assert r.status_code == 200
+    assert r.ok
     assert r.json == [result_source]
 
 
@@ -222,7 +222,7 @@ def test_index_fields(as_public, as_drone, es):
     es.indices.create.assert_called_with(index='data_explorer_fields', body={
         'settings': {'number_of_shards': 1, 'number_of_replicas': 0, 'analysis': deh.ANALYSIS},
         'mappings': {'_default_': {'_all': {'enabled' : True}, 'dynamic_templates': deh.DYNAMIC_TEMPLATES}, 'flywheel': {}}})
-    assert r.status_code == 200
+    assert r.ok
 
     # index data_explorer_fields - test ignored fields
     ignored_fields = ['_all', 'dynamic_templates', 'analysis_reference', 'file_reference', 'parent', 'container_type', 'origin', 'permissions', '_id']
@@ -231,7 +231,7 @@ def test_index_fields(as_public, as_drone, es):
     es.index.reset_mock()
     r = as_drone.post('/dataexplorer/index/fields')
     assert not es.indices.index.called
-    assert r.status_code == 200
+    assert r.ok
 
     # index data_explorer_fields - test type "flattening"
     type_map = {
@@ -266,6 +266,76 @@ def test_index_fields(as_public, as_drone, es):
             doc_type='flywheel_field',
             id=field_name,
             index='data_explorer_fields')
-    assert r.status_code == 200
+    assert r.ok
 
     # TODO index data_explorer_fields - test recursion
+    # TODO index data_explorer_fields - test facet=True
+
+
+def test_aggregate_field_values(as_public, as_drone, es):
+    # try to get typeadhed w/o login
+    r = as_public.post('/dataexplorer/search/fields/aggregate')
+    assert r.status_code == 403
+
+    # try to get typeadhed w/o body
+    r = as_drone.post('/dataexplorer/search/fields/aggregate')
+    assert r.status_code == 400
+
+    # try to get typeadhed for non-existent field
+    field_name, search_str, result = 'field', 'search', 'result'
+    es.get.side_effect = elasticsearch.TransportError('test', 'test', 'test')
+    r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
+    assert r.status_code == 404
+    es.get.side_effect = None
+
+    # try to get typeadhed for a field type that's not allowed
+    es.get.return_value = {'_source': {'type': 'test'}}
+    r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
+    assert r.status_code == 400
+
+    # get typeahead w/o search string for string|boolean field type
+    es.get.return_value = {'_source': {'type': 'string'}}
+    es.search.return_value = {'aggregations': {'results': result}}
+    r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
+    es.search.assert_called_with(
+        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}},
+              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match_all': {}}}},
+              'size': 0},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json == result
+
+    # get typeahead w/ search string for string|boolean field type
+    r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
+    es.search.assert_called_with(
+        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}},
+              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match': {'field': search_str}}}},
+              'size': 0},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json == result
+
+    # get typeahead w/o search string for integer|float|date field type
+    es.get.return_value = {'_source': {'type': 'integer'}}
+    r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
+    es.search.assert_called_with(
+        body={'aggs': {'results': {'stats': {'field': field_name}}},
+              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match_all': {}}}},
+              'size': 0},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json == result
+
+    # get typeahead w/ search string for integer|float|date field type
+    r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
+    es.search.assert_called_with(
+        body={'aggs': {'results': {'stats': {'field': field_name}}},
+              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match': {'field': search_str}}}},
+              'size': 0},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json == result
