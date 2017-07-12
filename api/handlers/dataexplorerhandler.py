@@ -334,14 +334,11 @@ class DataExplorerHandler(base.RequestHandler):
         else:
             self.abort(400, 'Aggregations are only allowed on string, integer, float, data and boolean fields.')
 
-        try:
-            aggs = config.es.search(
-                index='data_explorer',
-                doc_type='flywheel',
-                body=body
-            )['aggregations']['results']
-        except ElasticsearchException:
-            self.abort(503, "Search is currently down. Try again later.")
+        aggs = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body
+        )['aggregations']['results']
         return aggs
 
     @require_login
@@ -357,14 +354,11 @@ class DataExplorerHandler(base.RequestHandler):
 
         config.log.debug(facets_q)
 
-        try:
-            aggs = config.es.search(
-                index='data_explorer',
-                doc_type='flywheel',
-                body=facets_q
-            )['aggregations']
-        except ElasticsearchException:
-            self.abort(503, "Search is currently down. Try again later.")
+        aggs = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=facets_q
+        )['aggregations']
 
         # This aggregation needs an extra filter to filter out outliers (only shows ages between -1 and 100)
         # Add it back in to the session aggregation node
@@ -522,14 +516,11 @@ class DataExplorerHandler(base.RequestHandler):
 
     def _run_query(self, es_query, result_type):
         config.log.debug(es_query)
-        try:
-            results = config.es.search(
-                index='data_explorer',
-                doc_type='flywheel',
-                body=es_query
-            )
-        except ElasticsearchException:
-            self.abort(503, "Search is currently down. Try again later.")
+        results = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=es_query
+        )
 
         return self._process_results(results, result_type)
 
