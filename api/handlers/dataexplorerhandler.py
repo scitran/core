@@ -334,12 +334,14 @@ class DataExplorerHandler(base.RequestHandler):
         else:
             self.abort(400, 'Aggregations are only allowed on string, integer, float, data and boolean fields.')
 
-        aggs = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=body
-        )['aggregations']['results']
-
+        try:
+            aggs = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=body
+            )['aggregations']['results']
+        except ElasticsearchException:
+            self.abort(503, "Search is currently down. Try again later.")
         return aggs
 
     @require_login
@@ -355,11 +357,14 @@ class DataExplorerHandler(base.RequestHandler):
 
         config.log.debug(facets_q)
 
-        aggs = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=facets_q
-        )['aggregations']
+        try:
+            aggs = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=facets_q
+            )['aggregations']
+        except ElasticsearchException:
+            self.abort(503, "Search is currently down. Try again later.")
 
         # This aggregation needs an extra filter to filter out outliers (only shows ages between -1 and 100)
         # Add it back in to the session aggregation node
@@ -517,11 +522,15 @@ class DataExplorerHandler(base.RequestHandler):
 
     def _run_query(self, es_query, result_type):
         config.log.debug(es_query)
-        results = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=es_query
-        )
+        try:
+            results = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=es_query
+            )
+        except ElasticsearchException:
+            self.abort(503, "Search is currently down. Try again later.")
+
         return self._process_results(results, result_type)
 
     def _process_results(self, results, result_type):
