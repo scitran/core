@@ -116,7 +116,6 @@ class ContainerReference(object):
             raise Exception('Container id must be of type str')
 
         self.type = type
-        self.collection = pluralize(type)
         self.id = id
 
     @classmethod
@@ -134,7 +133,8 @@ class ContainerReference(object):
         )
 
     def get(self):
-        result = config.db[self.collection].find_one({'_id': bson.ObjectId(self.id)})
+        collection = pluralize(self.type)
+        result = config.db[collection].find_one({'_id': bson.ObjectId(self.id)})
         if result is None:
             raise Exception('No such {} {} in database'.format(self.type, self.id))
         if 'parent' in result:
@@ -154,11 +154,12 @@ class ContainerReference(object):
         return None
 
     def file_uri(self, filename):
+        collection = pluralize(self.type)
         cont = self.get()
         if 'parent' in cont:
             par_coll, par_id = pluralize(cont['parent']['type']), cont['parent']['id']
-            return '/{}/{}/{}/{}/files/{}'.format(par_coll, par_id, self.collection, self.id, filename)
-        return '/{}/{}/files/{}'.format(self.collection, self.id, filename)
+            return '/{}/{}/{}/{}/files/{}'.format(par_coll, par_id, collection, self.id, filename)
+        return '/{}/{}/files/{}'.format(collection, self.id, filename)
 
     def check_access(self, uid, perm_name):
         perm = get_perm(perm_name)
