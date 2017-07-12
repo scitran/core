@@ -1,6 +1,8 @@
 import copy
 import json
 
+import elasticsearch
+
 import api.handlers.dataexplorerhandler as deh
 
 
@@ -30,13 +32,6 @@ def test_search(as_public, as_drone, es):
     es.search.return_value = {'aggregations': {'by_container': {'buckets': [
         {'by_top_hit': {'hits': {'hits': [results]}}},
     ]}}}
-    # NOTE maybe sources would read better as module level constants in dataexplorerhandler?
-    # NOTE try: str(x) will never fail (probably not the desired behavior) at
-    # * _parse_request#248
-    # * search_fields#284
-    session_sources = [
-        'permissions.*', 'session._id', 'session.label', 'session.created', 'session.timestamp', 'subject.code',
-        'project.label', 'group.label', 'group._id', 'project._id', 'session.archived', 'project.archived']
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'search_string': search_str, 'filters': [
         {'terms': {filter_key: filter_value}},
         {'range': filter_range},
@@ -55,7 +50,7 @@ def test_search(as_public, as_drone, es):
             'aggs': {'by_container': {'terms':
                 {'field': cont_type + '._id', 'size': 100},
                 'aggs': {'by_top_hit': {'top_hits': {
-                    '_source': session_sources,
+                    '_source': deh.SOURCE[cont_type],
                     'size': 1
                 }}}
             }}
@@ -67,8 +62,6 @@ def test_search(as_public, as_drone, es):
 
     # acquisition search
     cont_type = 'acquisition'
-    acquisition_sources = session_sources + ['acquisition._id', 'acquisition.label',
-        'acquisition.created', 'acquisition.timestamp', 'acquisition.archived']
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True})
     es.search.assert_called_with(
         body={
@@ -77,7 +70,7 @@ def test_search(as_public, as_drone, es):
             'aggs': {'by_container': {'terms':
                 {'field': cont_type + '._id', 'size': 100},
                 'aggs': {'by_top_hit': {'top_hits': {
-                    '_source': acquisition_sources,
+                    '_source': deh.SOURCE[cont_type],
                     'size': 1
                 }}}
             }}
@@ -89,7 +82,6 @@ def test_search(as_public, as_drone, es):
 
     # analysis search
     cont_type = 'analysis'
-    analysis_sources = session_sources + ['analysis._id', 'analysis.label', 'analysis.created']
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True})
     es.search.assert_called_with(
         body={
@@ -98,7 +90,7 @@ def test_search(as_public, as_drone, es):
             'aggs': {'by_container': {'terms':
                 {'field': cont_type + '._id', 'size': 100},
                 'aggs': {'by_top_hit': {'top_hits': {
-                    '_source': analysis_sources,
+                    '_source': deh.SOURCE[cont_type],
                     'size': 1
                 }}}
             }}
@@ -110,17 +102,11 @@ def test_search(as_public, as_drone, es):
 
     # file search
     cont_type = 'file'
-    file_sources = [
-        'permissions.*', 'session._id', 'session.label', 'session.created', 'session.timestamp',
-        'subject.code', 'project.label', 'group.label', 'acquisition.label', 'acquisition._id',
-        'group._id', 'project._id', 'analysis._id', 'analysis.label', 'session.archived',
-        'acquisition.archived', 'project.archived', 'file.name', 'file.created', 'file.type',
-        'file.measurements', 'file.size', 'parent']
     es.search.return_value = {'hits': {'hits': results}}
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True})
     es.search.assert_called_with(
         body={
-            '_source': file_sources,
+            '_source': deh.SOURCE[cont_type],
             'query': {'bool': {'filter': {'bool': {'must': [{'term': {'container_type': cont_type}}]}}}},
             'size': 100},
         doc_type='flywheel',
@@ -135,7 +121,7 @@ def test_search(as_public, as_drone, es):
     ]})
     es.search.assert_called_with(
         body={
-            '_source': file_sources,
+            '_source': deh.SOURCE[cont_type],
             'query': {'bool': {
                 'must': {'match': {'_all': search_str}},
                 'filter': {'bool': {'must': [
@@ -179,7 +165,7 @@ def test_search_fields(as_public, as_drone, es):
     es.search.return_value = {'hits': {'hits': [{'_source': result_source}]}}
     r = as_drone.post('/dataexplorer/search/fields', json={'field': query_field})
     es.search.assert_called_with(
-        body={'size': 20, 'query': {'match': {'name': query_field}}},
+        body={'size': 15, 'query': {'match': {'name': query_field}}},
         doc_type='flywheel_field',
         index='data_explorer_fields')
     assert r.status_code == 200
@@ -191,11 +177,16 @@ def test_index_fields(as_public, as_drone, es):
     r = as_public.post('/dataexplorer/index/fields')
     assert r.status_code == 403
 
-    # setup es indices mock
+    # setup functions for later use in es.indices.exists mock
     indices = set()
     def es_indices_exists(index): return index in indices
     def es_indices_create(index=None, body=None): indices.add(index)
     def es_indices_delete(index): indices.remove(index)
+
+    # try to index fields w/ es unavailable (exc @ exists)
+    es.indices.exists.side_effect = elasticsearch.TransportError('test', 'test', 'test')
+    r = as_drone.post('/dataexplorer/index/fields')
+    assert r.status_code == 404
     es.indices.exists.side_effect = es_indices_exists
 
     # try to index fields before data_explorer index is available
@@ -206,14 +197,14 @@ def test_index_fields(as_public, as_drone, es):
 
     # try to (re)index data_explorer_fields w/ hard-reset=true (exc @ delete)
     indices.add('data_explorer_fields')
-    es.indices.delete.side_effect = Exception('delete')
+    es.indices.delete.side_effect = elasticsearch.ElasticsearchException
     r = as_drone.post('/dataexplorer/index/fields?hard-reset=true')
     es.indices.delete.assert_called_with(index='data_explorer_fields')
     assert r.status_code == 500
     es.indices.delete.side_effect = es_indices_delete
 
     # try to (re)index data_explorer_fields w/ hard-reset=true (exc @ create)
-    es.indices.create.side_effect = Exception('create')
+    es.indices.create.side_effect = elasticsearch.ElasticsearchException
     r = as_drone.post('/dataexplorer/index/fields?hard-reset=true')
     es.indices.exists.assert_called_with('data_explorer_fields')
     assert es.indices.create.called
@@ -221,7 +212,7 @@ def test_index_fields(as_public, as_drone, es):
     es.indices.create.side_effect = es_indices_create
 
     # try to (re)index data_explorer_fields w/ hard-reset=true (exc @ get_mapping)
-    es.indices.get_mapping.side_effect = Exception('get_mapping')
+    es.indices.get_mapping.side_effect = KeyError
     r = as_drone.post('/dataexplorer/index/fields?hard-reset=true')
     assert r.status_code == 404
     es.indices.get_mapping.side_effect = None
@@ -256,14 +247,22 @@ def test_index_fields(as_public, as_drone, es):
     type_map_r = {vi: k for k, v in type_map.iteritems() for vi in v}
     fields = {k + 'field': {'type': k} for k in type_map_r}
     es.indices.get_mapping.return_value = {'data_explorer': {'mappings': {'flywheel': {'properties': fields}}}}
+    es.search.return_value = {'aggregations': {'results': {
+        'sum_other_doc_count': 0,
+        'buckets': [{'doc_count': 0}]}}}
     es.index.reset_mock()
     r = as_drone.post('/dataexplorer/index/fields')
     for field_name in fields:
         field_type = type_map_r[field_name.replace('field', '')]
         if field_type == 'object':
             continue
+        if field_type == 'string':
+            es.search.assert_any_call(
+                body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}}, 'size': 0},
+                doc_type='flywheel',
+                index='data_explorer')
         es.index.assert_any_call(
-            body=json.dumps({'name': field_name, 'type': field_type}),
+            body=json.dumps({'name': field_name, 'type': field_type, 'facet': False}),
             doc_type='flywheel_field',
             id=field_name,
             index='data_explorer_fields')
