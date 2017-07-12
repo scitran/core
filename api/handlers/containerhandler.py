@@ -368,7 +368,7 @@ class ContainerHandler(base.RequestHandler):
         self.storage = self.config['storage']
         projection = self.config['list_projection']
         # select which permission filter will be applied to the list of results.
-        if self.superuser_request:
+        if self.superuser_request or self.user_is_admin:
             permchecker = always_ok
         elif self.public_request:
             self.abort(403, 'this request is not allowed')
