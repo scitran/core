@@ -6,6 +6,10 @@ import elasticsearch
 import api.handlers.dataexplorerhandler as deh
 
 
+class TestTransportError(elasticsearch.TransportError):
+    def __str__(self):
+        return 'TestTransportError'
+
 def test_search(as_public, as_drone, es):
     # try to search w/o login
     r = as_public.post('/dataexplorer/search')
@@ -184,7 +188,7 @@ def test_index_fields(as_public, as_drone, es):
     def es_indices_delete(index): indices.remove(index)
 
     # try to index fields w/ es unavailable (exc @ exists)
-    es.indices.exists.side_effect = elasticsearch.TransportError('test', 'test', 'test')
+    es.indices.exists.side_effect = TestTransportError
     r = as_drone.post('/dataexplorer/index/fields')
     assert r.status_code == 404
     es.indices.exists.side_effect = es_indices_exists
@@ -283,7 +287,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
 
     # try to get typeadhed for non-existent field
     field_name, search_str, result = 'field', 'search', 'result'
-    es.get.side_effect = elasticsearch.TransportError('test', 'test', 'test')
+    es.get.side_effect = TestTransportError
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     assert r.status_code == 404
     es.get.side_effect = None
