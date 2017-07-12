@@ -65,6 +65,14 @@ def test_users(as_root, as_admin, as_user, as_public):
     r = as_user.get('/users/' + new_user_id)
     assert r.ok
 
+    # Try getting another user's projects without admin priveledges
+    r = as_user.get('/users/' + new_user_id + '/projects')
+    assert r.status_code == 403
+
+    # Get another user's projects
+    r = as_admin.get('/users/' + new_user_id + '/projects')
+    assert r.ok
+
     # Try to update non-existent user
     r = as_root.put('/users/nonexistent@user.com', json={'firstname': 'Realname'})
     assert r.status_code == 404
