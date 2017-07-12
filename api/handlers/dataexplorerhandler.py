@@ -140,9 +140,14 @@ FACET_QUERY = {
                 "field" : "acquisition._id"
             }
         },
+        "analysis_count" : {
+            "cardinality" : {
+                "field" : "analysis._id"
+            }
+        },
         "file_count" : {
             "cardinality" : {
-                "field" : "file.name.raw"
+                "field" : "file._id"
             }
         },
         "by_session": {
