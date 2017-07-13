@@ -22,6 +22,10 @@ ACCESS_LOG_FIELDS = [
     "access_type",
     "context.acquisition.id",
     "context.acquisition.label",
+    "context.analysis.id",
+    "context.analysis.label",
+    "context.collection.id",
+    "context.collection.label",
     "context.group.id",
     "context.group.label",
     "context.project.id",
@@ -32,6 +36,8 @@ ACCESS_LOG_FIELDS = [
     "context.subject.label",
     "context.ticket_id",
     "origin.id",
+    "origin.method",
+    "origin.name",
     "origin.type",
     "request_method",
     "request_path",
@@ -69,19 +75,22 @@ class ReportHandler(base.RequestHandler):
         if self.superuser_request or report.user_can_generate(self.uid):
             # If csv is true create a temp file to respond with
             if report_type == 'accesslog' and self.request.params.get('csv') == 'true':
+
                 tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
-                csv_file = open(os.path.join(tempdir.name, 'acceslog.csv'), 'w+')
+                csv_file = open(os.path.join(tempdir.name, 'accesslog.csv'), 'w+')
                 writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
                 writer.writeheader()
-
-                for doc in report.build():
-                    writer.writerow(doc)
-
+                try:
+                    for doc in report.build():
+                        writer.writerow(doc)
+                        
+                except APIReportException as e:
+                    self.abort(404, str(e))
                 # Need to close and reopen file to flush buffer into file
                 csv_file.close()
-                self.response.app_iter = open(os.path.join(tempdir.name, 'acceslog.csv'), 'r')
+                self.response.app_iter = open(os.path.join(tempdir.name, 'accesslog.csv'), 'r')
                 self.response.headers['Content-Type'] = 'text/csv'
-                self.response.headers['Content-Disposition'] = 'attachment; filename="acceslog.csv"'
+                self.response.headers['Content-Disposition'] = 'attachment; filename="accesslog.csv"'
             else:
                 return report.build()
         else:
@@ -493,8 +502,11 @@ class AccessLogReport(Report):
         uid = params.get('user')
         limit= params.get('limit', 100)
         subject = params.get('subject', None)
-        access_types = params.getall('access_types')
-        csv_bool = params.get('csv') == 'true'
+        if params.get('bin') == 'true':
+            access_types = params.get('access_types', [])
+        else:
+            access_types = params.getall('access_types')
+        csv_bool = (params.get('csv') == 'true')
 
         if start_date:
             start_date = dateutil.parser.parse(start_date)
@@ -534,6 +546,7 @@ class AccessLogReport(Report):
         """
         flattens a document to not have nested objects
         """
+        
         for field in json_obj.keys():
             if isinstance(json_obj[field], dict):
                 flat = self.flatten(json_obj[field], flat, prefix = prefix + field + ".")
@@ -560,8 +573,7 @@ class AccessLogReport(Report):
         if self.access_types:
             query['access_type'] = {'$in': self.access_types}
 
-        cursor = config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
-
+        cursor = config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING).batch_size(1000)
         if self.csv_bool:
             return self.make_csv_ready(cursor)
 
