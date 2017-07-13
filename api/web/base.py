@@ -337,7 +337,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         util.send_json_http_exception(self.response, str(exception), code, custom=custom_errors)
 
-    def log_user_access(self, access_type, cont_name=None, cont_id=None):
+    def log_user_access(self, access_type, cont_name=None, cont_id=None, multifile=False):
 
         if not config.get_item('core', 'access_log_enabled'):
             return
@@ -374,7 +374,7 @@ class RequestHandler(webapp2.RequestHandler):
                         context[k]['label'] = v.get('code')
             log_map['context'] = context
 
-        if access_type is AccessType.download_file and self.get_param('ticket'):
+        if access_type is AccessType.download_file and self.get_param('ticket') and not multifile:
             # If this is a ticket download, log only once per ticket
             ticket_id = self.get_param('ticket')
             log_map['context']['ticket_id'] = ticket_id

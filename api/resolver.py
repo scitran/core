@@ -10,10 +10,19 @@ class Node(object):
     # As neither property should ever change, this sort should be consistent
     sorting = [('created', 1), ('_id', 1)]
 
-    # Globally disable extraneous properties of unbounded length.
-    projection = {'files': 0}
-    # Version of same for debugging purposes.
-    # projection = {'permissions': 0, 'files': 0}
+    # Globally disable extraneous properties of unbounded length, along with some PHI fields.
+    projection = {
+        'files':             0,
+        'subject.sex':       0,
+        'subject.age':       0,
+        'subject.race':      0,
+        'subject.ethnicity': 0,
+        'subject.info':      0,
+    }
+
+    # Add some more fields for debugging purposes.
+    # projection['roles']       = 0
+    # projection['permissions'] = 0
 
     @staticmethod
     def get_children(parent):

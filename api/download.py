@@ -7,6 +7,7 @@ import datetime
 import cStringIO
 
 from .web import base
+from .web.request import AccessType
 from . import config
 from . import util
 from . import validators
@@ -26,57 +27,29 @@ def _filter_check(property_filter, property_values):
     return True
 
 
-def _append_targets(targets, container, prefix, total_size, total_cnt, optional, data_path, filters):
-    for f in container.get('files', []):
-        if filters:
-            filtered = True
-            for filter_ in filters:
-                type_as_list = [f['type']] if f.get('type') else []
-                if (
-                    _filter_check(filter_.get('tags', {}), f.get('tags', [])) and
-                    _filter_check(filter_.get('types', {}), type_as_list)
-                    ):
-                    filtered = False
-                    break
-            if filtered:
-                continue
-        if optional or not f.get('optional', False):
-            filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
-            if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, prefix + '/' + f['name'], f['size']))
-                total_size += f['size']
-                total_cnt += 1
-    return total_size, total_cnt
-
-def symlinkarchivestream(ticket, data_path):
-    for filepath, arcpath, _ in ticket['target']:
-        t = tarfile.TarInfo(name=arcpath)
-        t.type = tarfile.SYMTYPE
-        t.linkname = os.path.relpath(filepath, data_path)
-        yield t.tobuf()
-    stream = cStringIO.StringIO()
-    with tarfile.open(mode='w|', fileobj=stream) as _:
-        pass
-    yield stream.getvalue() # get tar stream trailer
-    stream.close()
-
-def archivestream(ticket):
-    BLOCKSIZE = 512
-    CHUNKSIZE = 2**20  # stream files in 1MB chunks
-    stream = cStringIO.StringIO()
-    with tarfile.open(mode='w|', fileobj=stream) as archive:
-        for filepath, arcpath, _ in ticket['target']:
-            yield archive.gettarinfo(filepath, arcpath).tobuf()
-            with open(filepath, 'rb') as fd:
-                chunk = ''
-                for chunk in iter(lambda: fd.read(CHUNKSIZE), ''): # pylint: disable=cell-var-from-loop
-                    yield chunk
-                if len(chunk) % BLOCKSIZE != 0:
-                    yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
-    yield stream.getvalue() # get tar stream trailer
-    stream.close()
-
 class Download(base.RequestHandler):
+
+    def _append_targets(self, targets, cont_name, container, prefix, total_size, total_cnt, optional, data_path, filters):
+        for f in container.get('files', []):
+            if filters:
+                filtered = True
+                for filter_ in filters:
+                    type_as_list = [f['type']] if f.get('type') else []
+                    if (
+                        _filter_check(filter_.get('tags', {}), f.get('tags', [])) and
+                        _filter_check(filter_.get('types', {}), type_as_list)
+                        ):
+                        filtered = False
+                        break
+                if filtered:
+                    continue
+            if optional or not f.get('optional', False):
+                filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
+                if os.path.exists(filepath): # silently skip missing files
+                    targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                    total_size += f['size']
+                    total_cnt += 1
+        return total_size, total_cnt
 
     def _bulk_preflight_archivestream(self, file_refs):
         data_path = config.get_item('persistent', 'data_path')
@@ -116,7 +89,7 @@ class Download(base.RequestHandler):
 
             filepath = os.path.join(data_path, util.path_from_hash(file_obj['hash']))
             if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, cont_name+'/'+cont_id+'/'+file_obj['name'], file_obj['size']))
+                targets.append((filepath, cont_name+'/'+cont_id+'/'+file_obj['name'], cont_name, cont_id, file_obj['size']))
                 total_size += file_obj['size']
                 file_cnt += 1
 
@@ -154,7 +127,7 @@ class Download(base.RequestHandler):
                     continue
 
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
-                total_size, file_cnt = _append_targets(targets, project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'projects', project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 session_dict = {session['_id']: session for session in sessions}
@@ -173,19 +146,19 @@ class Download(base.RequestHandler):
                 for code, subject in subject_dict.iteritems():
                     subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, project['_id'])
                     subject_prefixes[code] = subject_prefix
-                    total_size, file_cnt = _append_targets(targets, subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'subjects', subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 for session in session_dict.itervalues():
                     subject_code = session['subject'].get('code', 'unknown_subject')
                     subject = subject_dict[subject_code]
                     session_prefix = subject_prefixes[subject_code] + '/' + self._path_from_container(session, used_subpaths, subject_code)
                     session_prefixes[session['_id']] = session_prefix
-                    total_size, file_cnt = _append_targets(targets, session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'sessions', session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
                     acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
 
             elif item['level'] == 'session':
@@ -199,7 +172,7 @@ class Download(base.RequestHandler):
                 if not subject.get('code'):
                     subject['code'] = 'unknown_subject'
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id'])
-                total_size, file_cnt = _append_targets(targets, session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'sessions', session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
                 a_query = {'session': item_id}
@@ -209,7 +182,7 @@ class Download(base.RequestHandler):
 
                 for acq in acquisitions:
                     acq_prefix = prefix + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                    total_size, file_cnt = _append_targets(targets, acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'acquisition':
                 acq = config.db.acquisitions.find_one(base_query, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
@@ -224,7 +197,7 @@ class Download(base.RequestHandler):
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
-                total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'analysis':
                 analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'files', 'uid', 'timestamp'])
@@ -233,7 +206,7 @@ class Download(base.RequestHandler):
                     continue
                 prefix = self._path_from_container(analysis, used_subpaths, util.sanitize_string_to_filename(analysis['label']))
                 filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
-                total_size, file_cnt = _append_targets(targets, analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'analyses', analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
         if len(targets) > 0:
             log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
@@ -276,6 +249,36 @@ class Download(base.RequestHandler):
         used_subpaths[parent_id] = used_subpaths.get(parent_id, []) + [path]
         return path
 
+    def archivestream(self, ticket):
+        BLOCKSIZE = 512
+        CHUNKSIZE = 2**20  # stream files in 1MB chunks
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as archive:
+            for filepath, arcpath, cont_name, cont_id, _ in ticket['target']:
+                yield archive.gettarinfo(filepath, arcpath).tobuf()
+                with open(filepath, 'rb') as fd:
+                    chunk = ''
+                    for chunk in iter(lambda: fd.read(CHUNKSIZE), ''): # pylint: disable=cell-var-from-loop
+                        yield chunk
+                    if len(chunk) % BLOCKSIZE != 0:
+                        yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True) # log download
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
+    def symlinkarchivestream(self, ticket, data_path):
+        for filepath, arcpath, cont_name, cont_id, _ in ticket['target']:
+            t = tarfile.TarInfo(name=arcpath)
+            t.type = tarfile.SYMTYPE
+            t.linkname = os.path.relpath(filepath, data_path)
+            yield t.tobuf()
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True) # log download
+        stream = cStringIO.StringIO()
+        with tarfile.open(mode='w|', fileobj=stream) as _:
+            pass
+        yield stream.getvalue() # get tar stream trailer
+        stream.close()
+
     def download(self):
         """Download files or create a download ticket"""
         ticket_id = self.get_param('ticket')
@@ -286,9 +289,9 @@ class Download(base.RequestHandler):
             if ticket['ip'] != self.request.client_addr:
                 self.abort(400, 'ticket not for this source IP')
             if self.get_param('symlinks'):
-                self.response.app_iter = symlinkarchivestream(ticket, config.get_item('persistent', 'data_path'))
+                self.response.app_iter = self.symlinkarchivestream(ticket, config.get_item('persistent', 'data_path'))
             else:
-                self.response.app_iter = archivestream(ticket)
+                self.response.app_iter = self.archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
             for project_id in ticket['projects']:

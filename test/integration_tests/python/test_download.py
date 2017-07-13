@@ -184,8 +184,12 @@ def test_analysis_download(data_builder, file_form, as_admin):
     # filename is analysis_<label> not analysis_<_id>
     assert r.json()['filename'] == 'analysis_test.tar'
 
-    # batch download analysis files w/ ticket
+    # batch download analysis files w/ ticket from wrong endpoint
     r = as_admin.get(analysis_files, params={'ticket': ticket})
+    assert r.status_code == 400
+
+    # batch download analysis files w/ ticket from correct endpoint
+    r = as_admin.get('/download', params={'ticket': ticket})
     assert r.ok
 
     ### Using '/download' endpoint ###
