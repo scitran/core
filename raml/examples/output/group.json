@@ -1,6 +1,6 @@
 {
   "name": "Test Group",
-  "roles": [
+  "permissions": [
     {
       "access": "admin",
       "_id": "group_admin@fakeuser.com"

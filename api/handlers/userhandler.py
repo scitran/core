@@ -107,7 +107,7 @@ class UserHandler(base.RequestHandler):
     def _cleanup_user_permissions(self, uid):
         try:
             config.db.collections.delete_many({'curator': uid})
-            config.db.groups.update_many({'roles._id': uid}, {'$pull': {'roles' : {'_id': uid}}})
+            config.db.groups.update_many({'permissions._id': uid}, {'$pull': {'permissions' : {'_id': uid}}})
 
             query = {'permissions._id': uid}
             update = {'$pull': {'permissions' : {'_id': uid}}}

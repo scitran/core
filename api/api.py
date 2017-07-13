@@ -8,7 +8,7 @@ from .handlers.containerhandler     import ContainerHandler
 from .handlers.dataexplorerhandler  import DataExplorerHandler
 from .handlers.devicehandler        import DeviceHandler
 from .handlers.grouphandler         import GroupHandler
-from .handlers.listhandler          import ListHandler, FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
+from .handlers.listhandler          import FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
 from .handlers.refererhandler       import AnalysesHandler
 from .handlers.reporthandler        import ReportHandler
 from .handlers.resolvehandler       import ResolveHandler
@@ -177,8 +177,8 @@ endpoints = [
         route('/groups/<_id:{gid}>', GroupHandler,              m=['GET', 'DELETE', 'PUT']),
 
         prefix('/<cont_name:groups>', [
-            route('/<cid:{gid}>/<list_name:roles>',                          ListHandler,     m=['POST']),
-            route('/<cid:{gid}>/<list_name:roles>/<_id:{uid}>',              ListHandler,     m=['GET', 'PUT', 'DELETE']),
+            route('/<cid:{gid}>/<list_name:permissions>',                          PermissionsListHandler,     m=['POST']),
+            route('/<cid:{gid}>/<list_name:permissions>/<_id:{uid}>', PermissionsListHandler,     m=['GET', 'PUT', 'DELETE']),
 
             route('/<cid:{gid}>/<list_name:tags>',                           TagsListHandler, m=['POST']),
             route('/<cid:{gid}>/<list_name:tags>/<value:{tag}>',             TagsListHandler, m=['GET', 'PUT', 'DELETE']),

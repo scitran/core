@@ -23,7 +23,7 @@ class ResolveHandler(base.RequestHandler):
             for x in result["path"]:
                 ok = False
                 if x['node_type'] in ['acquisition', 'session', 'project', 'group']:
-                    perms = x.get('roles', []) + x.get('permissions', [])
+                    perms = x.get('permissions', [])
                     for y in perms:
                         if y.get('_id') == self.uid:
                             ok = True
@@ -36,7 +36,7 @@ class ResolveHandler(base.RequestHandler):
             for x in result["children"]:
                 ok = False
                 if x['node_type'] in ['acquisition', 'session', 'project', 'group']:
-                    perms = x.get('roles', []) + x.get('permissions', [])
+                    perms =  x.get('permissions', [])
                     for y in perms:
                         if y.get('_id') == self.uid:
                             ok = True

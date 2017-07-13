@@ -14,7 +14,7 @@ class ListStorage(object):
     """
     This class provides access to sublists of a mongodb collections elements (called containers).
     It is used by ListHandler istances for get, create, update and delete operations on sublist of the containers.
-    Examples: permissions in projects, roles in groups, notes in projects, sessions, acquisitions, etc
+    Examples: permissions in projects, permissions in groups, notes in projects, sessions, acquisitions, etc
     """
 
     def __init__(self, cont_name, list_name, use_object_id = False):
@@ -148,7 +148,7 @@ class StringListStorage(ListStorage):
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         query = {'_id': _id}
-        projection = {self.list_name : 1, 'permissions': 1, 'public': 1, 'roles': 1}
+        projection = {self.list_name : 1, 'permissions': 1, 'public': 1}
         return self.dbc.find_one(query, projection)
 
     def exec_op(self, action, _id=None, query_params=None, payload=None, exclude_params=None):

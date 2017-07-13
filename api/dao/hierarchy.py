@@ -340,7 +340,7 @@ def _find_or_create_destination_project(group_id, project_label, timestamp, user
         project = {
                 'group': group['_id'],
                 'label': project_label,
-                'permissions': group['roles'],
+                'permissions': group['permissions'],
                 'public': False,
                 'created': timestamp,
                 'modified': timestamp
@@ -444,7 +444,7 @@ def find_existing_hierarchy(metadata, type_='uid', user=None):
         raise APIStorageException(str(e))
 
     # Confirm session and acquisition exist
-    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project', 'roles', 'permissions'])
+    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project', 'permissions'])
 
     if session_obj is None:
         raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))

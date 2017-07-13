@@ -126,7 +126,7 @@ class SiteReport(Report):
 
         for g in groups:
             group = {}
-            group['name'] = g.get('name')
+            group['label'] = g.get('label')
 
             project_ids = [p['_id'] for p in config.db.projects.find({'group': g['_id']}, [])]
             group['project_count'] = len(project_ids)

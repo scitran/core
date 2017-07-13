@@ -3,7 +3,7 @@
   "type": "object",
   "allOf":[{"ref":"../definitions/group.json#/definitions/group-output"}],
   "required": [
-         "roles",
+         "permissions",
          "created",
          "modified",
          "_id"

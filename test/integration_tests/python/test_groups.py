@@ -1,6 +1,6 @@
 from dateutil.parser import parse
 
-def test_groups(as_admin, data_builder):
+def test_groups(as_user, as_admin, data_builder):
     # Cannot find a non-existant group
     r = as_admin.get('/groups/non-existent')
     assert r.status_code == 404
@@ -12,9 +12,14 @@ def test_groups(as_admin, data_builder):
     assert r.ok
     first_modified = r.json()['modified']
 
-    # Able to change group name
-    group_name = 'New group name'
-    r = as_admin.put('/groups/' + group, json={'name': group_name})
+    # Test to make sure that list of roles nor name exists in a newly created group
+    r = as_admin.get('/groups/' + group)
+    assert r.json().get('roles', 'No Roles') == 'No Roles'
+    assert r.json().get('name', 'No Name') == 'No Name'
+
+    # Able to change group label
+    group_label = 'New group label'
+    r = as_admin.put('/groups/' + group, json={'label': group_label})
     assert r.ok
 
     # Get the group again to compare timestamps
@@ -60,40 +65,51 @@ def test_groups(as_admin, data_builder):
     d5 = parse(fith_modified)
     assert d5 > d4
 
-    # Add a role to the group
+    # Add a permission to the group
     user = {'access': 'rw', '_id': 'newUser@fakeuser.com'}
-    r = as_admin.post('/groups/' + group + '/roles', json=user)
+    r = as_admin.post('/groups/' + group + '/permissions', json=user)
     assert r.ok
 
-    # Get the group again to compare timestamps for the Add role test groups
+    # Get the group again to compare timestamps for the Add permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     six_modified = r.json()['modified']
     d6 = parse(six_modified)
     assert d6 > d5
 
-    # Edit a role in the group
+    # Edit a permission in the group
     user = {'access': 'ro', '_id': 'newUser@fakeuser.com'}
-    r = as_admin.put('/groups/' + group + '/roles/' + user['_id'], json=user)
+    r = as_admin.put('/groups/' + group + '/permissions/' + user['_id'], json=user)
     assert r.ok
 
-    # Get the group again to compare timestamps for the Edit role test groups
+    # Get the group again to compare timestamps for the Edit permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     seven_modified = r.json()['modified']
     d7 = parse(seven_modified)
     assert d7 > d6
 
-    # Delete a role in the group
-    r = as_admin.delete('/groups/' + group + '/roles/' + user['_id'])
+    # Delete a permission in the group
+    r = as_admin.delete('/groups/' + group + '/permissions/' + user['_id'])
     assert r.ok
 
-    # Get the group again to compare timestamps for the Edit role test groups
+    # Get the group again to compare timestamps for the Edit permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
     eight_modified = r.json()['modified']
     d8 = parse(eight_modified)
     assert d8 > d7
+
+    group2 = data_builder.create_group()
+    r = as_admin.post('/groups/' + group2 + '/permissions', json={'access':'admin','_id':'user@user.com'})
+    assert r.ok
+    r = as_user.get('/groups')
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json()[0].get('permissions', []) != []
+    r = as_admin.get('/groups')
+    assert r.ok
+    assert len(r.json()) > 1
 
     # Empty put request should 400
     r = as_admin.put('/groups/' + group, json={})
@@ -101,4 +117,4 @@ def test_groups(as_admin, data_builder):
 
     r = as_admin.get('/groups/' + group)
     assert r.ok
-    assert r.json()['name'] == group_name
+    assert r.json()['label'] == group_label

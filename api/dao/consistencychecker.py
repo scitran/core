@@ -9,7 +9,7 @@ def noop(*args, **kwargs): # pylint: disable=unused-argument
 
 def get_list_storage_checker(action, list_name):
     """Build the checker for the list storage"""
-    if list_name == ['permissions', 'roles'] and action == 'POST':
+    if list_name == ['permissions', 'permissions'] and action == 'POST':
         return user_on_permission
     return noop
 

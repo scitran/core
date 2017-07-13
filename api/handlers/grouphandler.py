@@ -19,7 +19,7 @@ class GroupHandler(base.RequestHandler):
         permchecker = groupauth.default(self, group)
         result = permchecker(self.storage.exec_op)('GET', _id)
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_roles([result], self.uid)
+            self._filter_permissions([result], self.uid)
         if self.is_true('join_avatars'):
             ContainerHandler.join_user_info([result])
         return result
@@ -37,11 +37,11 @@ class GroupHandler(base.RequestHandler):
         return result
 
     def get_all(self, uid=None):
-        projection = {'name': 1, 'created': 1, 'modified': 1, 'roles': 1, 'tags': 1}
+        projection = {'label': 1, 'created': 1, 'modified': 1, 'permissions': 1, 'tags': 1}
         permchecker = groupauth.list_permission_checker(self, uid)
         results = permchecker(self.storage.exec_op)('GET', projection=projection)
         if not self.superuser_request and not self.is_true('join_avatars'):
-            self._filter_roles(results, self.uid)
+            self._filter_permissions(results, self.uid)
         if self.is_true('join_avatars'):
             results = ContainerHandler.join_user_info(results)
         return results
@@ -73,7 +73,7 @@ class GroupHandler(base.RequestHandler):
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'POST')
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
-        payload['roles'] = [{'_id': self.uid, 'access': 'admin'}] if self.uid else []
+        payload['permissions'] = [{'_id': self.uid, 'access': 'admin'}] if self.uid else []
         result = mongo_validator(permchecker(self.storage.exec_op))('POST', payload=payload)
         if result.acknowledged:
             if result.upserted_id:
@@ -91,12 +91,12 @@ class GroupHandler(base.RequestHandler):
         else:
             self.abort(404, 'Group {} not found'.format(_id))
 
-    def _filter_roles(self, results, uid):
+    def _filter_permissions(self, results, uid):
         """
-        if the user is not admin only her role is returned.
+        if the user is not admin only her permission is returned.
         """
         for result in results:
-            user_perm = util.user_perm(result.get('roles', []), uid)
+            user_perm = util.user_perm(result.get('permissions', []), uid)
             if user_perm.get('access') != 'admin':
-                result['roles'] = [user_perm] if user_perm else []
+                result['permissions'] = [user_perm] if user_perm else []
         return results

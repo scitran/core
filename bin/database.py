@@ -20,7 +20,7 @@ from api.jobs.jobs import Job
 from api.jobs import gears
 from api.types import Origin
 
-CURRENT_DATABASE_VERSION = 33 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 34 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1147,7 +1147,6 @@ def upgrade_to_33_closure(cont, cont_name):
         {'$unset': {'analyses': ''}})
     return True
 
-
 def upgrade_to_33():
     """
     scitran/core issue #808 - make analyses use their own collection
@@ -1156,6 +1155,14 @@ def upgrade_to_33():
         cursor = config.db[cont_name].find({'analyses': {'$exists': True}})
         process_cursor(cursor, upgrade_to_33_closure, context=cont_name)
 
+def upgrade_to_34():
+    """
+    Changes group.roles -> groups.permissions
+
+    scitran/core #662
+    """
+    config.db.groups.update_many({'roles': {'$exists': True}}, {'$rename': {'roles': 'permissions'}})
+    config.db.groups.update_many({'name': {'$exists': True}}, {'$rename': {'name': 'label'}})
 
 def upgrade_schema(force_from = None):
     """

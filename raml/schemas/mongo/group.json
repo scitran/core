@@ -9,14 +9,11 @@
                         },
     "created":          {},
     "modified":         {},
-    "name":             {
-                          "title": "Name",
-                          "type": "string"
-                        },
-    "roles":            {
+    "label":             {},
+    "permissions":            {
                           "type": "array",
                           "items": {"$ref": "../definitions/permission.json"},
-                          "title": "Roles",
+                          "title": "Permissions",
                           "default": [],
                           "uniqueItems": true
                         }
