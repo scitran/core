@@ -86,12 +86,16 @@ class Download(base.RequestHandler):
         targets = []
 
         for fref in file_refs:
-            cont_name   = pluralize(fref.get('container_name',''))
+
             cont_id     = fref.get('container_id', '')
             filename    = fref.get('filename', '')
+            cont_name   = fref.get('container_name','')
 
-            if cont_name not in ['projects', 'sessions', 'acquisitions', 'analyses']:
+            if cont_name not in ['project', 'session', 'acquisition', 'analysis']:
                 self.abort(400, 'Bulk download only supports files in projects, sessions, analyses and acquisitions')
+            cont_name   = pluralize(fref.get('container_name',''))
+
+
             file_obj = None
             try:
                 # Try to find the file reference in the database (filtering on user permissions)
