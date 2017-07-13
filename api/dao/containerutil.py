@@ -201,11 +201,11 @@ def pluralize(cont_name):
         return SINGULAR_TO_PLURAL[cont_name]
     elif cont_name in PLURAL_TO_SINGULAR:
         return cont_name
-    raise Exception('Could not pluralize unknown container name {}'.format(cont_name))
+    raise ValueError('Could not pluralize unknown container name {}'.format(cont_name))
 
 def singularize(cont_name):
     if cont_name in PLURAL_TO_SINGULAR:
         return PLURAL_TO_SINGULAR[cont_name]
     elif cont_name in SINGULAR_TO_PLURAL:
         return cont_name
-    raise Exception('Could not singularize unknown container name {}'.format(cont_name))
+    raise ValueError('Could not singularize unknown container name {}'.format(cont_name))

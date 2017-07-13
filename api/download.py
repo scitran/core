@@ -10,6 +10,8 @@ from .web import base
 from . import config
 from . import util
 from . import validators
+import os
+from .dao.containerutil import pluralize
 
 log = config.log
 
@@ -84,12 +86,16 @@ class Download(base.RequestHandler):
         targets = []
 
         for fref in file_refs:
-            cont_name   = fref.get('container_name','')+'s'
+
             cont_id     = fref.get('container_id', '')
             filename    = fref.get('filename', '')
+            cont_name   = fref.get('container_name','')
 
-            if cont_name not in ['projects', 'sessions', 'acquisitions']:
-                self.abort(400, 'Bulk download only supports files in projects, sessions and acquisitions')
+            if cont_name not in ['project', 'session', 'acquisition', 'analysis']:
+                self.abort(400, 'Bulk download only supports files in projects, sessions, analyses and acquisitions')
+            cont_name   = pluralize(fref.get('container_name',''))
+
+
             file_obj = None
             try:
                 # Try to find the file reference in the database (filtering on user permissions)
@@ -129,6 +135,7 @@ class Download(base.RequestHandler):
         file_cnt = 0
         total_size = 0
         targets = []
+        filename = None
 
         used_subpaths = {}
         base_query = {}
@@ -219,12 +226,22 @@ class Download(base.RequestHandler):
                 prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, project['_id']) + '/' + self._path_from_container(session, used_subpaths, project['_id']) + '/' + self._path_from_container(acq, used_subpaths, session['_id'])
                 total_size, file_cnt = _append_targets(targets, acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
+            elif item['level'] == 'analysis':
+                analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'files', 'uid', 'timestamp'])
+                if not analysis:
+                    # silently skip missing objects/objects user does not have access to
+                    continue
+                prefix = self._path_from_container(analysis, used_subpaths, util.sanitize_string_to_filename(analysis['label']))
+                filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
+                total_size, file_cnt = _append_targets(targets, analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+
         if len(targets) > 0:
             log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
-            filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
+            if not filename:
+                filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
             ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
             config.db.downloads.insert_one(ticket)
-            return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
+            return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size, 'filename': filename}
         else:
             self.abort(404, 'No requested containers could be found')
 

@@ -81,9 +81,7 @@ def initialize_list_configurations():
         'sessions': copy.deepcopy(container_default_configurations),
         'acquisitions': copy.deepcopy(container_default_configurations),
         'collections': copy.deepcopy(container_default_configurations),
-        'analyses': {
-            'notes': copy.deepcopy(container_default_configurations['notes']),
-        },
+        'analyses': copy.deepcopy(container_default_configurations),
     }
     # preload the Storage instances for all configurations
     for cont_name, cont_config in list_container_configurations.iteritems():
