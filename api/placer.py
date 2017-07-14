@@ -250,8 +250,8 @@ class EnginePlacer(Placer):
 
             ###
             # Remove when switch to dmv2 is complete across all gears
-            c_metadata = self.metadata.get(self.container_type, {})
-            if self.context.get('job_id') and c_metadata and not c_metadata.get('files', []):
+            c_metadata = self.metadata.get(self.container_type, {}) # pragma: no cover
+            if self.context.get('job_id') and c_metadata and not c_metadata.get('files', []): # pragma: no cover
                 job = Job.get(self.context.get('job_id'))
                 input_names = [{'name': v.name} for v in job.inputs.itervalues()]
 

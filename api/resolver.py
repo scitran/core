@@ -26,11 +26,11 @@ class Node(object):
 
     @staticmethod
     def get_children(parent):
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
     @staticmethod
     def filter(children, criterion):
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
 def _get_files(table, match):
     """
