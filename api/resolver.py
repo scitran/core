@@ -81,7 +81,7 @@ class AcquisitionNode(Node):
         for x in children:
             if x['node_type'] == "file" and x.get('name') == criterion:
                 return x, FileNode
-        raise Exception('No ' + criterion + ' acquisition or file found.')
+        raise Exception('No ' + criterion + ' file found.')
 
 class SessionNode(Node):
 
