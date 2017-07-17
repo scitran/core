@@ -209,35 +209,38 @@ class PermissionsListHandler(ListHandler):
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(cont_name, _id)
+        self._propagate_permissions(cont_name, _id, self.request.params.get('propagate'))
         return result
 
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
 
         result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(cont_name, _id)
+        self._propagate_permissions(cont_name, _id, self.request.params.get('propagate'))
         return result
 
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).delete(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(cont_name, _id)
+        self._propagate_permissions(cont_name, _id, self.request.params.get('propagate'))
         return result
 
-    def _propagate_project_permissions(self, cont_name, _id):
+    def _propagate_permissions(self, cont_name, _id, propagate=False):
         """
-        method to propagate permissions from a project to its sessions and acquisitions
+        method to propagate permissions from a container/group to its sessions and acquisitions
         """
-        if cont_name == 'projects':
+        if (cont_name == 'groups' and propagate) or cont_name == 'projects':
             try:
-                oid = bson.ObjectId(_id)
+                if cont_name == 'projects':
+                    oid = bson.ObjectId(_id)
+                else:
+                    oid = _id
                 update = {'$set': {
-                    'permissions': config.db.projects.find_one({'_id': oid},{'permissions': 1})['permissions']
+                    'permissions': config.db[cont_name].find_one({'_id': oid},{'permissions': 1})['permissions']
                 }}
                 hierarchy.propagate_changes(cont_name, oid, {}, update)
             except APIStorageException:
-                self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+                self.abort(500, 'permissions not propagated from {} {} down hierarchy'.format(cont_name, _id))
 
 
 class NotesListHandler(ListHandler):
