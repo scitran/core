@@ -339,7 +339,6 @@ class DataExplorerHandler(base.RequestHandler):
             doc_type='flywheel',
             body=body
         )['aggregations']['results']
-
         return aggs
 
     @require_login
@@ -522,6 +521,7 @@ class DataExplorerHandler(base.RequestHandler):
             doc_type='flywheel',
             body=es_query
         )
+
         return self._process_results(results, result_type)
 
     def _process_results(self, results, result_type):

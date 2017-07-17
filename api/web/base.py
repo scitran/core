@@ -14,6 +14,7 @@ from .. import validators
 from ..auth.authproviders import AuthProvider, APIKeyAuthProvider
 from ..auth import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+from elasticsearch import ElasticsearchException
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
 
@@ -300,6 +301,7 @@ class RequestHandler(webapp2.RequestHandler):
         """
 
         custom_errors = None
+        message = str(exception)
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
         elif isinstance(exception, validators.InputValidationException):
@@ -325,6 +327,10 @@ class RequestHandler(webapp2.RequestHandler):
             custom_errors = exception.errors
         elif isinstance(exception, files.FileStoreException):
             code = 400
+        elif isinstance(exception, ElasticsearchException):
+            code = 503
+            message = "Search is currently down. Try again later."
+            self.request.logger.error(traceback.format_exc())
         else:
             code = 500
 
@@ -333,9 +339,9 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.error(tb)
 
         if return_json:
-            return util.create_json_http_exception_response(str(exception), code, custom=custom_errors)
+            return util.create_json_http_exception_response(message, code, custom=custom_errors)
 
-        util.send_json_http_exception(self.response, str(exception), code, custom=custom_errors)
+        util.send_json_http_exception(self.response, message, code, custom=custom_errors)
 
     def log_user_access(self, access_type, cont_name=None, cont_id=None, multifile=False):
 
