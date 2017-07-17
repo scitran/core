@@ -330,6 +330,7 @@ class RequestHandler(webapp2.RequestHandler):
         elif isinstance(exception, ElasticsearchException):
             code = 503
             message = "Search is currently down. Try again later."
+            self.request.logger.error(traceback.format_exc())
         else:
             code = 500
 
