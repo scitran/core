@@ -8,6 +8,7 @@ container (eg. ListHandler)
 
 import os
 import zipfile
+import datetime
 from abc import ABCMeta, abstractproperty
 
 from .. import config
@@ -88,6 +89,31 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
+    def put(self, cont_name, **kwargs):
+        cid = kwargs.pop('cid')
+        _id = kwargs.pop('_id')
+
+        parent = self.storage.get_parent(cont_name, cid)
+        permchecker = self.get_permchecker(parent)
+        permchecker(noop)('PUT')
+
+
+        payload = self.request.json_body
+        if not payload:
+            self.abort(400, 'PUT request body cannot be empty')
+        self.input_validator(payload, 'PUT')
+
+        payload['modified'] = datetime.datetime.utcnow()
+        
+        try:
+            result = self.storage.update_el(_id, payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
 
     def get(self, cont_name, cid, _id):
         parent = self.storage.get_parent(cont_name, cid)
