@@ -13,11 +13,15 @@ class Node(object):
     # Globally disable extraneous properties of unbounded length, along with some PHI fields.
     projection = {
         'files':             0,
+        'info':              0,
+        'tags':              0,
         'subject.sex':       0,
         'subject.age':       0,
         'subject.race':      0,
         'subject.ethnicity': 0,
         'subject.info':      0,
+        'subject.firstname': 0,
+        'subject.lastname':  0,
     }
 
     # Add some more fields for debugging purposes.
