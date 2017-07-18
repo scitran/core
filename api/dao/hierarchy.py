@@ -131,6 +131,24 @@ def get_parent_tree(cont_name, _id):
 
     return tree
 
+def propagate_group_change(_id, update, oper):
+    # Apply change to projects
+    if oper == 'POST':
+        config.db.projects.update_many({'group': _id}, {'$addToSet': {'permissions': update}})
+    elif oper == 'PUT':
+        config.db.projects.update_many({'group': _id, 'permissions._id' : update['_id']}, {'$set': {'permissions.$.access': update['access']}})
+    elif oper == 'DELETE':
+        config.db.projects.update_many({'group': _id, 'permissions._id' : update}, {'$pull' : {'permissions': {'_id': update}}})
+    else:
+        raise APIStorageException("Cannot propagate {} operation".format(oper))
+
+    # Apply change to sessions and acquisitions
+    projects = config.db.projects.find({'group':_id})
+    for project in projects:
+        propagate_changes('projects', project['_id'], {}, {'$set': {
+                    'permissions': project['permissions']
+                }})
+
 
 def propagate_changes(cont_name, _id, query, update):
     """

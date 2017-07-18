@@ -209,7 +209,7 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
 
     # Add user to group permissions
     payload = {'_id': user_id, 'access': 'admin'}
-    r = as_admin.post('/groups/' + group + '/permissions', json=payload, params={'propagate': True})
+    r = as_admin.post('/groups/' + group + '/permissions', json=payload, params={'propagate': 'true'})
     assert r.ok
 
     r = as_admin.get('/groups/' + group)
@@ -220,6 +220,7 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
     r = as_admin.get('/projects/' + project)
     perms = r.json()['permissions']
     user = get_user_in_perms(perms, user_id)
+    assert r.json()['group'] == group
     assert r.ok and user
 
     r = as_admin.get('/sessions/' + session)
@@ -234,7 +235,7 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
 
     # Modify user permissions
     payload = {'access': 'rw', '_id': user_id}
-    r = as_admin.put('/groups/' + group + '/permissions/' + user_id, json=payload, params={'propagate': True})
+    r = as_admin.put('/groups/' + group + '/permissions/' + user_id, json=payload, params={'propagate': 'true'})
     assert r.ok
 
     r = as_admin.get('/groups/' + group)
@@ -258,7 +259,7 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
     assert r.ok and user and user['access'] == 'rw'
 
     # Remove user from project permissions
-    r = as_admin.delete('/groups/' + group + '/permissions/' + user_id, json=payload, params={'propagate': True})
+    r = as_admin.delete('/groups/' + group + '/permissions/' + user_id, json=payload, params={'propagate': 'true'})
     assert r.ok
 
     r = as_admin.get('/groups/' + group)
