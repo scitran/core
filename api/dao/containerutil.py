@@ -117,6 +117,12 @@ class ContainerReference(object):
         self.type = type
         self.id = id
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__dict__ == other.__dict__
+
     @classmethod
     def from_dictionary(cls, d):
         return cls(
@@ -175,6 +181,12 @@ class FileReference(ContainerReference):
     def __init__(self, type, id, name):
         super(FileReference, self).__init__(type, id)
         self.name = name
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__dict__ == other.__dict__
 
     @classmethod
     def from_dictionary(cls, d):

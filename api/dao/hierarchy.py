@@ -272,12 +272,27 @@ def upsert_fileinfo(cont_name, _id, fileinfo):
         '_id': _id,
         'files.name': fileinfo['name'],
     })
+    container, file_before, file_after = None, None, None
 
     if result is None:
+
         fileinfo['created'] = fileinfo['modified']
-        return add_fileinfo(cont_name, _id, fileinfo)
+        container = add_fileinfo(cont_name, _id, fileinfo)
     else:
-        return update_fileinfo(cont_name, _id, fileinfo)
+        # Find existing file in result and set to file_before
+        for f in result['files']:
+            if f['name'] == fileinfo['name']:
+                file_before = f
+                break
+        container = update_fileinfo(cont_name, _id, fileinfo)
+
+    for f in container['files']:
+        # Fine file in result and set to file_after
+        if f['name'] == fileinfo['name']:
+            file_after = f
+            break
+
+    return container, file_before, file_after
 
 def update_fileinfo(cont_name, _id, fileinfo):
     if fileinfo.get('size') is not None:

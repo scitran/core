@@ -35,6 +35,10 @@ log = config.log
 #         {
 #             'type': 'container.has-type', # Match the container having any file (including this one) with this type
 #             'value': 'bvec'
+#         },
+#         {
+#             'type': 'container.has-measurement', # Match the container having any file (including this one) with this measurement
+#             'value': 'functional'
 #         }
 #     ]
 # }
@@ -89,6 +93,16 @@ def eval_match(match_type, match_param, file_, container):
         for c_file in container['files']:
             if match_param.lower() == c_file.get('type').lower():
                 return True
+
+        return False
+
+    # Match the container having any file (including this one) with this measurement
+    elif match_type == 'container.has-measurement':
+        for c_file in container['files']:
+            if match_param:
+                return match_param.lower() in map(lower, file_.get('measurements', []))
+            else:
+                continue
 
         return False
 
