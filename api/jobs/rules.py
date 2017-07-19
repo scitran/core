@@ -100,9 +100,8 @@ def eval_match(match_type, match_param, file_, container):
     elif match_type == 'container.has-measurement':
         for c_file in container['files']:
             if match_param:
-                return match_param.lower() in map(lower, file_.get('measurements', []))
-            else:
-                continue
+                if match_param.lower() in map(lower, c_file.get('measurements', [])):
+                    return True
 
         return False
 
@@ -120,6 +119,7 @@ def eval_rule(rule, file_, container):
     for match in rule.get('any', []):
         if eval_match(match['type'], match['value'], file_, container):
             has_match = True
+            config.log.debug('we found one here')
             break
 
     # If there were matches in the 'any' array and none of them succeeded
@@ -129,6 +129,7 @@ def eval_rule(rule, file_, container):
     # Are there matches in the 'all' set?
     for match in rule.get('all', []):
         if not eval_match(match['type'], match['value'], file_, container):
+            config.log.debug('we didnt fine one here')
             return False
 
     return True
@@ -151,7 +152,7 @@ def queue_job_legacy(algorithm_id, input_):
     }
 
     job = Job(str(gear['_id']), inputs, tags=['auto', algorithm_id])
-    return job.insert()
+    return job
 
 def find_type_in_container(container, type_):
     for c_file in container['files']:
@@ -159,13 +160,14 @@ def find_type_in_container(container, type_):
             return c_file
     return None
 
-def create_jobs(db, container, container_type, file_):
+def create_potential_jobs(db, container, container_type, file_):
     """
-    Check all rules that apply to this file, and enqueue the jobs that should be run.
-    Returns the algorithm names that were queued.
+    Check all rules that apply to this file, and creates the jobs that should be run.
+    Jobs are created but not enqueued.
+    Returns list of potential job objects containing job ready to be inserted and rule.
     """
 
-    job_list = []
+    potential_jobs = []
 
     # Get configured rules for this project
     rules = get_rules_for_container(db, container)
@@ -182,7 +184,7 @@ def create_jobs(db, container, container_type, file_):
 
             if rule.get('match') is None:
                 input_ = FileReference(type=container_type, id=str(container['_id']), name=file_['name'])
-                queue_job_legacy(alg_name, input_)
+                job = queue_job_legacy(alg_name, input_)
             else:
                 inputs = { }
 
@@ -194,11 +196,68 @@ def create_jobs(db, container, container_type, file_):
 
                 gear = gears.get_gear_by_name(alg_name)
                 job = Job(str(gear['_id']), inputs, tags=['auto', alg_name])
-                job.insert()
 
-            job_list.append(alg_name)
+            potential_jobs.append({
+                'job': job,
+                'rule': rule
+            })
 
-    return job_list
+    return potential_jobs
+
+def create_jobs(db, container, container_type, file_):
+    """
+    Given a file and it's container, enqueues all jobs created via rules for that file and its container.
+    Returns the algorithm names that were queued.
+    """
+
+    potential_jobs = create_potential_jobs(db, container, container_type, file_)
+    spawned_jobs = []
+
+    for pj in potential_jobs:
+        pj['job'].insert()
+        spawned_jobs.append(pj['rule']['alg'])
+
+    return spawned_jobs
+
+def create_jobs_from_attributes_change(db, container_before, container_after, container_type):
+    """
+    Given a before and after set of file attributes, enqueue a list of jobs that would only be possible
+    after the changes.
+    Returns the algorithm names that were queued.
+    """
+
+    jobs_before, jobs_after, potential_jobs = [], [], []
+
+    files_before    = container_before.get('files', [])
+    files_after     = container_after['files'] # It should always have at least one file after
+
+    for f in files_before:
+        jobs_before.extend(create_potential_jobs(db, container_before, container_type, f))
+
+    for f in files_after:
+        jobs_after.extend(create_potential_jobs(db, container_after, container_type, f))
+
+    # Using a uniqueness constraint, create a list of the set difference of jobs_after \ jobs_before
+    # (members of jobs_after that are not in jobs_before)
+    for ja in jobs_after:
+        new_job = True
+        for jb in jobs_before:
+            if ja['job'].intention_equals(jb['job']):
+                new_job = False
+                break # this job matched in both before and after, ignore
+        if new_job:
+            potential_jobs.append(ja)
+
+
+    spawned_jobs = []
+
+    for pj in potential_jobs:
+        pj['job'].insert()
+        spawned_jobs.append(pj['rule']['alg'])
+
+
+    return spawned_jobs
+
 
 # TODO: consider moving to a module that has a variety of hierarchy-management helper functions
 def get_rules_for_container(db, container):

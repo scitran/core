@@ -261,38 +261,27 @@ def is_session_compliant(session, template):
     return True
 
 def upsert_fileinfo(cont_name, _id, fileinfo):
-    # TODO: make all functions take singular noun
-    cont_name += 's'
 
-    # TODO: make all functions consume strings
+    cont_name = containerutil.pluralize(cont_name)
     _id = bson.ObjectId(_id)
 
-    # OPPORTUNITY: could potentially be atomic if we pass a closure to perform the modification
-    result = config.db[cont_name].find_one({
-        '_id': _id,
-        'files.name': fileinfo['name'],
-    })
-    container, file_before, file_after = None, None, None
+    container_before = config.db[cont_name].find_one({'_id': _id})
+    container_after, file_before = None, None
 
-    if result is None:
-
-        fileinfo['created'] = fileinfo['modified']
-        container = add_fileinfo(cont_name, _id, fileinfo)
-    else:
-        # Find existing file in result and set to file_before
-        for f in result['files']:
-            if f['name'] == fileinfo['name']:
-                file_before = f
-                break
-        container = update_fileinfo(cont_name, _id, fileinfo)
-
-    for f in container['files']:
+    for f in container_before.get('files',[]):
         # Fine file in result and set to file_after
         if f['name'] == fileinfo['name']:
-            file_after = f
+            file_before = f
             break
 
-    return container, file_before, file_after
+    if file_before is None:
+
+        fileinfo['created'] = fileinfo['modified']
+        container_after = add_fileinfo(cont_name, _id, fileinfo)
+    else:
+        container_after = update_fileinfo(cont_name, _id, fileinfo)
+
+    return container_before, container_after
 
 def update_fileinfo(cont_name, _id, fileinfo):
     if fileinfo.get('size') is not None:

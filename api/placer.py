@@ -91,14 +91,11 @@ class Placer(object):
 
         # Update the DB
         if file_attrs is not None:
-            self.container, file_before, file_after  = hierarchy.upsert_fileinfo(self.container_type, self.id_, file_attrs)
+            container_before, self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, file_attrs)
 
             # Queue any jobs as a result of this upload, uploading to a gear will not make jobs though
             if self.container_type != 'gear':
-                if file_before:
-                    rules.create_jobs_from_attributes_change(config.db, self.container, self.container_type, file_before, file_after)
-                else:
-                    rules.create_jobs(config.db, self.container, self.container_type, file_after)
+                rules.create_jobs_from_attributes_change(config.db, container_before, self.container, self.container_type)
 
     def recalc_session_compliance(self):
         if self.container_type in ['session', 'acquisition'] and self.id_:
@@ -296,7 +293,8 @@ class EnginePlacer(Placer):
             saved_file_names = [x.get('name') for x in self.saved]
             for file_md in file_mds:
                 if file_md['name'] not in saved_file_names:
-                    hierarchy.update_fileinfo(self.container_type+'s', bid, file_md)
+                    self.save_file(None, file_md) # save file_attrs update only
+                    self.saved.append(file_md)
 
             # Remove file metadata as it was already updated in process_file_field
             for k in self.metadata.keys():
