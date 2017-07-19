@@ -2,5 +2,5 @@
 	"$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Analysis",
     "type": "object",
-	"allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-input"}]
+	"allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-update"}]
 }

@@ -38,6 +38,12 @@ class RefererHandler(base.RequestHandler):
         input_validator = validators.from_schema_path(input_schema_uri)
         return input_validator
 
+    @property
+    def update_validator(self):
+        update_schema_uri = validators.schema_uri('input', self.update_payload_schema_file)
+        update_validator = validators.from_schema_path(update_schema_uri)
+        return update_validator
+
     def get_permchecker(self, parent_container):
         if self.superuser_request:
             return always_ok
@@ -51,6 +57,7 @@ class RefererHandler(base.RequestHandler):
 class AnalysesHandler(RefererHandler):
     storage = containerstorage.AnalysisStorage()
     payload_schema_file = 'analysis.json'
+    update_payload_schema_file = 'analysis-update.json'
 
 
     def post(self, cont_name, cid):
@@ -101,7 +108,7 @@ class AnalysesHandler(RefererHandler):
         payload = self.request.json_body
         if not payload:
             self.abort(400, 'PUT request body cannot be empty')
-        self.input_validator(payload, 'PUT')
+        self.update_validator(payload, 'PUT')
 
         payload['modified'] = datetime.datetime.utcnow()
         

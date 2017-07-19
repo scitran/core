@@ -517,3 +517,6 @@ def test_analysis_put(data_builder, as_admin):
     r = as_admin.get('/sessions/'+session + '/analyses/' + analysis)
     assert r.ok
     assert r.json()['label'] == 'ayo'
+
+    r = as_admin.put('/sessions/'+session + '/analyses/' + analysis, json={'input': 'ayo'})
+    assert r.status_code == 400
