@@ -29,7 +29,7 @@ def download_large_csv(params):
     """
     Script to download large csv files to avoid uwsgi worker running out of memory.
     """
-    lim = int(params['limit'])
+    entries = int(params['limit'])
     params['csv'] = "true"
     params['bin'] = "true"
     params['limit'] = "100000"
@@ -37,24 +37,35 @@ def download_large_csv(params):
     csv_file = open('accesslog.csv', 'w+')
     writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
     writer.writeheader()
-
-    while lim > 0:
-        print lim
-        params['limit'] = str(min(lim, 100000))
+    unicode_err_count = 0
+    while entries > 0:
+        print "{} entries left".format(entries)
+        params['limit'] = str(min(entries, 100000))
         report = AccessLogReport(params)
-        retort = report.build()
-        start_date = str(retort[-1]['timestamp'])
-        for doc in retort:
-            lim = lim - 1
+        rep = report.build()
+        end_date = str(rep[-1]['timestamp'])
+        for doc in rep[:-1]:
+            entries = entries - 1
             try:
                 writer.writerow(doc)
             except UnicodeEncodeError as e:
+                unicode_err_count += 1
                 continue
+
+        if len(rep) == 1:
+            entries = 0
+            try:
+                writer.writerow(rep[0])
+            except UnicodeEncodeError as e:
+                unicode_err_count += 1
+                continue
+        if len(rep) < int(params['limit']) - 1:
+            entries = 0
         csv_file.flush()
-        params['start_date'] = start_date
+        params['end_date'] = end_date
 
             
-
+    print "Encountered unicode errors and skipped {} entries".format(unicode_err_count)
     csv_file.close()
 
 def format_arg(args):
