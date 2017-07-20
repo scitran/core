@@ -64,6 +64,7 @@ class UserHandler(base.RequestHandler):
             self.abort(404, 'User {} not removed'.format(_id))
         return result
 
+    @validators.verify_payload_exists('users')
     def put(self, _id):
         """Update a user"""
         user = self._get_user(_id)

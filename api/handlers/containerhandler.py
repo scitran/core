@@ -430,6 +430,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not added in container {}'.format(self.storage.cont_name))
 
+    @validators.verify_payload_exists()
     def put(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
@@ -438,8 +439,6 @@ class ContainerHandler(base.RequestHandler):
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body
-        if not payload:
-            self.abort(400, 'PUT request body cannot be empty')
         payload_validator(payload, 'PUT')
 
         # Check if any payload keys are any propogated property, add to r_payload

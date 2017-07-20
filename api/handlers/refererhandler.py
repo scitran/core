@@ -96,6 +96,7 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
+    @validators.verify_payload_exists()
     def put(self, cont_name, **kwargs):
         cid = kwargs.pop('cid')
         _id = kwargs.pop('_id')
@@ -106,16 +107,11 @@ class AnalysesHandler(RefererHandler):
 
 
         payload = self.request.json_body
-        if not payload:
-            self.abort(400, 'PUT request body cannot be empty')
         self.update_validator(payload, 'PUT')
 
         payload['modified'] = datetime.datetime.utcnow()
         
-        try:
-            result = self.storage.update_el(_id, payload)
-        except APIStorageException as e:
-            self.abort(400, e.message)
+        result = self.storage.update_el(_id, payload)
 
         if result.modified_count == 1:
             return {'modified': result.modified_count}
