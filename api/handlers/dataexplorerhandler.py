@@ -354,7 +354,7 @@ class DataExplorerHandler(base.RequestHandler):
             }
         }
         if not filters:
-            # NOTE unreachable
+            # TODO add non-user auth support (#865)
             body['query']['bool'].pop('filter')
         if search_string is None:
             body['query']['bool']['must'] = MATCH_ALL
@@ -416,12 +416,6 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def search_fields(self):
         field_query = self.request.json_body.get('field')
-
-        try:
-            field_query = str(field_query)
-        except ValueError:
-            # NOTE unreachable
-            self.abort(400, 'Must specify string for field query')
 
         es_query = {
             "size": 15,
