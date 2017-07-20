@@ -228,6 +228,52 @@ FACET_QUERY = {
 }
 
 
+SOURCE_COMMON = [
+    "group._id",
+    "group.label",
+    "permissions.*",
+    "project._id",
+    "project.archived",
+    "project.label",
+    "session._id",
+    "session.archived",
+    "session.created",
+    "session.label",
+    "session.timestamp",
+    "subject.code",
+]
+
+SOURCE = {
+    "file": SOURCE_COMMON + [
+        "acquisition._id",
+        "acquisition.archived",
+        "acquisition.label",
+        "analysis._id",
+        "analysis.label",
+        "file.created",
+        "file.measurements",
+        "file.name",
+        "file.size",
+        "file.type",
+    ],
+    "session": SOURCE_COMMON,
+    "acquisition": SOURCE_COMMON + [
+        "acquisition._id",
+        "acquisition.archived",
+        "acquisition.created",
+        "acquisition.label",
+        "acquisition.timestamp",
+    ],
+    "analysis": SOURCE_COMMON + [
+        "analysis._id",
+        "analysis.created",
+        "analysis.label",
+        "analysis.parent",
+        "analysis.user",
+    ],
+}
+
+
 class DataExplorerHandler(base.RequestHandler):
     # pylint: disable=broad-except
 
@@ -308,6 +354,7 @@ class DataExplorerHandler(base.RequestHandler):
             }
         }
         if not filters:
+            # TODO add non-user auth support (#865)
             body['query']['bool'].pop('filter')
         if search_string is None:
             body['query']['bool']['must'] = MATCH_ALL
@@ -370,11 +417,6 @@ class DataExplorerHandler(base.RequestHandler):
     def search_fields(self):
         field_query = self.request.json_body.get('field')
 
-        try:
-            field_query = str(field_query)
-        except ValueError:
-            self.abort(400, 'Must specify string for field query')
-
         es_query = {
             "size": 15,
             "query": {
@@ -415,15 +457,6 @@ class DataExplorerHandler(base.RequestHandler):
         if return_type == 'file':
             return self._construct_file_query(search_string, filters, size)
 
-        source = [ "permissions.*", "session._id", "session.label", "session.created", "session.timestamp",
-                   "subject.code", "project.label", "group.label", "group._id", "project._id", "session.archived", "project.archived" ]
-
-        if return_type == 'acquisition':
-            source.extend(["acquisition._id", "acquisition.label", "acquisition.created", "acquisition.timestamp", "acquisition.archived"])
-
-        if return_type == 'analysis':
-            source.extend(["analysis._id", "analysis.label", "analysis.created", "analysis.parent", "analysis.user"])
-
         query = {
             "size": 0,
             "query": {
@@ -452,7 +485,7 @@ class DataExplorerHandler(base.RequestHandler):
                     "aggs": {
                         "by_top_hit": {
                             "top_hits": {
-                                "_source": source,
+                                "_source": SOURCE[return_type],
                                 "size": 1
                             }
                         }
@@ -475,14 +508,9 @@ class DataExplorerHandler(base.RequestHandler):
         return query
 
     def _construct_file_query(self, search_string, filters, size=100):
-        source = [ "permissions.*", "session._id", "session.label", "session.created",
-        "session.timestamp", "subject.code", "project.label", "group.label", "acquisition.label",
-        "acquisition._id", "group._id", "project._id", "analysis._id", "analysis.label",
-        "session.archived", "acquisition.archived", "project.archived" ]
-        source.extend(["file.name", "file.created", "file.type", "file.measurements", "file.size", "parent"])
         query = {
           "size": size,
-          "_source": source,
+          "_source": SOURCE['file'],
           "query": {
             "bool": {
               "must": {
