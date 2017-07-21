@@ -21,7 +21,7 @@ def default_container(handler, container=None, target_parent_container=None):
                 has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['ro']
             elif method == 'POST':
                 required_perm = 'rw'
-                if target_parent_container.get('permissions'):
+                if target_parent_container.get('cont_name') == 'group':
                     # Create project on group, require admin
                     required_perm = 'admin'
                 has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]

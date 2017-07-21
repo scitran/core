@@ -18,6 +18,8 @@ CHILD_MAP = {
     'sessions': 'acquisitions'
 }
 
+PARENT_MAP = {v: k for k,v in CHILD_MAP.iteritems()}
+
 # All "containers" are required to return these fields
 # 'All' includes users
 BASE_DEFAULTS = {

@@ -322,7 +322,7 @@ def test_get_session_jobs(data_builder, as_admin):
     assert r.ok
 
 
-def test_post_container(data_builder, as_admin):
+def test_post_container(data_builder, as_admin, as_user):
     group = data_builder.create_group()
 
     # create project w/ param inherit=true
@@ -333,8 +333,37 @@ def test_post_container(data_builder, as_admin):
     assert r.ok
     project = r.json()['_id']
 
-    # create session w/ timestamp
-    r = as_admin.post('/sessions', json={
+    # set as_user perms to rw on group
+    r = as_user.get('/users/self')
+    assert r.ok
+    uid = r.json()['_id']
+
+    r = as_admin.post('/groups/' + group + '/permissions', json={
+        '_id': uid,
+        'access': 'rw'
+    })
+    assert r.ok
+
+    # try to add project without admin on group
+    r = as_user.post('/projects', json={
+        'group': group,
+        'label': 'test project post'
+    })
+    assert r.status_code == 403
+
+    # set as_user perms to rw on project
+    r = as_user.get('/users/self')
+    assert r.ok
+    uid = r.json()['_id']
+
+    r = as_admin.post('/projects/' + project + '/permissions', json={
+        '_id': uid,
+        'access': 'rw'
+    })
+    assert r.ok
+
+    # create session w/ timestamp as rw user
+    r = as_user.post('/sessions', json={
         'project': project,
         'label': 'test-timestamp-session',
         'timestamp': '1979-01-01T00:00:00+00:00'

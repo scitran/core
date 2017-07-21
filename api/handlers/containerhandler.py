@@ -589,6 +589,7 @@ class ContainerHandler(base.RequestHandler):
             parent_container = parent_storage.get_container(parent_id)
             if parent_container is None:
                 self.abort(404, 'Element {} not found in container {}'.format(parent_id, parent_storage.cont_name))
+            parent_container['cont_name'] = parent_storage.cont_name[:-1]
         else:
             parent_container = None
         return parent_container, parent_id_property
