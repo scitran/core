@@ -1,5 +1,5 @@
 import copy
-import csv
+import unicodecsv as csv
 import datetime
 import os
 

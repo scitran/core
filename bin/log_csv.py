@@ -5,7 +5,7 @@
 # the process would frequently crash before 1 million entries were downloaded.
 
 import argparse
-import csv
+import unicodecsv as csv
 import pymongo
 import tarfile
 import sys
@@ -46,19 +46,11 @@ def download_large_csv(params):
         end_date = str(rep[-1]['timestamp'])
         for doc in rep[:-1]:
             entries = entries - 1
-            try:
-                writer.writerow(doc)
-            except UnicodeEncodeError as e:
-                unicode_err_count += 1
-                continue
+            writer.writerow(doc)
 
         if len(rep) == 1:
             entries = 0
-            try:
-                writer.writerow(rep[0])
-            except UnicodeEncodeError as e:
-                unicode_err_count += 1
-                continue
+            writer.writerow(rep[0])
         if len(rep) < int(params['limit']) - 1:
             entries = 0
         csv_file.flush()
