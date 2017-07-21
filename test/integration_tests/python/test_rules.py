@@ -114,4 +114,58 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     r = as_admin.delete('/projects/' + project + '/rules/' + rule)
     assert r.ok
 
+
+    # add valid container.has-<something> project rule w/ non-existent gear
+    # NOTE this is a legacy rule
+    r = as_admin.post('/projects/' + project + '/rules', json={
+        'alg': gear_name,
+        'name': 'txt-job-trigger-rule-with-measurement',
+        'any': [
+            {'type': 'container.has-measurement', 'value': 'functional'},
+            {'type': 'container.has-measurement', 'value': 'anatomical'}
+        ],
+        'all': [
+            {'type': 'file.type', 'value': 'text'},
+        ]
+    })
+    assert r.ok
+    rule2 = r.json()['_id']
+
+    # upload file that matches only part of rule
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('test3.txt'))
+    assert r.ok
+
+    # test that job was not created via rule
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    assert len(gear_jobs) == 1 # still 1 from before
+
+    # update test2.csv's metadata to include a valid measurement to spawn job
+    metadata = {
+        'project':{
+            'label': 'rule project',
+            'files': [
+                {
+                    'name': 'test2.csv',
+                    'measurements': ['functional']
+                }
+            ]
+        }
+    }
+
+    r = as_root.post('/engine',
+        params={'level': 'project', 'id': project},
+        files=file_form(meta=metadata)
+    )
+    assert r.ok
+
+    # test that only one job was created via rule
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    assert len(gear_jobs) == 2
+    assert len(gear_jobs[1]['inputs']) == 1
+    assert gear_jobs[1]['inputs'][0]['name'] == 'test3.txt'
+
+    # delete rule
+    r = as_admin.delete('/projects/' + project + '/rules/' + rule2)
+    assert r.ok
+
     # TODO add and test 'new-style' rules

@@ -96,6 +96,30 @@ class Job(object):
         self.saved_files        = saved_files
         self.produced_metadata  = produced_metadata
 
+
+    def intention_equals(self, other_job):
+        """
+        Compare this job's intention to other_job.
+        Returns True if other_job's gear_id, inputs and destination match self.
+        Returns False otherwise.
+
+        Useful for comparing auto-triggered jobs for equality.
+        Implicitly uses dict, FileReference and ContainerReference _cmp_ methods.
+        """
+        if (
+            isinstance(other_job, Job) and
+            self.gear_id == other_job.gear_id and
+            self.inputs == other_job.inputs and
+            self.destination == other_job.destination
+        ):
+            config.log.debug('the jobs {} and {} are equal.'.format(self.map, other_job.map))
+            return True
+
+        else:
+            config.log.debug('the jobs {} and {} are NOT equal.'.format(self.map, other_job.map))
+            return False
+
+
     @classmethod
     def load(cls, e):
         # TODO: validate

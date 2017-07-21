@@ -20,7 +20,8 @@
                             "file.type",
                             "file.name",
                             "file.measurements",
-                            "container.has-type"
+                            "container.has-type",
+                            "container.has-measurement"
                         ]
                     },
                     "value": {
@@ -40,7 +41,8 @@
                             "file.type",
                             "file.name",
                             "file.measurements",
-                            "container.has-type"
+                            "container.has-type",
+                            "container.has-measurement"
                         ]
                     },
                     "value": {
