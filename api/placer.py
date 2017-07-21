@@ -95,7 +95,7 @@ class Placer(object):
 
             # Queue any jobs as a result of this upload, uploading to a gear will not make jobs though
             if self.container_type != 'gear':
-                rules.create_jobs_from_attributes_change(config.db, container_before, self.container, self.container_type)
+                rules.create_jobs(config.db, container_before, self.container, self.container_type)
 
     def recalc_session_compliance(self):
         if self.container_type in ['session', 'acquisition'] and self.id_:

@@ -204,22 +204,7 @@ def create_potential_jobs(db, container, container_type, file_):
 
     return potential_jobs
 
-def create_jobs(db, container, container_type, file_):
-    """
-    Given a file and it's container, enqueues all jobs created via rules for that file and its container.
-    Returns the algorithm names that were queued.
-    """
-
-    potential_jobs = create_potential_jobs(db, container, container_type, file_)
-    spawned_jobs = []
-
-    for pj in potential_jobs:
-        pj['job'].insert()
-        spawned_jobs.append(pj['rule']['alg'])
-
-    return spawned_jobs
-
-def create_jobs_from_attributes_change(db, container_before, container_after, container_type):
+def create_jobs(db, container_before, container_after, container_type):
     """
     Given a before and after set of file attributes, enqueue a list of jobs that would only be possible
     after the changes.
