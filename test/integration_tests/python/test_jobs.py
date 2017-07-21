@@ -21,6 +21,8 @@ def test_jobs_access(as_user):
 def test_jobs(data_builder, as_user, as_admin, as_root):
     gear = data_builder.create_gear()
     invalid_gear = data_builder.create_gear(gear={'custom': {'flywheel': {'invalid': True}}})
+    project = data_builder.create_project()
+    session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
 
     job_data = {
@@ -138,3 +140,34 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     # retry failed job w/o root
     r = as_admin.post('/jobs/' + next_job_id + '/retry')
     assert r.ok
+
+    # set as_user perms to ro
+    r = as_user.get('/users/self')
+    assert r.ok
+    uid = r.json()['_id']
+
+    r = as_admin.post('/projects/' + project + '/permissions', json={
+        '_id': uid,
+        'access': 'ro'
+    })
+    assert r.ok
+
+    # try to add job without rw
+    r = as_user.post('/jobs/add', json=job_data)
+    assert r.status_code == 403
+
+    # set as_user perms to rw
+    r = as_admin.put('/projects/' + project + '/permissions/' + uid, json={
+        'access': 'rw'
+    })
+    assert r.ok
+
+    # add job with rw
+    r = as_user.post('/jobs/add', json=job_data)
+    assert r.ok
+    job_rw_id = r.json()['_id']
+
+    # get next job as admin
+    r = as_admin.get('/jobs/next', params={'tags': 'test-tag'})
+    assert r.ok
+    job_rw_id = r.json()['id']

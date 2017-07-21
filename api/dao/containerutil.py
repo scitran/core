@@ -1,7 +1,9 @@
 import bson.objectid
 
+from . import APIPermissionException
 from .. import config
-from ..auth import INTEGER_PERMISSIONS
+from ..auth import has_access
+
 
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
 SINGULAR_TO_PLURAL = {
@@ -14,8 +16,6 @@ SINGULAR_TO_PLURAL = {
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
 
-def get_perm(name):
-    return INTEGER_PERMISSIONS[name]
 
 def add_id_to_subject(subject, pid):
     """
@@ -167,11 +167,11 @@ class ContainerReference(object):
         return '/{}/{}/files/{}'.format(collection, self.id, filename)
 
     def check_access(self, uid, perm_name):
-        perm = get_perm(perm_name)
-        for p in self.get()['permissions']:
-            if p['_id'] == uid and get_perm(p['access']) > perm:
-                return
-        raise Exception('User {} does not have {} access to {} {}'.format(uid, perm_name, self.type, self.id))
+        cont = self.get()
+        if has_access(uid, cont, perm_name):
+            return
+        else:
+            raise APIPermissionException('User {} does not have {} access to {} {}'.format(uid, perm_name, self.type, self.id))
 
 
 class FileReference(ContainerReference):
