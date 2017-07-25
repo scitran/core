@@ -195,6 +195,8 @@ class ContainerStorage(object):
         results = list(self.dbc.find(query, projection))
         for cont in results:
             cont = self._from_mongo(cont)
+            if fill_defaults:
+                cont =  self._fill_default_values(cont)
             if replace_info_with_bool:
                 for f in cont.get('files', []):
                     f['info_exists'] = bool(f.pop('info', False))
