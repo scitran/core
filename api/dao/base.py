@@ -87,7 +87,7 @@ class ContainerStorage(object):
             raise APINotFoundException('Children cannot be listed from the {0} level'.format(self.cont_name))
         query = {self.cont_name[:-1]: bson.ObjectId(_id)}
         if not projection:
-            projection = {'metadata': 0, 'files.metadata': 0, 'subject': 0}
+            projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
 
     def _from_mongo(self, cont):
@@ -184,9 +184,18 @@ class ContainerStorage(object):
                 query['permissions'] = {'$elemMatch': user}
         log.debug(query)
         log.debug(projection)
+
+        # if projection includes files.info, add new key `info_exists`
+        if projection and 'files.info' in projection:
+            replace_info_with_bool = True
+            projection.pop('files.info')
+        else:
+            replace_info_with_bool = False
+
         results = list(self.dbc.find(query, projection))
         for cont in results:
             cont = self._from_mongo(cont)
-            if fill_defaults:
-                cont =  self._fill_default_values(cont)
+            if replace_info_with_bool:
+                for f in cont.get('files', []):
+                    f['info_exists'] = bool(f.pop('info', False))
         return results
