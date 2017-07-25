@@ -62,7 +62,8 @@
               "hash":{"$ref":"#/definitions/hash"},
               "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
               "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
-              "size":{"$ref":"#/definitions/size"}
+              "size":{"$ref":"#/definitions/size"},
+              "info_exists": {"type": "boolean"}
             },
             "additionalProperties": false,
             "required":["modified", "size"]
