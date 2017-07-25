@@ -78,3 +78,10 @@ def test_devicehandler(as_user, as_root, as_drone, api_db):
 
     # clean up
     api_db.devices.remove({'_id': 'test_drone'})
+
+
+def test_config_version(as_user):
+    # get database schema version
+    r = as_user.get('/version')
+    assert r.ok
+    assert r.text == '' # not set yet

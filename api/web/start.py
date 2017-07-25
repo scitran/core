@@ -8,7 +8,7 @@ import webapp2
 # Enable code coverage for testing when API is started
 # Start coverage before local module loading so their def and imports are counted
 #   http://coverage.readthedocs.io/en/coverage-4.2/faq.html
-if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true":
+if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true": # pragma: no cover - oh, the irony
     def save_coverage(cov):
         print("Saving coverage")
         cov.stop()

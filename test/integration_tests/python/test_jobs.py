@@ -1,5 +1,7 @@
 import copy
 
+import bson
+
 
 def test_jobs_access(as_user):
     r = as_user.get('/jobs/next')
@@ -18,7 +20,7 @@ def test_jobs_access(as_user):
     assert r.status_code == 403
 
 
-def test_jobs(data_builder, as_user, as_admin, as_root):
+def test_jobs(data_builder, as_user, as_admin, as_root, api_db):
     gear = data_builder.create_gear()
     invalid_gear = data_builder.create_gear(gear={'custom': {'flywheel': {'invalid': True}}})
     project = data_builder.create_project()
@@ -72,6 +74,16 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     r = as_root.post('/jobs/000000000000000000000000/logs', json=job_logs)
     assert r.status_code == 404
 
+    # get job log as text w/o logs
+    r = as_admin.get('/jobs/' + job1_id + '/logs/text')
+    assert r.ok
+    assert r.text == '<span class="fd--1">No logs were found for this job.</span>'
+
+    # get job log as html w/o logs
+    r = as_admin.get('/jobs/' + job1_id + '/logs/html')
+    assert r.ok
+    assert r.text == '<span class="fd--1">No logs were found for this job.</span>'
+
     # add job log
     r = as_root.post('/jobs/' + job1_id + '/logs', json=job_logs)
     assert r.ok
@@ -85,17 +97,31 @@ def test_jobs(data_builder, as_user, as_admin, as_root):
     assert r.ok
     assert len(r.json()['logs']) == 2
 
+    # add same logs again (for testing text/html logs)
+    r = as_root.post('/jobs/' + job1_id + '/logs', json=job_logs)
+    assert r.ok
+
+    # get job log as text
+    r = as_admin.get('/jobs/' + job1_id + '/logs/text')
+    assert r.ok
+    assert r.text == 2 * ''.join(log['msg'] for log in job_logs)
+
+    # get job log as html
+    r = as_admin.get('/jobs/' + job1_id + '/logs/html')
+    assert r.ok
+    assert r.text == 2 * ''.join('<span class="fd-{fd}">{msg}</span>\n'.format(**log) for log in job_logs)
+
     # get job config
     r = as_root.get('/jobs/' + job1_id + '/config.json')
     assert r.ok
 
-    # try to update job (user may only cancel)
-    # root = true for as_admin, until thats fixed, using user
-    r = as_user.put('/jobs/' + job1_id, json={'test': 'invalid'})
-    assert r.status_code == 403
-
     # try to cancel job w/o permission (different user)
     r = as_user.put('/jobs/' + job1_id, json={'state': 'cancelled'})
+    assert r.status_code == 403
+
+    # try to update job (user may only cancel)
+    api_db.jobs.update_one({'_id': bson.ObjectId(job1_id)}, {'$set': {'origin.id': 'user@user.com'}})
+    r = as_user.put('/jobs/' + job1_id, json={'test': 'invalid'})
     assert r.status_code == 403
 
     # add job with implicit destination

@@ -30,11 +30,11 @@ class Node(object):
 
     @staticmethod
     def get_children(parent):
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
     @staticmethod
     def filter(children, criterion):
-        raise NotImplementedError()
+        raise NotImplementedError() # pragma: no cover
 
 def _get_files(table, match):
     """
@@ -85,7 +85,7 @@ class AcquisitionNode(Node):
         for x in children:
             if x['node_type'] == "file" and x.get('name') == criterion:
                 return x, FileNode
-        raise Exception('No ' + criterion + ' acquisition or file found.')
+        raise Exception('No ' + criterion + ' file found.')
 
 class SessionNode(Node):
 

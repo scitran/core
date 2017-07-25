@@ -74,7 +74,7 @@ class GearHandler(base.RequestHandler):
         return suggest_container(gear, cont_name+'s', cid)
 
     # Temporary Function
-    def upload(self):
+    def upload(self): # pragma: no cover
         """Upload new gear tarball file"""
         if not self.user_is_admin:
             self.abort(403, 'Request requires admin')
@@ -88,7 +88,7 @@ class GearHandler(base.RequestHandler):
         return {'_id': str(gear_id)}
 
     # Temporary Function
-    def download(self, **kwargs):
+    def download(self, **kwargs): # pragma: no cover
         """Download gear tarball file"""
         dl_id = kwargs.pop('cid')
         gear = get_gear(dl_id)
@@ -224,7 +224,7 @@ class RuleHandler(base.RequestHandler):
 
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
-    def get(self):
+    def get(self): # pragma: no cover (no route)
         """List all jobs."""
         if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires admin')
