@@ -8,6 +8,7 @@ container (eg. ListHandler)
 
 import os
 import zipfile
+import datetime
 from abc import ABCMeta, abstractproperty
 
 from .. import config
@@ -37,6 +38,12 @@ class RefererHandler(base.RequestHandler):
         input_validator = validators.from_schema_path(input_schema_uri)
         return input_validator
 
+    @property
+    def update_validator(self):
+        update_schema_uri = validators.schema_uri('input', self.update_payload_schema_file)
+        update_validator = validators.from_schema_path(update_schema_uri)
+        return update_validator
+
     def get_permchecker(self, parent_container):
         if self.superuser_request:
             return always_ok
@@ -50,6 +57,7 @@ class RefererHandler(base.RequestHandler):
 class AnalysesHandler(RefererHandler):
     storage = containerstorage.AnalysisStorage()
     payload_schema_file = 'analysis.json'
+    update_payload_schema_file = 'analysis-update.json'
 
 
     def post(self, cont_name, cid):
@@ -88,6 +96,27 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
+    @validators.verify_payload_exists
+    def put(self, cont_name, **kwargs):
+        cid = kwargs.pop('cid')
+        _id = kwargs.pop('_id')
+
+        parent = self.storage.get_parent(cont_name, cid)
+        permchecker = self.get_permchecker(parent)
+        permchecker(noop)('PUT')
+
+
+        payload = self.request.json_body
+        self.update_validator(payload, 'PUT')
+
+        payload['modified'] = datetime.datetime.utcnow()
+
+        result = self.storage.update_el(_id, payload)
+
+        if result.modified_count == 1:
+            return {'modified': result.modified_count}
+        else:
+            self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
 
     def get(self, cont_name, cid, _id):
         parent = self.storage.get_parent(cont_name, cid)

@@ -495,3 +495,35 @@ def test_subject_no_name_hashes(data_builder, as_admin):
         }
     })
     assert r.status_code == 400
+
+def test_analysis_put(data_builder, as_admin):
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    gear = data_builder.create_gear()
+    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
+        'analysis': {'label': 'with-job'},
+        'job': {
+            'gear_id': gear,
+            'inputs': {
+                'csv': {'type': 'project', 'id': project, 'name': 'job_1.csv'}
+            }
+        }
+    })
+
+    assert r.ok
+    analysis = r.json()['_id']
+    r = as_admin.put('/sessions/'+session + '/analyses/' + analysis, json={'label': 'ayo'})
+    assert r.ok
+    r = as_admin.get('/sessions/'+session + '/analyses/' + analysis)
+    assert r.ok
+    assert r.json()['label'] == 'ayo'
+
+    r = as_admin.put('/sessions/'+session + '/analyses/' + analysis, json={'input': 'ayo'})
+    assert r.status_code == 400
+
+    r = as_admin.put('/sessions/'+session + '/analyses/' + analysis, json={})
+    assert r.status_code == 400
+
+    r = as_admin.put('/sessions/'+session + '/analyses/' + analysis)
+    assert r.status_code == 400
+

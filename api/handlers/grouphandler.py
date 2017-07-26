@@ -46,12 +46,11 @@ class GroupHandler(base.RequestHandler):
             results = ContainerHandler.join_user_info(results)
         return results
 
+    @validators.verify_payload_exists
     def put(self, _id):
         group = self._get_group(_id)
         permchecker = groupauth.default(self, group)
         payload = self.request.json_body
-        if not payload:
-            self.abort(400, 'PUT request body cannot be empty')
         mongo_schema_uri = validators.schema_uri('mongo', 'group.json')
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
         payload_schema_uri = validators.schema_uri('input', 'group-update.json')

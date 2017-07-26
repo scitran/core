@@ -5,6 +5,7 @@ from .. import config
 from ..auth import containerauth, always_ok
 from ..dao import containerstorage, containerutil
 from ..dao import APIStorageException
+from ..validators import verify_payload_exists
 
 from .containerhandler import ContainerHandler
 
@@ -51,6 +52,7 @@ class CollectionsHandler(ContainerHandler):
         else:
             self.abort(404, 'Element not added in collection {}'.format(self.uid))
 
+    @verify_payload_exists
     def put(self, **kwargs):
         _id = kwargs.pop('cid')
         container = self._get_container(_id)
