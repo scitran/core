@@ -10,6 +10,7 @@ def test_groups(as_user, as_admin, data_builder):
     # Able to find new group
     r = as_admin.get('/groups/' + group)
     assert r.ok
+    assert r.json()['label'] != None
     first_modified = r.json()['modified']
 
     # Test to make sure that list of roles nor name exists in a newly created group

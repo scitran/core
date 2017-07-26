@@ -3,6 +3,10 @@ from ..web.errors import APIPermissionException
 
 PERMISSIONS = [
     {
+        'rid': 'no-phi-ro',
+        'name': 'Read-Only (No PHI)'
+    },
+    {
         'rid': 'ro',
         'name': 'Read-Only',
     },
