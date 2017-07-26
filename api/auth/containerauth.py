@@ -122,7 +122,8 @@ def default_referer(handler, parent_container=None):
                 result = exec_op(method, _id=_id, payload=payload)
                  
                 if method == 'GET' and exec_op is not noop:
-                    if not handler.phi_get_access(handler.uid, parent_container) > INTEGER_PERMISSIONS['no-phi-ro']:
+                    handler.phi = _get_access(handler.uid, parent_container) > INTEGER_PERMISSIONS['no-phi-ro']
+                    if not handler.phi:
                         if handler.is_true('phi'):
                             handler.abort(403, "User not authorized to view PHI fields.")
                         result = phi_scrub(result)
