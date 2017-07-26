@@ -320,7 +320,10 @@ def _group_id_fuzzy_match(group_id, project_label):
     if len(group_id_matches) == 1:
         group_id = group_id_matches[0]
     else:
-        project_label = group_id + '_' + project_label
+        if project_label == '':
+            project_label = 'Unknown'
+        else:
+            project_label = group_id + '_' + project_label
         group_id = 'unknown'
     return group_id, project_label
 
