@@ -1,10 +1,13 @@
 """
 Purpose of this module is to define all the permissions checker decorators for the ContainerHandler classes.
 """
-
+from copy import deepcopy
 from . import _get_access, INTEGER_PERMISSIONS
 from ..dao import noop
 
+PHI_FIELDS = {'info': '***', 'subject': {'firstname': "***", 'lastname': "***", 'sex': "***",
+                    'age': "***", 'race': "***", 'ethnicity': "***", 'info': "***"}, 'tags': "***"}
+SCRUB = "***"
 
 def default_container(handler, container=None, target_parent_container=None):
     """
@@ -87,7 +90,15 @@ def collection_permissions(handler, container=None, _=None):
                 has_access = False
 
             if has_access:
-                return exec_op(method, _id=_id, payload=payload)
+                result = exec_op(method, _id=_id, payload=payload)
+                 
+                if method == 'GET' and exec_op is not noop:
+                    handler.phi = _get_access(handler.uid, container) > INTEGER_PERMISSIONS['no-phi-ro']
+                    if not handler.phi:
+                        if handler.is_true('phi'):
+                            handler.abort(403, "User not authorized to view PHI fields.")
+                        result = phi_scrub(result)
+                return result
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the container'.format(method))
         return f
@@ -108,7 +119,14 @@ def default_referer(handler, parent_container=None):
                 has_access = False
 
             if has_access:
-                return exec_op(method, _id=_id, payload=payload)
+                result = exec_op(method, _id=_id, payload=payload)
+                 
+                if method == 'GET' and exec_op is not noop:
+                    if not handler.phi_get_access(handler.uid, parent_container) > INTEGER_PERMISSIONS['no-phi-ro']:
+                        if handler.is_true('phi'):
+                            handler.abort(403, "User not authorized to view PHI fields.")
+                        result = phi_scrub(result)
+                return result
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on parent container'.format(method))
         return f
@@ -136,6 +154,13 @@ def list_permission_checker(handler):
             query['permissions'] = {'$elemMatch': {'_id': handler.uid}}
             if handler.is_true('public'):
                 query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
+            if handler.is_true('phi'):
+                temp_query = deepcopy(query)
+                temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'access': 'no-phi-ro'}}
+                not_allowed = exec_op(method, query=temp_query, user=user, public=public, projection=projection)
+                if not_allowed:
+                    handler.abort(403, "User does not have PHI access to one or more elements")
+
             return exec_op(method, query=query, user=user, public=public, projection=projection)
         return f
     return g
@@ -147,3 +172,20 @@ def list_public_request(exec_op):
             query['public'] = True
         return exec_op(method, query=query, user=user, public=public, projection=projection)
     return f
+
+def phi_scrub(result):
+    for field in PHI_FIELDS:
+        if result.get(field) and isinstance(PHI_FIELDS[field], dict):
+            for deeper_field in PHI_FIELDS[field]:
+                if result.get(field):
+                    result[field][deeper_field] = SCRUB
+        elif result.get(field):
+            result[field] = SCRUB
+    result = file_info_scrub(result)
+    return result
+
+def file_info_scrub(result):
+    for file_index, file_ in enumerate(result['files']):
+        if file_.get('info'):
+            result['files'][file_index]['info'] = SCRUB
+    return result

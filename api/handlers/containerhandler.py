@@ -89,6 +89,7 @@ class ContainerHandler(base.RequestHandler):
         super(ContainerHandler, self).__init__(request, response)
         self.storage = None
         self.config = None
+        self.phi = False
 
     @log_access(AccessType.view_container)
     def get(self, cont_name, **kwargs):
@@ -116,6 +117,9 @@ class ContainerHandler(base.RequestHandler):
 
         inflate_job_info = cont_name == 'sessions'
         result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info)
+        if not self.phi:
+            for analysis_ in result['analyses']:
+                containerauth.file_info_scrub(analysis_)
         return self.handle_origin(result)
 
     def handle_origin(self, result):
@@ -318,6 +322,8 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('permissions'):
             if not projection:
                 projection = None
+        if self.is_true('phi'):
+            projection = None
 
         # select which permission filter will be applied to the list of results.
         if self.superuser_request:
@@ -361,6 +367,8 @@ class ContainerHandler(base.RequestHandler):
                 result = containerutil.get_stats(result, cont_name)
             result = self.handle_origin(result)
             modified_results.append(result)
+            if self.is_true('phi'):
+                self.log_user_access(AccessType.view_container, cont_name, result.get('_id'))
 
         if self.is_true('join_avatars'):
             modified_results = self.join_user_info(modified_results)
