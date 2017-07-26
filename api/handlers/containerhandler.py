@@ -430,7 +430,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not added in container {}'.format(self.storage.cont_name))
 
-    @validators.verify_payload_exists()
+    @validators.verify_payload_exists
     def put(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]

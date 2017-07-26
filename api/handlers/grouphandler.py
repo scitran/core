@@ -46,7 +46,7 @@ class GroupHandler(base.RequestHandler):
             results = ContainerHandler.join_user_info(results)
         return results
 
-    @validators.verify_payload_exists('groups')
+    @validators.verify_payload_exists
     def put(self, _id):
         group = self._get_group(_id)
         permchecker = groupauth.default(self, group)

@@ -96,7 +96,7 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
-    @validators.verify_payload_exists()
+    @validators.verify_payload_exists
     def put(self, cont_name, **kwargs):
         cid = kwargs.pop('cid')
         _id = kwargs.pop('_id')
@@ -110,7 +110,7 @@ class AnalysesHandler(RefererHandler):
         self.update_validator(payload, 'PUT')
 
         payload['modified'] = datetime.datetime.utcnow()
-        
+
         result = self.storage.update_el(_id, payload)
 
         if result.modified_count == 1:

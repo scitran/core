@@ -52,7 +52,7 @@ class CollectionsHandler(ContainerHandler):
         else:
             self.abort(404, 'Element not added in collection {}'.format(self.uid))
 
-    @verify_payload_exists('collections')
+    @verify_payload_exists
     def put(self, **kwargs):
         _id = kwargs.pop('cid')
         container = self._get_container(_id)

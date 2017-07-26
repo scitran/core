@@ -146,31 +146,18 @@ def _check_query_params(keys, query_params):
     is different from expected:
     {}
     """.format(query_params.keys(), keys)
-def verify_payload_exists(args=False):
-    def verify_payload_dec(handler_method):
-        if args in ['users', 'groups']:
-            def payload_checker(self, _id):
-                try:
-                    if not self.request.json_body:
-                        raise InputValidationException("Empty Payload")
-                except ValueError:
-                    raise InputValidationException("Empty Payload")
-                return handler_method(self, _id)
-        elif args in ['collections']:
-            def payload_checker(self, **kwargs):
-                try:
-                    if not self.request.json_body:
-                        raise InputValidationException("Empty Payload")
-                except ValueError:
-                    raise InputValidationException("Empty Payload")
-                return handler_method(self, **kwargs)
-        else:
-            def payload_checker(self, cont_name, **kwargs):
-                try:
-                    if not self.request.json_body:
-                        raise InputValidationException("Empty Payload")
-                except ValueError:
-                    raise InputValidationException("Empty Payload")
-                return handler_method(self, cont_name, **kwargs)
-        return payload_checker
+
+def verify_payload_exists(handler_method):
+    """
+    A decorator to ensure the json payload exists and is not empty
+
+    Useful for POST and PUT handler operations
+    """
+    def verify_payload_dec(self, *args, **kwargs):
+        try:
+            if not self.request.json_body:
+                raise InputValidationException("Empty Payload")
+        except ValueError:
+            raise InputValidationException("Empty Payload")
+        return handler_method(self, *args, **kwargs)
     return verify_payload_dec
