@@ -142,7 +142,8 @@ def propagate_changes(cont_name, _id, query, update, oper=None):
     # Apply change to projects
     if cont_name == 'groups' and oper:
         if oper == 'POST':
-            config.db.projects.update_many({'group': _id}, {'$addToSet': {'permissions': update}})
+            config.db.projects.update_many({'group': _id, 'permissions._id' : update['_id']}, {'$set': {'permissions.$.access': update['access']}})
+            config.db.projects.update_many({'group': _id, 'permissions._id' : {'$ne': update['_id']}}, {'$addToSet': {'permissions': update}})
         elif oper == 'PUT':
             config.db.projects.update_many({'group': _id, 'permissions._id' : update['_id']}, {'$set': {'permissions.$.access': update['access']}})
         elif oper == 'DELETE':
