@@ -10,3 +10,4 @@ bootstrap.json
 coverage.xml
 /htmlcov
 node_modules/
+/bin/accesslog.csv

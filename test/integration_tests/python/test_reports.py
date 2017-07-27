@@ -116,6 +116,12 @@ def test_access_log_report(data_builder, with_user, as_user, as_admin):
     r = as_admin.get('/report/accesslog', params={'limit': 0})
     assert r.status_code == 400
 
+    # try to get report w/ limit == 1000 and limit > 1000
+    r = as_admin.get('/report/accesslog', params={'limit': 10000})
+    assert r.ok
+    r = as_admin.get('/report/accesslog', params={'limit': 10001})
+    assert r.status_code == 400
+
     # get access log report for user
     r = as_admin.get('/report/accesslog', params={
         'start_date': yesterday_ts, 'end_date': tomorrow_ts, 'user': with_user.user

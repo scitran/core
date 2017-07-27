@@ -522,6 +522,8 @@ class AccessLogReport(Report):
             raise APIReportParamsException('Limit must be an integer greater than 0.')
         if limit < 1:
             raise APIReportParamsException('Limit must be an integer greater than 0.')
+        elif limit > 10000:
+            raise APIReportParamsException('Limit exceeds 10,000 entries, please contact admin to run script.')
         for access_type in access_types:
             if access_type not in AccessTypeList:
                 raise APIReportParamsException('Not a valid access type')
