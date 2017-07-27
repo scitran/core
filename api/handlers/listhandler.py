@@ -211,7 +211,7 @@ class PermissionsListHandler(ListHandler):
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
 
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
-            self._propagate_group_permission(_id, self.request.json_body, oper='POST')
+            self._propagate_permissions(cont_name, _id, update=self.request.json_body, oper='POST')
         else:
             self._propagate_permissions(cont_name, _id)
         return result
@@ -223,7 +223,7 @@ class PermissionsListHandler(ListHandler):
         payload = self.request.json_body
         payload['_id'] = kwargs.get('_id')
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
-            self._propagate_group_permission(_id, payload, oper='PUT')
+            self._propagate_permissions(cont_name, _id, update=payload, oper='PUT')
         else:
             self._propagate_permissions(cont_name, _id)
         return result
@@ -233,17 +233,22 @@ class PermissionsListHandler(ListHandler):
         result = super(PermissionsListHandler, self).delete(cont_name, list_name, **kwargs)
 
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
-            self._propagate_group_permission(_id, kwargs.get('_id'), oper='DELETE')
+            self._propagate_permissions(cont_name, _id, update=kwargs.get('_id'), oper='DELETE')
         else:
             self._propagate_permissions(cont_name, _id)
         return result
 
-    def _propagate_permissions(self, cont_name, _id):
+    def _propagate_permissions(self, cont_name, _id, update=None, oper=None):
         """
         method to propagate permissions from a container/group to its sessions and acquisitions
         """
-
-        if cont_name == 'projects':
+        if cont_name == 'groups':
+            if oper:
+                try:
+                    hierarchy.propagate_changes(cont_name, _id, {}, update, oper=oper)
+                except APIStorageException as e:
+                    self.abort(400, e.message)
+        elif cont_name == 'projects':
             try:
                 oid = bson.ObjectId(_id)
                 update = {'$set': {
@@ -252,15 +257,6 @@ class PermissionsListHandler(ListHandler):
                 hierarchy.propagate_changes(cont_name, oid, {}, update)
             except APIStorageException:
                 self.abort(500, 'permissions not propagated from {} {} down hierarchy'.format(cont_name, _id))
-
-    def _propagate_group_permission(self, _id, update, oper=None): 
-        """
-        method to propagate an isolated change to a groups permissions list to its projects
-        """
-        try:
-            hierarchy.propagate_group_change(_id, update, oper)
-        except APIStorageException as e:
-            self.abort(400, e.message)
 
 
 class NotesListHandler(ListHandler):

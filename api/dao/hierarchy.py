@@ -131,33 +131,34 @@ def get_parent_tree(cont_name, _id):
 
     return tree
 
-def propagate_group_change(_id, update, oper):
-    # Apply change to projects
-    if oper == 'POST':
-        config.db.projects.update_many({'group': _id}, {'$addToSet': {'permissions': update}})
-    elif oper == 'PUT':
-        config.db.projects.update_many({'group': _id, 'permissions._id' : update['_id']}, {'$set': {'permissions.$.access': update['access']}})
-    elif oper == 'DELETE':
-        config.db.projects.update_many({'group': _id, 'permissions._id' : update}, {'$pull' : {'permissions': {'_id': update}}})
-    else:
-        raise APIStorageException("Cannot propagate {} operation".format(oper))
 
-    # Apply change to sessions and acquisitions
-    projects = config.db.projects.find({'group':_id})
-    for project in projects:
-        propagate_changes('projects', project['_id'], {}, {'$set': {
-                    'permissions': project['permissions']
-                }})
-
-
-def propagate_changes(cont_name, _id, query, update):
+def propagate_changes(cont_name, _id, query, update, oper=None):
     """
     Propagates changes down the heirarchy tree.
 
     cont_name and _id refer to top level container (which will not be modified here)
     """
 
-    if cont_name == 'groups':
+    # Apply change to projects
+    if cont_name == 'groups' and oper:
+        if oper == 'POST':
+            config.db.projects.update_many({'group': _id}, {'$addToSet': {'permissions': update}})
+        elif oper == 'PUT':
+            config.db.projects.update_many({'group': _id, 'permissions._id' : update['_id']}, {'$set': {'permissions.$.access': update['access']}})
+        elif oper == 'DELETE':
+            config.db.projects.update_many({'group': _id, 'permissions._id' : update}, {'$pull' : {'permissions': {'_id': update}}})
+        else:
+            raise APIStorageException("Cannot propagate {} operation".format(oper))
+
+        # Apply change to sessions and acquisitions
+        projects = config.db.projects.find({'group':_id})
+        for project in projects:
+            propagate_changes('projects', project['_id'], {}, {'$set': {
+                        'permissions': project['permissions']
+                    }})
+
+
+    elif cont_name == 'groups':
         project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
         session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
 
