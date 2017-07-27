@@ -90,6 +90,143 @@ def test_reaper_upload(data_builder, randstr, upload_file_form, as_admin):
     data_builder.delete_group(group_1, recursive=True)
     data_builder.delete_group(group_2, recursive=True)
 
+def test_reaper_upload_unknown_group_project(data_builder, file_form, as_root, as_admin):
+    """
+    If the label endpoint receives an upload with a blank group and project, set to
+    group: unknown and create or find "Unknown" project
+    """
+
+
+    # Upload without group id or project label
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': ''},
+            'project': {
+                'label': '',
+            },
+            'session': {
+                'label': 'test_session_label',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+
+    # get session created by the upload
+    r = as_root.get('/groups/unknown/projects')
+    assert r.ok
+    project_list = r.json()
+    assert len(project_list) == 1
+    project = project_list[0]
+    assert 'Unknown' == project_list[0]['label']
+    unknown_project = project['_id']
+
+    assert len(as_root.get('/projects/' + unknown_project + '/sessions').json()) == 1
+    session = as_root.get('/projects/' + unknown_project + '/sessions').json()[0]['_id']
+    assert len(as_root.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    # do another upload without group id or project label
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': ''},
+            'project': {
+                'label': '',
+            },
+            'session': {
+                'label': 'test_session_label_2',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label_2',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+    # Test that another session was added to Unkonwn project
+    assert len(as_root.get('/projects/' + unknown_project + '/sessions').json()) == 2
+    session2 = as_root.get('/projects/' + unknown_project + '/sessions').json()[1]['_id']
+    assert len(as_root.get('/sessions/' + session2 + '/acquisitions').json()) == 1
+
+    # Upload with a nonexistent group id and a project label
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': 'not_a_real_group'},
+            'project': {
+                'label': 'new_project',
+            },
+            'session': {
+                'label': 'test_session_label',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+
+    # get session created by the upload
+    r = as_root.get('/groups/unknown/projects')
+    assert r.ok
+    project_list = r.json()
+    assert len(project_list) == 2
+    project = project_list[1]
+    assert 'not_a_real_group_new_project' == project['label']
+    named_unknown_project = project['_id']
+
+    assert len(as_root.get('/projects/' + named_unknown_project + '/sessions').json()) == 1
+    session = as_root.get('/projects/' + named_unknown_project + '/sessions').json()[0]['_id']
+    assert len(as_root.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    group1 = data_builder.create_group()
+
+    # Upload with an existing group id and no project label
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': group1},
+            'project': {
+                'label': '',
+            },
+            'session': {
+                'label': 'test_session_label',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+
+    # get session created by the upload
+    r = as_root.get('/groups/' + group1 + '/projects')
+    assert r.ok
+    project_list = r.json()
+    assert len(project_list) == 1
+    project = project_list[0]
+    assert 'Unknown' == project['label']
+    project1 = project['_id']
+
+    assert len(as_root.get('/projects/' + project1 + '/sessions').json()) == 1
+    session = as_root.get('/projects/' + project1 + '/sessions').json()[0]['_id']
+    assert len(as_root.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    # clean up
+    data_builder.delete_group(group1, recursive=True)
+    data_builder.delete_project(unknown_project, recursive=True)
+    data_builder.delete_project(named_unknown_project, recursive=True)
+
 
 def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
     group = data_builder.create_group()
