@@ -320,9 +320,7 @@ def _group_id_fuzzy_match(group_id, project_label):
     if len(group_id_matches) == 1:
         group_id = group_id_matches[0]
     else:
-        if project_label == '':
-            project_label = 'Unknown'
-        else:
+        if group_id != '' or project_label != '':
             project_label = group_id + '_' + project_label
         group_id = 'unknown'
     return group_id, project_label
@@ -330,6 +328,9 @@ def _group_id_fuzzy_match(group_id, project_label):
 def _find_or_create_destination_project(group_id, project_label, timestamp, user):
     group_id, project_label = _group_id_fuzzy_match(group_id, project_label)
     group = config.db.groups.find_one({'_id': group_id})
+
+    if project_label == '':
+        project_label = 'Unknown'
 
     project = config.db.projects.find_one({'group': group['_id'], 'label': {'$regex': re.escape(project_label), '$options': 'i'}})
 
