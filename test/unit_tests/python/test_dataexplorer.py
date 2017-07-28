@@ -154,16 +154,9 @@ def test_search(as_public, as_drone, es):
                         {'should':
                             [
                                 {'bool':
-                                    {'must':
+                                    {'must_not':
                                         [
-                                            {'bool':
-                                                {'must_not':
-                                                    [
-                                                        {"exists": {"field":filter_key}}
-                                                    ]
-                                                }
-                                            },
-                                            {'exists': {'field': filter_key.split('.')[0]}}
+                                            {"exists": {"field":filter_key}}
                                         ]
                                     }
                                 },
@@ -342,7 +335,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     es.search.return_value = {'aggregations': {'results': result}}
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     es.search.assert_called_with(
-        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}},
+        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
               'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match_all': {}}}},
               'size': 0},
         doc_type='flywheel',
@@ -353,7 +346,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     # get typeahead w/ search string for string|boolean field type
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
     es.search.assert_called_with(
-        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}},
+        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
               'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match': {'field': search_str}}}},
               'size': 0},
         doc_type='flywheel',
