@@ -306,7 +306,10 @@ class DataExplorerHandler(base.RequestHandler):
             if f.get('terms'):
                 for k,v in f['terms'].iteritems():
                     if "null" in v:
-                        v.remove("null")
+                        try:
+                            v.remove("null")
+                        except AttributeError:
+                            v = None
                         null_filter = {
                             'bool': {
                                 'should': [
@@ -315,9 +318,11 @@ class DataExplorerHandler(base.RequestHandler):
                                             'must': [
                                                 {
                                                     'bool': {
-                                                        'must_not': {
-                                                            'exists': {'field': k}
-                                                        }
+                                                        'must_not': [
+                                                            {
+                                                                'exists': {'field': k}
+                                                            }
+                                                        ]
                                                     }
                                                 },
                                                 {"exists":{"field":k.split('.')[0]}}

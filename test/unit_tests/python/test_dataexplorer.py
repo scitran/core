@@ -140,6 +140,46 @@ def test_search(as_public, as_drone, es):
     assert r.ok
     assert r.json['results'] == results
 
+    # file search w/ search null filter
+    r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'filters': [
+        {'terms': {filter_key: [filter_value, "null"]}},
+    ]})
+    es.search.assert_called_with(
+        body={
+            '_source': deh.SOURCE[cont_type],
+            'query': {'bool': {
+                'filter': {'bool': {'must': [
+                    {'term': {'container_type': cont_type}},
+                    {'bool': 
+                        {'should':
+                            [
+                                {'bool':
+                                    {'must':
+                                        [
+                                            {'bool':
+                                                {'must_not':
+                                                    [
+                                                        {"exists": {"field":filter_key}}
+                                                    ]
+                                                }
+                                            },
+                                            {'exists': {'field': filter_key.split('.')[0]}}
+                                        ]
+                                    }
+                                },
+                                {'terms': {filter_key + '.raw': [filter_value]}}
+                            ]
+                        }
+                    }
+                ]}}
+            }},
+            'size': 100},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json['results'] == results
+
+
 
 def test_get_facets(as_public, as_drone, es):
     # try to get facets w/o login
