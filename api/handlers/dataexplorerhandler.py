@@ -305,7 +305,34 @@ class DataExplorerHandler(base.RequestHandler):
         for f in filters:
             if f.get('terms'):
                 for k,v in f['terms'].iteritems():
-                    modified_filters.append({'terms': {k+'.raw': v}})
+                    if "null" in v:
+                        v.remove("null")
+                        null_filter = {
+                            'bool': {
+                                'should': [
+                                    {
+                                        'bool': {
+                                            'must': [
+                                                {
+                                                    'bool': {
+                                                        'must_not': {
+                                                            'exists': {'field': k}
+                                                        }
+                                                    }
+                                                },
+                                                {"exists":{"field":k.split('.')[0]}}
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                        if v:
+                            null_filter['bool']['should'].append({'terms': {k+'.raw': v}})
+                        modified_filters.append(null_filter)
+
+                    else:
+                        modified_filters.append({'terms': {k+'.raw': v}})
             else:
                 modified_filters.append(f)
 
