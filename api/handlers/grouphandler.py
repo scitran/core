@@ -40,7 +40,7 @@ class GroupHandler(base.RequestHandler):
         """
         If parameter join=projects, return project id, label, permissions, and description
         """
-        result['projects'] = self.storage.get_children(result.get('_id'), projection={'permissions': 1, 'label': 1, 'description': 1}, uid=self.uid)
+        result['projects'] = self.storage.get_children(result.get('_id'), projection={'permissions': 1, 'label': 1, 'description': 1, 'group': 1}, uid=self.uid)
         self._filter_permissions(result['projects'], self.uid)
         return result
 
