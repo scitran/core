@@ -154,9 +154,15 @@ def test_search(as_public, as_drone, es):
                         {'should':
                             [
                                 {'bool':
-                                    {'must_not':
-                                        [
-                                            {"exists": {"field":filter_key}}
+                                    {
+                                        'must': [
+                                            {
+                                                'bool': {
+                                                    'must_not': [
+                                                        {"exists": {"field":filter_key}}
+                                                    ]
+                                                }
+                                            }
                                         ]
                                     }
                                 },

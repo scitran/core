@@ -320,9 +320,15 @@ class DataExplorerHandler(base.RequestHandler):
                                 'should': [
                                     {
                                         'bool': {
-                                            'must_not': [
+                                            'must': [
                                                 {
-                                                    'exists': {'field': k}
+                                                    'bool':{
+                                                        'must_not': [
+                                                            {
+                                                                'exists': {'field': k}
+                                                            }
+                                                        ]
+                                                    }
                                                 }
                                             ]
                                         }
@@ -330,6 +336,8 @@ class DataExplorerHandler(base.RequestHandler):
                                 ]
                             }
                         }
+                        if len(k.split('.')) > 1:
+                            null_filter['bool']['should'][0]['bool']['must'].append({'exists': {'field': k.split('.')[0]}})
                         if v:
                             null_filter['bool']['should'].append({'terms': {k+'.raw': v}})
                         modified_filters.append(null_filter)
