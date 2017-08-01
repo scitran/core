@@ -470,6 +470,37 @@ class DataExplorerHandler(base.RequestHandler):
         aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
 
+    def get_nodes(self):
+
+        return_type, filters, search_string = self._parse_request()
+        query = {
+            "size": 0,
+            "query": {
+                "bool": {
+                  "must": {
+                    "match": {
+                      "_all": search_string
+                    }
+                  },
+                  "filter": {
+                    "bool" : {
+                      "must" : filters
+                    }
+                  }
+                }
+            }
+        }
+
+        query['aggs'] = {
+            "by_container": {
+                "terms": {
+                    "field": return_type+"._id",
+                    "size": size
+                }
+            }
+        }
+
+
     @require_login
     def search_fields(self):
         field_query = self.request.json_body.get('field')
