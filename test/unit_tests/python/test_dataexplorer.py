@@ -140,6 +140,45 @@ def test_search(as_public, as_drone, es):
     assert r.ok
     assert r.json['results'] == results
 
+    # file search w/ search null filter
+    r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'filters': [
+        {'terms': {filter_key: [filter_value, "null"]}},
+    ]})
+    es.search.assert_called_with(
+        body={
+            '_source': deh.SOURCE[cont_type],
+            'query': {'bool': {
+                'filter': {'bool': {'must': [
+                    {'term': {'container_type': cont_type}},
+                    {'bool': 
+                        {'should':
+                            [
+                                {'bool':
+                                    {
+                                        'must': [
+                                            {
+                                                'bool': {
+                                                    'must_not': [
+                                                        {"exists": {"field":filter_key}}
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {'terms': {filter_key + '.raw': [filter_value]}}
+                            ]
+                        }
+                    }
+                ]}}
+            }},
+            'size': 100},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json['results'] == results
+
+
 
 def test_get_facets(as_public, as_drone, es):
     # try to get facets w/o login
@@ -302,7 +341,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     es.search.return_value = {'aggregations': {'results': result}}
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     es.search.assert_called_with(
-        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}},
+        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
               'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match_all': {}}}},
               'size': 0},
         doc_type='flywheel',
@@ -313,7 +352,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     # get typeahead w/ search string for string|boolean field type
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
     es.search.assert_called_with(
-        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15}}},
+        body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
               'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match': {'field': search_str}}}},
               'size': 0},
         doc_type='flywheel',

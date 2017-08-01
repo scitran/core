@@ -156,19 +156,22 @@ FACET_QUERY = {
                 "subject.sex" : {
                     "terms" : {
                         "field" : "subject.sex.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "null"
                     }
                 },
                 "session.tags" : {
                     "terms" : {
                         "field" : "subject.tags.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "null"
                     }
                 },
                 "subject.code" : {
                     "terms" : {
                         "field" : "subject.code.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "null"
                     }
                 },
                 "session.timestamp" : {
@@ -213,13 +216,15 @@ FACET_QUERY = {
                 "file.measurements" : {
                     "terms" : {
                         "field" : "file.measurements.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "null"
                     }
                 },
                 "file.type" : {
                     "terms" : {
                         "field" : "file.type.raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "null"
                     }
                 }
             }
@@ -305,7 +310,40 @@ class DataExplorerHandler(base.RequestHandler):
         for f in filters:
             if f.get('terms'):
                 for k,v in f['terms'].iteritems():
-                    modified_filters.append({'terms': {k+'.raw': v}})
+                    if "null" in v:
+                        if isinstance(v, list):
+                            v.remove("null")
+                        elif isinstance(v, str):
+                            v = None
+                        null_filter = {
+                            'bool': {
+                                'should': [
+                                    {
+                                        'bool': {
+                                            'must': [
+                                                {
+                                                    'bool':{
+                                                        'must_not': [
+                                                            {
+                                                                'exists': {'field': k}
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                        if len(k.split('.')) > 1:
+                            null_filter['bool']['should'][0]['bool']['must'].append({'exists': {'field': k.split('.')[0]}})
+                        if v:
+                            null_filter['bool']['should'].append({'terms': {k+'.raw': v}})
+                        modified_filters.append(null_filter)
+
+                    else:
+                        modified_filters.append({'terms': {k+'.raw': v}})
             else:
                 modified_filters.append(f)
 
@@ -364,7 +402,8 @@ class DataExplorerHandler(base.RequestHandler):
                 "results" : {
                     "terms" : {
                         "field" : field_name + ".raw",
-                        "size" : 15
+                        "size" : 15,
+                        "missing": "null"
                     }
                 }
             }
