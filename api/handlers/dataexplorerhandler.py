@@ -438,8 +438,6 @@ class DataExplorerHandler(base.RequestHandler):
         # if the query comes back with a return_type agg, remove it
         facets_q['query'].pop('aggs', None)
 
-        config.log.debug(facets_q)
-
         aggs = config.es.search(
             index='data_explorer',
             doc_type='flywheel',
@@ -582,7 +580,6 @@ class DataExplorerHandler(base.RequestHandler):
     ## RUNNING QUERIES AND PROCESSING RESULTS ##
 
     def _run_query(self, es_query, result_type):
-        config.log.debug(es_query)
         results = config.es.search(
             index='data_explorer',
             doc_type='flywheel',
