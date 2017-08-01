@@ -46,7 +46,7 @@ post:
     post:
       description: |
         Creates jobs from proposed inputs, returns jobs enqueued.
-        Moves 'pending' batch job to 'launched'.
+        Moves 'pending' batch job to 'running'.
       responses:
         200:
           body:
@@ -58,7 +58,7 @@ post:
     post:
       description: |
         Cancels jobs that are still pending, returns number of jobs cancelled.
-        Moves a 'launched' batch job to 'cancelled'.
+        Moves a 'running' batch job to 'cancelled'.
       responses:
         200:
           body:

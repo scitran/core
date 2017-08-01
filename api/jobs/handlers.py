@@ -21,6 +21,7 @@ from ..validators import validate_data
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job, Logs
+from .batch import check_state, update
 from .queue import Queue
 
 
@@ -361,6 +362,14 @@ class JobHandler(base.RequestHandler):
 
         Queue.mutate(j, mutation)
 
+        # If the job failed or succeeded, check state of the batch
+        if 'state' in mutation and mutation['state'] in ['complete', 'failed'] and j.batch:
+            batch_id = j.batch
+            new_state = check_state(batch_id)
+            if new_state:
+                update(batch_id, {'state': new_state})
+
+
     def _log_read_check(self, _id):
         try:
             job = Job.get(_id)
@@ -560,7 +569,7 @@ class BatchHandler(base.RequestHandler):
     def run(self, _id):
         """
         Creates jobs from proposed inputs, returns jobs enqueued.
-        Moves 'pending' batch job to 'launched'.
+        Moves 'pending' batch job to 'running'.
         """
 
         batch_job = batch.get(_id)
@@ -573,12 +582,12 @@ class BatchHandler(base.RequestHandler):
     def cancel(self, _id):
         """
         Cancels jobs that are still pending, returns number of jobs cancelled.
-        Moves a 'launched' batch job to 'cancelled'.
+        Moves a 'running' batch job to 'cancelled'.
         """
 
         batch_job = batch.get(_id)
         self._check_permission(batch_job)
-        if batch_job.get('state') != 'launched':
+        if batch_job.get('state') != 'running':
             self.abort(400, 'Can only cancel started batch jobs.')
         return {'number_cancelled': batch.cancel(batch_job)}
 

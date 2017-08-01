@@ -16,8 +16,10 @@ log = config.log
 
 BATCH_JOB_TRANSITIONS = {
     # To  <-------  #From
-    'launched':     'pending',
-    'cancelled':    'launched'
+    'failed':       'running',
+    'complete':     'running',
+    'running':      'pending',
+    'cancelled':    'running'
 }
 
 
@@ -161,7 +163,8 @@ def run(batch_job):
                 'config':   config_,
                 'gear_id':  gear_id,
                 'inputs':   inputs,
-                'tags':     tags
+                'tags':     tags,
+                'batch':    str(batch_job.get('_id'))
             }
 
             # Create analysis
@@ -178,13 +181,13 @@ def run(batch_job):
                 inputs[input_name] = create_filereference_from_dictionary(fr)
             destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
 
-            job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, origin=origin)
+            job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, origin=origin, batch=str(batch_job.get('_id')))
             job_id = job.insert()
 
         jobs.append(job)
         job_ids.append(job_id)
 
-    update(batch_job['_id'], {'state': 'launched', 'jobs': job_ids})
+    update(batch_job['_id'], {'state': 'running', 'jobs': job_ids})
     return jobs
 
 def cancel(batch_job):
@@ -206,6 +209,26 @@ def cancel(batch_job):
     update(batch_job['_id'], {'state': 'cancelled'})
     return cancelled_jobs
 
+def check_state(batch_id):
+    """
+    Returns state of batch based on state of each of its jobs
+    are complete or failed
+    """    
+
+    batch = get(str(batch_id))
+
+    if batch.get('state') == 'cancelled':
+        return None
+    batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs', [])}, 'state': {'$nin': ['complete', 'failed', 'cancelled']}})
+    non_failed_batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs', [])}, 'state': {'$ne': 'failed'}})
+
+    if batch_jobs.count() == 0:
+        if non_failed_batch_jobs.count() > 0:
+            return 'complete'
+        else:
+            return 'failed'
+    else:
+        return None
 
 def get_stats():
     """
