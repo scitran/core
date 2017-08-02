@@ -1,7 +1,7 @@
 import copy
 import json
 
-from elasticsearch import ElasticsearchException, TransportError
+from elasticsearch import ElasticsearchException, TransportError, helpers
 
 from ..web import base
 from .. import config
@@ -473,32 +473,81 @@ class DataExplorerHandler(base.RequestHandler):
     def get_nodes(self):
 
         return_type, filters, search_string = self._parse_request()
-        query = {
-            "size": 0,
-            "query": {
-                "bool": {
-                  "must": {
-                    "match": {
-                      "_all": search_string
-                    }
-                  },
-                  "filter": {
-                    "bool" : {
-                      "must" : filters
-                    }
-                  }
-                }
-            }
-        }
+        if return_type == 'file':
+            return get_file_nodes(return_type, filters, search_string)
 
-        query['aggs'] = {
-            "by_container": {
-                "terms": {
-                    "field": return_type+"._id",
-                    "size": size
+        query = {
+            "bool": {
+                "must": {
+                    "match": {
+                        "_all": search_string
+                    }
+                },
+                "filter": {
+                    "bool" : {
+                        "must" : [
+                            { "term" : {"container_type" : return_type}}
+                        ]
+                    }
                 }
             }
         }
+        
+
+        # Add filters list to filter key on query if exists
+        if filters:
+            query['bool']['filter']['bool']['must'].extend(filters)
+        nodes = []
+        results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'], aggs={"by_container": {
+                    "terms": {
+                        "field": "session._id",
+                        "size": 1000
+                    },
+                    "aggs": {
+                        "by_top_hit": {
+                            "top_hits": {
+                                "_source": "session._id",
+                                "size": 1
+                            }
+                        }
+                    }
+                }})
+        log.debug(results)
+        for batch in results:
+            log.debug(batch)
+            nodes.append({'level': return_type, '_id': batch['_source'][return_type]['_id']})
+        return {'nodes':nodes}
+        
+    def get_file_nodes(return_type,filters,search_string):
+
+        query = {
+            "bool": {
+                "must": {
+                    "match": {
+                        "_all": search_string
+                    }
+                },
+                "filter": {
+                    "bool" : {
+                        "must" : [
+                            { "term" : {"container_type" : return_type}}
+                        ]
+                    }
+                }
+            }
+        }
+        
+
+        # Add filters list to filter key on query if exists
+        if filters:
+            query['bool']['filter']['bool']['must'].extend(filters)
+        nodes = []
+        results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'])
+        log.debug(results)
+        for batch in results:
+            log.debug(batch)
+            nodes.append({'level': return_type, '_id': batch['_source'][return_type]['_id']})
+        return {'nodes':nodes}
 
 
     @require_login
