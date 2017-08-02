@@ -470,55 +470,82 @@ class DataExplorerHandler(base.RequestHandler):
         aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
 
+    def search_size(self, return_type):
+        body = {
+            "size": 0,
+            "aggs" : {
+                "count" : {
+                    "cardinality" : {
+                        "field" : return_type + "._id",
+                        "precision_threshold": 100000
+                    }
+                }              
+            }
+        }
+
+        size = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body)['aggregations']['count']['value']
+        size = int(size*1.02)
+        return size
+
     def get_nodes(self):
 
         return_type, filters, search_string = self._parse_request()
         if return_type == 'file':
-            return get_file_nodes(return_type, filters, search_string)
+            return self.get_file_nodes(return_type, filters, search_string)
 
-        query = {
-            "bool": {
-                "must": {
-                    "match": {
-                        "_all": search_string
+        size = self.search_size(return_type)
+        body = {
+            "size": 0,
+            "_source": ["session._id"],
+            'query': {
+                "bool": {
+                    "must": {
+                        "match": {
+                            "_all": search_string
+                        }
+                    },
+                    "filter": {
+                        "bool" : {
+                            "must" : filters
+                        }
                     }
-                },
-                "filter": {
-                    "bool" : {
-                        "must" : [
-                            { "term" : {"container_type" : return_type}}
-                        ]
+                }
+            },
+            'aggs': {
+                'by_container': {
+                    'terms': {
+                        'field': return_type+'._id',
+                        'size': size
                     }
                 }
             }
         }
         
+        # Remove search string if none given
+        if not search_string:
+            body['query']['bool'].pop('must')
 
-        # Add filters list to filter key on query if exists
-        if filters:
-            query['bool']['filter']['bool']['must'].extend(filters)
+        # Remove filters list to filter key on query if does not exists
+        if not filters:
+            body['query']['bool'].pop('filter')
+
+        if not filters and not search_string:
+            body['query'] = MATCH_ALL
+
         nodes = []
-        results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'], aggs={"by_container": {
-                    "terms": {
-                        "field": "session._id",
-                        "size": 1000
-                    },
-                    "aggs": {
-                        "by_top_hit": {
-                            "top_hits": {
-                                "_source": "session._id",
-                                "size": 1
-                            }
-                        }
-                    }
-                }})
-        log.debug(results)
-        for batch in results:
-            log.debug(batch)
-            nodes.append({'level': return_type, '_id': batch['_source'][return_type]['_id']})
+        results = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body)['aggregations']['by_container']['buckets']
+
+        for result in results:
+            nodes.append({'level': return_type, '_id': result['key']})
         return {'nodes':nodes}
         
-    def get_file_nodes(return_type,filters,search_string):
+    def get_file_nodes(self, return_type,filters,search_string):
 
         query = {
             "bool": {
@@ -544,9 +571,8 @@ class DataExplorerHandler(base.RequestHandler):
         nodes = []
         results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'])
         log.debug(results)
-        for batch in results:
-            log.debug(batch)
-            nodes.append({'level': return_type, '_id': batch['_source'][return_type]['_id']})
+        for result in results:
+            nodes.append({'level': return_type, '_id': result['_source'][return_type]['_id']})
         return {'nodes':nodes}
 
 
