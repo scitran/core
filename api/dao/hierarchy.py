@@ -243,7 +243,7 @@ def is_session_compliant(session, template):
         if not session.get('_id'):
             # New session, won't have any acquisitions. Compliance check fails
             return False
-        acquisitions = list(config.db.acquisitions.find({'session': session['_id']}))
+        acquisitions = list(config.db.acquisitions.find({'session': session['_id'], 'archived':{'$ne':True}}))
         for req in a_requirements:
             req_temp = copy.deepcopy(req)
             min_count = req_temp.pop('minimum')
