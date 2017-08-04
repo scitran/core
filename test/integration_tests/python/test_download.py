@@ -293,3 +293,67 @@ def test_analysis_download(data_builder, file_form, as_admin):
     # get zip member
     r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ticket, 'member': 'two.csv'})
     assert r.ok
+
+def test_filters(data_builder, file_form, as_admin):
+
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+    acquisition2 = data_builder.create_acquisition()
+
+    as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
+        "test.csv", meta={'name': "test.csv", 'type': 'csv', 'tags': ['red', 'blue']}))
+    as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
+        'test.dicom', meta={'name': 'test.dicom', 'type': 'dicom', 'tags': ['red']}))
+    as_admin.post('/acquisitions/' + acquisition2 + '/files', files=file_form(
+        'test.nifti', meta={'name': 'test.nifti', 'type': 'nifti'}))
+    r = as_admin.get('/acquisitions/' + acquisition)
+    assert r.ok
+
+    # Malformed filters
+    r = as_admin.post('/download', json={
+        'optional': False,
+        'filters': [
+            {'tags': 'red'}
+        ],
+        'nodes': [
+            {'level': 'session', '_id': session},
+        ]
+    })
+    assert r.status_code == 400
+
+    # No filters
+    r = as_admin.post('/download', json={
+        'optional': False,
+        'nodes': [
+            {'level': 'session', '_id': session},
+        ]
+    })
+    assert r.ok
+    assert r.json()['file_cnt'] == 3
+
+    # Filter by tags
+    r = as_admin.post('/download', json={
+        'optional': False,
+        'filters': [
+            {'tags': {'+':['red']}}
+        ],
+        'nodes': [
+            {'level': 'session', '_id': session},
+        ]
+    })
+    assert r.ok
+    assert r.json()['file_cnt'] == 2
+
+    # Filter by type
+    r = as_admin.post('/download', json={
+        'optional': False,
+        'filters': [
+            {'types': {'+':['nifti']}}
+        ],
+        'nodes': [
+            {'level': 'session', '_id': session},
+        ]
+    })
+    assert r.ok
+    assert r.json()['file_cnt'] == 1
