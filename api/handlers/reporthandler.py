@@ -1,17 +1,48 @@
 import copy
+import unicodecsv as csv
 import datetime
+import os
 
 import bson
 import dateutil
 import pymongo
 
 from .. import config
+from .. import tempdir as tempfile
 from .. import util
 from ..web import base
+
+from ..web.request import AccessTypeList
 
 
 EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 BYTES_IN_MEGABYTE = float(1<<20)
+ACCESS_LOG_FIELDS = [
+    "_id",
+    "access_type",
+    "context.acquisition.id",
+    "context.acquisition.label",
+    "context.analysis.id",
+    "context.analysis.label",
+    "context.collection.id",
+    "context.collection.label",
+    "context.group.id",
+    "context.group.label",
+    "context.project.id",
+    "context.project.label",
+    "context.session.id",
+    "context.session.label",
+    "context.subject.id",
+    "context.subject.label",
+    "context.ticket_id",
+    "origin.id",
+    "origin.method",
+    "origin.name",
+    "origin.type",
+    "request_method",
+    "request_path",
+    "timestamp"
+]
 
 class APIReportException(Exception):
     pass
@@ -24,6 +55,9 @@ class ReportHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(ReportHandler, self).__init__(request, response)
+
+    def get_types(self):
+        return AccessTypeList
 
     def get(self, report_type):
 
@@ -39,7 +73,26 @@ class ReportHandler(base.RequestHandler):
             raise NotImplementedError('Report type {} is not supported'.format(report_type))
 
         if self.superuser_request or report.user_can_generate(self.uid):
-            return report.build()
+            # If csv is true create a temp file to respond with
+            if report_type == 'accesslog' and self.request.params.get('csv') == 'true':
+
+                tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
+                csv_file = open(os.path.join(tempdir.name, 'accesslog.csv'), 'w+')
+                writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
+                writer.writeheader()
+                try:
+                    for doc in report.build():
+                        writer.writerow(doc)
+                        
+                except APIReportException as e:
+                    self.abort(404, str(e))
+                # Need to close and reopen file to flush buffer into file
+                csv_file.close()
+                self.response.app_iter = open(os.path.join(tempdir.name, 'accesslog.csv'), 'r')
+                self.response.headers['Content-Type'] = 'text/csv'
+                self.response.headers['Content-Disposition'] = 'attachment; filename="accesslog.csv"'
+            else:
+                return report.build()
         else:
             self.abort(403, 'User {} does not have required permissions to generate report'.format(self.uid))
 
@@ -437,6 +490,9 @@ class AccessLogReport(Report):
         :end_date:      ISO formatted timestamp
         :uid:           user id of the target user
         :limit:         number of records to return
+        :subject:       subject code of session accessed
+        :access_types:  list of access_types to filter logs
+        :csv:           Boolean if user wants csv file
         """
 
         super(AccessLogReport, self).__init__(params)
@@ -445,6 +501,12 @@ class AccessLogReport(Report):
         end_date = params.get('end_date')
         uid = params.get('user')
         limit= params.get('limit', 100)
+        subject = params.get('subject', None)
+        if params.get('bin') == 'true':
+            access_types = params.get('access_types', [])
+        else:
+            access_types = params.getall('access_types')
+        csv_bool = (params.get('csv') == 'true')
 
         if start_date:
             start_date = dateutil.parser.parse(start_date)
@@ -460,12 +522,19 @@ class AccessLogReport(Report):
             raise APIReportParamsException('Limit must be an integer greater than 0.')
         if limit < 1:
             raise APIReportParamsException('Limit must be an integer greater than 0.')
+        elif limit > 10000:
+            raise APIReportParamsException('Limit exceeds 10,000 entries, please contact admin to run script.')
+        for access_type in access_types:
+            if access_type not in AccessTypeList:
+                raise APIReportParamsException('Not a valid access type')
 
         self.start_date     = start_date
         self.end_date       = end_date
         self.uid            = uid
         self.limit          = limit
-
+        self.subject        = subject
+        self.access_types   = access_types
+        self.csv_bool       = csv_bool
 
     def user_can_generate(self, uid):
         """
@@ -475,6 +544,20 @@ class AccessLogReport(Report):
             return True
         return False
 
+    def flatten(self, json_obj, flat, prefix = ""):
+        """
+        flattens a document to not have nested objects
+        """
+        
+        for field in json_obj.keys():
+            if isinstance(json_obj[field], dict):
+                flat = self.flatten(json_obj[field], flat, prefix = prefix + field + ".")
+            else:
+                flat[prefix + field] = json_obj[field]
+        return flat
+
+    def make_csv_ready(self, cursor):
+        return [self.flatten(json_obj, {}) for json_obj in cursor]
 
     def build(self):
         query = {}
@@ -487,8 +570,16 @@ class AccessLogReport(Report):
             query['timestamp']['$gte'] = self.start_date
         if self.end_date:
             query['timestamp']['$lte'] = self.end_date
+        if self.subject:
+            query['context.subject.label'] = self.subject
+        if self.access_types:
+            query['access_type'] = {'$in': self.access_types}
 
-        return config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING)
+        cursor = config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING).batch_size(1000)
+        if self.csv_bool:
+            return self.make_csv_ready(cursor)
+
+        return cursor
 
 class UsageReport(Report):
     """

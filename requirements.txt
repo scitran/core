@@ -13,3 +13,4 @@ uwsgi==2.0.13.1
 webapp2==2.5.2
 WebOb==1.5.1
 git+https://github.com/flywheel-io/gears.git@v0.1.1#egg=gears
+unicodecsv==0.9.0

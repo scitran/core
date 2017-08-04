@@ -240,6 +240,7 @@ def initialize_db():
 
     if __config['core']['access_log_enabled']:
         log_db.access_log.create_index('context.ticket_id')
+        log_db.access_log.create_index([('timestamp', pymongo.DESCENDING)])
 
     create_or_recreate_ttl_index('authtokens', 'timestamp', 2592000)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
