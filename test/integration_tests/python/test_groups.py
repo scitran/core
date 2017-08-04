@@ -118,3 +118,9 @@ def test_groups(as_user, as_admin, data_builder):
     r = as_admin.get('/groups/' + group)
     assert r.ok
     assert r.json()['label'] == group_label
+
+    # Test join=projects
+    project = data_builder.create_project()
+    r = as_admin.get('/groups', params={'join': 'projects'})
+    assert r.ok
+    assert r.json()[1].get('projects')[0].get('_id') == project

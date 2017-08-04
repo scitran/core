@@ -36,6 +36,14 @@ class GroupHandler(base.RequestHandler):
             self.abort(404, 'Group {} not removed'.format(_id))
         return result
 
+    def handle_projects(self, result):
+        """
+        If parameter join=projects, return project id, label, permissions, and description
+        """
+        result['projects'] = self.storage.get_children(result.get('_id'), projection={'permissions': 1, 'label': 1, 'description': 1, 'group': 1}, uid=self.uid)
+        self._filter_permissions(result['projects'], self.uid)
+        return result
+
     def get_all(self, uid=None):
         projection = {'label': 1, 'created': 1, 'modified': 1, 'permissions': 1, 'tags': 1}
         permchecker = groupauth.list_permission_checker(self, uid)
@@ -44,6 +52,9 @@ class GroupHandler(base.RequestHandler):
             self._filter_permissions(results, self.uid)
         if self.is_true('join_avatars'):
             results = ContainerHandler.join_user_info(results)
+        if 'projects' in self.request.params.getall('join'):
+            for result in results:
+                result = self.handle_projects(result)
         return results
 
     @validators.verify_payload_exists

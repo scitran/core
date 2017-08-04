@@ -80,12 +80,18 @@ class ContainerStorage(object):
             cont[CHILD_MAP[self.cont_name]] = children
         return cont
 
-    def get_children(self, _id, projection=None):
+    def get_children(self, _id, projection=None, uid=None):
         try:
             child_name = CHILD_MAP[self.cont_name]
         except KeyError:
             raise APINotFoundException('Children cannot be listed from the {0} level'.format(self.cont_name))
-        query = {self.cont_name[:-1]: bson.ObjectId(_id)}
+        if not self.use_object_id:
+            query = {containerutil.singularize(self.cont_name): _id}
+        else:
+            query = {containerutil.singularize(self.cont_name): bson.ObjectId(_id)}
+        
+        if uid:
+            query['permissions'] = {'$elemMatch': {'_id': uid}}
         if not projection:
             projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
