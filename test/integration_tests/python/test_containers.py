@@ -534,6 +534,49 @@ def test_analysis_put(data_builder, as_admin):
     r = as_admin.put('/sessions/'+session + '/analyses/' + analysis)
     assert r.status_code == 400
 
+def test_edit_file_attributes(data_builder, as_admin, file_form):
+    project = data_builder.create_project()
+    file_name = 'test_file.txt'
+
+    assert as_admin.post('/projects/' + project + '/files', files=file_form(file_name)).ok
+
+    payload = {
+        'type': 'new type',
+        'modality': 'new modality',
+        'measurements': ['measurement']
+    }
+
+    assert as_admin.put('/projects/' + project + '/files/' + file_name, json=payload).ok
+
+    r = as_admin.get('/projects/' + project + '/files/' + file_name + '/info')
+    assert r.ok
+
+    file_object = r.json()
+    assert file_object['type'] == payload['type']
+    assert file_object['measurements'] == payload['measurements']
+    assert file_object['modality'] == payload['modality']
+
+
+    # Attempt to set forbidden fields
+    payload = {
+        'name': 'new_file_name.txt'
+    }
+    r = as_admin.put('/projects/' + project + '/files/' + file_name, json=payload)
+    assert r.status_code == 400
+
+    payload = {
+        'info': {}
+    }
+    r = as_admin.put('/projects/' + project + '/files/' + file_name, json=payload)
+    assert r.status_code == 400
+
+    payload = {
+        'mimetype': 'bad data'
+    }
+    r = as_admin.put('/projects/' + project + '/files/' + file_name, json=payload)
+    assert r.status_code == 400
+
+
 def test_edit_file_info(data_builder, as_admin, file_form):
     project = data_builder.create_project()
     file_name = 'test_file.txt'

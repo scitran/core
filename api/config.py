@@ -159,6 +159,7 @@ expected_input_schemas = set([
     'container.json',
     'device.json',
     'file.json',
+    'file-update.json',
     'group-new.json',
     'group-update.json',
     'info_update.json',
