@@ -5,6 +5,7 @@ import datetime
 from . import APIStorageException, APIConflictException
 from . import consistencychecker
 from .. import config
+from .. import util
 from .containerstorage import SessionStorage, AcquisitionStorage
 
 log = config.log
@@ -41,7 +42,6 @@ class ListStorage(object):
                 '$elemMatch': query_params
             }
             projection = {self.list_name + '.$': 1, 'permissions': 1, 'public': 1}
-        log.debug('query {}'.format(query))
         return self.dbc.find_one(query, projection)
 
     def exec_op(self, action, _id=None, query_params=None, payload=None, exclude_params=None):
@@ -67,7 +67,6 @@ class ListStorage(object):
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
     def _create_el(self, _id, payload, exclude_params):
-        log.debug('payload {}'.format(payload))
         query = {'_id': _id}
         if exclude_params:
             query[self.list_name] = {'$not': {'$elemMatch': exclude_params} }
@@ -75,16 +74,12 @@ class ListStorage(object):
             '$push': {self.list_name: payload},
             '$set': {'modified': datetime.datetime.utcnow()}
         }
-        log.debug('query {}'.format(query))
-        log.debug('update {}'.format(update))
         result = self.dbc.update_one(query, update)
         if result.matched_count < 1:
             raise APIConflictException('Item already exists in list.')
         return result
 
     def _update_el(self, _id, query_params, payload, exclude_params):
-        log.debug('query_params {}'.format(query_params))
-        log.debug('payload {}'.format(payload))
         mod_elem = {}
         for k,v in payload.items():
             mod_elem[self.list_name + '.$.' + k] = v
@@ -100,19 +95,14 @@ class ListStorage(object):
         update = {
             '$set': mod_elem
         }
-        log.debug('query {}'.format(query))
-        log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
     def _delete_el(self, _id, query_params):
-        log.debug('query_params {}'.format(query_params))
         query = {'_id': _id}
         update = {
             '$pull': {self.list_name: query_params},
             '$set': { 'modified': datetime.datetime.utcnow()}
             }
-        log.debug('query {}'.format(query))
-        log.debug('update {}'.format(update))
         result =  self.dbc.update_one(query, update)
         if self.list_name is 'files' and self.cont_name in ['sessions', 'acquisitions']:
             if self.cont_name == 'sessions':
@@ -123,14 +113,50 @@ class ListStorage(object):
         return result
 
     def _get_el(self, _id, query_params):
-        log.debug('query_params {}'.format(query_params))
         query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
         projection = {self.list_name + '.$': 1}
-        log.debug('query {}'.format(query))
-        log.debug('projection {}'.format(projection))
         result = self.dbc.find_one(query, projection)
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]
+
+    def modify_info(self, _id, query_params, payload):
+        update = {}
+        set_payload = payload.get('set')
+        delete_payload = payload.get('delete')
+        replace_payload = payload.get('replace')
+
+        log.debug('{}\n{}\n{}\n{}\n'.format(payload, set_payload, delete_payload, replace_payload))
+
+        if replace_payload is not None:
+            update = {
+                '$set': {
+                    self.list_name + '.$.info': util.mongo_sanitize_fields(replace_payload)
+                }
+            }
+
+        else:
+            if set_payload:
+                update['$set'] = {}
+                for k,v in set_payload.items():
+                    update['$set'][self.list_name + '.$.info.' + k] = util.mongo_sanitize_fields(v)
+            if delete_payload:
+                update['$unset'] = {}
+                for k in delete_payload:
+                    update['$unset'][self.list_name + '.$.info.' + k] = ''
+
+        if self.use_object_id:
+            _id = bson.objectid.ObjectId(_id)
+        query = {'_id': _id }
+        query[self.list_name] = {'$elemMatch': query_params}
+
+        if not update.get('$set'):
+            update['$set'] = {'modified': datetime.datetime.utcnow()}
+        else:
+            update['$set']['modified'] = datetime.datetime.utcnow()
+
+        log.debug('the update is {}\n\n and the query was {}\n\n'.format(update, query))
+        return self.dbc.update_one(query, update)
+
 
 
 class StringListStorage(ListStorage):

@@ -501,6 +501,25 @@ class FileListHandler(ListHandler):
     def get_info(self, cont_name, list_name, **kwargs):
         return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
 
+    def modify_info(self, cont_name, list_name, **kwargs):
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        payload = self.request.json_body
+
+        validators.validate_data(payload, 'info_update.json', 'input', 'POST')
+
+        try:
+            permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
+            result = storage.modify_info(_id, kwargs, payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        # abort if the query of the update wasn't able to find any matching documents
+        if result.matched_count == 0:
+            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+        else:
+            return {'modified':result.modified_count}
+
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
 
