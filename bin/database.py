@@ -1188,6 +1188,32 @@ def upgrade_to_35():
     cursor = config.db.batch.find({})
     process_cursor(cursor, upgrade_to_35_closure)
 
+
+
+
+###
+### BEGIN RESERVED UPGRADE SECTION
+###
+
+# Due to performance concerns with database upgrades, some upgrade implementations might be postposed.
+# The team contract is that if you write an upgrade touch one of the tables mentioned below, you MUST also implement any reserved upgrades.
+# This way, we can bundle changes together that need large cursor iterations and save multi-hour upgrade times.
+
+
+## Jobs table
+
+# The old job.config format was a set of keys, which was manually placed on a "config": key when fetched.
+# Now, it's a { "config": , "inputs": } map, with the old values being placed under the "config": key when stored.
+# Move the keys accordingly so that legacy logic can be removed.
+#
+# Ref: JobHandler.get_config, Job.generate_request
+
+
+###
+### END RESERVED UPGRADE SECTION
+###
+
+
 def upgrade_schema(force_from = None):
     """
     Upgrades db to the current schema version

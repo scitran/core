@@ -239,6 +239,15 @@ class FileReference(ContainerReference):
             name = d['name']
         )
 
+    def get_file(self):
+        container = super(FileReference, self).get()
+
+        for file in container['files']:
+            if file['name'] == self.name:
+                return file
+
+        raise Exception('No such file {} on {} {} in database'.format(self.name, self.type, self.id))
+
 
 def create_filereference_from_dictionary(d):
     return FileReference.from_dictionary(d)

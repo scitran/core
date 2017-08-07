@@ -300,6 +300,48 @@ class JobsHandler(base.RequestHandler):
             self.abort(400, 'Gear marked as invalid, will not run!')
         validate_gear_config(gear, config_)
 
+        # Config options are stored on the job object under the "config" key
+        config_ = {
+            'config': config_,
+            'inputs': { }
+        }
+
+        # Implementation notes: with regard to sending the gear file information, we have two options:
+        #
+        # 1) Send the file object as it existed when you enqueued the job
+        # 2) Send the file object as it existed when the job was started
+        #
+        # Option #2 is possibly more convenient - it's more up to date - but the only file modifications after a job is enqueued would be from
+        #
+        # A) a gear finishing, and updating the file object
+        # B) a user editing the file object
+        #
+        # You can count on neither occurring before a job starts, because the queue is not globally FIFO.
+        # So option #2 is potentially more convenient, but unintuitive and prone to customer confusion.
+
+
+        for x in inputs:
+            if gear['gear']['inputs'][x]['base'] == 'file':
+
+                obj = inputs[x].get_file()
+                cr = create_containerreference_from_filereference(inputs[x])
+
+                # Whitelist file fields passed to gear to those that are scientific-relevant
+                whitelisted_keys = ['info', 'tags', 'measurements', 'mimetype', 'type', 'modality', 'size']
+                obj_projection = { key: obj[key] for key in whitelisted_keys }
+
+                config_['inputs'][x] = {
+                    'base': 'file',
+                    'hierarchy': cr.__dict__,
+                    'location': {
+                        'name': obj['name'],
+                        'path': '/flywheel/v0/input/' + x + '/' + obj['name'],
+                    },
+                    'object': obj_projection,
+                }
+            else:
+                self.abort(500, 'Non-file input base type')
+
         gear_name = gear['gear']['name']
 
         if gear_name not in tags:
@@ -361,12 +403,22 @@ class JobHandler(base.RequestHandler):
         if c is None:
             c = {}
 
+        # Serve config as formatted json file
         self.response.headers['Content-Type'] = 'application/octet-stream'
         self.response.headers['Content-Disposition'] = 'attachment; filename="config.json"'
 
-        # Serve config as formatted json file
-        encoded = json.dumps({"config": c}, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
-        self.response.app_iter = StringIO.StringIO(encoded)
+        # Detect if config is old- or new-style.
+        # TODO: remove this logic with a DB upgrade, ref database.py's reserved upgrade section.
+
+        if c.get('config') is not None and c.get('inputs') is not None:
+            # New behavior
+            encoded = json.dumps(c, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
+            self.response.app_iter = StringIO.StringIO(encoded)
+        else:
+            # Legacy behavior
+            encoded = json.dumps({"config": c}, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
+            self.response.app_iter = StringIO.StringIO(encoded)
+
 
     @require_login
     def put(self, _id):
