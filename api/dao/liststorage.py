@@ -125,8 +125,6 @@ class ListStorage(object):
         delete_payload = payload.get('delete')
         replace_payload = payload.get('replace')
 
-        log.debug('{}\n{}\n{}\n{}\n'.format(payload, set_payload, delete_payload, replace_payload))
-
         if replace_payload is not None:
             update = {
                 '$set': {
@@ -154,7 +152,6 @@ class ListStorage(object):
         else:
             update['$set']['modified'] = datetime.datetime.utcnow()
 
-        log.debug('the update is {}\n\n and the query was {}\n\n'.format(update, query))
         return self.dbc.update_one(query, update)
 
 
