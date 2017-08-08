@@ -13,6 +13,7 @@ from .handlers.refererhandler       import AnalysesHandler
 from .handlers.reporthandler        import ReportHandler
 from .handlers.resolvehandler       import ResolveHandler
 from .handlers.roothandler          import RootHandler
+from .handlers.savedsearchhandler   import SavedSearchHandler
 from .handlers.schemahandler        import SchemaHandler
 from .handlers.userhandler          import UserHandler
 from .jobs.handlers                 import BatchHandler, JobsHandler, JobHandler, GearsHandler, GearHandler, RulesHandler, RuleHandler
@@ -108,6 +109,12 @@ endpoints = [
         route('/dataexplorer/search/fields/aggregate',  DataExplorerHandler,   h='aggregate_field_values', m=['POST']),
         route('/dataexplorer/search/nodes',             DataExplorerHandler,   h='get_nodes',              m=['POST']),
         route('/dataexplorer/index/fields',             DataExplorerHandler,   h='index_field_names',      m=['POST']),
+
+        # Search Saving
+        route('/savesearch',                            SavedSearchHandler,                                m=['POST']),
+        route('/savesearch',                            SavedSearchHandler,     h='get_all',               m=['GET']),
+        route('/savesearch/<sid:{cid}>',                SavedSearchHandler,                                m=['GET','DELETE']),
+        route('/savesearch/<sid:{cid}>',                SavedSearchHandler,     h='replace_search',        m=['POST']),
 
         # Users
 
