@@ -1464,7 +1464,7 @@ hooks.before("GET /devices/{DeviceId} -> 404", function(test, done) {
 });
 
 // Save Search Tests
-hooks.before("POST /savesearch -> 200", function(test, done) {
+hooks.before("POST /savesearches -> 200", function(test, done) {
     test.request.body = {
         "label": "Lable",
         "search": {
@@ -1473,26 +1473,26 @@ hooks.before("POST /savesearch -> 200", function(test, done) {
     };
     done();
 })
-hooks.after("POST /savesearch -> 200", function(test, done) {
+hooks.after("POST /savesearches -> 200", function(test, done) {
     search_id = test.response.body['_id'];
     done();
 })
 
-hooks.before("POST /savesearch -> 400", function(test, done) {
+hooks.before("POST /savesearches -> 400", function(test, done) {
     test.request.body = {
         "not-label": "Label"
     };
     done();
 })
 
-hooks.before("GET /savesearch/{SearchId} -> 200", function(test, done) {
+hooks.before("GET /savesearches/{SearchId} -> 200", function(test, done) {
     test.request.params = {
         SearchId: search_id
     };
     done();
 })
 
-hooks.before("POST /savesearch/{SearchId} -> 200", function(test, done) {
+hooks.before("POST /savesearches/{SearchId} -> 200", function(test, done) {
     test.request.params = {
         SearchId: search_id
     };
@@ -1506,7 +1506,7 @@ hooks.before("POST /savesearch/{SearchId} -> 200", function(test, done) {
     done();
 })
 
-hooks.before("POST /savesearch/{SearchId} -> 400", function(test, done) {
+hooks.before("POST /savesearches/{SearchId} -> 400", function(test, done) {
     test.request.params = {
         SearchId: search_id
     };
@@ -1516,7 +1516,7 @@ hooks.before("POST /savesearch/{SearchId} -> 400", function(test, done) {
     done();
 })
 
-hooks.before("DELETE /savesearch/{SearchId} -> 200", function(test, done) {
+hooks.before("DELETE /savesearches/{SearchId} -> 200", function(test, done) {
     test.request.params = {
         SearchId: search_id
     };

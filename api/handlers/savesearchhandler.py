@@ -11,16 +11,17 @@ from ..dao import noop
 log = config.log
 storage = SearchStorage()
 
-class SavedSearchHandler(base.RequestHandler):
+class SaveSearchHandler(base.RequestHandler):
 
 	def __init__(self, request=None, response=None):
-		super(SavedSearchHandler, self).__init__(request, response)
+		super(SaveSearchHandler, self).__init__(request, response)
 
 	@require_login
 	def post(self):
 		payload = self.request.json_body
 		validators.validate_data(payload, 'search-input.json', 'input', 'POST')
 		payload['permissions'] = [{"_id": self.uid, "access": "admin"}]
+		payload['creator'] = self.uid
 		result = storage.create_el(payload)	
 		if result.acknowledged:
 			if result.inserted_id:
@@ -49,10 +50,7 @@ class SavedSearchHandler(base.RequestHandler):
 
 	def replace_search(self, sid):
 		payload = self.request.json_body
-		if payload.get('_id'):
-			del(payload['_id'])
-		if payload.get('permissions'):
-			del(payload['permissions'])
+		payload = self._scrub_replace(payload)
 		validators.validate_data(payload, 'search-input.json', 'input', 'POST')
 		payload['_id'] = bson.ObjectId(sid)
 		search = storage.get_container(sid)
@@ -64,3 +62,15 @@ class SavedSearchHandler(base.RequestHandler):
 			if result.inserted_id:
 				return {'_id': result.inserted_id}
 		return {"hi" : "bye"}
+
+	def _scrub_replace(self, payload):
+		'''
+		Function to turn a search returned from a GET to a legal post/replace
+		'''
+		if payload.get('_id'):
+			del(payload['_id'])
+		if payload.get('permissions'):
+			del(payload['permissions'])
+		if payload.get('creator'):
+			del(payload['creator'])
+		return payload

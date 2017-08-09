@@ -438,7 +438,7 @@ class AnalysisStorage(ContainerStorage):
 class SearchStorage(ContainerStorage):
 
     def __init__(self):
-        super(SearchStorage, self).__init__('searches', use_object_id=True)
+        super(SearchStorage, self).__init__('savesearches', use_object_id=True)
 
     def replace_el(self, search):
         self.delete_el(search['_id'])

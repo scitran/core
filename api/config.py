@@ -229,6 +229,7 @@ def initialize_db():
     # TODO review all indexes
     db.users.create_index('api_key.key')
     db.projects.create_index([('gid', 1), ('name', 1)])
+    db.savesearches.create_index('creator')
     db.sessions.create_index('project')
     db.sessions.create_index('uid')
     db.sessions.create_index('created')

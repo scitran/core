@@ -32,7 +32,7 @@
           "properties": {
             "_id":          {"$ref":"../definitions/objectid.json#"},
             "label":        {"$ref": "../definitions/container.json#/definitions/label"},
-            "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
+            "creator":          {"$ref":"../definitions/container.json#/definitions/uid"},
             "created":      {"$ref":"../definitions/created-modified.json#/definitions/created"},
             "modified":     {"$ref":"../definitions/created-modified.json#/definitions/modified"},
             "permissions":  {
