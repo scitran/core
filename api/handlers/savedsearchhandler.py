@@ -52,12 +52,11 @@ class SavedSearchHandler(base.RequestHandler):
 		if payload.get('_id'):
 			del(payload['_id'])
 		if payload.get('permissions'):
-			perms = payload['permissions']
 			del(payload['permissions'])
 		validators.validate_data(payload, 'search-input.json', 'input', 'POST')
 		payload['_id'] = bson.ObjectId(sid)
-		payload['permissions'] = perms
 		search = storage.get_container(sid)
+		payload['permissions'] = search['permissions']
 		permchecker = groupauth.default(self, search)
 		permchecker(noop)('DELETE', sid)
 		result = storage.replace_el(payload)

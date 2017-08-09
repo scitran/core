@@ -21,8 +21,9 @@ var example_acquisition_id = '';
 var test_project_1 = null;
 var test_project_tag = 'test-project-tag';
 var delete_project_id = '';
-var device_id = 'bootstrapper_Bootstrapper'
-var injected_api_key = 'XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK'
+var device_id = 'bootstrapper_Bootstrapper';
+var injected_api_key = 'XZpXI40Uk85eozjQkU1zHJ6yZHpix+j0mo1TMeGZ4dPzIqVPVGPmyfeK';
+var search_id = '';
 
 // Tests we're skipping, fix these
 
@@ -1461,3 +1462,63 @@ hooks.before("GET /devices/{DeviceId} -> 404", function(test, done) {
     test.request.params.DeviceId = 'bad_device_id';
     done();
 });
+
+// Save Search Tests
+hooks.before("POST /savesearch -> 200", function(test, done) {
+    test.request.body = {
+        "label": "Lable",
+        "search": {
+            "return_type": "session"
+        }
+    };
+    done();
+})
+hooks.after("POST /savesearch -> 200", function(test, done) {
+    search_id = test.response.body['_id'];
+    done();
+})
+
+hooks.before("POST /savesearch -> 400", function(test, done) {
+    test.request.body = {
+        "not-label": "Label"
+    };
+    done();
+})
+
+hooks.before("GET /savesearch/{SearchId} -> 200", function(test, done) {
+    test.request.params = {
+        SearchId: search_id
+    };
+    done();
+})
+
+hooks.before("POST /savesearch/{SearchId} -> 200", function(test, done) {
+    test.request.params = {
+        SearchId: search_id
+    };
+    test.request.body = {
+        "label": "New Label",
+        "search": {
+            "return_type": "session"
+        },
+        "_id": search_id
+    };
+    done();
+})
+
+hooks.before("POST /savesearch/{SearchId} -> 400", function(test, done) {
+    test.request.params = {
+        SearchId: search_id
+    };
+    test.request.body = {
+        "not-label": "Label2"
+    };
+    done();
+})
+
+hooks.before("DELETE /savesearch/{SearchId} -> 200", function(test, done) {
+    test.request.params = {
+        SearchId: search_id
+    };
+    done();
+})

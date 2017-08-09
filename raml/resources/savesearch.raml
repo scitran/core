@@ -1,0 +1,29 @@
+type: container
+get:
+  description: List all saved searches user has access to.
+  responses:
+    200:
+      body:
+        application/json:
+          schema: !include ../schemas/output/search-list.json
+post:
+  body:
+    application/json:
+      schema: !include ../schemas/input/search-input.json
+/{SearchId}:
+  type: container
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include ../schemas/output/search-output.json
+  delete:
+    description: Delete a saved search
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include ../schemas/output/container-delete.json
+            example: !include ../examples/output/container-delete.json
+  
