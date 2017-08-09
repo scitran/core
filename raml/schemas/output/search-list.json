@@ -5,7 +5,7 @@
         "type":"object",
         "allOf":[{"$ref":"../definitions/search.json#/definitions/search-output"}],
         "required":[
-            "_id", "label", "permissions", "search"
+            "_id", "label"
         ]
     }
 }

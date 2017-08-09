@@ -1,4 +1,5 @@
 import bson
+from ast import literal_eval
 from ..web import base
 from .. import config, validators
 from ..auth import require_login
@@ -11,6 +12,23 @@ from ..dao import noop
 log = config.log
 storage = SearchStorage()
 
+
+def string_filters(payload):
+	if payload.get('search') and payload['search'].get('filters'):
+		filters = []
+		for filter_ in payload['search'].get('filters',[]):
+			filters.append(str(filter_))
+		payload['search']['filters'] = filters
+	return payload
+
+def unstring_filters(payload):
+	if payload['search'].get('filters'):
+		filters= []
+		for filter_ in payload['search'].get('filters',[]):
+			filters.append(literal_eval(filter_))
+		payload['search']['filters']= filters
+	return payload
+
 class SaveSearchHandler(base.RequestHandler):
 
 	def __init__(self, request=None, response=None):
@@ -20,13 +38,15 @@ class SaveSearchHandler(base.RequestHandler):
 	def post(self):
 		payload = self.request.json_body
 		validators.validate_data(payload, 'search-input.json', 'input', 'POST')
+		payload = string_filters(payload)
 		payload['permissions'] = [{"_id": self.uid, "access": "admin"}]
 		payload['creator'] = self.uid
-		result = storage.create_el(payload)	
+		result = storage.create_el(payload)
 		if result.acknowledged:
 			if result.inserted_id:
 				return {'_id': result.inserted_id}
-		return {"hi" : "bye"}
+		else:
+			self.abort(404, 'Search not created')
 
 	def get_all(self):
 		log.debug(self.uid)
@@ -36,6 +56,7 @@ class SaveSearchHandler(base.RequestHandler):
 		result = storage.get_el(sid)
 		if result is None:
 			self.abort(404, 'Element {} not found'.format(sid))
+		unstring_filters(result)
 		return result
 
 	def delete(self, sid):
@@ -52,6 +73,7 @@ class SaveSearchHandler(base.RequestHandler):
 		payload = self.request.json_body
 		payload = self._scrub_replace(payload)
 		validators.validate_data(payload, 'search-input.json', 'input', 'POST')
+		payload = string_filters(payload)
 		payload['_id'] = bson.ObjectId(sid)
 		search = storage.get_container(sid)
 		payload['permissions'] = search['permissions']
@@ -74,3 +96,4 @@ class SaveSearchHandler(base.RequestHandler):
 		if payload.get('creator'):
 			del(payload['creator'])
 		return payload
+
