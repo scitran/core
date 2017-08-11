@@ -209,10 +209,12 @@ class PermissionsListHandler(ListHandler):
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
+        payload = self.request.json_body
 
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
-            self._propagate_permissions(cont_name, _id, update=self.request.json_body, oper='POST')
-        else:
+            self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access']}})
+            self._propagate_permissions(cont_name, _id, query={'permissions._id': {'$ne': payload['_id']}}, update={'$addToSet': {'permissions': payload}})
+        elif cont_name != 'groups':
             self._propagate_permissions(cont_name, _id)
         return result
 
@@ -223,8 +225,8 @@ class PermissionsListHandler(ListHandler):
         payload = self.request.json_body
         payload['_id'] = kwargs.get('_id')
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
-            self._propagate_permissions(cont_name, _id, update=payload, oper='PUT')
-        else:
+            self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access']}})
+        elif cont_name != 'groups':
             self._propagate_permissions(cont_name, _id)
         return result
 
@@ -233,21 +235,22 @@ class PermissionsListHandler(ListHandler):
         result = super(PermissionsListHandler, self).delete(cont_name, list_name, **kwargs)
 
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
-            self._propagate_permissions(cont_name, _id, update=kwargs.get('_id'), oper='DELETE')
-        else:
+            self._propagate_permissions(cont_name, _id, query={'permissions._id' : kwargs.get('_id')}, update={'$pull' : {'permissions': {'_id': kwargs.get('_id')}}})
+        elif cont_name != 'groups':
             self._propagate_permissions(cont_name, _id)
         return result
 
-    def _propagate_permissions(self, cont_name, _id, update=None, oper=None):
+    def _propagate_permissions(self, cont_name, _id, query=None, update=None):
         """
         method to propagate permissions from a container/group to its sessions and acquisitions
         """
+        if query is None:
+            query = {}
         if cont_name == 'groups':
-            if oper:
-                try:
-                    hierarchy.propagate_changes(cont_name, _id, {}, update, oper=oper)
-                except APIStorageException as e:
-                    self.abort(400, e.message)
+            try:
+                hierarchy.propagate_changes(cont_name, _id, query, update)
+            except APIStorageException as e:
+                self.abort(400, e.message)
         elif cont_name == 'projects':
             try:
                 oid = bson.ObjectId(_id)
