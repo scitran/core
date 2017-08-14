@@ -236,10 +236,23 @@ FACET_QUERY = {
 SOURCE_COMMON = [
     "group._id",
     "group.label",
-    "permissions.*",
+    "permissions",
+]
+
+SOURCE_COLLECTION = [
+    "permissions",
+    "collection.label",
+    "collection.curator",
+    "collection.created",
+]
+
+SOURCE_PROJECT = SOURCE_COMMON + [
     "project._id",
     "project.archived",
     "project.label",
+]
+
+SOURCE_SESSION = SOURCE_PROJECT + [
     "session._id",
     "session.archived",
     "session.created",
@@ -248,34 +261,39 @@ SOURCE_COMMON = [
     "subject.code",
 ]
 
+SOURCE_ACQUISITION = SOURCE_SESSION + [
+    "acquisition._id",
+    "acquisition.archived",
+    "acquisition.created",
+    "acquisition.label",
+    "acquisition.timestamp",
+]
+
+SOURCE_ANALYSIS = SOURCE_SESSION + [
+    "analysis._id",
+    "analysis.created",
+    "analysis.label",
+    "analysis.user",
+    "analysis.parent", # TODO: coalesce analysis and file parent keys (analysis.parent.id vs parent._id for file)
+]
+
+SOURCE_FILE = SOURCE_ANALYSIS + [
+    "file.created",
+    "file.measurements",
+    "file.name",
+    "file.size",
+    "file.type",
+    "parent,"
+]
+
+
 SOURCE = {
-    "file": SOURCE_COMMON + [
-        "acquisition._id",
-        "acquisition.archived",
-        "acquisition.label",
-        "analysis._id",
-        "analysis.label",
-        "file.created",
-        "file.measurements",
-        "file.name",
-        "file.size",
-        "file.type",
-    ],
-    "session": SOURCE_COMMON,
-    "acquisition": SOURCE_COMMON + [
-        "acquisition._id",
-        "acquisition.archived",
-        "acquisition.created",
-        "acquisition.label",
-        "acquisition.timestamp",
-    ],
-    "analysis": SOURCE_COMMON + [
-        "analysis._id",
-        "analysis.created",
-        "analysis.label",
-        "analysis.parent",
-        "analysis.user",
-    ],
+    "collection": SOURCE_COLLECTION,
+    "project": SOURCE_PROJECT,
+    "session": SOURCE_SESSION,
+    "acquisition": SOURCE_ACQUISITION,
+    "analysis": SOURCE_ANALYSIS,
+    "file": SOURCE_FILE
 }
 
 
@@ -296,7 +314,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         # Parse and validate return_type
         return_type = request.get('return_type')
-        if not return_type or return_type not in ['file', 'session', 'acquisition', 'analysis']:
+        if not return_type or return_type not in ['collection', 'project', 'session', 'acquisition', 'analysis', 'file']:
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
 
