@@ -236,10 +236,23 @@ FACET_QUERY = {
 SOURCE_COMMON = [
     "group._id",
     "group.label",
-    "permissions.*",
+    "permissions",
+]
+
+SOURCE_COLLECTION = [
+    "permissions",
+    "collection.label",
+    "collection.curator",
+    "collection.created",
+]
+
+SOURCE_PROJECT = SOURCE_COMMON + [
     "project._id",
     "project.archived",
     "project.label",
+]
+
+SOURCE_SESSION = SOURCE_PROJECT + [
     "session._id",
     "session.archived",
     "session.created",
@@ -248,35 +261,42 @@ SOURCE_COMMON = [
     "subject.code",
 ]
 
+SOURCE_ACQUISITION = SOURCE_SESSION + [
+    "acquisition._id",
+    "acquisition.archived",
+    "acquisition.created",
+    "acquisition.label",
+    "acquisition.timestamp",
+]
+
+SOURCE_ANALYSIS = SOURCE_SESSION + [
+    "analysis._id",
+    "analysis.created",
+    "analysis.label",
+    "analysis.user",
+    "analysis.parent", # TODO: coalesce analysis and file parent keys (analysis.parent.id vs parent._id for file)
+]
+
+SOURCE_FILE = SOURCE_ANALYSIS + [
+    "file.created",
+    "file.measurements",
+    "file.name",
+    "file.size",
+    "file.type",
+    "parent",
+]
+
 SOURCE = {
-    "file": SOURCE_COMMON + [
-        "acquisition._id",
-        "acquisition.archived",
-        "acquisition.label",
-        "analysis._id",
-        "analysis.label",
-        "file.created",
-        "file.measurements",
-        "file.name",
-        "file.size",
-        "file.type",
-    ],
-    "session": SOURCE_COMMON,
-    "acquisition": SOURCE_COMMON + [
-        "acquisition._id",
-        "acquisition.archived",
-        "acquisition.created",
-        "acquisition.label",
-        "acquisition.timestamp",
-    ],
-    "analysis": SOURCE_COMMON + [
-        "analysis._id",
-        "analysis.created",
-        "analysis.label",
-        "analysis.parent",
-        "analysis.user",
-    ],
+    "collection": SOURCE_COLLECTION,
+    "project": SOURCE_PROJECT,
+    "session": SOURCE_SESSION,
+    "acquisition": SOURCE_ACQUISITION,
+    "analysis": SOURCE_ANALYSIS,
+    "file": SOURCE_FILE
 }
+
+# Containers where search doesn't do an aggregation to find results
+EXACT_CONTAINERS = ['file', 'collection']
 
 
 class DataExplorerHandler(base.RequestHandler):
@@ -296,7 +316,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         # Parse and validate return_type
         return_type = request.get('return_type')
-        if not return_type or return_type not in ['file', 'session', 'acquisition', 'analysis']:
+        if not return_type or return_type not in ['collection', 'project', 'session', 'acquisition', 'analysis', 'file']:
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
 
@@ -491,8 +511,8 @@ class DataExplorerHandler(base.RequestHandler):
     ## CONSTRUCTING QUERIES ##
 
     def _construct_query(self, return_type, search_string, filters, size=100):
-        if return_type == 'file':
-            return self._construct_file_query(search_string, filters, size)
+        if return_type in EXACT_CONTAINERS:
+            return self._construct_exact_query(return_type, search_string, filters, size)
 
         query = {
             "size": 0,
@@ -544,10 +564,10 @@ class DataExplorerHandler(base.RequestHandler):
 
         return query
 
-    def _construct_file_query(self, search_string, filters, size=100):
+    def _construct_exact_query(self, return_type, search_string, filters, size=100):
         query = {
           "size": size,
-          "_source": SOURCE['file'],
+          "_source": SOURCE[return_type],
           "query": {
             "bool": {
               "must": {
@@ -557,7 +577,7 @@ class DataExplorerHandler(base.RequestHandler):
               },
               "filter": {
                 "bool" : {
-                  "must" : [{ "term" : {"container_type" : "file"}}]
+                  "must" : [{ "term" : {"container_type" : return_type}}]
                 }
               }
             }
@@ -589,8 +609,8 @@ class DataExplorerHandler(base.RequestHandler):
         return self._process_results(results, result_type)
 
     def _process_results(self, results, result_type):
-        if result_type == 'file':
-            return self._process_file_results(results)
+        if result_type in EXACT_CONTAINERS:
+            return self._process_exact_results(results)
         else:
             containers = results['aggregations']['by_container']['buckets']
             modified_results = []
@@ -598,7 +618,7 @@ class DataExplorerHandler(base.RequestHandler):
                 modified_results.append(c['by_top_hit']['hits']['hits'][0])
             return modified_results
 
-    def _process_file_results(self, results):
+    def _process_exact_results(self, results):
         return results['hits']['hits']
 
 
