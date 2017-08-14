@@ -283,9 +283,8 @@ SOURCE_FILE = SOURCE_ANALYSIS + [
     "file.name",
     "file.size",
     "file.type",
-    "parent,"
+    "parent",
 ]
-
 
 SOURCE = {
     "collection": SOURCE_COLLECTION,
@@ -295,6 +294,9 @@ SOURCE = {
     "analysis": SOURCE_ANALYSIS,
     "file": SOURCE_FILE
 }
+
+# Containers where search doesn't do an aggregation to find results
+EXACT_CONTAINERS = ['file', 'collection']
 
 
 class DataExplorerHandler(base.RequestHandler):
@@ -509,8 +511,8 @@ class DataExplorerHandler(base.RequestHandler):
     ## CONSTRUCTING QUERIES ##
 
     def _construct_query(self, return_type, search_string, filters, size=100):
-        if return_type == 'file':
-            return self._construct_file_query(search_string, filters, size)
+        if return_type in EXACT_CONTAINERS:
+            return self._construct_exact_query(return_type, search_string, filters, size)
 
         query = {
             "size": 0,
@@ -562,10 +564,10 @@ class DataExplorerHandler(base.RequestHandler):
 
         return query
 
-    def _construct_file_query(self, search_string, filters, size=100):
+    def _construct_exact_query(self, return_type, search_string, filters, size=100):
         query = {
           "size": size,
-          "_source": SOURCE['file'],
+          "_source": SOURCE[return_type],
           "query": {
             "bool": {
               "must": {
@@ -575,7 +577,7 @@ class DataExplorerHandler(base.RequestHandler):
               },
               "filter": {
                 "bool" : {
-                  "must" : [{ "term" : {"container_type" : "file"}}]
+                  "must" : [{ "term" : {"container_type" : return_type}}]
                 }
               }
             }
@@ -607,8 +609,8 @@ class DataExplorerHandler(base.RequestHandler):
         return self._process_results(results, result_type)
 
     def _process_results(self, results, result_type):
-        if result_type == 'file':
-            return self._process_file_results(results)
+        if result_type in EXACT_CONTAINERS:
+            return self._process_exact_results(results)
         else:
             containers = results['aggregations']['by_container']['buckets']
             modified_results = []
@@ -616,7 +618,7 @@ class DataExplorerHandler(base.RequestHandler):
                 modified_results.append(c['by_top_hit']['hits']['hits'][0])
             return modified_results
 
-    def _process_file_results(self, results):
+    def _process_exact_results(self, results):
         return results['hits']['hits']
 
 
