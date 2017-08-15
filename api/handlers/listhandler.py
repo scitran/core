@@ -185,7 +185,7 @@ class ListHandler(base.RequestHandler):
             query_params = None
         container = storage.get_container(_id, query_params)
         if container is not None:
-            if self.superuser_request:
+            if self.superuser_request or self.user_is_admin:
                 permchecker = always_ok
             elif self.public_request:
                 permchecker = listauth.public_request(self, container)
@@ -209,35 +209,57 @@ class PermissionsListHandler(ListHandler):
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(cont_name, _id)
+        payload = self.request.json_body
+
+        if cont_name == 'groups' and self.request.params.get('propagate') =='true':
+            self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access']}})
+            self._propagate_permissions(cont_name, _id, query={'permissions._id': {'$ne': payload['_id']}}, update={'$addToSet': {'permissions': payload}})
+        elif cont_name != 'groups':
+            self._propagate_permissions(cont_name, _id)
         return result
 
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
 
         result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(cont_name, _id)
+        payload = self.request.json_body
+        payload['_id'] = kwargs.get('_id')
+        if cont_name == 'groups' and self.request.params.get('propagate') =='true':
+            self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access']}})
+        elif cont_name != 'groups':
+            self._propagate_permissions(cont_name, _id)
         return result
 
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).delete(cont_name, list_name, **kwargs)
-        self._propagate_project_permissions(cont_name, _id)
+
+        if cont_name == 'groups' and self.request.params.get('propagate') =='true':
+            self._propagate_permissions(cont_name, _id, query={'permissions._id' : kwargs.get('_id')}, update={'$pull' : {'permissions': {'_id': kwargs.get('_id')}}})
+        elif cont_name != 'groups':
+            self._propagate_permissions(cont_name, _id)
         return result
 
-    def _propagate_project_permissions(self, cont_name, _id):
+    def _propagate_permissions(self, cont_name, _id, query=None, update=None):
         """
-        method to propagate permissions from a project to its sessions and acquisitions
+        method to propagate permissions from a container/group to its sessions and acquisitions
         """
-        if cont_name == 'projects':
+        if query is None:
+            query = {}
+        if cont_name == 'groups':
+            try:
+                hierarchy.propagate_changes(cont_name, _id, query, update)
+            except APIStorageException as e:
+                self.abort(400, e.message)
+        elif cont_name == 'projects':
             try:
                 oid = bson.ObjectId(_id)
                 update = {'$set': {
-                    'permissions': config.db.projects.find_one({'_id': oid},{'permissions': 1})['permissions']
+                    'permissions': config.db[cont_name].find_one({'_id': oid},{'permissions': 1})['permissions']
                 }}
                 hierarchy.propagate_changes(cont_name, oid, {}, update)
             except APIStorageException:
-                self.abort(500, 'permissions not propagated from project {} to sessions'.format(_id))
+                self.abort(500, 'permissions not propagated from {} {} down hierarchy'.format(cont_name, _id))
 
 
 class NotesListHandler(ListHandler):

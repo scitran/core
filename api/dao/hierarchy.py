@@ -139,6 +139,7 @@ def propagate_changes(cont_name, _id, query, update):
     cont_name and _id refer to top level container (which will not be modified here)
     """
 
+
     if cont_name == 'groups':
         project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
         session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
@@ -154,6 +155,8 @@ def propagate_changes(cont_name, _id, query, update):
         config.db.sessions.update_many(session_q, update)
         config.db.acquisitions.update_many(acquisition_q, update)
 
+    
+    # Apply change to projects
     elif cont_name == 'projects':
         session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
 
