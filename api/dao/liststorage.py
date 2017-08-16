@@ -169,6 +169,9 @@ class FileStorage(ListStorage):
         delete_payload = payload.get('delete')
         replace_payload = payload.get('replace')
 
+        if (set_payload or delete_payload) and replace_payload is not None:
+            raise APIStorageException('Cannot set or delete AND replace info fields.')
+
         if replace_payload is not None:
             update = {
                 '$set': {
