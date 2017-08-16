@@ -37,7 +37,7 @@ def initialize_list_configurations():
             'input_schema_file': 'tag.json'
         },
         'files': {
-            'storage': liststorage.ListStorage,
+            'storage': liststorage.FileStorage,
             'permchecker': listauth.default_sublist,
             'use_object_id': True,
             'storage_schema_file': 'file.json',
@@ -87,11 +87,14 @@ def initialize_list_configurations():
     for cont_name, cont_config in list_container_configurations.iteritems():
         for list_name, list_config in cont_config.iteritems():
             storage_class = list_config['storage']
-            storage = storage_class(
-                cont_name,
-                list_name,
-                use_object_id=list_config.get('use_object_id', False)
-            )
+            if list_name == 'files':
+                storage = storage_class(cont_name)
+            else:
+                storage = storage_class(
+                    cont_name,
+                    list_name,
+                    use_object_id=list_config.get('use_object_id', False)
+                )
             list_config['storage'] = storage
     return list_container_configurations
 
@@ -543,15 +546,8 @@ class FileListHandler(ListHandler):
         payload = self.request.json_body
         validators.validate_data(payload, 'file-update.json', 'input', 'PUT')
 
-        try:
-            result = permchecker(storage.exec_op)('PUT', _id=_id, query_params=kwargs, payload=payload)
-        except APIStorageException as e:
-            self.abort(400, e.message)
-        # abort if the query of the update wasn't able to find any matching documents
-        if result.matched_count == 0:
-            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-        else:
-            return {'modified':result.modified_count}
+        result = permchecker(storage.exec_op)('PUT', _id=_id, query_params=kwargs, payload=payload)
+        return result
 
     def delete(self, cont_name, list_name, **kwargs):
         # Overriding base class delete to audit action before completion

@@ -1,11 +1,13 @@
 import bson.errors
 import bson.objectid
 import datetime
+import pymongo
 
-from . import APIStorageException, APIConflictException
+from . import APIStorageException, APIConflictException, APINotFoundException
 from . import consistencychecker
 from .. import config
 from .. import util
+from ..jobs import rules
 from .containerstorage import SessionStorage, AcquisitionStorage
 
 log = config.log
@@ -119,6 +121,48 @@ class ListStorage(object):
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]
 
+
+class FileStorage(ListStorage):
+
+    def __init__(self, cont_name):
+        super(FileStorage,self).__init__(cont_name, 'files', use_object_id=True)
+
+
+    def _update_el(self, _id, query_params, payload, exclude_params):
+        container_before = self.get_container(_id)
+        if not container_before:
+            raise APINotFoundException('Could not find {} {}, file not updated.'.format(
+                    _id, self.cont_name
+                ))
+
+        mod_elem = {}
+        for k,v in payload.items():
+            mod_elem[self.list_name + '.$.' + k] = v
+        query = {'_id': _id }
+        if exclude_params is None:
+            query[self.list_name] = {'$elemMatch': query_params}
+        else:
+            query['$and'] = [
+                {self.list_name: {'$elemMatch': query_params}},
+                {self.list_name: {'$not': {'$elemMatch': exclude_params} }}
+            ]
+        mod_elem['modified'] = datetime.datetime.utcnow()
+        update = {
+            '$set': mod_elem
+        }
+
+        container_after = self.dbc.find_one_and_update(query, update, return_document=pymongo.collection.ReturnDocument.AFTER)
+        if not container_after:
+            raise APINotFoundException('Could not find and modify {} {}. file not updated'.format(_id, self.cont_name))
+
+        jobs_spawned = rules.create_jobs(config.db, container_before, container_after, self.cont_name)
+
+        return {
+            'modified': 1,
+            'jobs_triggered': len(jobs_spawned)
+        }
+
+
     def modify_info(self, _id, query_params, payload):
         update = {}
         set_payload = payload.get('set')
@@ -153,7 +197,6 @@ class ListStorage(object):
             update['$set']['modified'] = datetime.datetime.utcnow()
 
         return self.dbc.update_one(query, update)
-
 
 
 class StringListStorage(ListStorage):
