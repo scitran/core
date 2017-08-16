@@ -243,8 +243,9 @@ endpoints = [
                 route('/packfile',                              FileListHandler, h='packfile',       m=['POST']),
                 route('/packfile-end',                          FileListHandler, h='packfile_end'),
                 route('/<list_name:files>',                     FileListHandler,                     m=['POST']),
-                route('/<list_name:files>/<name:{fname}>',      FileListHandler,                     m=['GET', 'DELETE']),
+                route('/<list_name:files>/<name:{fname}>',      FileListHandler,                     m=['GET', 'PUT', 'DELETE']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
+                route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='modify_info',    m=['POST']),
 
                 route( '/analyses',                                AnalysesHandler,                  m=['POST']),
                 prefix('/analyses', [

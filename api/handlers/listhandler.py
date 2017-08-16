@@ -37,7 +37,7 @@ def initialize_list_configurations():
             'input_schema_file': 'tag.json'
         },
         'files': {
-            'storage': liststorage.ListStorage,
+            'storage': liststorage.FileStorage,
             'permchecker': listauth.default_sublist,
             'use_object_id': True,
             'storage_schema_file': 'file.json',
@@ -87,11 +87,14 @@ def initialize_list_configurations():
     for cont_name, cont_config in list_container_configurations.iteritems():
         for list_name, list_config in cont_config.iteritems():
             storage_class = list_config['storage']
-            storage = storage_class(
-                cont_name,
-                list_name,
-                use_object_id=list_config.get('use_object_id', False)
-            )
+            if list_name == 'files':
+                storage = storage_class(cont_name)
+            else:
+                storage = storage_class(
+                    cont_name,
+                    list_name,
+                    use_object_id=list_config.get('use_object_id', False)
+                )
             list_config['storage'] = storage
     return list_container_configurations
 
@@ -501,6 +504,25 @@ class FileListHandler(ListHandler):
     def get_info(self, cont_name, list_name, **kwargs):
         return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
 
+    def modify_info(self, cont_name, list_name, **kwargs):
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        payload = self.request.json_body
+
+        validators.validate_data(payload, 'info_update.json', 'input', 'POST')
+
+        try:
+            permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
+            result = storage.modify_info(_id, kwargs, payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        # abort if the query of the update wasn't able to find any matching documents
+        if result.matched_count == 0:
+            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+        else:
+            return {'modified':result.modified_count}
+
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
 
@@ -516,6 +538,16 @@ class FileListHandler(ListHandler):
         permchecker(noop)('POST', _id=_id)
 
         return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
+
+    def put(self, cont_name, list_name, **kwargs):
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        payload = self.request.json_body
+        validators.validate_data(payload, 'file-update.json', 'input', 'PUT')
+
+        result = permchecker(storage.exec_op)('PUT', _id=_id, query_params=kwargs, payload=payload)
+        return result
 
     def delete(self, cont_name, list_name, **kwargs):
         # Overriding base class delete to audit action before completion

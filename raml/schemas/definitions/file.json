@@ -43,6 +43,15 @@
           },
           "additionalProperties": false
         },
+        "file-update":{
+            "type": "object",
+            "properties": {
+              "type":           {"$ref":"#/definitions/file-type"},
+              "modality":       {"$ref":"#/definitions/modality"},
+              "measurements":   {"$ref":"#/definitions/measurements"}
+          },
+          "additionalProperties": false
+        },
         "file-output":{
             "type": "object",
             "properties": {
