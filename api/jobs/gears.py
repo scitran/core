@@ -59,6 +59,8 @@ def suggest_container(gear, cont_name, cid):
     """
 
     root = ContainerStorage.factory(cont_name).get_container(cid, projection={'permissions':0}, get_children=True)
+    root['analyses'] = ContainerStorage.factory('analyses').get_analyses(cont_name, cid, False)
+
     invocation_schema = get_invocation_schema(gear)
 
     schemas = {}
@@ -73,7 +75,7 @@ def suggest_container(gear, cont_name, cid):
             for x in schemas:
                 f['suggested'][x] = schemas[x].is_valid(f)
 
-    for analysis in root.get('analyses',{}):
+    for analysis in root.get('analyses',[]):
         files = analysis.get('files', [])
         files[:] = [x for x in files if x.get('output')]
         for f in files:
