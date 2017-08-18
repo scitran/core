@@ -497,43 +497,10 @@ class DataExplorerHandler(base.RequestHandler):
             return self.get_file_nodes(return_type, filters, search_string)
 
         size = self.search_size(return_type)
-        body = {
-            "size": 0,
-            "_source": ["session._id"],
-            'query': {
-                "bool": {
-                    "must": {
-                        "match": {
-                            "_all": search_string
-                        }
-                    },
-                    "filter": {
-                        "bool" : {
-                            "must" : filters
-                        }
-                    }
-                }
-            },
-            'aggs': {
-                'by_container': {
-                    'terms': {
-                        'field': return_type+'._id',
-                        'size': size
-                    }
-                }
-            }
-        }
+        body = self._construct_query(return_type, search_string, filters, size)
         
-        # Remove search string if none given
-        if not search_string:
-            body['query']['bool'].pop('must')
-
-        # Remove filters list to filter key on query if does not exists
-        if not filters:
-            body['query']['bool'].pop('filter')
-
-        if not filters and not search_string:
-            body['query'] = MATCH_ALL
+        body['aggs']['by_container'].pop('aggs')
+        body['_source'] = [return_type + "._id"]
 
         nodes = []
         results = config.es.search(
@@ -545,29 +512,10 @@ class DataExplorerHandler(base.RequestHandler):
             nodes.append({'level': return_type, '_id': result['key']})
         return {'nodes':nodes}
         
-    def get_file_nodes(self, return_type,filters,search_string):
+    def get_file_nodes(self, return_type, filters, search_string):
 
-        query = {
-            "bool": {
-                "must": {
-                    "match": {
-                        "_all": search_string
-                    }
-                },
-                "filter": {
-                    "bool" : {
-                        "must" : [
-                            { "term" : {"container_type" : return_type}}
-                        ]
-                    }
-                }
-            }
-        }
+        query = self._construct_file_query(return_type, filters, search_string)['query']
         
-
-        # Add filters list to filter key on query if exists
-        if filters:
-            query['bool']['filter']['bool']['must'].extend(filters)
         nodes = []
         results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'])
         log.debug(results)
