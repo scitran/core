@@ -131,7 +131,7 @@ class TargetedPlacer(Placer):
 class UIDPlacer(Placer):
     """
     A placer that can accept multiple files.
-    It uses the method upsert_bottom_up_hierarchy to create its project/session/acquisition hierarchy
+    It uses the method upsert_top_down_hierarchy to create its project/session/acquisition hierarchy
     Sessions and acquisitions are identified by UID.
     """
     metadata_schema = 'uidupload.json'

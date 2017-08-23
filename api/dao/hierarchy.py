@@ -370,6 +370,7 @@ def _create_query(cont, cont_type, parent_type, parent_id, upload_type):
         return q
     elif upload_type == 'uid':
         return {
+            parent_type : bson.ObjectId(parent_id),
             'uid': cont['uid']
         }
     else:

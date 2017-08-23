@@ -230,6 +230,7 @@ def test_reaper_upload_unknown_group_project(data_builder, file_form, as_root, a
 
 def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
     group = data_builder.create_group()
+    project3_id = data_builder.create_project()
 
     # try to uid-upload w/o logging in
     r = as_public.post('/upload/uid')
@@ -286,6 +287,18 @@ def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
     # try uid-upload files to existing session uid w/ other user (having no rw perms on session)
     r = as_user.post('/upload/uid', files=file_form(*uid_files, meta=uid_meta))
     assert r.status_code == 403
+
+    #Upload to different project with same uid
+    uid_meta_3 = copy.deepcopy(uid_meta)
+    r = as_admin.get('/projects/' + project3_id)
+    assert r.ok
+    uid_meta_3['project']['label'] = r.json()['label']
+    r = as_admin.post('/upload/uid', files=file_form(*uid_files, meta=uid_meta_3))
+    assert r.ok
+    r = as_admin.get('/projects/' + project3_id + '/sessions')
+    assert r.ok
+    assert len(r.json()) > 0
+
 
     # TODO figure out why api.dao.hierarchy._group_id_fuzzy_match is NOT called below
 
