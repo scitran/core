@@ -450,7 +450,7 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def get_facets(self):
 
-        return_type, filters, search_string = self._parse_request(request_type='facet')
+        _, filters, search_string = self._parse_request(request_type='facet')
 
         facets_q = copy.deepcopy(FACET_QUERY)
         facets_q['query'] = self._construct_query(None, search_string, filters)['query']
