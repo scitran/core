@@ -168,7 +168,7 @@ def test_access_log_report(data_builder, with_user, as_user, as_admin):
     data_builder.delete_project(project, recursive=True)
 
     # get access log report of certain access types
-    r = as_admin.get('/report/accesslog', params={'access_types': ['user_login', 'view_container']})
+    r = as_admin.get('/report/accesslog', params={'access_type': ['user_login', 'view_container']})
     assert r.ok
     ul, vc = False, False
 
