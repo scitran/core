@@ -232,6 +232,14 @@ FACET_QUERY = {
     }
 }
 
+INFO_EXISTS_SCRIPT = {
+    'script': """
+        (params['_source'].containsKey('file') &&
+        params['_source']['file'].containsKey('info') &&
+        !params['_source']['file']['info'].empty)
+    """
+}
+
 
 SOURCE_COMMON = [
     "group._id",
@@ -450,10 +458,10 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def get_facets(self):
 
-        return_type, filters, search_string = self._parse_request(request_type='facet')
+        _, filters, search_string = self._parse_request(request_type='facet')
 
         facets_q = copy.deepcopy(FACET_QUERY)
-        facets_q['query'] = self._construct_query(return_type, search_string, filters)['query']
+        facets_q['query'] = self._construct_query(None, search_string, filters)['query']
 
         # if the query comes back with a return_type agg, remove it
         facets_q['query'].pop('aggs', None)
@@ -584,6 +592,11 @@ class DataExplorerHandler(base.RequestHandler):
           }
         }
 
+        if return_type == 'file':
+            query['script_fields'] = {
+            "info_exists" : INFO_EXISTS_SCRIPT
+        }
+
         # Add search_string to "match on _all fields" query, otherwise remove unneeded logic
         if search_string:
             query['query']['bool']['must']['match']['_all'] = search_string
@@ -610,7 +623,7 @@ class DataExplorerHandler(base.RequestHandler):
 
     def _process_results(self, results, result_type):
         if result_type in EXACT_CONTAINERS:
-            return self._process_exact_results(results)
+            return self._process_exact_results(results, result_type)
         else:
             containers = results['aggregations']['by_container']['buckets']
             modified_results = []
@@ -618,8 +631,17 @@ class DataExplorerHandler(base.RequestHandler):
                 modified_results.append(c['by_top_hit']['hits']['hits'][0])
             return modified_results
 
-    def _process_exact_results(self, results):
-        return results['hits']['hits']
+    def _process_exact_results(self, results, result_type):
+        results = results['hits']['hits']
+        if result_type == 'file':
+
+            # Note: At some point this would be better suited
+            # as an indexed field rather than scripted on the fly
+            for r in results:
+                fields = r.pop('fields', {})
+                r['_source']['file']['info_exists'] = fields.get('info_exists')[0]
+
+        return results
 
 
 

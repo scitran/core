@@ -106,19 +106,24 @@ def test_search(as_public, as_drone, es):
 
     # file search
     cont_type = 'file'
-    es.search.return_value = {'hits': {'hits': results}}
+    raw_file_results = [{'fields': {'info_exists': [True]}, '_source': {'file': {}}}]
+    formatted_file_results = [{'_source': {'file': {'info_exists': True}}}]
+    es.search.return_value = {'hits': {'hits': copy.deepcopy(raw_file_results)}}
+
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True})
     es.search.assert_called_with(
         body={
             '_source': deh.SOURCE[cont_type],
             'query': {'bool': {'filter': {'bool': {'must': [{'term': {'container_type': cont_type}}]}}}},
+            'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
             'size': 100},
         doc_type='flywheel',
         index='data_explorer')
     assert r.ok
-    assert r.json['results'] == results
+    assert r.json['results'] == formatted_file_results
 
     # file search w/ search string and filter
+    es.search.return_value = {'hits': {'hits': copy.deepcopy(raw_file_results)}}
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'search_string': search_str, 'filters': [
         {'terms': {filter_key: filter_value}},
         {'range': filter_range},
@@ -134,13 +139,15 @@ def test_search(as_public, as_drone, es):
                     {'range': filter_range},
                 ]}}
             }},
+            'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
             'size': 100},
         doc_type='flywheel',
         index='data_explorer')
     assert r.ok
-    assert r.json['results'] == results
+    assert r.json['results'] == formatted_file_results
 
     # file search w/ search null filter
+    es.search.return_value = {'hits': {'hits': copy.deepcopy(raw_file_results)}}
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'filters': [
         {'terms': {filter_key: [filter_value, "null"]}},
     ]})
@@ -150,7 +157,7 @@ def test_search(as_public, as_drone, es):
             'query': {'bool': {
                 'filter': {'bool': {'must': [
                     {'term': {'container_type': cont_type}},
-                    {'bool': 
+                    {'bool':
                         {'should':
                             [
                                 {'bool':
@@ -172,11 +179,12 @@ def test_search(as_public, as_drone, es):
                     }
                 ]}}
             }},
+            'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
             'size': 100},
         doc_type='flywheel',
         index='data_explorer')
     assert r.ok
-    assert r.json['results'] == results
+    assert r.json['results'] == formatted_file_results
 
 
 
