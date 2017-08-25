@@ -188,21 +188,25 @@ class ContainerHandler(base.RequestHandler):
     @staticmethod
     def join_user_info(results):
         """
-        Given a list of containers, adds avatar and name context to each member of the permissions list
+        Given a list of containers, adds avatar and name context to each member of the permissions and notes lists
         """
 
         # Get list of all users, hash by uid
+        # TODO: This is not an efficient solution if there are hundreds of inactive users
         users_list = containerstorage.ContainerStorage('users', use_object_id=False).get_all_el({}, None, None)
         users = {user['_id']: user for user in users_list}
 
         for r in results:
-            permissions = r.get('permissions') or r.get('permissions', [])
+            permissions = r.get('permissions', [])
+            notes = r.get('notes', [])
 
-            for p in permissions:
-                user = users[p['_id']]
+            for p in permissions+notes:
+                uid = p['user'] if 'user' in p else p['_id']
+                user = users[uid]
                 p['avatar'] = user.get('avatar')
                 p['firstname'] = user.get('firstname', '')
                 p['lastname'] = user.get('lastname', '')
+
 
         return results
 
