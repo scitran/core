@@ -1,6 +1,5 @@
 attrdict==2.0.0
 coverage==4.0.3
-coveralls==1.1
 mock==2.0.0
 mongomock==3.8.0
 newrelic==2.60.0.46

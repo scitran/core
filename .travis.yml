@@ -16,7 +16,7 @@ script:
 
 after_success:
   - coveralls
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+  - if [ "$TRAVIS_BRANCH" == "master" -o  "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
         bash <(curl -s https://codecov.io/bash) -cF python;
     fi
   - if [ "$TRAVIS_TAG" ]; then
