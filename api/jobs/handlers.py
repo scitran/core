@@ -14,6 +14,7 @@ from ..dao import APIPermissionException, APINotFoundException
 from ..dao.containerstorage import ProjectStorage, AcquisitionStorage
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
 from ..web import base
+from ..web.encoder import pseudo_consistent_json_encode
 from ..validators import InputValidationException
 from .. import config
 from . import batch
@@ -317,7 +318,7 @@ class JobsHandler(base.RequestHandler):
         # B) a user editing the file object
         #
         # You can count on neither occurring before a job starts, because the queue is not globally FIFO.
-        # So option #2 is potentially more convenient, but unintuitive and prone to customer confusion.
+        # So option #2 is potentially more convenient, but unintuitive and prone to user confusion.
 
 
         for x in inputs:
@@ -412,11 +413,11 @@ class JobHandler(base.RequestHandler):
 
         if c.get('config') is not None and c.get('inputs') is not None:
             # New behavior
-            encoded = json.dumps(c, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
+            encoded = pseudo_consistent_json_encode(c)
             self.response.app_iter = StringIO.StringIO(encoded)
         else:
             # Legacy behavior
-            encoded = json.dumps({"config": c}, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
+            encoded = pseudo_consistent_json_encode({"config": c})
             self.response.app_iter = StringIO.StringIO(encoded)
 
 
