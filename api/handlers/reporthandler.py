@@ -83,7 +83,7 @@ class ReportHandler(base.RequestHandler):
                 try:
                     for doc in report.build():
                         writer.writerow(doc)
-                        
+
                 except APIReportException as e:
                     self.abort(404, str(e))
                 # Need to close and reopen file to flush buffer into file
@@ -491,7 +491,7 @@ class AccessLogReport(Report):
         :uid:           user id of the target user
         :limit:         number of records to return
         :subject:       subject code of session accessed
-        :access_types:  list of access_types to filter logs
+        :access_type:  list of access_types to filter logs
         :csv:           Boolean if user wants csv file
         """
 
@@ -502,10 +502,7 @@ class AccessLogReport(Report):
         uid = params.get('user')
         limit= params.get('limit', 100)
         subject = params.get('subject', None)
-        if params.get('bin') == 'true':
-            access_types = params.get('access_types', [])
-        else:
-            access_types = params.getall('access_types')
+        access_types = params.getall('access_type')
         csv_bool = (params.get('csv') == 'true')
 
         if start_date:
@@ -548,7 +545,7 @@ class AccessLogReport(Report):
         """
         flattens a document to not have nested objects
         """
-        
+
         for field in json_obj.keys():
             if isinstance(json_obj[field], dict):
                 flat = self.flatten(json_obj[field], flat, prefix = prefix + field + ".")
