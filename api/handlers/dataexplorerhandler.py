@@ -232,6 +232,14 @@ FACET_QUERY = {
     }
 }
 
+INFO_EXISTS_SCRIPT = {
+    'script': """
+        (params['_source'].containsKey('file') &&
+        params['_source']['file'].containsKey('info') &&
+        !params['_source']['file']['info'].empty)
+    """
+}
+
 
 SOURCE_COMMON = [
     "group._id",
@@ -586,9 +594,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         if return_type == 'file':
             query['script_fields'] = {
-            "info_exists" : {
-                "script" : "(params['_source'].containsKey('file') && params['_source']['file'].containsKey('info') && !params['_source']['file']['info'].empty)"
-            }
+            "info_exists" : INFO_EXISTS_SCRIPT
         }
 
         # Add search_string to "match on _all fields" query, otherwise remove unneeded logic
