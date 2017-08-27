@@ -111,7 +111,7 @@ class Report(object):
         """
         raise NotImplementedError()
 
-    def build_csv(self):
+    def build_csv(self, filepath):
         """
         Build and return a csv file of the report
         """
