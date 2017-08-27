@@ -50,7 +50,6 @@ class APIReportException(Exception):
 class APIReportParamsException(Exception):
     pass
 
-
 class ReportHandler(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
@@ -90,6 +89,8 @@ class ReportHandler(base.RequestHandler):
 
 
 class Report(object):
+
+    csv_filename = 'report.csv'
 
     def __init__(self, params):
         """
@@ -541,20 +542,6 @@ class AccessLogReport(Report):
             return True
         return False
 
-    def flatten(self, json_obj, flat=None, prefix = ""):
-        """
-        flattens a document to not have nested objects
-        """
-        if flat is None:
-            flat = {}
-
-        for field in json_obj.keys():
-            if isinstance(json_obj[field], dict):
-                flat = self.flatten(json_obj[field], flat=flat, prefix = prefix + field + ".")
-            else:
-                flat[prefix + field] = json_obj[field]
-        return flat
-
     def build(self):
         query = {}
 
@@ -583,7 +570,8 @@ class AccessLogReport(Report):
             # Format timestamp as ISO UTC
             doc['timestamp'] = pytz.timezone('UTC').localize(doc['timestamp']).isoformat()
 
-            writer.writerow(self.flatten(doc))
+            # mongo_dict flattens dictionaries using a dot notation
+            writer.writerow(util.mongo_dict(doc))
 
         # Need to close and reopen file to flush buffer into file
         csv_file.close()
