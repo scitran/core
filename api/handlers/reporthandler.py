@@ -111,7 +111,7 @@ class Report(object):
         """
         raise NotImplementedError()
 
-    def build_csv(self, filepath):
+    def build_csv(self, filepath): # pylint: disable=unused-argument
         """
         Build and return a csv file of the report
         """
