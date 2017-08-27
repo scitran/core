@@ -1,11 +1,11 @@
+import bson
 import copy
 import unicodecsv as csv
 import datetime
-import os
-
-import bson
 import dateutil
+import os
 import pymongo
+import pytz
 
 from .. import config
 from .. import tempdir as tempfile
@@ -19,29 +19,29 @@ EIGHTEEN_YEARS_IN_SEC = 18 * 365.25 * 24 * 60 * 60
 BYTES_IN_MEGABYTE = float(1<<20)
 ACCESS_LOG_FIELDS = [
     "_id",
+    "timestamp",
     "access_type",
+    "origin.id",
+    "origin.method",
+    "origin.name",
+    "origin.type",
+    "context.group.id",
+    "context.group.label",
+    "context.project.id",
+    "context.project.label",
+    "context.subject.id",
+    "context.subject.label",
+    "context.session.id",
+    "context.session.label",
     "context.acquisition.id",
     "context.acquisition.label",
     "context.analysis.id",
     "context.analysis.label",
     "context.collection.id",
     "context.collection.label",
-    "context.group.id",
-    "context.group.label",
-    "context.project.id",
-    "context.project.label",
-    "context.session.id",
-    "context.session.label",
-    "context.subject.id",
-    "context.subject.label",
     "context.ticket_id",
-    "origin.id",
-    "origin.method",
-    "origin.name",
-    "origin.type",
     "request_method",
-    "request_path",
-    "timestamp"
+    "request_path"
 ]
 
 class APIReportException(Exception):
@@ -73,24 +73,16 @@ class ReportHandler(base.RequestHandler):
             raise NotImplementedError('Report type {} is not supported'.format(report_type))
 
         if self.superuser_request or report.user_can_generate(self.uid):
-            # If csv is true create a temp file to respond with
-            if report_type == 'accesslog' and self.request.params.get('csv') == 'true':
 
+            if self.is_true('csv'):
                 tempdir = tempfile.TemporaryDirectory(prefix='.tmp', dir=config.get_item('persistent', 'data_path'))
-                csv_file = open(os.path.join(tempdir.name, 'accesslog.csv'), 'w+')
-                writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
-                writer.writeheader()
-                try:
-                    for doc in report.build():
-                        writer.writerow(doc)
+                filepath = os.path.join(tempdir.name, report.csv_filename)
 
-                except APIReportException as e:
-                    self.abort(404, str(e))
-                # Need to close and reopen file to flush buffer into file
-                csv_file.close()
-                self.response.app_iter = open(os.path.join(tempdir.name, 'accesslog.csv'), 'r')
+                report.build_csv(filepath)
+
+                self.response.app_iter = open(filepath, 'r')
                 self.response.headers['Content-Type'] = 'text/csv'
-                self.response.headers['Content-Disposition'] = 'attachment; filename="accesslog.csv"'
+                self.response.headers['Content-Disposition'] = 'attachment; filename="{}"'.format(report.csv_filename)
             else:
                 return report.build()
         else:
@@ -118,6 +110,13 @@ class Report(object):
         Build and return a json report
         """
         raise NotImplementedError()
+
+    def build_csv(self):
+        """
+        Build and return a csv file of the report
+        """
+        raise APIReportParamsException('This report does not support csv file format.')
+
 
     @staticmethod
     def _get_result_list(output):
@@ -481,6 +480,9 @@ class AccessLogReport(Report):
       - information about the session/project/group in which the action took place
     """
 
+    # What to name csvs generated from this report
+    csv_filename = 'accesslog.csv'
+
     def __init__(self, params):
         """
         Initialize an Access Log Report
@@ -503,7 +505,6 @@ class AccessLogReport(Report):
         limit= params.get('limit', 100)
         subject = params.get('subject', None)
         access_types = params.getall('access_type')
-        csv_bool = (params.get('csv') == 'true')
 
         if start_date:
             start_date = dateutil.parser.parse(start_date)
@@ -531,7 +532,6 @@ class AccessLogReport(Report):
         self.limit          = limit
         self.subject        = subject
         self.access_types   = access_types
-        self.csv_bool       = csv_bool
 
     def user_can_generate(self, uid):
         """
@@ -541,20 +541,19 @@ class AccessLogReport(Report):
             return True
         return False
 
-    def flatten(self, json_obj, flat, prefix = ""):
+    def flatten(self, json_obj, flat=None, prefix = ""):
         """
         flattens a document to not have nested objects
         """
+        if flat is None:
+            flat = {}
 
         for field in json_obj.keys():
             if isinstance(json_obj[field], dict):
-                flat = self.flatten(json_obj[field], flat, prefix = prefix + field + ".")
+                flat = self.flatten(json_obj[field], flat=flat, prefix = prefix + field + ".")
             else:
                 flat[prefix + field] = json_obj[field]
         return flat
-
-    def make_csv_ready(self, cursor):
-        return [self.flatten(json_obj, {}) for json_obj in cursor]
 
     def build(self):
         query = {}
@@ -572,11 +571,24 @@ class AccessLogReport(Report):
         if self.access_types:
             query['access_type'] = {'$in': self.access_types}
 
-        cursor = config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING).batch_size(1000)
-        if self.csv_bool:
-            return self.make_csv_ready(cursor)
+        return config.log_db.access_log.find(query).limit(self.limit).sort('timestamp', pymongo.DESCENDING).batch_size(1000)
 
-        return cursor
+    def build_csv(self, filepath):
+        csv_file = open(filepath, 'w+')
+        writer = csv.DictWriter(csv_file, ACCESS_LOG_FIELDS)
+        writer.writeheader()
+
+        for doc in self.build():
+
+            # Format timestamp as ISO UTC
+            doc['timestamp'] = pytz.timezone('UTC').localize(doc['timestamp']).isoformat()
+
+            writer.writerow(self.flatten(doc))
+
+        # Need to close and reopen file to flush buffer into file
+        csv_file.close()
+
+
 
 class UsageReport(Report):
     """

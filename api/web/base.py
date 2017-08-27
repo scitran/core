@@ -374,8 +374,6 @@ class RequestHandler(webapp2.RequestHandler):
 
                 for k,v in tree.iteritems():
                     context[k] = {'id': str(v['_id']), 'label': v.get('label')}
-                    if k == 'group':
-                        context[k]['label'] = v.get('name')
                     if k == 'subject':
                         context[k]['label'] = v.get('code')
             log_map['context'] = context
