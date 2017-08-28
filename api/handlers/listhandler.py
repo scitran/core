@@ -539,6 +539,7 @@ class FileListHandler(ListHandler):
 
         return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
 
+    @validators.verify_payload_exists
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
