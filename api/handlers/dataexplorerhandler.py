@@ -1,7 +1,7 @@
 import copy
 import json
 
-from elasticsearch import ElasticsearchException, TransportError
+from elasticsearch import ElasticsearchException, TransportError, helpers
 
 from ..web import base
 from .. import config
@@ -477,6 +477,60 @@ class DataExplorerHandler(base.RequestHandler):
         age_node = aggs.pop('session_age')
         aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
+
+    def search_size(self, return_type):
+        body = {
+            "size": 0,
+            "aggs" : {
+                "count" : {
+                    "cardinality" : {
+                        "field" : return_type + "._id",
+                        "precision_threshold": 100000
+                    }
+                }              
+            }
+        }
+
+        size = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body)['aggregations']['count']['value']
+        size = int(size*1.02)
+        return size
+
+    def get_nodes(self):
+
+        return_type, filters, search_string = self._parse_request()
+        if return_type == 'file':
+            return self.get_file_nodes(return_type, filters, search_string)
+
+        size = self.search_size(return_type)
+        body = self._construct_query(return_type, search_string, filters, size)
+        
+        body['aggs']['by_container'].pop('aggs')
+        body['_source'] = [return_type + "._id"]
+
+        nodes = []
+        results = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body)['aggregations']['by_container']['buckets']
+
+        for result in results:
+            nodes.append({'level': return_type, '_id': result['key']})
+        return {'nodes':nodes}
+        
+    def get_file_nodes(self, return_type, filters, search_string):
+
+        query = self._construct_file_query(return_type, filters, search_string)['query']
+        
+        nodes = []
+        results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'])
+        log.debug(results)
+        for result in results:
+            nodes.append({'level': return_type, '_id': result['_source'][return_type]['_id']})
+        return {'nodes':nodes}
+
 
     @require_login
     def search_fields(self):
