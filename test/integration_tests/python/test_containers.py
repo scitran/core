@@ -564,6 +564,11 @@ def test_edit_file_attributes(data_builder, as_admin, file_form):
     r = as_admin.put('/projects/' + project + '/files/' + file_name, json=payload)
     assert r.status_code == 400
 
+    # Attempt to update with empty payload
+    payload = {}
+    r =as_admin.put('/projects/' + project + '/files/' + file_name, json=payload)
+    assert r.status_code == 400
+
     payload = {
         'info': {}
     }
