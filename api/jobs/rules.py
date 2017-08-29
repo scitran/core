@@ -261,8 +261,25 @@ def get_rules_for_container(db, container):
         result = list(db.project_rules.find({'project_id': str(container['_id'])}))
 
         if not result:
-            print 'Container ' + str(container['_id']) + ' found NO rules'
+            log.debug('Container ' + str(container['_id']) + ' found NO rules')
             return []
         else:
-            print 'Container ' + str(container['_id']) + ' found ' + str(len(result)) + ' rules'
+            log.debug('Container ' + str(container['_id']) + ' found ' + str(len(result)) + ' rules')
             return result
+
+def copy_site_rules_for_project(project_id):
+    """
+    Copy and insert all site-level rules for project.
+
+    Note: Assumes project exists and caller has access.
+    """
+
+    site_rules = config.db.project_rules.find({'project_id' : 'site'})
+
+    for doc in site_rules:
+        doc.pop('_id')
+        doc['project_id'] = str(project_id)
+        config.db.project_rules.insert_one(doc)
+
+
+

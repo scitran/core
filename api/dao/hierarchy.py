@@ -9,6 +9,7 @@ import re
 from .. import files
 from .. import util
 from .. import config
+from .base import ContainerStorage
 from ..auth import has_access
 from . import APIStorageException, APINotFoundException, APIPermissionException, containerutil
 
@@ -155,7 +156,7 @@ def propagate_changes(cont_name, _id, query, update):
         config.db.sessions.update_many(session_q, update)
         config.db.acquisitions.update_many(acquisition_q, update)
 
-    
+
     # Apply change to projects
     elif cont_name == 'projects':
         session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
@@ -356,7 +357,7 @@ def _find_or_create_destination_project(group_id, project_label, timestamp, user
                 'created': timestamp,
                 'modified': timestamp
         }
-        result = config.db.projects.insert_one(project)
+        result = ContainerStorage.factory('project').create_el(project)
         project['_id'] = result.inserted_id
     return project
 

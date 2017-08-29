@@ -1,9 +1,217 @@
+def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
+    gear_name = randstr()
+    gear = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
+
+    gear_2_name = randstr()
+    gear_2 = data_builder.create_gear(gear={'name': gear_2_name, 'version': '0.0.1'})
+
+    rule = {
+        'alg': gear_name,
+        'name': 'csv-job-trigger-rule',
+        'any': [],
+        'all': [
+            {'type': 'file.type', 'value': 'tabular data'},
+        ]
+    }
+
+    # GET ALL
+    # attempt to get site rules without login
+    r = as_public.get('/site/rules')
+    assert r.status_code == 403
+
+    # get empty list of site rules
+    r = as_admin.get('/site/rules')
+    assert r.ok
+    assert r.json() == []
+
+
+    # POST
+    # attempt to add site rule without admin
+    r = as_user.post('/site/rules', json=rule)
+    assert r.status_code == 403
+
+    # attempt to add site rule with empty payload
+    r = as_admin.post('site/rules', json={})
+
+    # add site rule
+    r = as_admin.post('/site/rules', json=rule)
+    assert r.ok
+    rule_id = r.json()['_id']
+
+    r = as_admin.get('/site/rules')
+    assert r.ok
+    assert len(r.json()) == 1
+
+    # GET ALL
+    # attempt to get site rules without login
+    r = as_public.get('/site/rules')
+    assert r.status_code == 403
+
+    # test rule is returned in list
+    r = as_admin.get('/site/rules')
+    assert r.ok
+    assert r.json()[0]['_id'] == rule_id
+
+
+    # GET ONE
+    # attempt to get specific site rule without login
+    r = as_public.get('/site/rules/' + rule_id)
+    assert r.status_code == 403
+
+    # attempt to get non-existent site rule
+    r = as_admin.get('/site/rules/000000000000000000000000')
+    assert r.status_code == 404
+
+    # get specific site rule
+    r = as_admin.get('/site/rules/' + rule_id)
+    assert r.ok
+    assert r.json()['alg'] == gear_name
+
+
+    # PUT
+    update = {'alg': gear_2_name}
+
+    # attempt to modify site rule without admin
+    r = as_user.put('/site/rules/' + rule_id, json=update)
+    assert r.status_code == 403
+
+    # attempt to modify non-existent site rule
+    r = as_admin.put('/site/rules/000000000000000000000000', json=update)
+    assert r.status_code == 404
+
+    # attempt to modify site rule with empty payload
+    r = as_admin.put('/site/rules/' + rule_id, json={})
+    assert r.status_code == 400
+
+    # modify site rule
+    r = as_admin.put('/site/rules/' + rule_id, json=update)
+    assert r.ok
+    r = as_admin.get('/site/rules/' + rule_id)
+    assert r.ok
+    assert r.json()['alg'] == gear_2_name
+
+
+    # DELETE
+    # attempt to delete rule without admin
+    r = as_user.delete('/site/rules/' + rule_id)
+    assert r.status_code == 403
+
+    # attempt to delete non-existent site rule
+    r = as_admin.delete('/site/rules/000000000000000000000000')
+    assert r.status_code == 404
+
+    # delete site rule
+    r = as_admin.delete('/site/rules/' + rule_id)
+    assert r.ok
+
+    r = as_admin.get('/site/rules/' + rule_id)
+    assert r.status_code == 404
+
+
+
+
+def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_admin, as_root):
+    gear_1_name = randstr()
+    gear_1 = data_builder.create_gear(gear={'name': gear_1_name, 'version': '0.0.1'})
+
+    rule_1 = {
+        'alg': gear_1_name,
+        'name': 'csv-job-trigger-rule',
+        'any': [],
+        'all': [
+            {'type': 'file.type', 'value': 'tabular data'},
+        ]
+    }
+
+    gear_2_name = randstr()
+    gear_2 = data_builder.create_gear(gear={'name': gear_2_name, 'version': '0.0.1'})
+
+    rule_2 = {
+        'alg': gear_2_name,
+        'name': 'text-job-trigger-rule',
+        'any': [],
+        'all': [
+            {'type': 'file.type', 'value': 'text'},
+        ]
+    }
+
+    # Add rules to site level
+    r = as_admin.post('/site/rules', json=rule_1)
+    assert r.ok
+    rule_id_1 = r.json()['_id']
+
+    r = as_admin.post('/site/rules', json=rule_2)
+    assert r.ok
+    rule_id_2 = r.json()['_id']
+
+    # Ensure rules exist
+    r = as_admin.get('/site/rules')
+    assert r.ok
+    assert len(r.json()) == 2
+
+
+    # Create new project via POST
+    group = data_builder.create_group()
+    r = as_admin.post('/projects', json={
+        'group': group,
+        'label': 'project_1'
+    })
+    assert r.ok
+    project_id = r.json()['_id']
+
+    r = as_admin.get('/projects/'+project_id+'/rules')
+    assert r.ok
+    assert len(r.json()) == 2
+
+    # Create new project via upload
+    r = as_admin.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': group},
+            'project': {
+                'label': 'test_project',
+            },
+            'session': {
+                'label': 'test_session_label',
+                'subject': {
+                    'code': 'test_subject_code'
+                },
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+    # Find newly created project id
+    projects = as_root.get('/projects').json()
+    for p in projects:
+        if p['label'] == 'test_project':
+            project_2 = p['_id']
+            break
+
+    assert project_2
+    r = as_admin.get('/projects/'+project_2+'/rules')
+    assert r.ok
+    assert len(r.json()) == 2
+
+    # Cleanup site rules
+    r = as_admin.delete('/site/rules/' + rule_id_1)
+    assert r.ok
+    r = as_admin.delete('/site/rules/' + rule_id_2)
+    assert r.ok
+
+
 def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, api_db):
     # create versioned gear to cover code selecting latest gear
     gear_name = randstr()
     gear_1 = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
     gear_2 = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.2'})
     project = data_builder.create_project()
+
+    bad_payload = {'test': 'rules'}
 
     # try to get all project rules of non-existent project
     r = as_admin.get('/projects/000000000000000000000000/rules')
@@ -15,7 +223,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
 
     # try to get project rules w/o permissions
     r = with_user.session.get('/projects/' + project + '/rules')
-    assert r.status_code == 404
+    assert r.status_code == 403
 
     # get project rules (yet empty list)
     r = as_admin.get('/projects/' + project + '/rules')
@@ -27,7 +235,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # try to add rule to non-existent project
-    r = as_admin.post('/projects/000000000000000000000000/rules')
+    r = as_admin.post('/projects/000000000000000000000000/rules', json=bad_payload)
     assert r.status_code == 404
 
     # add read-only perms for user
@@ -36,7 +244,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # try to add rule w/ read-only project perms
-    r = with_user.session.post('/projects/' + project + '/rules')
+    r = with_user.session.post('/projects/' + project + '/rules', json=bad_payload)
     assert r.status_code == 403
 
     # add invalid project rule w/ non-existent gear
@@ -68,11 +276,11 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.status_code == 500
 
     # try to update rule of non-existent project
-    r = as_admin.put('/projects/000000000000000000000000/rules/000000000000000000000000')
+    r = as_admin.put('/projects/000000000000000000000000/rules/000000000000000000000000', json=bad_payload)
     assert r.status_code == 404
 
     # try to update non-existent rule
-    r = as_admin.put('/projects/' + project + '/rules/000000000000000000000000')
+    r = as_admin.put('/projects/' + project + '/rules/000000000000000000000000', json=bad_payload)
     assert r.status_code == 404
 
     # try to update rule w/ read-only project perms

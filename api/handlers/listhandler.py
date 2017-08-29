@@ -16,7 +16,7 @@ from ..auth import listauth, always_ok
 from ..dao import noop
 from ..dao import liststorage
 from ..dao import APIStorageException
-from ..dao import hierarchy
+from ..dao import containerutil
 from ..web.request import log_access, AccessType
 
 
@@ -251,7 +251,7 @@ class PermissionsListHandler(ListHandler):
             query = {}
         if cont_name == 'groups':
             try:
-                hierarchy.propagate_changes(cont_name, _id, query, update)
+                containerutil.propagate_changes(cont_name, _id, query, update)
             except APIStorageException as e:
                 self.abort(400, e.message)
         elif cont_name == 'projects':
@@ -260,7 +260,7 @@ class PermissionsListHandler(ListHandler):
                 update = {'$set': {
                     'permissions': config.db[cont_name].find_one({'_id': oid},{'permissions': 1})['permissions']
                 }}
-                hierarchy.propagate_changes(cont_name, oid, {}, update)
+                containerutil.propagate_changes(cont_name, oid, {}, update)
             except APIStorageException:
                 self.abort(500, 'permissions not propagated from {} {} down hierarchy'.format(cont_name, _id))
 
@@ -339,7 +339,7 @@ class TagsListHandler(ListHandler):
         method to propagate tag changes from a group to its projects, sessions and acquisitions
         """
         try:
-            hierarchy.propagate_changes(cont_name, _id, query, update)
+            containerutil.propagate_changes(cont_name, _id, query, update)
         except APIStorageException:
             self.abort(500, 'tag change not propagated from group {}'.format(_id))
 
