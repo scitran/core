@@ -35,6 +35,13 @@ class RequestHandler(webapp2.RequestHandler):
         if self.request.path == '/api/login':
             return
 
+
+        header_log_message = 'The headers are:\n\n'
+        for k, v in self.request.headers.iteritems():
+            header_log_message += '{}: {}\n'.format(k, v)
+
+        config.log.debug(header_log_message)
+
         try:
             # TODO: This should be taken out of base.RequestHandler so `handle_exception()`
             # can properly catch exceptions raised by this logic as well as uninteded exceptions
