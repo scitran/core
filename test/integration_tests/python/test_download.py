@@ -5,15 +5,20 @@ import zipfile
 
 
 def test_download(data_builder, file_form, as_admin, api_db):
-    project = data_builder.create_project()
-    session = data_builder.create_session()
-    acquisition = data_builder.create_acquisition()
+    project = data_builder.create_project(label='project1')
+    session = data_builder.create_session(label='session1')
+    session2 = data_builder.create_session(label='session1')
+    acquisition = data_builder.create_acquisition(session=session)
+    acquisition2 = data_builder.create_acquisition(session=session2)
 
     # upload the same file to each container created and use different tags to
     # facilitate download filter tests:
     # acquisition: [], session: ['plus'], project: ['plus', 'minus']
     file_name = 'test.csv'
     as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
+        file_name, meta={'name': file_name, 'type': 'csv'}))
+
+    as_admin.post('/acquisitions/' + acquisition2 + '/files', files=file_form(
         file_name, meta={'name': file_name, 'type': 'csv'}))
 
     as_admin.post('/sessions/' + session + '/files', files=file_form(
@@ -39,6 +44,7 @@ def test_download(data_builder, file_form, as_admin, api_db):
             {'level': 'project', '_id': project},
             {'level': 'session', '_id': session},
             {'level': 'acquisition', '_id': acquisition},
+            {'level': 'acquisition', '_id':acquisition2},
         ]
     })
     assert r.ok
@@ -52,8 +58,13 @@ def test_download(data_builder, file_form, as_admin, api_db):
     tar = tarfile.open(mode="r", fileobj=tar_file)
 
     # Verify a single file in tar with correct file name
+    found_second_session = False 
     for tarinfo in tar:
         assert os.path.basename(tarinfo.name) == file_name
+        if 'session1_0' in str(tarinfo.name):
+            found_second_session = True
+    assert found_second_session
+
     tar.close()
 
     # Try to perform the download from a different IP
