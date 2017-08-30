@@ -1,5 +1,6 @@
 from ..dao import APIPermissionException
 from ..types import Origin
+from .. import config
 
 PERMISSIONS = [
     {
@@ -19,6 +20,7 @@ PERMISSIONS = [
 INTEGER_PERMISSIONS = {r['rid']: i for i, r in enumerate(PERMISSIONS)}
 
 def _get_access(uid, container):
+    config.log.debug('Checking that uid {} has access in container:\n{}'.format(uid, container))
     permissions_list = container.get('permissions', [])
     for perm in permissions_list:
         if perm['_id'] == uid:

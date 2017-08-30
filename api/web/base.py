@@ -70,7 +70,9 @@ class RequestHandler(webapp2.RequestHandler):
                 self.abort(401, 'Drone API keys are not yet supported')
             else:
                 # User (oAuth) authentication
+                config.log.debug('Attempting to set uid from token')
                 self.uid = self.authenticate_user_token(session_token)
+                config.log.debug('Uid was set to {}'.format(self.uid))
 
 
 
@@ -194,6 +196,7 @@ class RequestHandler(webapp2.RequestHandler):
         timestamp = datetime.datetime.utcnow()
 
         self.uid = token_entry['uid']
+        config.log.debug('User properly logged in, setting uid to {}'.format(self.uid))
 
         # If this is the first time they've logged in, record that
         config.db.users.update_one({'_id': self.uid, 'firstlogin': None}, {'$set': {'firstlogin': timestamp}})

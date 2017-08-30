@@ -401,6 +401,12 @@ class ContainerHandler(base.RequestHandler):
 
         payload = self.request.json_body
         log.debug(payload)
+        log.debug('''Information about the request:\n
+            uid: {}\n
+            user_is_admin: {}\n
+            superuser_request: {}\n
+            public_request: {}\n'''.format(self.uid, self.user_is_admin, self.superuser_request, self.public_request))
+
         #validate the input payload
         payload_validator(payload, 'POST')
         # Load the parent container in which the new container will be created
