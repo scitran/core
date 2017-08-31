@@ -203,6 +203,9 @@ def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_
     r = as_admin.delete('/site/rules/' + rule_id_2)
     assert r.ok
 
+    # delete group and children recursively (created by upload)
+    data_builder.delete_group(group, recursive=True)
+
 
 def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, api_db):
     # create versioned gear to cover code selecting latest gear
