@@ -250,33 +250,35 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     r = with_user.session.post('/projects/' + project + '/rules', json=bad_payload)
     assert r.status_code == 403
 
-    # add invalid project rule w/ non-existent gear
-    # NOTE this is a legacy rule
-    r = as_admin.post('/projects/' + project + '/rules', json={
+    rule_json = {
         'alg': 'non-existent-gear-name',
         'name': 'csv-job-trigger-rule',
         'any': [],
         'all': [
             {'type': 'file.type', 'value': 'tabular data'},
         ]
-    })
+    }
+
+    # try to add project rule w/ non-existent gear
+    # NOTE this is a legacy rule
+    r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
+    assert r.status_code == 400
+
+    # add project rule w/ proper gear alg
+    # NOTE this is a legacy rule
+    rule_json['alg'] = gear_name
+    r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
     assert r.ok
     rule = r.json()['_id']
 
     # get project rules (verify rule was added)
     r = as_admin.get('/projects/' + project + '/rules')
     assert r.ok
-    assert r.json()[0]['alg'] == 'non-existent-gear-name'
+    assert r.json()[0]['alg'] == gear_name
 
     # try to get single project rule using non-existent rule id
     r = as_admin.get('/projects/' + project + '/rules/000000000000000000000000')
     assert r.status_code == 404
-
-    # try to upload file that matches invalid rule (500, Unknown gear)
-    # NOTE with an invalid and some valid rules an upload could conceivably return
-    #      a 500 after already having created jobs for the valid rules
-    r = as_admin.post('/projects/' + project + '/files', files=file_form('test.csv'))
-    assert r.status_code == 500
 
     # try to update rule of non-existent project
     r = as_admin.put('/projects/000000000000000000000000/rules/000000000000000000000000', json=bad_payload)
@@ -290,14 +292,19 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     r = with_user.session.put('/projects/' + project + '/rules/' + rule, json={'alg': gear_name})
     assert r.status_code == 403
 
-    # update rule to use a valid gear
-    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'alg': gear_name})
+    # try to update rule to with invalid gear alg
+    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'alg': 'not-a-real-gear'})
+    assert r.status_code == 400
+
+    # update name of rule
+    rule_name = 'improved-csv-trigger-rule'
+    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'name': rule_name})
     assert r.ok
 
     # verify rule was updated
     r = as_admin.get('/projects/' + project + '/rules/' + rule)
     assert r.ok
-    assert r.json()['alg'] == gear_name
+    assert r.json()['name'] == rule_name
 
     # upload file that matches rule
     r = as_admin.post('/projects/' + project + '/files', files=file_form('test2.csv'))

@@ -19,7 +19,7 @@ from .. import config
 from . import batch
 from ..validators import validate_data, verify_payload_exists
 
-from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
@@ -136,17 +136,18 @@ class RulesHandler(base.RequestHandler):
     def get(self, cid):
         """List rules"""
 
+        projection = None
+
         if cid == 'site':
             if self.public_request:
                 raise APIPermissionException('Viewing site-level rules requires login.')
+            projection = {'project_id': 0}
         else:
             project = ProjectStorage().get_container(cid, projection={'permissions': 1})
-            config.log.debug('project permissions are {}\n and the user is {}\n\n'.format(project, self.uid))
-            config.log.debug('Some key intel:\n user_is_admin: {}\n user_has_access {}\n\n'.format(self.user_is_admin, has_access(self.uid, project, 'ro')))
             if not self.user_is_admin and not has_access(self.uid, project, 'ro'):
                 raise APIPermissionException('User does not have access to project {} rules'.format(cid))
 
-        return config.db.project_rules.find({'project_id' : cid})
+        return config.db.project_rules.find({'project_id' : cid}, projection=projection)
 
 
     @verify_payload_exists
@@ -164,6 +165,10 @@ class RulesHandler(base.RequestHandler):
         doc = self.request.json
 
         validate_data(doc, 'rule-add.json', 'input', 'POST', optional=True)
+        try:
+            get_gear_by_name(doc['alg'])
+        except APINotFoundException:
+            self.abort(400, 'Cannot find gear for alg {}, alg not valid'.format(doc['alg']))
 
         doc['project_id'] = cid
 
@@ -176,17 +181,17 @@ class RuleHandler(base.RequestHandler):
     def get(self, cid, rid):
         """Get rule"""
 
+        projection = None
         if cid == 'site':
             if self.public_request:
                 raise APIPermissionException('Viewing site-level rules requires login.')
+            projection = {'project_id': 0}
         else:
             project = ProjectStorage().get_container(cid, projection={'permissions': 1})
-            config.log.debug('project permissions are {}\n and the user is {}\n\n'.format(project, self.uid))
-            config.log.debug('Some key intel:\n user_is_admin: {}\n user_has_access {}\n\n'.format(self.user_is_admin, has_access(self.uid, project, 'ro')))
             if not self.user_is_admin and not has_access(self.uid, project, 'ro'):
                 raise APIPermissionException('User does not have access to project {} rules'.format(cid))
 
-        result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
+        result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)}, projection=projection)
 
         if not result:
             raise APINotFoundException('Rule not found.')
@@ -206,17 +211,20 @@ class RuleHandler(base.RequestHandler):
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('Modifying project rules can only be done by a project admin.')
 
-        result = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
+        doc = config.db.project_rules.find_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
 
-        if not result:
+        if not doc:
             raise APINotFoundException('Rule not found.')
 
-        doc = self.request.json
-        validate_data(doc, 'rule-update.json', 'input', 'POST', optional=True)
+        updates = self.request.json
+        validate_data(updates, 'rule-update.json', 'input', 'POST', optional=True)
+        if updates.get('alg'):
+            try:
+                get_gear_by_name(updates['alg'])
+            except APINotFoundException:
+                self.abort(400, 'Cannot find gear for alg {}, alg not valid'.format(updates['alg']))
 
-        doc['_id']        = result['_id']
-        doc['project_id'] = cid
-
+        doc.update(updates)
         config.db.project_rules.replace_one({'_id': bson.ObjectId(rid)}, doc)
 
         return
