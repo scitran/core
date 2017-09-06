@@ -12,7 +12,7 @@ from api.jobs.gears import get_gear_by_name
 INTEGRITY_CHECKS = {
     "test_one": "Run test one",
     "test_two": "Run test two",
-    "check_rule_alg": "Confirm alg keys in rules table can be resolved to gear in gear table"
+    "rule_alg": "Confirm alg keys in rules table can be resolved to gear in gear table"
 }
 
 
@@ -26,7 +26,7 @@ def test_two():
     return True
 
 
-def check_rule_alg():
+def rule_alg():
     errors = False
 
     for rule in config.db.project_rules.find({}):
