@@ -10,20 +10,8 @@ from api.jobs.gears import get_gear_by_name
 
 # Methods should return true if all integrity checks passed
 INTEGRITY_CHECKS = {
-    "test_one": "Run test one",
-    "test_two": "Run test two",
     "rule_alg": "Confirm alg keys in rules table can be resolved to gear in gear table"
 }
-
-
-def test_one():
-    logging.warning('ran test 1')
-    return False
-
-
-def test_two():
-    logging.warning('ran test 2')
-    return True
 
 
 def rule_alg():
@@ -73,6 +61,13 @@ if __name__ == '__main__':
                 logging.info('{} complete.'.format(method))
             except:
                 logging.exception('Failed to run check {}'.format(method))
+
+        if errors:
+            logging.error('One or more checks failed')
+            sys.exit(1)
+        else:
+            logging.info('Checks complete.')
+            sys.exit(0)
 
     except Exception as e:
         logging.exception('Main method failed...')
