@@ -1,4 +1,5 @@
 import bson.objectid
+import copy
 
 from . import APIPermissionException
 from .. import config
@@ -15,6 +16,48 @@ SINGULAR_TO_PLURAL = {
     'analysis':    'analyses',
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
+
+def propagate_changes(cont_name, _id, query, update):
+    """
+    Propagates changes down the heirarchy tree.
+
+    cont_name and _id refer to top level container (which will not be modified here)
+    """
+
+
+    if cont_name == 'groups':
+        project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
+        session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
+
+        project_q = copy.deepcopy(query)
+        project_q['_id'] = {'$in': project_ids}
+        session_q = copy.deepcopy(query)
+        session_q['_id'] = {'$in': session_ids}
+        acquisition_q = copy.deepcopy(query)
+        acquisition_q['session'] = {'$in': session_ids}
+
+        config.db.projects.update_many(project_q, update)
+        config.db.sessions.update_many(session_q, update)
+        config.db.acquisitions.update_many(acquisition_q, update)
+
+
+    # Apply change to projects
+    elif cont_name == 'projects':
+        session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
+
+        session_q = copy.deepcopy(query)
+        session_q['project'] = _id
+        acquisition_q = copy.deepcopy(query)
+        acquisition_q['session'] = {'$in': session_ids}
+
+        config.db.sessions.update_many(session_q, update)
+        config.db.acquisitions.update_many(acquisition_q, update)
+
+    elif cont_name == 'sessions':
+        query['session'] = _id
+        config.db.acquisitions.update_many(query, update)
+    else:
+        raise ValueError('changes can only be propagated from group, project or session level')
 
 
 def add_id_to_subject(subject, pid):

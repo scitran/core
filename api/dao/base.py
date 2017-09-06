@@ -4,7 +4,6 @@ import pymongo.errors
 from . import APIStorageException, APIConflictException, APINotFoundException
 from . import consistencychecker
 from . import containerutil
-from . import hierarchy
 from .. import config
 from .. import util
 
@@ -89,7 +88,7 @@ class ContainerStorage(object):
             query = {containerutil.singularize(self.cont_name): _id}
         else:
             query = {containerutil.singularize(self.cont_name): bson.ObjectId(_id)}
-        
+
         if uid:
             query['permissions'] = {'$elemMatch': {'_id': uid}}
         if not projection:
@@ -160,7 +159,7 @@ class ContainerStorage(object):
             except bson.InvalidId as e:
                 raise APIStorageException(e.message)
         if recursive and r_payload is not None:
-            hierarchy.propagate_changes(self.cont_name, _id, {}, {'$set': util.mongo_dict(r_payload)})
+            containerutil.propagate_changes(self.cont_name, _id, {}, {'$set': util.mongo_dict(r_payload)})
         return self.dbc.update_one({'_id': _id}, update)
 
     def delete_el(self, _id):

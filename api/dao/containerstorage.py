@@ -8,6 +8,7 @@ from . import hierarchy
 from .. import config
 from ..jobs.gears import validate_gear_config, get_gear
 from ..jobs.jobs import Job
+from ..jobs.rules import copy_site_rules_for_project
 from .base import ContainerStorage
 
 
@@ -42,6 +43,11 @@ class ProjectStorage(ContainerStorage):
 
     def __init__(self):
         super(ProjectStorage,self).__init__('projects', use_object_id=True)
+
+    def create_el(self, payload):
+        result = super(ProjectStorage, self).create_el(payload)
+        copy_site_rules_for_project(result.inserted_id)
+        return result
 
     def update_el(self, _id, payload, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
         result = super(ProjectStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)

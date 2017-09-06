@@ -12,7 +12,7 @@ import pymongo
 
 from .. import config
 from .jobs import Job
-from ..dao import APIValidationException
+from ..dao import APIValidationException, APINotFoundException
 from ..dao.base import ContainerStorage
 
 log = config.log
@@ -46,7 +46,7 @@ def get_gear_by_name(name):
     gear_doc = list(config.db.gears.find({'gear.name': name}).sort('created', pymongo.DESCENDING))
 
     if len(gear_doc) == 0 :
-        raise Exception('Unknown gear ' + name)
+        raise APINotFoundException('Unknown gear ' + name)
 
     return gear_doc[0]
 

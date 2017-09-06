@@ -172,6 +172,12 @@ endpoints = [
         ]),
 
 
+        # Site
+
+        route('/<cid:site>/rules',              RulesHandler,          m=['GET', 'POST']),
+        route('/<cid:site>/rules/<rid:{cid}>',  RuleHandler,           m=['GET', 'PUT', 'DELETE']),
+
+
         # Groups
 
         route('/groups',             GroupHandler, h='get_all', m=['GET']),
