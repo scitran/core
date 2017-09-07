@@ -497,8 +497,11 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
     project = data_builder.create_project()
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
+    assert as_root.post('/acquisitions/' + acquisition + '/files', files=file_form('test.txt')).ok
+
+
     job = data_builder.create_job(inputs={
-        'test': {'type': 'acquisition', 'id': acquisition, 'name': 'test'}
+        'test': {'type': 'acquisition', 'id': acquisition, 'name': 'test.txt'}
     })
 
     metadata = {
@@ -569,8 +572,8 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
     m_timestamp = dateutil.parser.parse(metadata['acquisition']['timestamp'])
     assert a_timestamp == m_timestamp
 
-    for f in a['files']:
-        mf = find_file_in_array(f['name'], metadata['acquisition']['files'])
+    for mf in metadata['acquisition']['files']:
+        f = find_file_in_array(mf['name'], a['files'])
         assert mf is not None
         assert f['type'] == mf['type']
         assert f['info'] == mf['info']

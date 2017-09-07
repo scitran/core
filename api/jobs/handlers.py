@@ -2,7 +2,6 @@
 API request handlers for the jobs module
 """
 import bson
-import json
 import os
 import StringIO
 from jsonschema import ValidationError

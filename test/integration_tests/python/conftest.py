@@ -266,7 +266,15 @@ class DataBuilder(object):
 
         # add missing gear when creating job
         if resource == 'job' and 'gear_id' not in payload:
-            payload['gear_id'] = self.get_or_create('gear')
+
+            # create file inputs for each job input on gear
+            gear_inputs = {}
+            for i in payload.get('inputs', {}).keys():
+                gear_inputs[i] = {'base': 'file'}
+
+            gear_doc = _default_payload['gear']['gear']
+            gear_doc['inputs'] = gear_inputs
+            payload['gear_id'] = self.create('gear', gear=gear_doc)
 
         # put together the create url to post to
         create_url = '/' + resource + 's'
