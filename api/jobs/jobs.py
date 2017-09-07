@@ -5,6 +5,7 @@ Jobs
 import bson
 import copy
 import datetime
+import string
 
 from ..types import Origin
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
@@ -113,11 +114,9 @@ class Job(object):
             self.inputs == other_job.inputs and
             self.destination == other_job.destination
         ):
-            config.log.debug('the jobs {} and {} are equal.'.format(self.map, other_job.map))
             return True
 
         else:
-            config.log.debug('the jobs {} and {} are NOT equal.'.format(self.map, other_job.map))
             return False
 
 
@@ -258,7 +257,7 @@ class Job(object):
                 'env': {
                     'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
                 },
-                'dir': "/flywheel/v0",
+                'dir': '/flywheel/v0',
             },
             'outputs': [
                 {
@@ -277,6 +276,45 @@ class Job(object):
 
             if self.id_ is None:
                 raise Exception('Running a job requires an ID')
+
+            # Detect if config is old- or new-style.
+            # TODO: remove this logic with a DB upgrade, ref database.py's reserved upgrade section.
+
+            # Add config scalars as environment variables
+            if self.config.get('config') is not None and self.config.get('inputs') is not None:
+                # New config behavior
+
+                cf = self.config['config']
+
+                # Whitelist characters that can be used in bash variable names
+                bash_variable_letters = set(string.ascii_letters + string.digits + ' ' + '_')
+
+                for x in cf:
+
+                    if isinstance(cf[x], list) or isinstance(cf[x], dict):
+                        # Current gear spec only allows for scalars!
+                        raise Exception('Non-scalar config value ' + x + ' ' + str(cf[x]))
+                    else:
+
+                        # Strip non-whitelisted characters, set to underscore, and uppercase
+                        config_name = filter(lambda char: char in bash_variable_letters, x)
+                        config_name = config_name.replace(' ', '_').upper()
+
+                        # Don't set nonsensical environment variables
+                        if config_name == '':
+                            print 'The gear config name ' + x + ' has no whitelisted characters!'
+                            continue
+
+                        # Stringify scalar
+                        # Python strings true as "True"; fix
+                        if not isinstance(cf[x], bool):
+                            r['target']['env']['FW_CONFIG_' + config_name] = str(cf[x])
+                        else:
+                            r['target']['env']['FW_CONFIG_' + config_name] = str(cf[x]).lower()
+
+            else:
+                # Old config map.
+                pass
 
             r['inputs'].append({
                 'type': 'scitran',

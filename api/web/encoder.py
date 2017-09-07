@@ -43,3 +43,11 @@ def json_sse_pack(d):
     d['data'] = json.dumps(d['data'], default=custom_json_serializer)
 
     return sse_pack(d)
+
+def pseudo_consistent_json_encode(d):
+    """
+    Some parts of our system rely upon consistently-produced JSON encoding.
+    This implementation is not guaranteed to be consistent, but it's good enough for now.
+    """
+
+    return json.dumps(d, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'

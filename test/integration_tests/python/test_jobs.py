@@ -20,12 +20,19 @@ def test_jobs_access(as_user):
     assert r.status_code == 403
 
 
-def test_jobs(data_builder, as_user, as_admin, as_root, api_db):
-    gear = data_builder.create_gear()
+def test_jobs(data_builder, default_payload, as_user, as_admin, as_root, api_db, file_form):
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'dicom': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
     invalid_gear = data_builder.create_gear(gear={'custom': {'flywheel': {'invalid': True}}})
     project = data_builder.create_project()
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('test.zip')).ok
 
     job_data = {
         'gear_id': gear,

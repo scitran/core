@@ -19,6 +19,6 @@ sudo apt-get install -y \
     libpcre3-dev \
     git
 
-pip install -U pip
+sudo pip install -U pip
 
-pip install -r requirements.txt
+sudo pip install -r requirements.txt
