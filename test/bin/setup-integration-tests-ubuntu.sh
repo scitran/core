@@ -3,7 +3,7 @@ set -e
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
 
-pip install -U -r "test/integration_tests/requirements-integration-test.txt"
+sudo pip install -U -r "test/integration_tests/requirements-integration-test.txt"
 
 NODE_URL="https://nodejs.org/dist/v6.4.0/node-v6.4.0-linux-x64.tar.gz"
 
