@@ -61,6 +61,95 @@ def test_jwt_auth(config, as_drone, as_public, api_db):
         api_db.users.delete_one({'_id': uid})
 
 
+def test_cas_auth(config, as_drone, as_public, api_db):
+    # try to login w/ unconfigured auth provider
+    r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+    assert r.status_code == 400
+
+    # inject cas auth config
+    config['auth']['cas'] = dict(
+        service_url='http://local.test?state=cas',
+        auth_endpoint='http://cas.test/cas/login',
+        verify_endpoint='http://cas.test/cas/serviceValidate',
+        namespace='cas.test',
+        display_string='CAS Auth')
+
+    username = 'cas'
+    uid = username+'@'+config.auth.cas.namespace
+
+    with requests_mock.Mocker() as m:
+        # try to log in w/ cas and invalid token (=code)
+        m.get(config.auth.cas.verify_endpoint, status_code=400)
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.status_code == 401
+
+        xml_response_unsuccessful = """
+        <cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
+            <cas:authenticationFailure>
+            </cas:authenticationFailure>
+        </cas:serviceResponse>
+        """
+
+        # try to log in w/ cas - pretend provider doesn't return with success
+        m.get(config.auth.cas.verify_endpoint, content=xml_response_unsuccessful)
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.status_code == 401
+
+        xml_response_malformed = """
+        <cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
+            <cas:authenticationSuccess>
+                <cas:bad_key>cas</cas:bad_key>
+            </cas:authenticationSuccess>
+        </cas:serviceResponse>
+        """
+
+        # try to log in w/ cas - pretend provider doesn't return valid username response
+        m.get(config.auth.cas.verify_endpoint, content=xml_response_malformed)
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.status_code == 401
+
+        xml_response_successful = """
+        <cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
+            <cas:authenticationSuccess>
+                <cas:user>cas</cas:user>
+            </cas:authenticationSuccess>
+        </cas:serviceResponse>
+        """
+
+        # try to log in w/ cas - user not in db (yet)
+        m.get(config.auth.cas.verify_endpoint, content=xml_response_successful)
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.status_code == 402
+
+        # try to log in w/ cas - user added but disabled
+        assert as_drone.post('/users', json={
+            '_id': uid, 'disabled': True, 'firstname': 'test', 'lastname': 'test'}).ok
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.status_code == 402
+
+        # log in w/ cas (also mock gravatar 404)
+        m.head(re.compile('https://gravatar.com/avatar'), status_code=404)
+        as_drone.put('/users/' + uid, json={'disabled': False})
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.ok
+        assert 'gravatar' not in api_db.users.find_one({'_id': uid})['avatars']
+        token = r.json['token']
+
+        # access api w/ valid token
+        r = as_public.get('', headers={'Authorization': token})
+        assert r.ok
+
+        # log in w/ cas (now w/ existing gravatar)
+        m.head(re.compile('https://gravatar.com/avatar'))
+        r = as_public.post('/login', json={'auth_type': 'cas', 'code': 'test'})
+        assert r.ok
+        assert 'gravatar' in api_db.users.find_one({'_id': uid})['avatars']
+
+        # clean up
+        api_db.authtokens.delete_one({'_id': token})
+        api_db.users.delete_one({'_id': uid})
+
+
 def test_google_auth(config, as_drone, as_public, api_db):
     # inject google auth client_secret into config
     config['auth']['google']['client_secret'] = 'test'

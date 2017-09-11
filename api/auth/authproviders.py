@@ -296,7 +296,6 @@ class CASAuthProvider(AuthProvider):
         }
 
     def validate_user(self, token):
-        config.log.warning('the config is {}\n\n'.format(self.config))
         r = requests.get(self.config['verify_endpoint'], params={'ticket': token, 'service': self.config['service_url']})
         if not r.ok:
             raise APIAuthProviderException('User token not valid')
@@ -315,17 +314,19 @@ class CASAuthProvider(AuthProvider):
         tree = ElementTree.fromstring(response)
 
         # check to see if xml response labeled request as success
+        # see also: xml parsing in https://github.com/python-cas/python-cas
         if tree[0].tag.endswith('authenticationSuccess'):
 
-            # get username from response
-            namespace = tree.tag[0:tree.tag.index('}')+1]
-            username = tree[0].find('.//' + namespace + 'user').text
+            try:
+                # get username from response
+                namespace = tree.tag[0:tree.tag.index('}')+1]
+                username = tree[0].find('.//' + namespace + 'user').text
+            except Exception as e: # pylint: disable=broad-except
+                config.log.warning(e)
+                raise APIAuthProviderException('Unable to parse response from CAS provider.')
 
         else:
-            raise APIAuthProviderException('Auth provider ticket verification unsuccessful.')
-
-        if not username:
-            raise APIAuthProviderException('Auth provider did not provide username')
+            raise APIAuthProviderException('Ticket verification unsuccessful.')
 
         return username
 
