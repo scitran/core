@@ -487,7 +487,7 @@ class DataExplorerHandler(base.RequestHandler):
                         "field" : return_type + "._id",
                         "precision_threshold": 100000
                     }
-                }              
+                }
             }
         }
 
@@ -506,7 +506,7 @@ class DataExplorerHandler(base.RequestHandler):
 
         size = self.search_size(return_type)
         body = self._construct_query(return_type, search_string, filters, size)
-        
+
         body['aggs']['by_container'].pop('aggs')
         body['_source'] = [return_type + "._id"]
 
@@ -519,11 +519,11 @@ class DataExplorerHandler(base.RequestHandler):
         for result in results:
             nodes.append({'level': return_type, '_id': result['key']})
         return {'nodes':nodes}
-        
+
     def get_file_nodes(self, return_type, filters, search_string):
 
         query = self._construct_file_query(return_type, filters, search_string)['query']
-        
+
         nodes = []
         results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'])
         log.debug(results)
@@ -562,12 +562,28 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def search(self):
         return_type, filters, search_string = self._parse_request()
+
+        # Set size, if all figure out max for return type.
+        # This could get more efficient (and more exact) if we build the query
+        # first and allow search_size() to take a query, but leave for now unless
+        # problems arise.
         size = self.request.params.get('size', 100)
+        if size == 'all':
+            size = self.search_size(return_type)
+        elif not isinstance(size, int):
+            self.abort(400, 'Size must be an int or "all".')
+
         results = self._run_query(self._construct_query(return_type, search_string, filters, size), return_type)
-        response = {'results': results}
-        if self.is_true('facets'):
-            response['facets'] = self.get_facets()
-        return response
+
+        if self.is_true('simple'):
+            #return a list of the results' `_source` key only
+            return [x['_source'] for x in results]
+
+        else:
+            response = {'results': results}
+            if self.is_true('facets'):
+                response['facets'] = self.get_facets()
+            return response
 
 
     ## CONSTRUCTING QUERIES ##
