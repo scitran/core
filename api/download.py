@@ -139,10 +139,12 @@ class Download(base.RequestHandler):
                 subject_prefixes = {}
                 for session in session_dict.itervalues():
                     if session.get('subject'):
-                        code = session['subject'].get('code', 'unknown_subject')
-                        # This is bad and we should try to combine these somehow,
-                        # or at least make sure we get all the files
-                        subject_dict[code] = session['subject']
+                        subject = session.get('subject', {'code': 'unknown_subject'})
+                        code = subject.get('code')
+                        if code is None:
+                            code = 'unknown_subject'
+                            subject['code'] = code
+                        subject_dict[code] = subject
 
                 for code, subject in subject_dict.iteritems():
                     subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, ids_of_paths, code)

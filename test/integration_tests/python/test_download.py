@@ -37,14 +37,10 @@ def test_download(data_builder, file_form, as_admin, api_db):
     r = as_admin.post('/download', json={
         'optional': False,
         'filters': [{'tags': {
-            '-': ['minus'],
-            '+': ['plus']
+            '-': ['minus']
         }}],
         'nodes': [
-            {'level': 'project', '_id': project},
-            {'level': 'session', '_id': session},
-            {'level': 'acquisition', '_id': acquisition},
-            {'level': 'acquisition', '_id':acquisition2},
+            {'level': 'project', '_id': project},        
         ]
     })
     assert r.ok
