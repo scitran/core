@@ -4,6 +4,8 @@ import json
 import urllib
 import urlparse
 
+from xml.etree import ElementTree
+
 from . import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from .. import config, util
 from ..dao import dbutil
@@ -189,6 +191,7 @@ class GoogleOAuthProvider(AuthProvider):
         # If the user has no avatar set, mark their provider_avatar as their chosen avatar.
         config.db.users.update_one({'_id': uid, 'avatar': {'$exists': False}}, {'$set':{'avatar': provider_avatar, 'modified': timestamp}})
 
+
 class WechatOAuthProvider(AuthProvider):
 
     def __init__(self):
@@ -278,6 +281,56 @@ class WechatOAuthProvider(AuthProvider):
         pass
 
 
+class CASAuthProvider(AuthProvider):
+
+    def __init__(self):
+        super(CASAuthProvider, self).__init__('cas')
+
+    def validate_code(self, code, **kwargs):
+        uid = self.validate_user(code)
+        return {
+            'access_token': code,
+            'uid': uid,
+            'auth_type': self.auth_type,
+            'expires': datetime.datetime.utcnow() + datetime.timedelta(days=14)
+        }
+
+    def validate_user(self, token):
+        config.log.warning('the config is {}\n\n'.format(self.config))
+        r = requests.get(self.config['verify_endpoint'], params={'ticket': token, 'service': self.config['service_url']})
+        if not r.ok:
+            raise APIAuthProviderException('User token not valid')
+
+        username = self._parse_xml_response(r.content)
+        uid = username+'@'+self.config['namespace']
+
+        self.ensure_user_exists(uid)
+        self.set_user_gravatar(uid, uid)
+
+        return uid
+
+    def _parse_xml_response(self, response):
+
+        # parse xml
+        tree = ElementTree.fromstring(response)
+
+        # check to see if xml response labeled request as success
+        if tree[0].tag.endswith('authenticationSuccess'):
+
+            # get username from response
+            namespace = tree.tag[0:tree.tag.index('}')+1]
+            username = tree[0].find('.//' + namespace + 'user').text
+
+        else:
+            raise APIAuthProviderException('Auth provider ticket verification unsuccessful.')
+
+        if not username:
+            raise APIAuthProviderException('Auth provider did not provide username')
+
+        return username
+
+
+
 class APIKeyAuthProvider(AuthProvider):
     """
     Uses an API key for authentication.
@@ -339,5 +392,6 @@ AuthProviders = {
     'google'    : GoogleOAuthProvider,
     'ldap'      : JWTAuthProvider,
     'wechat'    : WechatOAuthProvider,
-    'api-key'   : APIKeyAuthProvider
+    'api-key'   : APIKeyAuthProvider,
+    'cas'       : CASAuthProvider
 }
