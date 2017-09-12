@@ -129,7 +129,7 @@ class RequestHandler(webapp2.RequestHandler):
 
             # Check if site has inactivity timeout
             try:
-                inactivity_timeout = config.get('site', 'inactivity_timeout')
+                inactivity_timeout = config.get_item('site', 'inactivity_timeout')
             except KeyError:
                 inactivity_timeout = None
 
