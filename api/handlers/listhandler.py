@@ -229,6 +229,7 @@ class PermissionsListHandler(ListHandler):
         payload['_id'] = kwargs.get('_id')
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
             self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access']}})
+            self._propagate_permissions(cont_name, _id, query={'permissions._id': {'$ne': payload['_id']}}, update={'$addToSet': {'permissions': payload}})
         elif cont_name != 'groups':
             self._propagate_permissions(cont_name, _id)
         return result
