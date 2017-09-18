@@ -284,3 +284,17 @@ def test_usage_report(data_builder, file_form, as_user, as_admin):
     assert usage[0]['session_count'] == 1
     assert usage[0]['file_mbs'] > 0
     assert usage[0]['gear_execution_count'] == 1
+
+    # Test if empty project breaks Usage report
+    group = data_builder.create_group()
+    r = as_admin.post('/projects', params={'inherit': 'false'}, json={'label': 'project2', 'group': group})
+    assert r.ok
+    project = r.json()['_id']
+
+    # get project-aggregated usage report
+    r = as_admin.get('/report/usage', params={'type': 'project'})
+    assert r.ok
+
+    # delete project
+    r= as_admin.delete('/projects/' + project)
+    assert r.ok

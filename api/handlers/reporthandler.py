@@ -880,10 +880,9 @@ class UsageReport(Report):
             acquisition_ids = [a['_id'] for a in acquisitions]
 
             # For the project and each session and acquisition, create a list of analysis ids
-            analysis_ids = [an['_id'] for an in p.get('analyses', [])]
-            analysis_ids.extend([an['_id'] for an in s.get('analyses', []) for s in sessions])
-            analysis_ids.extend([an['_id'] for an in a.get('analyses', []) for a in acquisitions])
-
+            ids = session_ids + acquisition_ids + [p['_id']]
+            analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': ids}})]
+            
             report_obj['session_count'] = len(session_ids)
 
             # for each type of container below it will have a slightly modified match query
