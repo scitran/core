@@ -507,6 +507,7 @@ class PackfilePlacer(Placer):
             'modified': cgi_field.modified,
             'size':	 cgi_field.size,
             'hash':	 cgi_field.hash,
+            'mimetype': cgi_field.mimetype,
 
             'type': self.metadata['packfile']['type'],
 
