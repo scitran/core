@@ -932,6 +932,12 @@ def test_packfile_upload(data_builder, file_form, as_admin, as_root, api_db):
         params={'token': token, 'metadata': metadata_json})
     assert r.ok
 
+    # make sure file was uploaded and mimetype and type are properly set
+    packfile = as_admin.get('/acquisitions').json()[0]['files'][0]
+    assert packfile['mimetype'] == 'application/zip'
+    assert packfile['type'] == 'test'
+
+
     # get another token (start packfile-upload)
     r = as_admin.post('/projects/' + project + '/packfile-start')
     assert r.ok
