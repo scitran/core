@@ -14,6 +14,7 @@ import sys
 import time
 
 from api import config
+from api import util
 from api.dao import containerutil
 from api.dao.containerstorage import ProjectStorage
 from api.jobs.jobs import Job
@@ -21,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 35 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 36 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1188,6 +1189,27 @@ def upgrade_to_35():
     cursor = config.db.batch.find({})
     process_cursor(cursor, upgrade_to_35_closure)
 
+
+def upgrade_to_36_closure(acquisition):
+
+    for f in acquisition['files']:
+        if not f.get('mimetype'):
+            logging.debug('file with name {} did not have mimetype'.format(f['name']))
+            f['mimetype'] = util.guess_mimetype(f['name'])
+
+    result = config.db.acquisitions.update_one({'_id': acquisition['_id']}, {'$set': {'files': acquisition['files']}})
+    if result.modified_count != 1:
+        raise Exception('Acquisition file not updated')
+
+    return True
+
+
+def upgrade_to_36():
+    """
+    scitran/core issue #931 - mimetype not set on packfile uploads
+    """
+    cursor = config.db.acquisitions.find({'files.mimetype': None})
+    process_cursor(cursor, upgrade_to_36_closure)
 
 
 
