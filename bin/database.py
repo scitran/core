@@ -1208,7 +1208,7 @@ def upgrade_to_36():
     """
     scitran/core issue #931 - mimetype not set on packfile uploads
     """
-    cursor = config.db.acquisitions.find({'files.mimetype': None})
+    cursor = config.db.acquisitions.find({'files': { '$gt': [] }, 'files.mimetype': None})
     process_cursor(cursor, upgrade_to_36_closure)
 
 
