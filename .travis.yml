@@ -15,7 +15,6 @@ script:
   - SCITRAN_PERSISTENT_DB_PORT=27017 test/bin/run-tests-ubuntu.sh
 
 after_success:
-  - coveralls
   - if [ "$TRAVIS_BRANCH" == "master" -o  "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
         bash <(curl -s https://codecov.io/bash) -cF python;
     fi
