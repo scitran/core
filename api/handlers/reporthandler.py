@@ -880,8 +880,8 @@ class UsageReport(Report):
             acquisition_ids = [a['_id'] for a in acquisitions]
 
             # For the project and each session and acquisition, create a list of analysis ids
-            ids = session_ids + acquisition_ids + [p['_id']]
-            analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': ids}})]
+            parent_ids = session_ids + acquisition_ids + [p['_id']]
+            analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': parent_ids}})]
             
             report_obj['session_count'] = len(session_ids)
 
@@ -889,7 +889,8 @@ class UsageReport(Report):
             cont_query = {
                 'projects': {'_id': {'project': p['_id']}},
                 'sessions': {'project': p['_id']},
-                'acquisitions': {'session': {'$in': session_ids}}
+                'acquisitions': {'session': {'$in': session_ids}},
+                'analyses': {'parent.id' : {'$in':parent_ids}}
             }
 
             # Create queries for files and analyses based on created date if a range was provided
@@ -900,7 +901,7 @@ class UsageReport(Report):
                 file_q['files.created'] = base_query['created']
                 analysis_q['analyses.created'] = base_query['created']
 
-            for cont_name in ['projects', 'sessions', 'acquisitions']:
+            for cont_name in ['projects', 'sessions', 'acquisitions', 'analyses']:
 
                 # Aggregate file size in megabytes
                 pipeline = [
@@ -908,24 +909,6 @@ class UsageReport(Report):
                     {'$unwind': '$files'},
                     {'$match': file_q},
                     {'$project': {'mbs': {'$divide': [{'$cond': ['$files.input', 0, '$files.size']}, BYTES_IN_MEGABYTE]}}},
-                    {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
-                ]
-
-                try:
-                    result = self._get_result(config.db.command('aggregate', cont_name, pipeline=pipeline))
-                except APIReportException:
-                    result = None
-
-                if result:
-                    report_obj['file_mbs'] += result['mb_total']
-
-                # Aggregate analysis file size in megabytes
-                pipeline = [
-                    {'$match': cont_query[cont_name]},
-                    {'$unwind': '$analyses'},
-                    {'$unwind': '$analyses.files'},
-                    {'$match': analysis_q},
-                    {'$project': {'mbs': {'$divide': ['$analyses.files.size', BYTES_IN_MEGABYTE]}}},
                     {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
                 ]
 
