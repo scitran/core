@@ -344,7 +344,7 @@ class Download(base.RequestHandler):
                 'acquisitions': {'session': {'$in': session_ids}},
                 'analyses': {'parent.id': {'$in': parent_ids}}
             }
-        if level == 'sessions':
+        elif level == 'sessions':
 
             # Grab acquisitions and their ids
             acquisitions = config.db.acquisitions.find({'session': req['_id']}, {'_id': 1})
@@ -361,6 +361,15 @@ class Download(base.RequestHandler):
                 'analyses': {'parent.id': {'$in': parent_ids}}
             }
             containers = containers[1:]
+        elif level == 'acquisitions':
+
+            cont_query['acquisitions'] = {'_id': req['_id']}
+            containers = ['acquisitions']
+        elif level == 'analyses':
+            cont_query['analyses'] = {'_id': req['_id']}
+            containers = containers[-1:]
+        else:
+            self.abort(400, "{} not a recognized level".format(level)) 
 
         res = {}
         for cont_name in containers:
@@ -382,7 +391,7 @@ class Download(base.RequestHandler):
             try:
                 result = config.db.command('aggregate', cont_name, pipeline=pipeline)
             except Exception as e: # pylint: disable=broad-except
-                return e
+                self.abort(500, str(e))
 
             if result.get("ok"):
                 for doc in result.get("result"):

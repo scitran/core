@@ -434,3 +434,12 @@ def test_summary(data_builder, as_admin, file_form):
     assert r.ok
     assert len(r.json()) == 1
     assert r.json().get("csv", {}).get("count",0) == 2 
+
+    r = as_admin.post('/download/summary', json={"level":"acquisitions", "_id":acquisition})
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json().get("csv", {}).get("count",0) == 1
+
+    r = as_admin.post('/download/summary', json={"level":"groups", "_id":missing_object_id})
+    assert r.status_code == 400
+    
