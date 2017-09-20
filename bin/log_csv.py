@@ -22,6 +22,7 @@ ARG_TO_PARAMS= {
     'e': 'end_date',
     'u': 'uid',
     'j': 'subject',
+    'p': 'project',
     't': 'access_types'
 }
 
@@ -71,6 +72,7 @@ if __name__ == '__main__':
         parser.add_argument("-u", help="User id",               type=str)
         parser.add_argument("-l", help="Limit",                 type=str)
         parser.add_argument("-j", help="subJect",               type=str)
+        parser.add_argument("-p", help="project",               type=str)
         parser.add_argument("-t", help="list of access Types",  type=str, nargs='+')
 
         args = vars(parser.parse_args())
