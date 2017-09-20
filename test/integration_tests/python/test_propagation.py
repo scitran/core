@@ -293,6 +293,10 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
     user = get_user_in_perms(perms, user_id)
     assert r.ok and user is None
 
+    # Delete empty project 2
+    r= as_admin.delete('/projects/' + project2)
+    assert r.ok
+
 # Test tag pool renaming and deletion
 def test_add_rename_remove_group_tag(data_builder, as_admin):
     """
