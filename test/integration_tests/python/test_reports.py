@@ -185,6 +185,27 @@ def test_access_log_report(data_builder, with_user, as_user, as_admin):
     r = as_admin.get('/report/accesslog', params={'csv': 'true'})
     assert r.ok
 
+    # Create new project with same subject name
+    project2 = data_builder.create_project()
+    r = as_admin.post('/sessions', json={
+        'project': project2,
+        'label': 'test-accesslog-session-2',
+        'timestamp': '1979-01-01T00:00:00+00:00',
+        'subject': {'code': 'compliant5'}
+    })
+    assert r.ok
+    session2 = r.json()['_id']
+
+    r = as_admin.delete('/sessions/' + session2)
+    data_builder.delete_project(project2, recursive=True)
+
+    # get access log report project filter
+    r = as_admin.get('/report/accesslog', params={'project':project2, 'subject': 'compliant5'})
+    assert r.ok
+
+    for log in r.json():
+        assert log.get('context',{}).get('session',{}).get('label') != 'test-accesslog-session'
+
     r.content[0][:3] == '_id'
 
     # get the access types

@@ -505,7 +505,7 @@ class AccessLogReport(Report):
         uid = params.get('user')
         limit= params.get('limit', 100)
         subject = params.get('subject', None)
-        project = parmas.get('project', None)
+        project = params.get('project', None)
         access_types = params.getall('access_type')
 
         if start_date:
