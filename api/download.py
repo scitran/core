@@ -339,7 +339,7 @@ class Download(base.RequestHandler):
 
             # for each type of container below it will have a slightly modified match query
             cont_query = {
-                'projects': {'_id': {'project': req['_id']}},
+                'projects': {'_id': req['_id']},
                 'sessions': {'project': req['_id']},
                 'acquisitions': {'session': {'$in': session_ids}},
                 'analyses': {'parent.id': {'$in': parent_ids}}
@@ -382,8 +382,7 @@ class Download(base.RequestHandler):
             try:
                 result = config.db.command('aggregate', cont_name, pipeline=pipeline)
             except Exception as e: # pylint: disable=broad-except
-                result = e
-                return result
+                return e
 
             if result.get("ok"):
                 for doc in result.get("result"):
