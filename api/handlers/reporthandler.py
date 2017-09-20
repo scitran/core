@@ -872,11 +872,11 @@ class UsageReport(Report):
             report_obj = self._create_default(project=p)
 
             # Grab sessions and their ids
-            sessions = config.db.sessions.find({'project': p['_id']}, {'_id': 1, 'analyses':1})
+            sessions = config.db.sessions.find({'project': p['_id']}, {'_id': 1})
             session_ids = [s['_id'] for s in sessions]
 
             # Grab acquisitions and their ids
-            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1, 'analyses':1})
+            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
             acquisition_ids = [a['_id'] for a in acquisitions]
 
             # For the project and each session and acquisition, create a list of analysis ids
@@ -907,7 +907,7 @@ class UsageReport(Report):
                     {'$match': cont_query[cont_name]},
                     {'$unwind': '$files'},
                     {'$match': file_q},
-                    {'$project': {'mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
+                    {'$project': {'mbs': {'$divide': [{'$cond': ['$files.input', 0, '$files.size']}, BYTES_IN_MEGABYTE]}}},
                     {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
                 ]
 
