@@ -55,6 +55,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def initialization_auth(self):
         drone_request = False
+        job_context = None
         session_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
         drone_method = self.request.headers.get('X-SciTran-Method', None)
@@ -67,7 +68,7 @@ class RequestHandler(webapp2.RequestHandler):
                 api_key = APIKey.validate(key)
                 self.uid = api_key['uid']
                 if 'job' in api_key:
-                    self.job_context = api_key['job']
+                    job_context = api_key['job']
 
             elif session_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
@@ -116,7 +117,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.superuser_request = False
 
         self.origin = None
-        self.set_origin(drone_request)
+        self.set_origin(drone_request, job_context)
 
     def authenticate_user_token(self, session_token):
         """
@@ -230,7 +231,7 @@ class RequestHandler(webapp2.RequestHandler):
         return {'tokens_removed': result.deleted_count}
 
 
-    def set_origin(self, drone_request):
+    def set_origin(self, drone_request, job_context):
         """
         Add an origin to the request object. Used later in request handler logic.
 
@@ -244,10 +245,10 @@ class RequestHandler(webapp2.RequestHandler):
                 'type': str(Origin.user),
                 'id': self.uid
             }
-            if self.job_context:
+            if job_context:
                 self.origin['via'] = {
                     'type': str(Origin.job),
-                    'id': self.job_context
+                    'id': job_context
                 }
         elif drone_request:
 
