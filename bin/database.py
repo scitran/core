@@ -1242,7 +1242,7 @@ def upgrade_to_37():
     Move existing user api keys to new 'apikeys' collection
     """
     cursor = config.db.users.find({'api_key': {'$exists': True }})
-    process_cursor(cursor, upgrade_to_36_closure)
+    process_cursor(cursor, upgrade_to_37_closure)
 
 
 
