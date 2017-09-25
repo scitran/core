@@ -19,7 +19,7 @@ from .. import config
 from . import batch
 from ..validators import validate_data, verify_payload_exists
 
-from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name, check_for_gear_insertion
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
@@ -42,6 +42,17 @@ class GearsHandler(base.RequestHandler):
             gears = list(filter(lambda x: len(x["gear"]["inputs"].keys()) <= 1, gears))
 
         return gears
+
+    def check(self):
+        """
+        Check if a gear upload is likely to succeed.
+        """
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        check_for_gear_insertion(self.request.json)
+        return None
 
 class GearHandler(base.RequestHandler):
     """Provide /gears/x API routes."""
@@ -74,7 +85,6 @@ class GearHandler(base.RequestHandler):
         gear = get_gear(_id)
         return suggest_container(gear, cont_name+'s', cid)
 
-    # Temporary Function
     def upload(self): # pragma: no cover
         """Upload new gear tarball file"""
         if not self.user_is_admin:
@@ -88,7 +98,6 @@ class GearHandler(base.RequestHandler):
 
         return {'_id': str(gear_id)}
 
-    # Temporary Function
     def download(self, **kwargs): # pragma: no cover
         """Download gear tarball file"""
         dl_id = kwargs.pop('cid')
@@ -175,7 +184,6 @@ class RulesHandler(base.RequestHandler):
         result = config.db.project_rules.insert_one(doc)
         return { '_id': result.inserted_id }
 
-
 class RuleHandler(base.RequestHandler):
 
     def get(self, cid, rid):
@@ -247,7 +255,6 @@ class RuleHandler(base.RequestHandler):
             raise APINotFoundException('Rule not found.')
         return
 
-
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
     def get(self): # pragma: no cover (no route)
@@ -264,7 +271,7 @@ class JobsHandler(base.RequestHandler):
 
         # Translate maps to FileReferences
         inputs = {}
-        for x in submit['inputs'].keys():
+        for x in submit.get('inputs', {}).keys():
             input_map = submit['inputs'][x]
             inputs[x] = create_filereference_from_dictionary(input_map)
 
@@ -280,6 +287,9 @@ class JobsHandler(base.RequestHandler):
         if submit.get('destination', None) is not None:
             destination = create_containerreference_from_dictionary(submit['destination'])
         else:
+            if len(inputs.keys()) < 1:
+                raise Exception('No destination specified and no inputs to derive from')
+
             key = inputs.keys()[0]
             destination = create_containerreference_from_filereference(inputs[key])
 
@@ -319,9 +329,9 @@ class JobsHandler(base.RequestHandler):
         # You can count on neither occurring before a job starts, because the queue is not globally FIFO.
         # So option #2 is potentially more convenient, but unintuitive and prone to user confusion.
 
-
         for x in inputs:
-            if gear['gear']['inputs'][x]['base'] == 'file':
+            input_type = gear['gear']['inputs'][x]['base']
+            if input_type == 'file':
 
                 obj = inputs[x].get_file()
                 cr = create_containerreference_from_filereference(inputs[x])
@@ -339,6 +349,8 @@ class JobsHandler(base.RequestHandler):
                     },
                     'object': obj_projection,
                 }
+            elif input_type == 'api-key':
+                pass
             else:
                 self.abort(500, 'Non-file input base type')
 
@@ -399,7 +411,8 @@ class JobHandler(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        c = Job.get(_id).config
+        j = Job.get(_id)
+        c = j.config
         if c is None:
             c = {}
 

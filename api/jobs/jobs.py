@@ -11,6 +11,7 @@ from ..types import Origin
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 from .. import config
+from ..util import render_template
 
 
 class Job(object):
@@ -253,7 +254,7 @@ class Job(object):
                 }
             ],
             'target': {
-                'command': ['bash', '-c', 'rm -rf output; mkdir -p output; ./run'],
+                'command': None,
                 'env': {
                     'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
                 },
@@ -270,6 +271,20 @@ class Job(object):
 
         # Map destination to upload URI
         r['outputs'][0]['uri'] = '/engine?level=' + self.destination.type + '&id=' + self.destination.id
+
+        # Add environment, if any
+        for key in gear['gear'].get('environment', {}).keys():
+            r['target']['env'][key] = gear['gear']['environment'][key]
+
+        # Add command, if any
+        command_base = 'env; rm -rf output; mkdir -p output; '
+        if gear['gear'].get('command') is not None:
+
+            command = render_template(gear['gear']['command'], self.config['config'])
+
+            r['target']['command'] = ['bash', '-c', command_base + command ]
+        else:
+            r['target']['command'] = ['bash', '-c', command_base + './run' ]
 
         # Add config, if any
         if self.config is not None:
@@ -290,21 +305,24 @@ class Job(object):
                 bash_variable_letters = set(string.ascii_letters + string.digits + ' ' + '_')
 
                 for x in cf:
+                    # Strip non-whitelisted characters, set to underscore, and uppercase
+                    config_name = filter(lambda char: char in bash_variable_letters, x)
+                    config_name = config_name.replace(' ', '_').upper()
 
-                    if isinstance(cf[x], list) or isinstance(cf[x], dict):
-                        # Current gear spec only allows for scalars!
-                        raise Exception('Non-scalar config value ' + x + ' ' + str(cf[x]))
+                    # Don't set nonsensical environment variables
+                    if config_name == '':
+                        print 'The gear config name ' + x + ' has no whitelisted characters!'
+                        continue
+
+                    if isinstance(cf[x], list):
+                        # Stringify array or set
+                        # Might have same issue as scalars with "True" >:(
+                        r['target']['env']['FW_CONFIG_' + config_name] = str(cf[x])
+
+                    elif isinstance(cf[x], dict):
+                        raise Exception('Disallowed object-type config value ' + x + ' ' + str(cf[x]))
+
                     else:
-
-                        # Strip non-whitelisted characters, set to underscore, and uppercase
-                        config_name = filter(lambda char: char in bash_variable_letters, x)
-                        config_name = config_name.replace(' ', '_').upper()
-
-                        # Don't set nonsensical environment variables
-                        if config_name == '':
-                            print 'The gear config name ' + x + ' has no whitelisted characters!'
-                            continue
-
                         # Stringify scalar
                         # Python strings true as "True"; fix
                         if not isinstance(cf[x], bool):

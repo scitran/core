@@ -169,6 +169,11 @@ def remove_gear(_id):
         raise Exception("Deleted failed " + str(result.raw_result))
 
 def upsert_gear(doc):
+    check_for_gear_insertion(doc)
+
+    return insert_gear(doc)
+
+def check_for_gear_insertion(doc):
     gear_tools.validate_manifest(doc['gear'])
 
     # Remove previous gear if name & version combo already exists
@@ -179,6 +184,4 @@ def upsert_gear(doc):
     })
 
     if conflict is not None:
-        raise Exception('Gear ' + doc['gear']['name'] + ' ' + doc['gear']['version'] + ' already exists')
-
-    return insert_gear(doc)
+        raise Exception('Gear "' + doc['gear']['name'] + '" version "' + doc['gear']['version'] + '" already exists, consider changing the version string.')
