@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 36 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 37 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1211,6 +1211,13 @@ def upgrade_to_36():
     cursor = config.db.acquisitions.find({'files': { '$gt': [] }, 'files.mimetype': None})
     process_cursor(cursor, upgrade_to_36_closure)
 
+def upgrade_to_37():
+    """
+    scitran/core issue #916 - group-permission level site info needs to be removed from all levels
+    """
+    for coll in ['acquisitions', 'groups', 'projects', 'sessions', 'analyses']:
+        cursor = config.db[coll].find({'permissions.site': {'$exists': True}})
+        process_cursor(cursor, upgrade_to_32_closure, context = coll)
 
 
 ###
