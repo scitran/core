@@ -11,7 +11,8 @@ from .. import files
 from .. import config
 from ..types import Origin
 from .. import validators
-from ..auth.authproviders import AuthProvider, APIKeyAuthProvider
+from ..auth.authproviders import AuthProvider
+from ..auth.apikeys import APIKey
 from ..auth import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from elasticsearch import ElasticsearchException
@@ -63,7 +64,7 @@ class RequestHandler(webapp2.RequestHandler):
             if session_token.startswith('scitran-user '):
                 # User (API key) authentication
                 key = session_token.split()[1]
-                self.uid = APIKeyAuthProvider.validate_user_api_key(key)
+                self.uid = APIKey.validate(key)['uid']
             elif session_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
                 # When supported, remove custom headers and shared secret
