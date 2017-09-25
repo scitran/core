@@ -64,7 +64,11 @@ class RequestHandler(webapp2.RequestHandler):
             if session_token.startswith('scitran-user '):
                 # User (API key) authentication
                 key = session_token.split()[1]
-                self.uid = APIKey.validate(key)['uid']
+                api_key = APIKey.validate(key)
+                self.uid = api_key['uid']
+                if 'job' in api_key:
+                    self.job_context = api_key['job']
+
             elif session_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
                 # When supported, remove custom headers and shared secret
@@ -240,6 +244,11 @@ class RequestHandler(webapp2.RequestHandler):
                 'type': str(Origin.user),
                 'id': self.uid
             }
+            if self.job_context:
+                self.origin['via'] = {
+                    'type': str(Origin.job),
+                    'id': self.job_context
+                }
         elif drone_request:
 
             method = self.request.headers.get('X-SciTran-Method')

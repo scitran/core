@@ -24,7 +24,16 @@
                 "id":{"type":"string"},
                 "method":{"type":"string"},
                 "type":{"type":"string"},
-                "name":{"type":"string"}
+                "name":{"type":"string"},
+                "via": {
+                  "type":"object",
+                  "properties":{
+                      "id":{"type":"string"},
+                      "method":{"type":"string"},
+                      "type":{"type":"string"},
+                      "name":{"type":"string"}
+                  }
+                }
             },
             "additionalProperties":false
         },

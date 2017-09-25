@@ -95,14 +95,14 @@ class JobApiKey(APIKey):
         """
         api_key = cls.generate_api_key(cls.key_type)
         api_key['uid'] = uid
-        api_key['job'] = job_id
+        api_key['job'] = str(job_id)
 
         config.db.apikeys.insert_one(api_key)
         return api_key['_id']
 
     @classmethod
     def remove(cls, job_id):
-        config.db.apikeys.delete({'type': cls.key_type, 'job': bson.ObjectId(job_id)})
+        config.db.apikeys.delete({'type': cls.key_type, 'job': str(job_id)})
 
     @classmethod
     def check(cls, api_key):
