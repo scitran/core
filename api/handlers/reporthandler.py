@@ -505,6 +505,7 @@ class AccessLogReport(Report):
         uid = params.get('user')
         limit= params.get('limit', 100)
         subject = params.get('subject', None)
+        project = params.get('project', None)
         access_types = params.getall('access_type')
 
         if start_date:
@@ -532,6 +533,7 @@ class AccessLogReport(Report):
         self.uid            = uid
         self.limit          = limit
         self.subject        = subject
+        self.project        = project
         self.access_types   = access_types
 
     def user_can_generate(self, uid):
@@ -555,6 +557,8 @@ class AccessLogReport(Report):
             query['timestamp']['$lte'] = self.end_date
         if self.subject:
             query['context.subject.label'] = self.subject
+        if self.project:
+            query['context.project.id'] = self.project
         if self.access_types:
             query['access_type'] = {'$in': self.access_types}
 
