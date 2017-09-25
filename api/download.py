@@ -322,52 +322,34 @@ class Download(base.RequestHandler):
         req['_id'] = bson.ObjectId(req['_id'])
         level = req['level']
 
-        containers = ['projects', 'sessions', 'acquisitions', 'analyses']
+        containers = ['projects', 'sessions', 'acquisitions']
         cont_query = {}
         if level == 'projects':
             # Grab sessions and their ids
             sessions = config.db.sessions.find({'project': req['_id']}, {'_id': 1})
             session_ids = [s['_id'] for s in sessions]
 
-            # Grab acquisitions and their ids
-            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
-            acquisition_ids = [a['_id'] for a in acquisitions]
-            parent_ids = [req['_id']] + session_ids + acquisition_ids
-
-            # # Grab analyses and their ids
-            # analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': parent_ids}})]
-
             # for each type of container below it will have a slightly modified match query
             cont_query = {
                 'projects': {'_id': req['_id']},
                 'sessions': {'project': req['_id']},
-                'acquisitions': {'session': {'$in': session_ids}},
-                'analyses': {'parent.id': {'$in': parent_ids}}
+                'acquisitions': {'session': {'$in': session_ids}}
             }
         elif level == 'sessions':
-
-            # Grab acquisitions and their ids
-            acquisitions = config.db.acquisitions.find({'session': req['_id']}, {'_id': 1})
-            acquisition_ids = [a['_id'] for a in acquisitions]
-            parent_ids = [req['_id']] + acquisition_ids
-
-            # # Grab analyses and their ids
-            # analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': parent_ids}})]
 
             # for each type of container below it will have a slightly modified match query
             cont_query = {
                 'sessions': {'_id': req['_id']},
-                'acquisitions': {'session': req['_id']},
-                'analyses': {'parent.id': {'$in': parent_ids}}
+                'acquisitions': {'session': req['_id']}
             }
             containers = containers[1:]
         elif level == 'acquisitions':
 
             cont_query['acquisitions'] = {'_id': req['_id']}
-            containers = ['acquisitions']
+            containers = containers[-1:]
         elif level == 'analyses':
             cont_query['analyses'] = {'_id': req['_id']}
-            containers = containers[-1:]
+            containers = ['analyses']
         else:
             self.abort(400, "{} not a recognized level".format(level)) 
 
@@ -381,17 +363,15 @@ class Download(base.RequestHandler):
                 {'$group': {
                     '_id': '$type',
                     'count': {'$sum' : 1}, 
-                    'mb_total': {'$sum':'$mbs'}, 
-                    'nodes' : {
-                        '$addToSet': {'level': {'$literal':cont_name}, '_id': '$_id'}
-                    }
+                    'mb_total': {'$sum':'$mbs'}
                 }}
             ]
 
             try:
                 result = config.db.command('aggregate', cont_name, pipeline=pipeline)
             except Exception as e: # pylint: disable=broad-except
-                self.abort(500, str(e))
+                log.warning(e)
+                self.abort(500, "Failure to load summary")
 
             if result.get("ok"):
                 for doc in result.get("result"):
@@ -399,7 +379,6 @@ class Download(base.RequestHandler):
                     if res.get(type_):
                         res[type_]['count'] += doc.get('count',0)
                         res[type_]['mb_total'] += doc.get('mb_total',0)
-                        res[type_]['nodes'] += doc.get('nodes', [])
                     else:
                         res[type_] = doc
         return res

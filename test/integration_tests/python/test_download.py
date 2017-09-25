@@ -442,4 +442,13 @@ def test_summary(data_builder, as_admin, file_form):
 
     r = as_admin.post('/download/summary', json={"level":"groups", "_id":missing_object_id})
     assert r.status_code == 400
+
+    r = as_admin.post('/sessions/' + session + '/analyses',  files=file_form(
+        file_name, meta={'label': 'test', 'inputs':[{'name':file_name}]}))
+    assert r.ok
+    analysis = r.json()['_id']
     
+    r = as_admin.post('/download/summary', json={"level":"analyses", "_id":analysis})
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json().get("tabular data", {}).get("count",0) == 1
