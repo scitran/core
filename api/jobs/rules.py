@@ -93,7 +93,7 @@ def eval_match(match_type, match_param, file_, container):
     elif match_type == 'container.has-type':
         for c_file in container['files']:
             c_file_type = c_file.get('type')
-            if c_file_type and match_param.lower() == c_file_type.lower()
+            if c_file_type and match_param.lower() == c_file_type.lower():
                 return True
 
         return False

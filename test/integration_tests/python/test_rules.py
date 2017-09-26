@@ -376,6 +376,11 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     )
     assert r.ok
 
+    # Ensure file without type or measurements does not cause issues with rule evalution
+    # upload file that matches only part of rule
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('test3.notreal'))
+    assert r.ok
+
     # test that only one job was created via rule
     gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
     assert len(gear_jobs) == 2
