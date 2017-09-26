@@ -67,10 +67,11 @@ def eval_match(match_type, match_param, file_, container):
 
     # Match the file's type
     if match_type == 'file.type':
-        try:
-            return file_['type'].lower() == match_param.lower()
-        except KeyError:
-            _log_file_key_error(file_, container, 'has no type key')
+        file_type = file_.get('type')
+        if file_type:
+            return file_type.lower() == match_param.lower()
+        else:
+            _log_file_key_error(file_, container, 'has no type')
             return False
 
     # Match a shell glob for the file name
@@ -91,7 +92,8 @@ def eval_match(match_type, match_param, file_, container):
     # Match the container having any file (including this one) with this type
     elif match_type == 'container.has-type':
         for c_file in container['files']:
-            if match_param.lower() == c_file.get('type').lower():
+            c_file_type = c_file.get('type')
+            if c_file_type and match_param.lower() == c_file_type.lower()
                 return True
 
         return False
