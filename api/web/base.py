@@ -213,7 +213,7 @@ class RequestHandler(webapp2.RequestHandler):
         config.db.authtokens.insert_one(token_entry)
 
         # Set origin now that the uid is known
-        self.set_origin(False)
+        self.set_origin(False, None)
 
         return {'token': session_token}
 

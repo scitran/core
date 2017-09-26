@@ -299,6 +299,8 @@ class APIKeyAuthProvider(AuthProvider):
     def validate_code(self, code, **kwargs):
 
         api_key = APIKey.validate(code)
+        if api_key['type'] != 'user':
+            raise APIAuthProviderException('Only user API keys can be used to grant a session.')
         return {
             'access_token': code,
             'uid': api_key['uid'],
