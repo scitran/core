@@ -149,6 +149,8 @@ class ContainerReference(object):
     # TODO: refactor to resolve pylint warning
 
     def __init__(self, type, id):
+        type = singularize(type)
+
         if type not in CONT_TYPES:
             raise Exception('Container type must be one of {}'.format(CONT_TYPES))
 
