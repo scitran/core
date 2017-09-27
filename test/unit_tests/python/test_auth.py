@@ -68,7 +68,7 @@ def test_cas_auth(config, as_drone, as_public, api_db):
 
     # inject cas auth config
     config['auth']['cas'] = dict(
-        service_url='http://local.test?state=cas',
+        service_url_state='?state=cas',
         auth_endpoint='http://cas.test/cas/login',
         verify_endpoint='http://cas.test/cas/serviceValidate',
         namespace='cas.test',
