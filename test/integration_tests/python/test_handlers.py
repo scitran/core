@@ -80,8 +80,14 @@ def test_devicehandler(as_user, as_root, as_drone, api_db):
     api_db.devices.remove({'_id': 'test_drone'})
 
 
-def test_config_version(as_user):
+def test_config_version(as_user, api_db):
+    # get database version when no version document exists, It hasn;t been set yet in the tests
+    r = as_user.get('/version')
+    assert r.status_code == 404
+    api_db.singletons.insert_one({"_id":"version","database":3})
+
     # get database schema version
     r = as_user.get('/version')
     assert r.ok
-    assert r.text == '' # not set yet
+    assert r.json()['database'] == 3
+    api_db.singletons.find_one_and_delete({'_id':'version'})

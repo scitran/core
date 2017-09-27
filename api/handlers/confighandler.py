@@ -22,4 +22,8 @@ class Version(base.RequestHandler):
 
     def get(self):
         """Return database schema version"""
-        return config.get_version()
+        resp = config.get_version()
+        if resp != None:
+            return resp
+        else:
+            self.abort(404, "Version document does not exist")
