@@ -296,7 +296,8 @@ class CASAuthProvider(AuthProvider):
         }
 
     def validate_user(self, token):
-        r = requests.get(self.config['verify_endpoint'], params={'ticket': token, 'service': self.config['service_url']})
+        service_url = config.get_item('site', 'redirect_url') + self.config['service_url_state']
+        r = requests.get(self.config['verify_endpoint'], params={'ticket': token, 'service': service_url})
         if not r.ok:
             raise APIAuthProviderException('User token not valid')
 
