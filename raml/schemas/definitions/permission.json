@@ -3,7 +3,7 @@
   "type": "object",
   "definitions": {
     "_id":            { "type": "string" },
-    "access":         { "enum": ["no-phi-ro", "ro", "rw", "admin"] },
+    "access":         { "enum": ["ro-no-phi", "ro", "rw", "admin"] },
     "permission":{
       "type":"object",
       "properties":{

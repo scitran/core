@@ -266,7 +266,7 @@ def test_phi_access(as_admin, data_builder, log_db):
     group = data_builder.create_group()
     project = data_builder.create_project()
     session = data_builder.create_session()
-    r = as_admin.put('/sessions/' + session, json={"subject":{"firstname":"FirstName"}}, params={'replace_metadata':True})
+    r = as_admin.put('/sessions/' + session, json={"subject":{"firstname":"FirstName", "code":"Subject_Code"}}, params={'replace_metadata':True})
     assert r.ok
 
     # Test phi access for list returns with phi access level
@@ -292,10 +292,11 @@ def test_phi_access(as_admin, data_builder, log_db):
     r = as_admin.get('/sessions/' + session, params={'phi':True})
     assert r.ok
     assert r.json().get('subject').get('firstname') == 'FirstName'
+    assert r.json().get('subject').get('code') == 'Subject_Code'
     assert pre_log == log_db.access_log.count({}) - 2
 
-    # Set access level to no-phi-ro (Read-Only No PHI)
-    r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'access': 'no-phi-ro'})
+    # Set access level to ro-no-phi (Read-Only No PHI)
+    r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'access': 'ro-no-phi'})
     assert r.ok
 
     # Test phi access for list returns without phi access level
@@ -304,6 +305,7 @@ def test_phi_access(as_admin, data_builder, log_db):
     assert r.ok
     for session_ in r.json():
         assert session_.get('subject').get('firstname') == None
+        assert session_.get('subject').get('code') == 'Subject_Code'
     assert pre_log == log_db.access_log.count({})
     r = as_admin.get('/sessions', params={'phi':True})
     assert r.status_code == 403
@@ -312,7 +314,8 @@ def test_phi_access(as_admin, data_builder, log_db):
     pre_log = log_db.access_log.count({})
     r = as_admin.get('/sessions/' + session)
     assert r.ok
-    assert r.json().get('subject').get('firstname') == '***'
+    assert r.json().get('subject').get('firstname') == None
+    assert r.json().get('subject').get('code') == 'Subject_Code'
     assert pre_log == log_db.access_log.count({})
 
     r = as_admin.get('/sessions/' + session, params={'phi':True})

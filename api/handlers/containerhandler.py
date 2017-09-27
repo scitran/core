@@ -116,10 +116,7 @@ class ContainerHandler(base.RequestHandler):
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
 
         inflate_job_info = cont_name == 'sessions'
-        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info)
-        if not self.phi:
-            for analysis_ in result['analyses']:
-                containerauth.file_info_scrub(analysis_)
+        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info, containerauth.PHI_FIELDS)
         return self.handle_origin(result)
 
     def handle_origin(self, result):
