@@ -94,6 +94,8 @@ class JobApiKey(APIKey):
         Returns an API key for user for use by a specific job.
         Re-uses such a key if it already exists.
         """
+        
+        job_id = str(job_id)
 
         existing_key = config.db.apikeys.find_one({
             'uid': uid,
@@ -106,7 +108,7 @@ class JobApiKey(APIKey):
         else:
             api_key = cls.generate_api_key(cls.key_type)
             api_key['uid'] = uid
-            api_key['job'] = str(job_id)
+            api_key['job'] = job_id
 
             config.db.apikeys.insert_one(api_key)
             return api_key['_id']
