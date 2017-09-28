@@ -91,14 +91,25 @@ class JobApiKey(APIKey):
     @classmethod
     def generate(cls, uid, job_id):
         """
-        Generates an API key for user for use by a specific job
+        Returns an API key for user for use by a specific job.
+        Re-uses such a key if it already exists.
         """
-        api_key = cls.generate_api_key(cls.key_type)
-        api_key['uid'] = uid
-        api_key['job'] = str(job_id)
 
-        config.db.apikeys.insert_one(api_key)
-        return api_key['_id']
+        existing_key = config.db.apikeys.find_one({
+            'uid': uid,
+            'job': job_id,
+        })
+
+        if existing_key is not None:
+            return existing_key['_id']
+
+        else:
+            api_key = cls.generate_api_key(cls.key_type)
+            api_key['uid'] = uid
+            api_key['job'] = str(job_id)
+
+            config.db.apikeys.insert_one(api_key)
+            return api_key['_id']
 
     @classmethod
     def remove(cls, job_id):

@@ -5,6 +5,7 @@ import bson
 import os
 import StringIO
 from jsonschema import ValidationError
+from urlparse import urlparse
 
 from .. import upload
 from .. import util
@@ -18,6 +19,8 @@ from ..validators import InputValidationException
 from .. import config
 from . import batch
 from ..validators import validate_data, verify_payload_exists
+
+from ..auth.apikeys import JobApiKey
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name, check_for_gear_insertion
 from .jobs import Job, Logs
@@ -403,7 +406,6 @@ class JobHandler(base.RequestHandler):
         if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires admin')
 
-
         return Job.get(_id)
 
     def get_config(self, _id):
@@ -425,6 +427,35 @@ class JobHandler(base.RequestHandler):
 
         if c.get('config') is not None and c.get('inputs') is not None:
             # New behavior
+
+            # API keys are only returned in-flight, when the job is running, and not persisted to the job object.
+            if j.state == 'running':
+                gear = get_gear(j.gear_id)
+
+                for key in gear['gear']['inputs']:
+                    input = gear['gear']['inputs'][key]
+
+                    if input['base'] == 'api-key':
+                        if j.origin['type'] != 'user':
+                            raise Exception('Cannot provide an API key to a job not launched by a user')
+
+                        uid = j.origin['id']
+                        api_key = JobApiKey.generate(uid, j.id_)
+                        parsed_url = urlparse(config.get_item('site', 'api_url'))
+
+                        if parsed_url.port != 443:
+                            api_key = parsed_url.hostname + ':' + str(parsed_url.port) + ':' + api_key
+                        else:
+                            api_key = parsed_url.hostname + ':' + api_key
+
+                        if c.get('inputs') is None:
+                            c['inputs'] = {}
+
+                        c['inputs'][key] = {
+                            'base': 'api-key',
+                            'key': api_key
+                        }
+
             encoded = pseudo_consistent_json_encode(c)
             self.response.app_iter = StringIO.StringIO(encoded)
         else:
