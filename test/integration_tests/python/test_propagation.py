@@ -212,6 +212,12 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
     r = as_admin.post('/groups/' + group + '/permissions', json=payload, params={'propagate': 'true'})
     assert r.ok
 
+    # Add project without default group perms
+    r = as_admin.post('/projects', params={'inherit': 'false'}, json={'label': 'project2', 'group': group})
+    assert r.ok
+    project2 = r.json()['_id']
+
+
     r = as_admin.get('/groups/' + group)
     perms = r.json()['permissions']
     user = get_user_in_perms(perms, user_id)
@@ -244,6 +250,11 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
     assert r.ok and user and user['access'] == 'rw'
 
     r = as_admin.get('/projects/' + project)
+    perms = r.json()['permissions']
+    user = get_user_in_perms(perms, user_id)
+    assert r.ok and user and user['access'] == 'rw'
+
+    r = as_admin.get('/projects/' + project2)
     perms = r.json()['permissions']
     user = get_user_in_perms(perms, user_id)
     assert r.ok and user and user['access'] == 'rw'
@@ -281,6 +292,10 @@ def test_add_and_remove_user_group_permission(data_builder, as_admin):
     perms = r.json()['permissions']
     user = get_user_in_perms(perms, user_id)
     assert r.ok and user is None
+
+    # Delete empty project 2
+    r= as_admin.delete('/projects/' + project2)
+    assert r.ok
 
 # Test tag pool renaming and deletion
 def test_add_rename_remove_group_tag(data_builder, as_admin):
