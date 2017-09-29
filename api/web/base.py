@@ -127,6 +127,27 @@ class RequestHandler(webapp2.RequestHandler):
         if cached_token:
             self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
+            # Check if site has inactivity timeout
+            try:
+                inactivity_timeout = config.get_item('site', 'inactivity_timeout')
+            except KeyError:
+                inactivity_timeout = None
+
+            if inactivity_timeout:
+                last_seen = cached_token.get('last_seen')
+
+                # If now - last_seen is greater than inactivity timeout, clear out session
+                if last_seen and (timestamp - last_seen).total_seconds() > inactivity_timeout:
+
+                    # Token expired and no refresh token, remove and deny request
+                    config.db.authtokens.delete_one({'_id': cached_token['_id']})
+                    config.db.refreshtokens.delete({'uid': cached_token['uid'], 'auth_type': cached_token['auth_type']})
+                    self.abort(401, 'Inactivity timeout')
+
+                # set last_seen to now
+                config.db.authtokens.update_one({'_id': cached_token['_id']}, {'$set': {'last_seen': timestamp}})
+
+
             # Check if token is expired
             if cached_token.get('expires') and timestamp > cached_token['expires']:
 

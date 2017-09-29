@@ -38,7 +38,8 @@ DEFAULT_CONFIG = {
         'redirect_url': 'https://localhost',
         'central_url': 'https://sdmc.scitran.io/api',
         'registered': False,
-        'ssl_cert': None
+        'ssl_cert': None,
+        'inactivity_timeout': None
     },
     'queue': {
         'max_retries': 3,
