@@ -3,7 +3,6 @@ Purpose of this module is to define all the permissions checker decorators for t
 """
 from copy import deepcopy
 from . import _get_access, INTEGER_PERMISSIONS
-from ..dao import noop
 
 PHI_FIELDS = {'info': 0, 'subject.firstname':0, 'subject.lastname': 0, 'subject.sex': 0,
                     'subject.age': 0, 'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0, 'tags': 0, 'files.info':0}
@@ -15,8 +14,7 @@ def default_container(handler, container=None, target_parent_container=None):
     on the container before actually executing this method.
     """
     def g(exec_op):
-        def f(method, _id=None, payload=None, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
-            projection = None
+        def f(method, _id=None, payload=None, unset_payload=None, recursive=False, r_payload=None, projection=None, replace_metadata=False, phi=False):
             additional_error_msg = None
             if method == 'GET' and container.get('public', False):
                 has_access = True
@@ -49,17 +47,12 @@ def default_container(handler, container=None, target_parent_container=None):
             else:
                 has_access = False
 
-            if method == 'GET' and exec_op is not noop:
-                handler.phi = _get_access(handler.uid, container) > INTEGER_PERMISSIONS['ro-no-phi']
-                if not handler.phi:
-                    if handler.is_true('phi'):
-                        handler.abort(403, "User not authorized to view PHI fields.")
-                    else:
-                        projection = PHI_FIELDS
+            if method == 'GET' and phi:
+                if not _get_access(handler.uid, container) > INTEGER_PERMISSIONS['ro-no-phi']:
+                    handler.abort(403, "User not authorized to view PHI fields on the container.")
 
             if has_access:
-                result = exec_op(method, _id=_id, payload=payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata, projection=projection)
-                return result
+                return exec_op(method, _id=_id, payload=payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata, projection=projection)
             else:
                 error_msg = 'user not authorized to perform a {} operation on the container.'.format(method)
                 if additional_error_msg:
@@ -75,8 +68,7 @@ def collection_permissions(handler, container=None, _=None):
     Permissions are checked on the collection itself or not at all if the collection is new.
     """
     def g(exec_op):
-        def f(method, _id=None, payload = None):
-            projection = None
+        def f(method, _id=None, payload = None, projection=None, phi=False):
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
@@ -90,16 +82,12 @@ def collection_permissions(handler, container=None, _=None):
             else:
                 has_access = False
 
-            if method == 'GET' and exec_op is not noop:
-                handler.phi = _get_access(handler.uid, container) > INTEGER_PERMISSIONS['ro-no-phi']
-                if not handler.phi:
-                    if handler.is_true('phi'):
-                        handler.abort(403, "User not authorized to view PHI fields.")
-                    projection = PHI_FIELDS
+            if method == 'GET' and phi:
+                if not _get_access(handler.uid, container) > INTEGER_PERMISSIONS['ro-no-phi']:
+                    handler.abort(403, "User not authorized to view PHI fields.")
 
             if has_access:
-                result = exec_op(method, _id=_id, payload=payload, projection=projection)
-                return result
+                return exec_op(method, _id=_id, payload=payload, projection=projection)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the container'.format(method))
         return f
@@ -108,8 +96,7 @@ def collection_permissions(handler, container=None, _=None):
 
 def default_referer(handler, parent_container=None):
     def g(exec_op):
-        def f(method, _id=None, payload=None):
-            projection = None
+        def f(method, _id=None, payload=None, projection = None, phi=False):
             access = _get_access(handler.uid, parent_container)
             if method == 'GET' and parent_container.get('public', False):
                 has_access = True
@@ -120,16 +107,12 @@ def default_referer(handler, parent_container=None):
             else:
                 has_access = False 
 
-            if method == 'GET' and exec_op is not noop:
-                handler.phi = _get_access(handler.uid, parent_container) > INTEGER_PERMISSIONS['ro-no-phi']
-                if not handler.phi:
-                    if handler.is_true('phi'):
-                        handler.abort(403, "User not authorized to view PHI fields.")
-                    projection = PHI_FIELDS
+            if method == 'GET' and phi:
+                if not _get_access(handler.uid, parent_container) > INTEGER_PERMISSIONS['ro-no-phi']:
+                    handler.abort(403, "User not authorized to view PHI fields.")
 
             if has_access:
-                result = exec_op(method, _id=_id, payload=payload, projection=projection)
-                return result
+                return exec_op(method, _id=_id, payload=payload, projection=projection)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on parent container'.format(method))
         return f
@@ -141,9 +124,11 @@ def public_request(handler, container=None):
     For public requests we allow only GET operations on containers marked as public.
     """
     def g(exec_op):
-        def f(method, _id=None, payload = None):
+        def f(method, _id=None, payload = None, phi=False, projection=None):
+            if phi:
+                handler.abort(403, "Must be logged in to view PHI fields.")
             if method == 'GET' and container.get('public', False):
-                return exec_op(method, _id, payload)
+                return exec_op(method, _id, payload, projection)
             else:
                 handler.abort(403, 'not authorized to perform a {} operation on this container'.format(method))
         return f
@@ -151,13 +136,13 @@ def public_request(handler, container=None):
 
 def list_permission_checker(handler):
     def g(exec_op):
-        def f(method, query=None, user=None, public=False, projection=None):
+        def f(method, query=None, user=None, public=False, projection=None, phi=False):
             if user and (user['_id'] != handler.uid):
                 handler.abort(403, 'User ' + handler.uid + ' may not see the Projects of User ' + user['_id'])
             query['permissions'] = {'$elemMatch': {'_id': handler.uid}}
             if handler.is_true('public'):
                 query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
-            if handler.is_true('phi'):
+            if phi:
                 temp_query = deepcopy(query)
                 temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'access': 'ro-no-phi'}}
                 not_allowed = exec_op(method, query=temp_query, user=user, public=public, projection=projection)
@@ -170,7 +155,7 @@ def list_permission_checker(handler):
 
 
 def list_public_request(exec_op):
-    def f(method, query=None, user=None, public=False, projection=None):
+    def f(method, query=None, user=None, public=False, projection=None, phi=False): # pylint: disable=unused-argument
         if public:
             query['public'] = True
         return exec_op(method, query=query, user=user, public=public, projection=projection)

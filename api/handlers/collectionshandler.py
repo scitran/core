@@ -109,7 +109,13 @@ class CollectionsHandler(ContainerHandler):
         else:
             permchecker = containerauth.list_permission_checker(self)
         query = {}
-        results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
+        if self.is_true('phi'):
+            projection = None
+            phi = True
+        else:
+            phi = False
+            projection.update(self.PHI_FIELDS)
+        results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
         if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_all_permissions(results, self.uid)
         if self.is_true('join_avatars'):
