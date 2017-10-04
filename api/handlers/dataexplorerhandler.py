@@ -571,7 +571,11 @@ class DataExplorerHandler(base.RequestHandler):
         if size == 'all':
             size = self.search_size(return_type)
         elif not isinstance(size, int):
-            self.abort(400, 'Size must be an int or "all".')
+            try:
+                size = int(size)
+            except ValueError:
+                self.abort(400, 'Size must be an int or "all".')
+
 
         results = self._run_query(self._construct_query(return_type, search_string, filters, size), return_type)
 
