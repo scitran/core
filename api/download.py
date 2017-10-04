@@ -318,42 +318,62 @@ class Download(base.RequestHandler):
 
     def summary(self):
         """Return a summary of what has been/will be downloaded based on a given query"""
-        req = self.request.json_body
-        req['_id'] = bson.ObjectId(req['_id'])
-        level = req['level']
-
-        containers = ['projects', 'sessions', 'acquisitions']
-        cont_query = {}
-        if level == 'projects':
-            # Grab sessions and their ids
-            sessions = config.db.sessions.find({'project': req['_id']}, {'_id': 1})
-            session_ids = [s['_id'] for s in sessions]
-
-            # for each type of container below it will have a slightly modified match query
-            cont_query = {
-                'projects': {'_id': req['_id']},
-                'sessions': {'project': req['_id']},
-                'acquisitions': {'session': {'$in': session_ids}}
-            }
-        elif level == 'sessions':
-
-            # for each type of container below it will have a slightly modified match query
-            cont_query = {
-                'sessions': {'_id': req['_id']},
-                'acquisitions': {'session': req['_id']}
-            }
-            containers = containers[1:]
-        elif level == 'acquisitions':
-
-            cont_query['acquisitions'] = {'_id': req['_id']}
-            containers = containers[-1:]
-        elif level == 'analyses':
-            cont_query['analyses'] = {'_id': req['_id']}
-            containers = ['analyses']
-        else:
-            self.abort(400, "{} not a recognized level".format(level)) 
-
         res = {}
+        req = self.request.json_body
+        cont_query = {
+            'projects': {'_id': {'$in':[]}},
+            'sessions': {'_id': {'$in':[]}},
+            'acquisitions': {'_id': {'$in':[]}},
+            'analyses' : {'_id': {'$in':[]}}
+        }
+        for node in req:
+            node['_id'] = bson.ObjectId(node['_id'])
+            level = node['level']
+
+            containers = {'projects':0, 'sessions':0, 'acquisitions':0, 'analyses':0}
+            
+            if level == 'project':
+                # Grab sessions and their ids
+                sessions = config.db.sessions.find({'project': node['_id']}, {'_id': 1})
+                session_ids = [s['_id'] for s in sessions]
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
+                acquisition_ids = [a['_id'] for a in acquisitions]
+
+                containers['projects']=1
+                containers['sessions']=1
+                containers['acquisitions']=1
+
+                # for each type of container below it will have a slightly modified match query
+                cont_query.get('projects',{}).get('_id',{}).get('$in').append(node['_id'])
+                cont_query['sessions']['_id']['$in'] = cont_query['sessions']['_id']['$in'] + session_ids
+                cont_query['acquisitions']['_id']['$in'] = cont_query['acquisitions']['_id']['$in'] + acquisition_ids
+
+            elif level == 'session':
+                acquisitions = config.db.acquisitions.find({'session': node['_id']}, {'_id': 1})
+                acquisition_ids = [a['_id'] for a in acquisitions]
+
+
+                # for each type of container below it will have a slightly modified match query
+                cont_query.get('sessions',{}).get('_id',{}).get('$in').append(node['_id'])
+                cont_query['acquisitions']['_id']['$in'] = cont_query['acquisitions']['_id']['$in'] + acquisition_ids
+
+                containers['sessions']=1
+                containers['acquisitions']=1
+
+            elif level == 'acquisition':
+
+                cont_query.get('acquisitions',{}).get('_id',{}).get('$in').append(node['_id'])
+                containers['acquisitions']=1
+
+            elif level == 'analysis':
+                cont_query.get('analyses',{}).get('_id',{}).get('$in').append(node['_id'])
+                containers['analyses'] = 1
+
+            else:
+                self.abort(400, "{} not a recognized level".format(level)) 
+
+            containers = [cont for cont in containers if containers[cont] == 1]
+
         for cont_name in containers:
             # Aggregate file types
             pipeline = [

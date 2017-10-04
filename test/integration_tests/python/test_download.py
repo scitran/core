@@ -425,22 +425,22 @@ def test_summary(data_builder, as_admin, file_form):
 
     missing_object_id = '000000000000000000000000'
 
-    r = as_admin.post('/download/summary', json={"level":"projects", "_id":project})
+    r = as_admin.post('/download/summary', json=[{"level":"project", "_id":project}])
     assert r.ok
     assert len(r.json()) == 1
     assert r.json().get("csv", {}).get("count",0) == 4 
 
-    r = as_admin.post('/download/summary', json={"level":"sessions", "_id":session})
+    r = as_admin.post('/download/summary', json=[{"level":"session", "_id":session}])
     assert r.ok
     assert len(r.json()) == 1
     assert r.json().get("csv", {}).get("count",0) == 2 
 
-    r = as_admin.post('/download/summary', json={"level":"acquisitions", "_id":acquisition})
+    r = as_admin.post('/download/summary', json=[{"level":"acquisition", "_id":acquisition},{"level":"acquisition", "_id":acquisition2}])
     assert r.ok
     assert len(r.json()) == 1
-    assert r.json().get("csv", {}).get("count",0) == 1
+    assert r.json().get("csv", {}).get("count",0) == 2
 
-    r = as_admin.post('/download/summary', json={"level":"groups", "_id":missing_object_id})
+    r = as_admin.post('/download/summary', json=[{"level":"group", "_id":missing_object_id}])
     assert r.status_code == 400
 
     r = as_admin.post('/sessions/' + session + '/analyses',  files=file_form(
@@ -448,7 +448,7 @@ def test_summary(data_builder, as_admin, file_form):
     assert r.ok
     analysis = r.json()['_id']
     
-    r = as_admin.post('/download/summary', json={"level":"analyses", "_id":analysis})
+    r = as_admin.post('/download/summary', json=[{"level":"analysis", "_id":analysis}])
     assert r.ok
     assert len(r.json()) == 1
     assert r.json().get("tabular data", {}).get("count",0) == 1
