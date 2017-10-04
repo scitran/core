@@ -4,8 +4,6 @@ Purpose of this module is to define all the permissions checker decorators for t
 from copy import deepcopy
 from . import _get_access, INTEGER_PERMISSIONS
 
-PHI_FIELDS = {'info': 0, 'subject.firstname':0, 'subject.lastname': 0, 'subject.sex': 0,
-                    'subject.age': 0, 'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0, 'tags': 0, 'files.info':0}
 
 def default_container(handler, container=None, target_parent_container=None):
     """
@@ -128,7 +126,7 @@ def public_request(handler, container=None):
             if phi:
                 handler.abort(403, "Must be logged in to view PHI fields.")
             if method == 'GET' and container.get('public', False):
-                return exec_op(method, _id, payload, projection)
+                return exec_op(method, _id, payload=payload, projection=projection)
             else:
                 handler.abort(403, 'not authorized to perform a {} operation on this container'.format(method))
         return f

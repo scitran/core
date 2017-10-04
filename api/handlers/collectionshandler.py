@@ -6,6 +6,7 @@ from ..auth import containerauth, always_ok
 from ..dao import containerstorage, containerutil, noop
 from ..web.errors import APIStorageException
 from ..validators import verify_payload_exists
+from ..web.request import AccessType
 
 from .containerhandler import ContainerHandler
 
@@ -101,7 +102,7 @@ class CollectionsHandler(ContainerHandler):
         config.db.acquisitions.update_many({'collections': bson.ObjectId(_id)}, {'$pull': {'collections': bson.ObjectId(_id)}})
 
     def get_all(self):
-        projection = self.container_handler_configurations['collections']['list_projection']
+        projection = None
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
@@ -114,7 +115,7 @@ class CollectionsHandler(ContainerHandler):
             phi = True
         else:
             phi = False
-            projection.update(self.PHI_FIELDS)
+            projection = {'info': 0, 'tags': 0, 'files.info':0}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
         if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_all_permissions(results, self.uid)
@@ -123,6 +124,8 @@ class CollectionsHandler(ContainerHandler):
         for result in results:
             if self.is_true('stats'):
                 result = containerutil.get_stats(result, 'collections')
+            if phi:
+                self.log_user_access(AccessType.view_container, cont_name='collections', cont_id=result.get('_id'))
         return results
 
     def curators(self):

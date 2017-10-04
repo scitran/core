@@ -341,11 +341,18 @@ hooks.before("GET /groups/{GroupId}/projects -> 200", function(test, done) {
 });
 
 
+hooks.before("GET /collections -> 200", function(test, done) {
+    test.request.query = {
+        "phi": true
+    };
+    done();
+});
 // set initial test_collection_1
 hooks.after("GET /collections -> 200", function(test, done) {
     test_collection_1 = test.response.body[0];
     collection_id = test.response.body[0]._id;
     delete_collection_id = test.response.body[1]._id;
+    assert.equal(test_collection_1.label, "test-collection-1");
     done();
 });
 
