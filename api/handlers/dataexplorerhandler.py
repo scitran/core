@@ -1,7 +1,7 @@
 import copy
 import json
 
-from elasticsearch import ElasticsearchException, TransportError, helpers
+from elasticsearch import ElasticsearchException, TransportError, RequestError, helpers
 
 from ..web import base
 from .. import config
@@ -372,6 +372,10 @@ class DataExplorerHandler(base.RequestHandler):
 
                     else:
                         modified_filters.append({'terms': {k+'.raw': v}})
+            elif f.get('term'):
+                # Search raw field
+                for k,v in f['term'].iteritems():
+                    modified_filters.append({'term': {k+'.raw': v}})
             else:
                 modified_filters.append(f)
 
@@ -687,11 +691,14 @@ class DataExplorerHandler(base.RequestHandler):
     ## RUNNING QUERIES AND PROCESSING RESULTS ##
 
     def _run_query(self, es_query, result_type):
-        results = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=es_query
-        )
+        try:
+            results = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=es_query
+            )
+        except RequestError:
+            self.abort(400, 'Unable to parse filters - invalid format.')
 
         return self._process_results(results, result_type)
 
