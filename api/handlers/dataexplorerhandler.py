@@ -697,7 +697,7 @@ class DataExplorerHandler(base.RequestHandler):
                 doc_type='flywheel',
                 body=es_query
             )
-        except RequestError as e:
+        except RequestError:
             self.abort(400, 'Unable to parse filters - invalid format.')
 
         return self._process_results(results, result_type)
