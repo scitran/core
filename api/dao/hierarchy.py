@@ -537,6 +537,10 @@ def dict_fileinfos(infos):
 
 def update_container_hierarchy(metadata, cid, container_type):
     c_metadata = metadata.get(container_type)
+
+    if c_metadata is None:
+        c_metadata = {}
+
     now = datetime.datetime.utcnow()
     if c_metadata.get('timestamp'):
         c_metadata['timestamp'] = dateutil.parser.parse(c_metadata['timestamp'])

@@ -499,9 +499,10 @@ class JobHandler(base.RequestHandler):
 
         # Permission check
         if not self.superuser_request:
-            for x in job.inputs:
-                job.inputs[x].check_access(self.uid, 'ro')
-            # Unlike jobs-add, explicitly not checking write access to destination.
+            if job.inputs is not None:
+                for x in job.inputs:
+                    job.inputs[x].check_access(self.uid, 'ro')
+                # Unlike jobs-add, explicitly not checking write access to destination.
 
 
     def get_logs(self, _id):

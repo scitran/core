@@ -210,7 +210,10 @@ class Queue(object):
             if container.type != type1:
                 raise Exception('All containers passed to Queue.search must be of the same type')
 
-        query = {'inputs.id': {'$in': [x.id for x in containers]}, 'inputs.type': type1}
+        query = { '$or': [
+            {'inputs.id': {'$in': [x.id for x in containers]}, 'inputs.type': type1},
+            {'destination.id': {'$in': [x.id for x in containers]}, 'destination.type': type1},
+        ]}
 
         if states is not None and len(states) > 0:
             query['state'] = {"$in": states}
