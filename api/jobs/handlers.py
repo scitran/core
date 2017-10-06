@@ -433,9 +433,9 @@ class JobHandler(base.RequestHandler):
                 gear = get_gear(j.gear_id)
 
                 for key in gear['gear']['inputs']:
-                    input = gear['gear']['inputs'][key]
+                    the_input = gear['gear']['inputs'][key]
 
-                    if input['base'] == 'api-key':
+                    if the_input['base'] == 'api-key':
                         if j.origin['type'] != 'user':
                             raise Exception('Cannot provide an API key to a job not launched by a user')
 
