@@ -40,7 +40,7 @@ def test_download(data_builder, file_form, as_admin, api_db):
             '-': ['minus']
         }}],
         'nodes': [
-            {'level': 'project', '_id': project},        
+            {'level': 'project', '_id': project},
         ]
     })
     assert r.ok
@@ -54,7 +54,7 @@ def test_download(data_builder, file_form, as_admin, api_db):
     tar = tarfile.open(mode="r", fileobj=tar_file)
 
     # Verify a single file in tar with correct file name
-    found_second_session = False 
+    found_second_session = False
     for tarinfo in tar:
         assert os.path.basename(tarinfo.name) == file_name
         if 'session1_0' in str(tarinfo.name):
@@ -88,7 +88,7 @@ def test_download(data_builder, file_form, as_admin, api_db):
     tar = tarfile.open(mode="r", fileobj=tar_file)
 
     # Verify a single file in tar with correct file name
-    found_second_session = False 
+    found_second_session = False
     for tarinfo in tar:
         assert os.path.basename(tarinfo.name) == file_name
         if 'session1_0' in str(tarinfo.name):
@@ -250,6 +250,17 @@ def test_analysis_download(data_builder, file_form, as_admin):
     # batch download analysis files w/ ticket
     r = as_admin.get('/download', params={'ticket': ticket})
     assert r.ok
+
+    # Check to make sure files are in tar
+    tar_file = cStringIO.StringIO(r.content)
+    tar = tarfile.open(mode="r", fileobj=tar_file)
+    members = tar.getmembers()
+    assert len(members) == 2
+    for tarinfo in members:
+        assert os.path.basename(tarinfo.name) in ['one.csv', 'two.zip']
+
+    tar.close()
+
 
     # try to get download ticket for non-existent analysis file
     r = as_admin.get(analysis_files + '/non-existent.csv')
