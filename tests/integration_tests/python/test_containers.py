@@ -295,10 +295,10 @@ def test_phi_access(as_user, as_admin, data_builder, log_db):
     assert r.json().get('subject').get('code') == 'Subject_Code'
     assert pre_log == log_db.access_log.count({}) - 2
 
-    # Set access level to ro-no-phi (Read-Only No PHI)
-    r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'access': 'ro-no-phi'})
+    # Set no-phi flag to true
+    r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'no-phi': True})
     assert r.ok
-    r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'ro-no-phi', '_id': 'user@user.com'})
+    r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'ro', 'no-phi': True, '_id': 'user@user.com'})
     assert r.ok
 
     # Test phi access for list returns without phi access level

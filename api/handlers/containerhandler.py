@@ -5,7 +5,7 @@ import dateutil
 from .. import config
 from .. import util
 from .. import validators
-from ..auth import containerauth, always_ok, _get_access, INTEGER_PERMISSIONS
+from ..auth import containerauth, always_ok, check_phi
 from ..dao import containerstorage, containerutil, noop
 from ..dao.containerstorage import AnalysisStorage
 from ..jobs.gears import get_gear
@@ -103,7 +103,7 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container = self._get_container(_id)
-        if _get_access(self.uid, container) > INTEGER_PERMISSIONS['ro-no-phi'] or self.superuser_request:
+        if check_phi(self.uid, container) or self.superuser_request:
             self.phi = True
             projection = None
 

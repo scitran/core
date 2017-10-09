@@ -2,7 +2,7 @@
 Purpose of this module is to define all the permissions checker decorators for the ContainerHandler classes.
 """
 from copy import deepcopy
-from . import _get_access, INTEGER_PERMISSIONS
+from . import _get_access, check_phi, INTEGER_PERMISSIONS
 
 
 def default_container(handler, container=None, target_parent_container=None):
@@ -17,7 +17,7 @@ def default_container(handler, container=None, target_parent_container=None):
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['ro-no-phi']
+                has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['ro']
             elif method == 'POST':
                 required_perm = 'rw'
                 if target_parent_container.get('cont_name') == 'group':
@@ -46,7 +46,7 @@ def default_container(handler, container=None, target_parent_container=None):
                 has_access = False
 
             if method == 'GET' and phi:
-                if not _get_access(handler.uid, container) > INTEGER_PERMISSIONS['ro-no-phi']:
+                if not check_phi(handler.uid, container):
                     handler.abort(403, "User not authorized to view PHI fields on the container.")
 
             if has_access:
@@ -70,7 +70,7 @@ def collection_permissions(handler, container=None, _=None):
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['ro-no-phi']
+                has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['ro']
             elif method == 'DELETE':
                 has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['admin']
             elif method == 'POST':
@@ -81,7 +81,7 @@ def collection_permissions(handler, container=None, _=None):
                 has_access = False
 
             if method == 'GET' and phi:
-                if not _get_access(handler.uid, container) > INTEGER_PERMISSIONS['ro-no-phi']:
+                if not check_phi(handler.uid, container):
                     handler.abort(403, "User not authorized to view PHI fields.")
 
             if has_access:
@@ -99,14 +99,14 @@ def default_referer(handler, parent_container=None):
             if method == 'GET' and parent_container.get('public', False):
                 has_access = True
             elif method == 'GET':
-                has_access = access >= INTEGER_PERMISSIONS['ro-no-phi']
+                has_access = access >= INTEGER_PERMISSIONS['ro']
             elif method in ['POST', 'PUT', 'DELETE']:
                 has_access = access >= INTEGER_PERMISSIONS['rw']
             else:
                 has_access = False 
 
             if method == 'GET' and phi:
-                if not _get_access(handler.uid, parent_container) > INTEGER_PERMISSIONS['ro-no-phi']:
+                if not check_phi(handler.uid, parent_container):
                     handler.abort(403, "User not authorized to view PHI fields.")
 
             if has_access:
@@ -142,7 +142,7 @@ def list_permission_checker(handler):
                 query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
             if phi:
                 temp_query = deepcopy(query)
-                temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'access': 'ro-no-phi'}}
+                temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'no-phi': True}}
                 not_allowed = exec_op(method, query=temp_query, user=user, public=public, projection=projection)
                 if not_allowed:
                     handler.abort(403, "User does not have PHI access to one or more elements")

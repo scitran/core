@@ -3,12 +3,13 @@
   "type": "object",
   "definitions": {
     "_id":            { "type": "string" },
-    "access":         { "enum": ["ro-no-phi", "ro", "rw", "admin"] },
+    "access":         { "enum": ["ro", "rw", "admin"] },
     "permission":{
       "type":"object",
       "properties":{
         "_id":{"$ref":"#/definitions/_id"},
-        "access":{"$ref":"#/definitions/access"}
+        "access":{"$ref":"#/definitions/access"},
+        "no-phi":{"type": "boolean"}
       },
       "additionalProperties": false
     },

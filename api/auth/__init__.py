@@ -3,10 +3,6 @@ from ..web.errors import APIPermissionException
 
 PERMISSIONS = [
     {
-        'rid': 'ro-no-phi',
-        'name': 'Read-Only (No PHI)'
-    },
-    {
         'rid': 'ro',
         'name': 'Read-Only',
     },
@@ -32,6 +28,13 @@ def _get_access(uid, container):
 def has_access(uid, container, perm):
     return _get_access(uid, container) >= INTEGER_PERMISSIONS[perm]
 
+# Returns true if user has phi access
+def check_phi(uid, container):
+    permissions_list = container.get('permissions', [])
+    for perm in permissions_list:
+        if perm['_id'] == uid and perm.get('no-phi'):
+            return False
+    return has_access(uid, container, 'ro')
 
 def always_ok(exec_op):
     """
