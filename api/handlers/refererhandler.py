@@ -265,7 +265,7 @@ class AnalysesHandler(RefererHandler):
                 file_cnt = 1
                 ticket = util.download_ticket(self.request.client_addr, 'file', cid, filename, total_size, origin=self.origin)
             else:
-                targets, total_size, file_cnt = self._prepare_batch(fileinfo)
+                targets, total_size, file_cnt = self._prepare_batch(fileinfo, analysis)
                 label = util.sanitize_string_to_filename(self.storage.get_container(_id).get('label', 'No Label'))
                 filename = 'analysis_' + label + '.tar'
                 ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
@@ -357,7 +357,7 @@ class AnalysesHandler(RefererHandler):
         return ticket
 
 
-    def _prepare_batch(self, fileinfo):
+    def _prepare_batch(self, fileinfo, analysis):
         ## duplicated code from download.py
         ## we need a way to avoid this
         targets = []
@@ -366,7 +366,9 @@ class AnalysesHandler(RefererHandler):
         for f in fileinfo:
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
-                targets.append((filepath, 'analyses/' + f['name'], f['size']))
+                targets.append((filepath,
+                                util.sanitize_string_to_filename(analysis['label']) + '/' + f['name'],
+                                'analyses', analysis['_id'], f['size']))
                 total_size += f['size']
                 total_cnt += 1
         return targets, total_size, total_cnt
