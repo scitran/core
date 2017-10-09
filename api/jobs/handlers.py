@@ -316,7 +316,11 @@ class JobsHandler(base.RequestHandler):
         # Config options are stored on the job object under the "config" key
         config_ = {
             'config': config_,
-            'inputs': { }
+            'inputs': { },
+            'destination': {
+                'type': destination.type,
+                'id': destination.id,
+            }
         }
 
         # Implementation notes: with regard to sending the gear file information, we have two options:
