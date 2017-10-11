@@ -379,8 +379,8 @@ class DataExplorerHandler(base.RequestHandler):
             else:
                 modified_filters.append(f)
 
-        # Add permissions filter to list if user is not requesting all data
-        if not request.get('all_data', False):
+        # Add permissions filter to list if user is not requesting all data or is superuser
+        if not request.get('all_data', False) and not self.superuser_request:
             modified_filters.append({'term': {'permissions._id': self.uid}})
 
         # Parse and "validate" search_string, allowed to be non-existent
@@ -400,8 +400,9 @@ class DataExplorerHandler(base.RequestHandler):
             field_name = self.request.json_body['field_name']
         except (KeyError, ValueError):
             self.abort(400, 'Field name is required')
-
-        filters = [{'term': {'permissions._id': self.uid}}]
+        filters = []
+        if not self.superuser_request:
+            filters = [{'term': {'permissions._id': self.uid}}]
         try:
             field = config.es.get(index='data_explorer_fields', id=field_name, doc_type='flywheel_field')
         except TransportError as e:

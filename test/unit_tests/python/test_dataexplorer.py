@@ -47,8 +47,7 @@ def test_search(as_public, as_drone, es):
                 'must': {'match': {'_all': 'search'}},
                 'filter': {'bool': {'must': [
                     {'terms': {filter_key + '.raw': filter_value}},
-                    {'range': filter_range},
-                    {'term': {'permissions._id': None}}
+                    {'range': filter_range}
                 ]}},
             }},
             'aggs': {'by_container': {'terms':
@@ -125,6 +124,30 @@ def test_search(as_public, as_drone, es):
     # file search w/ search string and filter
     es.search.return_value = {'hits': {'hits': copy.deepcopy(raw_file_results)}}
     r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'search_string': search_str, 'filters': [
+        {'terms': {filter_key: filter_value}},
+        {'range': filter_range},
+    ]})
+    es.search.assert_called_with(
+        body={
+            '_source': deh.SOURCE[cont_type],
+            'query': {'bool': {
+                'must': {'match': {'_all': search_str}},
+                'filter': {'bool': {'must': [
+                    {'term': {'container_type': cont_type}},
+                    {'terms': {filter_key + '.raw': filter_value}},
+                    {'range': filter_range},
+                ]}}
+            }},
+            'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
+            'size': 100},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+    assert r.json['results'] == formatted_file_results
+
+    # Drone search without self.uid and all_data set to false
+    es.search.return_value = {'hits': {'hits': copy.deepcopy(raw_file_results)}}
+    r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': False, 'search_string': search_str, 'filters': [
         {'terms': {filter_key: filter_value}},
         {'range': filter_range},
     ]})
@@ -350,7 +373,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     es.search.assert_called_with(
         body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
-              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match_all': {}}}},
+              'query': {'bool': {'must': {'match_all': {}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
@@ -361,7 +384,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
     es.search.assert_called_with(
         body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
-              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match': {'field': search_str}}}},
+              'query': {'bool': {'must': {'match': {'field': search_str}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
@@ -373,7 +396,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     es.search.assert_called_with(
         body={'aggs': {'results': {'stats': {'field': field_name}}},
-              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match_all': {}}}},
+              'query': {'bool': {'must': {'match_all': {}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
@@ -384,7 +407,7 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
     es.search.assert_called_with(
         body={'aggs': {'results': {'stats': {'field': field_name}}},
-              'query': {'bool': {'filter': [{'term': {'permissions._id': None}}], 'must': {'match': {'field': search_str}}}},
+              'query': {'bool': {'must': {'match': {'field': search_str}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
