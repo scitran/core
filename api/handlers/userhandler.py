@@ -122,7 +122,7 @@ class UserHandler(base.RequestHandler):
             query = {'permissions._id': uid}
             update = {'$pull': {'permissions' : {'_id': uid}}}
 
-            for cont in ['groups', 'projects', 'sessions', 'acquisitions']:
+            for cont in ['collections', 'groups', 'projects', 'sessions', 'acquisitions']:
                 config.db[cont].update_many(query, update)
 
         except APIStorageException:
