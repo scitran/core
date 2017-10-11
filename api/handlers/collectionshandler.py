@@ -160,7 +160,7 @@ class CollectionsHandler(ContainerHandler):
         if not self.superuser_request:
             query['permissions._id'] = self.uid
 
-        projection = self.container_handler_configurations['sessions']['list_projection']
+        projection = self.PHI_FIELDS
 
         sessions = list(containerstorage.SessionStorage().get_all_el(query, None, projection))
 
@@ -193,7 +193,7 @@ class CollectionsHandler(ContainerHandler):
         if not self.superuser_request:
             query['permissions._id'] = self.uid
 
-        projection = self.container_handler_configurations['acquisitions']['list_projection']
+        projection = self.PHI_FIELDS
 
         acquisitions = list(containerstorage.AcquisitionStorage().get_all_el(query, None, projection))
 

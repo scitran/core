@@ -42,7 +42,6 @@ class ContainerHandler(base.RequestHandler):
         'sessions': True,
         'acquisitions': True
     }
-    default_list_projection = ['files', 'notes', 'timestamp', 'timezone', 'public']
 
     # Hard-coded PHI fields, will be changed to user set PHI fields
     PHI_FIELDS = {'info': 0, 'subject.firstname':0, 'subject.lastname': 0, 'subject.sex': 0,
@@ -61,7 +60,6 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
-            'list_projection': {'info': 0},
             'propagated_properties': ['archived', 'public'],
             'children_cont': 'sessions'
         },
@@ -72,10 +70,6 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'session.json',
             'payload_schema_file': 'session.json',
             # Remove subject first/last from list view to better log access to this information
-            'list_projection': {'info': 0, 'analyses': 0, 'subject.firstname': 0,
-                                'subject.lastname': 0, 'subject.sex': 0, 'subject.age': 0,
-                                'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0,
-                                'files.info': 0, 'tags': 0},
             'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
@@ -84,8 +78,7 @@ class ContainerHandler(base.RequestHandler):
             'permchecker': containerauth.default_container,
             'parent_storage': containerstorage.SessionStorage(),
             'storage_schema_file': 'acquisition.json',
-            'payload_schema_file': 'acquisition.json',
-            'list_projection': {'info': 0, 'collections': 0, 'files.info': 0, 'tags': 0}
+            'payload_schema_file': 'acquisition.json'
         }
     }
 
@@ -322,8 +315,6 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         projection = None
-        # if self.is_true('info'): Seems redundant with new phi functionality
-        #     projection.pop('info')
         if self.is_true('permissions'):
             if not projection:
                 projection = None
@@ -407,7 +398,13 @@ class ContainerHandler(base.RequestHandler):
     def get_all_for_user(self, cont_name, uid):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        projection = self.config['list_projection']
+        projection = None
+        phi = False
+        if self.is_true('phi'):
+            phi = True
+        else:
+            projection = self.PHI_FIELDS
+            
         # select which permission filter will be applied to the list of results.
         if self.superuser_request or self.user_is_admin:
             permchecker = always_ok
@@ -420,11 +417,14 @@ class ContainerHandler(base.RequestHandler):
             '_id': uid
         }
         try:
-            results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection)
+            results = permchecker(self.storage.exec_op)('GET', query=query, user=user, projection=projection, phi=phi)
         except APIStorageException as e:
             self.abort(400, e.message)
         if results is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, uid))
+        if phi:
+            for result in results:
+                self.log_user_access(AccessType.view_container, cont_name, result.get('_id'))
         self._filter_all_permissions(results, uid)
         return results
 
