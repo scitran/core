@@ -872,25 +872,25 @@ class UsageReport(Report):
             report_obj = self._create_default(project=p)
 
             # Grab sessions and their ids
-            sessions = config.db.sessions.find({'project': p['_id']}, {'_id': 1, 'analyses':1})
+            sessions = config.db.sessions.find({'project': p['_id']}, {'_id': 1})
             session_ids = [s['_id'] for s in sessions]
 
             # Grab acquisitions and their ids
-            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1, 'analyses':1})
+            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
             acquisition_ids = [a['_id'] for a in acquisitions]
 
             # For the project and each session and acquisition, create a list of analysis ids
-            analysis_ids = [an['_id'] for an in p.get('analyses', [])]
-            analysis_ids.extend([an['_id'] for an in s.get('analyses', []) for s in sessions])
-            analysis_ids.extend([an['_id'] for an in a.get('analyses', []) for a in acquisitions])
-
+            parent_ids = session_ids + acquisition_ids + [p['_id']]
+            analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': parent_ids}})]
+            
             report_obj['session_count'] = len(session_ids)
 
             # for each type of container below it will have a slightly modified match query
             cont_query = {
                 'projects': {'_id': {'project': p['_id']}},
                 'sessions': {'project': p['_id']},
-                'acquisitions': {'session': {'$in': session_ids}}
+                'acquisitions': {'session': {'$in': session_ids}},
+                'analyses': {'parent.id' : {'$in':parent_ids}}
             }
 
             # Create queries for files and analyses based on created date if a range was provided
@@ -901,32 +901,14 @@ class UsageReport(Report):
                 file_q['files.created'] = base_query['created']
                 analysis_q['analyses.created'] = base_query['created']
 
-            for cont_name in ['projects', 'sessions', 'acquisitions']:
+            for cont_name in ['projects', 'sessions', 'acquisitions', 'analyses']:
 
                 # Aggregate file size in megabytes
                 pipeline = [
                     {'$match': cont_query[cont_name]},
                     {'$unwind': '$files'},
                     {'$match': file_q},
-                    {'$project': {'mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
-                    {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
-                ]
-
-                try:
-                    result = self._get_result(config.db.command('aggregate', cont_name, pipeline=pipeline))
-                except APIReportException:
-                    result = None
-
-                if result:
-                    report_obj['file_mbs'] += result['mb_total']
-
-                # Aggregate analysis file size in megabytes
-                pipeline = [
-                    {'$match': cont_query[cont_name]},
-                    {'$unwind': '$analyses'},
-                    {'$unwind': '$analyses.files'},
-                    {'$match': analysis_q},
-                    {'$project': {'mbs': {'$divide': ['$analyses.files.size', BYTES_IN_MEGABYTE]}}},
+                    {'$project': {'mbs': {'$divide': [{'$cond': ['$files.input', 0, '$files.size']}, BYTES_IN_MEGABYTE]}}},
                     {'$group': {'_id': 1, 'mb_total': {'$sum':'$mbs'}}}
                 ]
 
