@@ -13,14 +13,18 @@ from . import util
 from . import validators
 import os
 from .dao.containerutil import pluralize
-
 log = config.log
 
+BYTES_IN_MEGABYTE = float(1<<20)
 
 def _filter_check(property_filter, property_values):
     minus = set(property_filter.get('-', []))
     plus = set(property_filter.get('+', []))
-    if not minus.isdisjoint(property_values):
+    if "null" in plus and not property_values:
+        return True
+    if "null" in minus and property_values:
+        return False
+    elif not minus.isdisjoint(property_values):
         return False
     if plus and plus.isdisjoint(property_values):
         return False
@@ -315,3 +319,91 @@ class Download(base.RequestHandler):
                 log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
 
                 return self._preflight_archivestream(req_spec, collection=self.get_param('collection'))
+
+    def summary(self):
+        """Return a summary of what has been/will be downloaded based on a given query"""
+        res = {}
+        req = self.request.json_body
+        cont_query = {
+            'projects': {'_id': {'$in':[]}},
+            'sessions': {'_id': {'$in':[]}},
+            'acquisitions': {'_id': {'$in':[]}},
+            'analyses' : {'_id': {'$in':[]}}
+        }
+        for node in req:
+            node['_id'] = bson.ObjectId(node['_id'])
+            level = node['level']
+
+            containers = {'projects':0, 'sessions':0, 'acquisitions':0, 'analyses':0}
+            
+            if level == 'project':
+                # Grab sessions and their ids
+                sessions = config.db.sessions.find({'project': node['_id']}, {'_id': 1})
+                session_ids = [s['_id'] for s in sessions]
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
+                acquisition_ids = [a['_id'] for a in acquisitions]
+
+                containers['projects']=1
+                containers['sessions']=1
+                containers['acquisitions']=1
+
+                # for each type of container below it will have a slightly modified match query
+                cont_query.get('projects',{}).get('_id',{}).get('$in').append(node['_id'])
+                cont_query['sessions']['_id']['$in'] = cont_query['sessions']['_id']['$in'] + session_ids
+                cont_query['acquisitions']['_id']['$in'] = cont_query['acquisitions']['_id']['$in'] + acquisition_ids
+
+            elif level == 'session':
+                acquisitions = config.db.acquisitions.find({'session': node['_id']}, {'_id': 1})
+                acquisition_ids = [a['_id'] for a in acquisitions]
+
+
+                # for each type of container below it will have a slightly modified match query
+                cont_query.get('sessions',{}).get('_id',{}).get('$in').append(node['_id'])
+                cont_query['acquisitions']['_id']['$in'] = cont_query['acquisitions']['_id']['$in'] + acquisition_ids
+
+                containers['sessions']=1
+                containers['acquisitions']=1
+
+            elif level == 'acquisition':
+
+                cont_query.get('acquisitions',{}).get('_id',{}).get('$in').append(node['_id'])
+                containers['acquisitions']=1
+
+            elif level == 'analysis':
+                cont_query.get('analyses',{}).get('_id',{}).get('$in').append(node['_id'])
+                containers['analyses'] = 1
+
+            else:
+                self.abort(400, "{} not a recognized level".format(level)) 
+
+            containers = [cont for cont in containers if containers[cont] == 1]
+
+        for cont_name in containers:
+            # Aggregate file types
+            pipeline = [
+                {'$match': cont_query[cont_name]},
+                {'$unwind': '$files'},
+                {'$project': {'_id': '$_id', 'type': '$files.type','mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
+                {'$group': {
+                    '_id': '$type',
+                    'count': {'$sum' : 1}, 
+                    'mb_total': {'$sum':'$mbs'}
+                }}
+            ]
+
+            try:
+                result = config.db.command('aggregate', cont_name, pipeline=pipeline)
+            except Exception as e: # pylint: disable=broad-except
+                log.warning(e)
+                self.abort(500, "Failure to load summary")
+
+            if result.get("ok"):
+                for doc in result.get("result"):
+                    type_ = doc['_id']
+                    if res.get(type_):
+                        res[type_]['count'] += doc.get('count',0)
+                        res[type_]['mb_total'] += doc.get('mb_total',0)
+                    else:
+                        res[type_] = doc
+        return res
+

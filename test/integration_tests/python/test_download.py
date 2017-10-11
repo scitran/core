@@ -399,6 +399,8 @@ def test_filters(data_builder, file_form, as_admin):
     assert r.json()['file_cnt'] == 2
 
     # Filter by type
+    as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
+        "test", meta={'name': "test", 'tags': ['red', 'blue']}))
     r = as_admin.post('/download', json={
         'optional': False,
         'filters': [
@@ -410,3 +412,67 @@ def test_filters(data_builder, file_form, as_admin):
     })
     assert r.ok
     assert r.json()['file_cnt'] == 1
+    r = as_admin.post('/download', json={
+        'optional': False,
+        'filters': [
+            {'types': {'+':['null']}}
+        ],
+        'nodes': [
+            {'level': 'session', '_id': session},
+        ]
+    })
+    assert r.ok
+    assert r.json()['file_cnt'] == 1
+
+def test_summary(data_builder, as_admin, file_form):
+    project = data_builder.create_project(label='project1')
+    session = data_builder.create_session(label='session1')
+    session2 = data_builder.create_session(label='session1')
+    acquisition = data_builder.create_acquisition(session=session)
+    acquisition2 = data_builder.create_acquisition(session=session2)
+
+    # upload the same file to each container created and use different tags to
+    # facilitate download filter tests:
+    # acquisition: [], session: ['plus'], project: ['plus', 'minus']
+    file_name = 'test.csv'
+    as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
+        file_name, meta={'name': file_name, 'type': 'csv'}))
+
+    as_admin.post('/acquisitions/' + acquisition2 + '/files', files=file_form(
+        file_name, meta={'name': file_name, 'type': 'csv'}))
+
+    as_admin.post('/sessions/' + session + '/files', files=file_form(
+        file_name, meta={'name': file_name, 'type': 'csv', 'tags': ['plus']}))
+
+    as_admin.post('/projects/' + project + '/files', files=file_form(
+        file_name, meta={'name': file_name, 'type': 'csv', 'tags': ['plus', 'minus']}))
+
+    missing_object_id = '000000000000000000000000'
+
+    r = as_admin.post('/download/summary', json=[{"level":"project", "_id":project}])
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json().get("csv", {}).get("count",0) == 4 
+
+    r = as_admin.post('/download/summary', json=[{"level":"session", "_id":session}])
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json().get("csv", {}).get("count",0) == 2 
+
+    r = as_admin.post('/download/summary', json=[{"level":"acquisition", "_id":acquisition},{"level":"acquisition", "_id":acquisition2}])
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json().get("csv", {}).get("count",0) == 2
+
+    r = as_admin.post('/download/summary', json=[{"level":"group", "_id":missing_object_id}])
+    assert r.status_code == 400
+
+    r = as_admin.post('/sessions/' + session + '/analyses',  files=file_form(
+        file_name, meta={'label': 'test', 'inputs':[{'name':file_name}]}))
+    assert r.ok
+    analysis = r.json()['_id']
+    
+    r = as_admin.post('/download/summary', json=[{"level":"analysis", "_id":analysis}])
+    assert r.ok
+    assert len(r.json()) == 1
+    assert r.json().get("tabular data", {}).get("count",0) == 1
