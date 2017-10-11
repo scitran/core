@@ -67,7 +67,7 @@ def test_groups(as_user, as_admin, data_builder):
     assert d5 > d4
 
     # Add a permission to the group
-    user = {'access': 'rw', '_id': 'newUser@fakeuser.com'}
+    user = {'access': 'rw', '_id': 'newUser@fakeuser.com', 'phi-access': True}
     r = as_admin.post('/groups/' + group + '/permissions', json=user)
     assert r.ok
 
@@ -107,7 +107,7 @@ def test_groups(as_user, as_admin, data_builder):
     assert d8 > d7
 
     group2 = data_builder.create_group()
-    r = as_admin.post('/groups/' + group2 + '/permissions', json={'access':'admin','_id':'user@user.com'})
+    r = as_admin.post('/groups/' + group2 + '/permissions', json={'access':'admin','_id':'user@user.com', 'phi-access': True})
     assert r.ok
     r = as_user.get('/groups')
     assert r.ok

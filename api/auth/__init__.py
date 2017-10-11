@@ -32,9 +32,9 @@ def has_access(uid, container, perm):
 def check_phi(uid, container):
     permissions_list = container.get('permissions', [])
     for perm in permissions_list:
-        if perm['_id'] == uid and perm.get('no-phi'):
-            return False
-    return has_access(uid, container, 'ro')
+        if perm['_id'] == uid and perm.get('phi-access'):
+            return has_access(uid, container, 'ro')
+    return False
 
 def always_ok(exec_op):
     """

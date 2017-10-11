@@ -296,9 +296,9 @@ def test_phi_access(as_user, as_admin, data_builder, log_db):
     assert pre_log == log_db.access_log.count({}) - 2
 
     # Set no-phi flag to true
-    r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'no-phi': True})
+    r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'phi-access': False})
     assert r.ok
-    r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'ro', 'no-phi': True, '_id': 'user@user.com'})
+    r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'ro', 'phi-access': False, '_id': 'user@user.com'})
     assert r.ok
 
     # Test phi access for list returns without phi access level
@@ -476,7 +476,8 @@ def test_post_container(data_builder, as_admin, as_user):
 
     r = as_admin.post('/groups/' + group + '/permissions', json={
         '_id': uid,
-        'access': 'rw'
+        'access': 'rw',
+        'phi-access': True
     })
     assert r.ok
 
@@ -494,7 +495,8 @@ def test_post_container(data_builder, as_admin, as_user):
 
     r = as_admin.post('/projects/' + project + '/permissions', json={
         '_id': uid,
-        'access': 'rw'
+        'access': 'rw',
+        'phi-access': True
     })
     assert r.ok
 

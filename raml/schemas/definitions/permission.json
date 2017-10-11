@@ -9,13 +9,13 @@
       "properties":{
         "_id":{"$ref":"#/definitions/_id"},
         "access":{"$ref":"#/definitions/access"},
-        "no-phi":{"type": "boolean"}
+        "phi-access":{"type": "boolean"}
       },
       "additionalProperties": false
     },
     "permission-output-default-required":{
       "allOf":[{"$ref":"#/definitions/permission"}],
-      "required":["_id", "access"]
+      "required":["_id", "access", "phi-access"]
     }
   }
 }

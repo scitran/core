@@ -41,7 +41,8 @@ class CollectionsHandler(ContainerHandler):
         payload_validator(payload, 'POST')
         payload['permissions'] = [{
             '_id': self.uid,
-            'access': 'admin'
+            'access': 'admin',
+            'phi-access': True
         }]
         payload['curator'] = self.uid
         payload['created'] = payload['modified'] = datetime.datetime.utcnow()
@@ -160,10 +161,21 @@ class CollectionsHandler(ContainerHandler):
         if not self.superuser_request:
             query['permissions._id'] = self.uid
 
+        if self.superuser_request:
+            permchecker = always_ok
+        elif self.public_request:
+            permchecker = containerauth.list_public_request
+        else:
+            permchecker = containerauth.list_permission_checker(self)
+
         projection = self.PHI_FIELDS
+        if self.is_true('phi'):
+            projection = None
+            phi = True
+        else:
+            phi = False
 
-        sessions = list(containerstorage.SessionStorage().get_all_el(query, None, projection))
-
+        sessions = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
         self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
@@ -192,11 +204,23 @@ class CollectionsHandler(ContainerHandler):
 
         if not self.superuser_request:
             query['permissions._id'] = self.uid
+        if self.superuser_request:
+            permchecker = always_ok
+        elif self.public_request:
+            permchecker = containerauth.list_public_request
+        else:
+            permchecker = containerauth.list_permission_checker(self)
 
         projection = self.PHI_FIELDS
+        if self.is_true('phi'):
+            projection = None
+            phi = True
+        else:
+            phi = False
 
-        acquisitions = list(containerstorage.AcquisitionStorage().get_all_el(query, None, projection))
-
+        log.debug(query)
+        log.debug(projection)
+        acquisitions = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
         self._filter_all_permissions(acquisitions, self.uid)
 
         for acquisition in acquisitions:

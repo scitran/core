@@ -142,7 +142,7 @@ def list_permission_checker(handler):
                 query['$or'] = [{'public': True}, {'permissions': query.pop('permissions')}]
             if phi:
                 temp_query = deepcopy(query)
-                temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'no-phi': True}}
+                temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'phi-access': False}}
                 not_allowed = exec_op(method, query=temp_query, user=user, public=public, projection=projection)
                 if not_allowed:
                     handler.abort(403, "User does not have PHI access to one or more elements")
