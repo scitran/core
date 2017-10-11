@@ -82,6 +82,11 @@ def test_groups(as_user, as_admin, data_builder):
     r = as_admin.put('/groups/' + group + '/permissions/' + user['_id'], json=user)
     assert r.ok
 
+    # Get all permissions for each group
+    r = as_admin.get('/users/admin@user.com/groups')
+    assert r.ok
+    assert r.json()[0].get("permissions")[0].get("_id") == "admin@user.com"
+
     # Get the group again to compare timestamps for the Edit permission test groups
     r = as_admin.get('/groups/' + group)
     assert r.ok
