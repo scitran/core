@@ -1,4 +1,4 @@
-def test_users(as_root, as_admin, as_user, as_public):
+def test_users(data_builder, as_root, as_admin, as_user, as_public):
     # List users
     r = as_user.get('/users')
     assert r.ok
@@ -90,6 +90,22 @@ def test_users(as_root, as_admin, as_user, as_public):
     r = as_admin.put('/users/' + new_user_id_admin, json={'firstname': 'Realname2'})
     assert r.ok
     assert r.json()['modified'] == 1
+
+    # Disable user, test clear permissions
+    project = data_builder.create_project()
+    r = as_admin.post('/projects/' + project + '/permissions', json={
+        '_id': new_user_id_admin,
+        'access': 'ro'
+    })
+    assert r.ok
+
+    r = as_admin.put('/users/' + new_user_id_admin, json={'disabled': True}, params={'clear_permissions': 1})
+    assert r.ok
+    assert r.json()['modified'] == 1
+
+    permissions = as_admin.get('/projects/' + project).json().get('permissions', [])
+    for p in permissions:
+        assert p['_id'] != new_user_id_admin
 
     # Try to delete non-existent user
     r = as_root.delete('/users/nonexistent@user.com')
