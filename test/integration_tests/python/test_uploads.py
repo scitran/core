@@ -791,10 +791,16 @@ def test_acquisition_metadata_only_engine_upload(data_builder, file_form, as_roo
     assert a_timestamp == m_timestamp
 
 
-def test_analysis_upload(data_builder, file_form, as_admin):
-    gear = data_builder.create_gear()
+def test_analysis_upload(data_builder, default_payload, file_form, as_admin):
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'csv': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
 
     # create session analysis
     r = as_admin.post('/sessions/' + session + '/analyses', files=file_form(

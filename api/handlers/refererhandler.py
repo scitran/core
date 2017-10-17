@@ -84,7 +84,11 @@ class AnalysesHandler(RefererHandler):
             if not analysis or not job:
                 self.abort(400, 'JSON body must contain map for "analysis" and "job"')
             self.input_validator(analysis, 'POST')
-            result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin)
+
+            uid = None
+            if not self.superuser_request:
+                uid = self.uid
+            result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin, uid)
             return {'_id': result['analysis']['_id']}
 
         analysis = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)

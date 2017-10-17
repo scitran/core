@@ -138,7 +138,7 @@ def test_project_template(data_builder, file_form, as_admin):
     assert satisfies_template()
     # Hide Acq_2 so that no acquisition in the session are compliant
     assert as_admin.put('/acquisitions/' + acquisition_2, json={'archived': True}).ok
-    assert not satisfies_template() 
+    assert not satisfies_template()
     assert as_admin.put('/acquisitions/' + acquisition_2, json={'archived': False})
 
     # acquisitions.label
@@ -223,10 +223,16 @@ def test_get_all_for_user(as_admin, as_public):
     assert r.ok
 
 
-def test_get_container(data_builder, file_form, as_drone, as_admin, as_public, api_db):
-    gear = data_builder.create_gear()
+def test_get_container(data_builder, default_payload, file_form, as_drone, as_admin, as_public, api_db):
     project = data_builder.create_project()
     session = data_builder.create_session()
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'csv': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
 
     # upload files for testing join=origin
     # Origin.user upload (the jobs below also reference it)
@@ -307,10 +313,20 @@ def test_get_container(data_builder, file_form, as_drone, as_admin, as_public, a
     assert r.json()['analyses'][1]['job']['id'] != analysis_job
 
 
-def test_get_session_jobs(data_builder, as_admin):
-    gear = data_builder.create_gear()
+def test_get_session_jobs(data_builder, default_payload, as_admin, file_form):
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'dicom': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
+
+    # Add acquisition file
+    r = as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('test.dcm'))
+    assert r.ok
 
     # create an analysis together w/ a job
     r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
@@ -503,10 +519,22 @@ def test_subject_no_name_hashes(data_builder, as_admin):
     })
     assert r.status_code == 400
 
-def test_analysis_put(data_builder, as_admin):
+def test_analysis_put(data_builder, default_payload, as_admin, file_form):
     project = data_builder.create_project()
     session = data_builder.create_session()
-    gear = data_builder.create_gear()
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'csv': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
+
+    # Add project file
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('job_1.csv'))
+    assert r.ok
+
+    # add session analysis
     r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
         'analysis': {'label': 'with-job'},
         'job': {

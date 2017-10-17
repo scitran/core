@@ -155,6 +155,7 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     for job in r.json()['jobs']:
         # set jobs to complete
         r = as_root.put('/jobs/' + job, json={'state': 'running'})
+        assert r.ok
         r = as_root.put('/jobs/' + job, json={'state': 'complete'})
         assert r.ok
 
@@ -183,6 +184,7 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     for job in r.json()['jobs']:
         # set jobs to failed
         r = as_root.put('/jobs/' + job, json={'state': 'running'})
+        assert r.ok
         r = as_root.put('/jobs/' + job, json={'state': 'failed'})
         assert r.ok
 
@@ -210,6 +212,7 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     for job in r.json()['jobs']:
         # set jobs to complete
         r = as_root.put('/jobs/' + job, json={'state': 'running'})
+        assert r.ok
         r = as_root.put('/jobs/' + job, json={'state': 'complete'})
         assert r.ok
 

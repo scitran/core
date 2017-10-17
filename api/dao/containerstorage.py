@@ -2,12 +2,13 @@ import datetime
 
 import bson
 
-from . import APIStorageException, APIConflictException, APINotFoundException
+from . import APIStorageException, APINotFoundException
 from . import containerutil
 from . import hierarchy
 from .. import config
-from ..jobs.gears import validate_gear_config, get_gear
+
 from ..jobs.jobs import Job
+from ..jobs.queue import Queue
 from ..jobs.rules import copy_site_rules_for_project
 from .base import ContainerStorage
 
@@ -306,7 +307,7 @@ class AnalysisStorage(ContainerStorage):
                 analysis.setdefault(key, parent[key])
 
 
-    def create_job_and_analysis(self, cont_name, cid, analysis, job, origin):
+    def create_job_and_analysis(self, cont_name, cid, analysis, job, origin, uid):
         """
         Create and insert job and analysis.
         """
@@ -337,27 +338,17 @@ class AnalysisStorage(ContainerStorage):
         tags = job.get('tags', [])
         if 'analysis' not in tags:
             tags.append('analysis')
+            job['tags'] = tags
 
-        # Config manifest check
-        gear = get_gear(job['gear_id'])
-        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
-            raise APIConflictException('Gear marked as invalid, will not run!')
-        validate_gear_config(gear, job.get('config'))
+        job = Queue.enqueue_job(job, origin, perm_check_uid=uid)
 
-        destination = containerutil.create_containerreference_from_dictionary(
-            {'type': 'analysis', 'id': str(analysis['_id'])})
-
-        job = Job(job['gear_id'], inputs,
-            destination=destination, tags=tags, config_=job.get('config'), origin=origin, batch=job.get('batch'))
-        job_id = job.insert()
-
-        if not job_id:
+        if not job.id_:
             # NOTE #775 remove unusable analysis - until jobs have a 'hold' state
             self.delete_el(analysis['_id'])
             raise APIStorageException(500, 'Job not created for analysis of container {} {}'.format(cont_name, cid))
 
-        result = self.update_el(analysis['_id'], {'job': job_id}, None)
-        return {'analysis': analysis, 'job_id': job_id, 'job': job}
+        result = self.update_el(analysis['_id'], {'job': job.id_}, None)
+        return {'analysis': analysis, 'job_id': job.id_, 'job': job}
 
 
     def inflate_job_info(self, analysis):

@@ -170,7 +170,7 @@ def run(batch_job):
             # Create analysis
             acquisition_id = inputs.values()[0].get('id')
             session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
-            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin)
+            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin, None)
             job = result.get('job')
             job_id = result.get('job_id')
 
@@ -213,9 +213,9 @@ def check_state(batch_id):
     """
     Returns state of batch based on state of each of its jobs
     are complete or failed
-    """    
+    """
 
-    batch = get(str(batch_id))
+    batch = get(batch_id)
 
     if batch.get('state') == 'cancelled':
         return None

@@ -220,6 +220,7 @@ class Job(object):
             raise Exception('Cannot insert job that has already been inserted')
 
         result = config.db.jobs.insert_one(self.mongo())
+        self.id_ = result.inserted_id
         return result.inserted_id
 
     def save(self):

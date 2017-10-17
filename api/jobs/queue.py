@@ -9,7 +9,10 @@ import datetime
 
 from .. import config
 from .jobs import Job
-from .gears import get_gear
+from .gears import get_gear, validate_gear_config
+from ..validators import InputValidationException
+from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
+
 
 log = config.log
 
@@ -122,6 +125,126 @@ class Queue(object):
             log.info('updated batch job list, replacing {} with {}'.format(job.id_, new_id))
 
         return new_id
+
+
+    @staticmethod
+    def enqueue_job(job_map, origin, perm_check_uid=None):
+        """
+        Using a payload for a proposed job, creates and returns (but does not insert)
+        a Job object. This preperation includes:
+          - confirms gear exists
+          - validates config against gear manifest
+          - creating file reference objects for inputs
+            - if given a perm_check_uid, method will check if user has proper access to inputs
+          - confirming inputs exist
+          - creating container reference object for destination
+          - preparing file contexts
+          - job api key generation, if requested
+
+        """
+
+        # gear and config manifest check
+        gear_id = job_map.get('gear_id')
+        if not gear_id:
+            raise InputValidationException('Job must specify gear')
+
+        gear = get_gear(gear_id)
+
+        if gear is None:
+            raise InputValidationException('Could not find gear ' + gear_id)
+
+        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
+            raise InputValidationException('Gear marked as invalid, will not run!')
+
+        config_ = job_map.get('config', {})
+        validate_gear_config(gear, config_)
+
+        # Translate maps to FileReferences
+        inputs = {}
+        for x in job_map.get('inputs', {}).keys():
+            input_map = job_map['inputs'][x]
+            inputs[x] = create_filereference_from_dictionary(input_map)
+
+        # Add job tags, config, attempt number, and/or previous job ID, if present
+        tags            = job_map.get('tags', [])
+        attempt_n       = job_map.get('attempt_n', 1)
+        previous_job_id = job_map.get('previous_job_id', None)
+        now_flag        = job_map.get('now', False) # A flag to increase job priority
+
+        # Add destination container, or select one
+        destination = None
+        if job_map.get('destination', None) is not None:
+            destination = create_containerreference_from_dictionary(job_map['destination'])
+        else:
+            if len(inputs.keys()) < 1:
+                raise Exception('No destination specified and no inputs to derive from')
+
+            key = inputs.keys()[0]
+            destination = create_containerreference_from_filereference(inputs[key])
+
+        # Permission check
+        if perm_check_uid:
+            for x in inputs:
+                inputs[x].check_access(perm_check_uid, 'ro')
+            destination.check_access(perm_check_uid, 'rw')
+            now_flag = False # Only superuser requests are allowed to set "now" flag
+
+        # Config options are stored on the job object under the "config" key
+        config_ = {
+            'config': config_,
+            'inputs': { },
+            'destination': {
+                'type': destination.type,
+                'id': destination.id,
+            }
+        }
+
+        # Implementation notes: with regard to sending the gear file information, we have two options:
+        #
+        # 1) Send the file object as it existed when you enqueued the job
+        # 2) Send the file object as it existed when the job was started
+        #
+        # Option #2 is possibly more convenient - it's more up to date - but the only file modifications after a job is enqueued would be from
+        #
+        # A) a gear finishing, and updating the file object
+        # B) a user editing the file object
+        #
+        # You can count on neither occurring before a job starts, because the queue is not globally FIFO.
+        # So option #2 is potentially more convenient, but unintuitive and prone to user confusion.
+
+        for x in inputs:
+            input_type = gear['gear']['inputs'][x]['base']
+            if input_type == 'file':
+
+                obj = inputs[x].get_file()
+                cr = create_containerreference_from_filereference(inputs[x])
+
+                # Whitelist file fields passed to gear to those that are scientific-relevant
+                whitelisted_keys = ['info', 'tags', 'measurements', 'mimetype', 'type', 'modality', 'size']
+                obj_projection = { key: obj[key] for key in whitelisted_keys }
+
+                config_['inputs'][x] = {
+                    'base': 'file',
+                    'hierarchy': cr.__dict__,
+                    'location': {
+                        'name': obj['name'],
+                        'path': '/flywheel/v0/input/' + x + '/' + obj['name'],
+                    },
+                    'object': obj_projection,
+                }
+            elif input_type == 'api-key':
+                pass
+            else:
+                raise Exception('Non-file input base type')
+
+        gear_name = gear['gear']['name']
+
+        if gear_name not in tags:
+            tags.append(gear_name)
+
+        job = Job(gear['_id'], inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=origin)
+        job.insert()
+        return job
 
     @staticmethod
     def start_job(tags=None):
