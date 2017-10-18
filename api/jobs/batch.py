@@ -7,7 +7,6 @@ import datetime
 from .. import config
 from ..dao import APINotFoundException, APIStorageException
 from ..dao.containerstorage import AcquisitionStorage, AnalysisStorage
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_filereference
 from .jobs import Job
 from .queue import Queue
 from . import gears
@@ -156,16 +155,16 @@ def run(batch_job):
     jobs = []
     job_ids = []
     for inputs in proposed_inputs:
-        if gear.get('category') == 'analysis':
 
-            # Analysis gear, must create analysis on session
-            job_map = {
-                'config':   config_,
-                'gear_id':  gear_id,
-                'inputs':   inputs,
-                'tags':     tags,
-                'batch':    str(batch_job.get('_id'))
-            }
+        job_map = {
+            'config':   config_,
+            'gear_id':  gear_id,
+            'inputs':   inputs,
+            'tags':     tags,
+            'batch':    str(batch_job.get('_id'))
+        }
+
+        if gear.get('category') == 'analysis':
 
             # Create analysis
             acquisition_id = inputs.values()[0].get('id')
@@ -176,13 +175,9 @@ def run(batch_job):
 
         else:
 
-            # Non-analysis gear, destination is acquisition
-            for input_name, fr in inputs.iteritems():
-                inputs[input_name] = create_filereference_from_dictionary(fr)
-            destination = create_containerreference_from_filereference(inputs[inputs.keys()[0]])
+            job = Queue.enqueue_job(job_map, origin)
+            job_id = job.id_
 
-            job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, origin=origin, batch=str(batch_job.get('_id')))
-            job_id = job.insert()
 
         jobs.append(job)
         job_ids.append(job_id)
@@ -219,11 +214,9 @@ def check_state(batch_id):
 
     if batch.get('state') == 'cancelled':
         return None
+
     batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs', [])}, 'state': {'$nin': ['complete', 'failed', 'cancelled']}})
     non_failed_batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs', [])}, 'state': {'$ne': 'failed'}})
-
-    config.log.debug('the batch jobs we found are {}'.format(batch_jobs))
-    config.log.debug('the rest are {}'.format(non_failed_batch_jobs))
 
     if batch_jobs.count() == 0:
         if non_failed_batch_jobs.count() > 0:
