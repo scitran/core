@@ -122,11 +122,14 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
 
-    def get(self, cont_name, cid, _id):
-        parent = self.storage.get_parent(cont_name, cid)
+    def get(self, **kwargs):
+        _id = kwargs.get('_id')
+        analysis = self.storage.get_container(_id)
+        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET')
-        return self.storage.get_container(_id)
+        self.log_user_access(AccessType.view_container, cont_name=analysis['parent']['type'], cont_id=analysis['parent']['id'])
+        return analysis
 
 
     @log_access(AccessType.delete_analysis)
