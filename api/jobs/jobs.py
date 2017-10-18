@@ -52,6 +52,9 @@ class Job(object):
 
         # TODO: validate inputs against the manifest
 
+        if type(gear_id) is not str:
+            raise Exception('gear_id should be a string when creating a job.')
+
         time_now = datetime.datetime.utcnow()
 
         if tags is None:

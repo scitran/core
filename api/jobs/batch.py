@@ -215,12 +215,15 @@ def check_state(batch_id):
     are complete or failed
     """
 
-    batch = get(batch_id)
+    batch = get(str(batch_id))
 
     if batch.get('state') == 'cancelled':
         return None
     batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs', [])}, 'state': {'$nin': ['complete', 'failed', 'cancelled']}})
     non_failed_batch_jobs = config.db.jobs.find({'_id':{'$in': batch.get('jobs', [])}, 'state': {'$ne': 'failed'}})
+
+    config.log.debug('the batch jobs we found are {}'.format(batch_jobs))
+    config.log.debug('the rest are {}'.format(non_failed_batch_jobs))
 
     if batch_jobs.count() == 0:
         if non_failed_batch_jobs.count() > 0:
