@@ -128,6 +128,10 @@ class AnalysesHandler(RefererHandler):
         parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET')
+
+        if self.is_true('inflate_job'):
+            self.storage.inflate_job_info(analysis)
+
         self.log_user_access(AccessType.view_container, cont_name=analysis['parent']['type'], cont_id=analysis['parent']['id'])
         return analysis
 
