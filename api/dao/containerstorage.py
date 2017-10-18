@@ -317,7 +317,7 @@ class AnalysisStorage(ContainerStorage):
         # Save inputs to analysis and job
         inputs = {} # For Job object (map of FileReferences)
         files = [] # For Analysis object (list of file objects)
-        for x in job['inputs'].keys():
+        for x in job.get('inputs', {}).keys():
             input_map = job['inputs'][x]
             fileref = containerutil.create_filereference_from_dictionary(input_map)
             inputs[x] = fileref
@@ -335,17 +335,20 @@ class AnalysisStorage(ContainerStorage):
             raise APIStorageException('Analysis not created for container {} {}'.format(cont_name, cid))
 
         # Prepare job
+        job['destination'] = {'type': 'analysis', 'id': str(analysis['_id'])}
+
         tags = job.get('tags', [])
         if 'analysis' not in tags:
             tags.append('analysis')
             job['tags'] = tags
 
-        job = Queue.enqueue_job(job, origin, perm_check_uid=uid)
+        try:
 
-        if not job.id_:
+            job = Queue.enqueue_job(job, origin, perm_check_uid=uid)
+        except Exception as e:
             # NOTE #775 remove unusable analysis - until jobs have a 'hold' state
             self.delete_el(analysis['_id'])
-            raise APIStorageException(500, 'Job not created for analysis of container {} {}'.format(cont_name, cid))
+            raise e
 
         result = self.update_el(analysis['_id'], {'job': job.id_}, None)
         return {'analysis': analysis, 'job_id': job.id_, 'job': job}
