@@ -107,7 +107,7 @@ def main():
         'category': 'converter',
         'gear': {
             'inputs': {
-                'wat': {
+                'dicom': {
                     'base': 'file',
                     'type': { 'enum': [ 'wat' ] }
                 }
