@@ -94,7 +94,7 @@ class JobApiKey(APIKey):
         Returns an API key for user for use by a specific job.
         Re-uses such a key if it already exists.
         """
-        
+
         job_id = str(job_id)
 
         existing_key = config.db.apikeys.find_one({
@@ -115,7 +115,7 @@ class JobApiKey(APIKey):
 
     @classmethod
     def remove(cls, job_id):
-        config.db.apikeys.delete({'type': cls.key_type, 'job': str(job_id)})
+        config.db.apikeys.delete_many({'type': cls.key_type, 'job': str(job_id)})
 
     @classmethod
     def check(cls, api_key):

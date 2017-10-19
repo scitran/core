@@ -20,7 +20,7 @@ def test_jobs_access(as_user):
     assert r.status_code == 403
 
 
-def test_jobs(data_builder, default_payload, as_user, as_admin, as_root, api_db, file_form):
+def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_root, api_db, file_form):
     gear_doc = default_payload['gear']['gear']
     gear_doc['inputs'] = {
         'dicom': {
@@ -233,7 +233,23 @@ def test_jobs(data_builder, default_payload, as_user, as_admin, as_root, api_db,
     assert r.ok
     config = r.json()
 
-    print config
+    assert type(config['inputs']['dicom']) is dict
+    assert config['destination']['id'] == acquisition
+    assert type(config['config']) is dict
+    api_key = config['inputs']['api_key']['key']
+
+    # ensure api_key works
+    as_job_key = as_public
+    as_job_key.headers.update({'Authorization': 'scitran-user ' + api_key})
+    r = as_job_key.get('/users/self')
+    assert r.ok
+
+    # complete job and ensure API key no longer works
+    r = as_root.put('/jobs/' + job_id, json={'state': 'complete'})
+    assert r.ok
+
+    r = as_job_key.get('/users/self')
+    assert r.status_code == 401
 
     # try to add job with no inputs and no destination
     gear_doc = default_payload['gear']['gear']

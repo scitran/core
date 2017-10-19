@@ -394,11 +394,14 @@ class JobHandler(base.RequestHandler):
         Queue.mutate(j, mutation)
 
         # If the job failed or succeeded, check state of the batch
-        if 'state' in mutation and mutation['state'] in ['complete', 'failed'] and j.batch:
-            batch_id = j.batch
-            new_state = check_state(batch_id)
-            if new_state:
-                update(batch_id, {'state': new_state})
+        if 'state' in mutation and mutation['state'] in ['complete', 'failed']:
+            # Remove any API keys for this job
+            JobApiKey.remove(_id)
+            if j.batch:
+                batch_id = j.batch
+                new_state = check_state(batch_id)
+                if new_state:
+                    update(batch_id, {'state': new_state})
 
 
     def _log_read_check(self, _id):
