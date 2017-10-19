@@ -163,7 +163,10 @@ class Queue(object):
         inputs = {}
         for x in job_map.get('inputs', {}).keys():
             input_map = job_map['inputs'][x]
-            inputs[x] = create_filereference_from_dictionary(input_map)
+            try:
+                inputs[x] = create_filereference_from_dictionary(input_map)
+            except KeyError:
+                raise InputValidationException('Input {} does not have a properly formatted file reference.'.format(x))
 
         # Add job tags, config, attempt number, and/or previous job ID, if present
         tags            = job_map.get('tags', [])
@@ -178,7 +181,7 @@ class Queue(object):
             destination = create_containerreference_from_dictionary(job_map['destination'])
         else:
             if len(inputs.keys()) < 1:
-                raise Exception('No destination specified and no inputs to derive from')
+                raise InputValidationException('Must specify destination if gear has no inputs.')
 
             key = inputs.keys()[0]
             destination = create_containerreference_from_filereference(inputs[key])
@@ -214,6 +217,11 @@ class Queue(object):
         # So option #2 is potentially more convenient, but unintuitive and prone to user confusion.
 
         for x in inputs:
+
+            # Ensure input is in gear manifest
+            if x not in gear['gear']['inputs']:
+                raise InputValidationException('Job input {} is not listed in gear manifest'.format(x))
+
             input_type = gear['gear']['inputs'][x]['base']
             if input_type == 'file':
 
@@ -233,9 +241,8 @@ class Queue(object):
                     },
                     'object': obj_projection,
                 }
-            elif input_type == 'api-key':
-                pass
             else:
+                # Note: API key inputs should not be passed as input
                 raise Exception('Non-file input base type')
 
         gear_name = gear['gear']['name']
