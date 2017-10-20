@@ -226,6 +226,13 @@ def create_or_recreate_ttl_index(coll_name, index_name, ttl):
 
 def initialize_db():
     log.info('Initializing database, creating indexes')
+
+    try:
+        db.singletons.insert({'_id': 'init_db'})
+    except pymongo.errors.DuplicateKeyError:
+        log.info('Database is already initialized')
+        return
+
     # TODO review all indexes
     db.users.create_index('api_key.key')
     db.projects.create_index([('gid', 1), ('name', 1)])
@@ -252,6 +259,12 @@ def initialize_db():
 
     now = datetime.datetime.utcnow()
     db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'label': 'Unknown', 'permissions': []}}, upsert=True)
+
+    with open(os.path.join(os.path.dirname(__file__), 'filetypes.json')) as fd:
+        filetypes = json.load(fd)
+        db.filetypes.insert_many(filetypes)
+
+    log.info('Initializing database, creating indexes ....DONE')
 
 def get_config():
     global __last_update, __config, __config_persisted #pylint: disable=global-statement
