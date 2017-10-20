@@ -11,6 +11,27 @@ import requests
 import string
 import uuid
 
+import django
+from django.conf import settings
+from django.template import Template, Context
+
+# If this is not called before templating, django throws a hissy fit
+settings.configure(
+    TEMPLATES=[{'BACKEND': 'django.template.backends.django.DjangoTemplates'}],
+)
+django.setup()
+
+def render_template(template, context):
+    """
+    Dead-simple wrapper to call django text templating.
+    Set up your own Template and Context objects if re-using heavily.
+    """
+
+    t = Template(template)
+    c = Context(context)
+    return t.render(c)
+
+
 MIMETYPES = [
     ('.bvec', 'text', 'bvec'),
     ('.bval', 'text', 'bval'),

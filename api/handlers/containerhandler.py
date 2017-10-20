@@ -259,6 +259,9 @@ class ContainerHandler(base.RequestHandler):
             cont_array = [containerutil.ContainerReference('acquisition', cid) for cid in id_array]
             results += Queue.search(cont_array, states=states, tags=tags)
 
+            # Also check the acquisition's session
+            results += Queue.search([containerutil.ContainerReference('session', str(cont['_id']))], states=states, tags=tags)
+
         if analyses:
             id_array = [str(c['_id']) for c in analyses]
             cont_array = [containerutil.ContainerReference('analysis', cid) for cid in id_array]

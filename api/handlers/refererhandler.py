@@ -84,7 +84,11 @@ class AnalysesHandler(RefererHandler):
             if not analysis or not job:
                 self.abort(400, 'JSON body must contain map for "analysis" and "job"')
             self.input_validator(analysis, 'POST')
-            result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin)
+
+            uid = None
+            if not self.superuser_request:
+                uid = self.uid
+            result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin, uid)
             return {'_id': result['analysis']['_id']}
 
         analysis = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
@@ -118,11 +122,18 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
 
-    def get(self, cont_name, cid, _id):
-        parent = self.storage.get_parent(cont_name, cid)
+    def get(self, **kwargs):
+        _id = kwargs.get('_id')
+        analysis = self.storage.get_container(_id)
+        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET')
-        return self.storage.get_container(_id)
+
+        if self.is_true('inflate_job'):
+            self.storage.inflate_job_info(analysis)
+
+        self.log_user_access(AccessType.view_container, cont_name=analysis['parent']['type'], cont_id=analysis['parent']['id'])
+        return analysis
 
 
     @log_access(AccessType.delete_analysis)

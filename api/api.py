@@ -143,6 +143,7 @@ endpoints = [
             route('/<:[^/]+>/logs',        JobHandler,  h='add_logs',      m=['POST']),
         ]),
         route('/gears',                                  GearsHandler),
+        route('/gears/check',                            GearsHandler, h='check', m=['POST']),
         route('/gears/temp',                             GearHandler, h='upload', m=['POST']),
         route('/gears/temp/<cid:{cid}>',  GearHandler, h='download', m=['GET']),
         prefix('/gears', [
@@ -236,6 +237,13 @@ endpoints = [
             ]),
         ]),
 
+        # Analysis
+        route( '/analyses/<_id:{cid}>',             AnalysesHandler,  m=['GET']),
+        prefix('/<:{cname}>/<:{cid}>/<cont_name:analyses>/<cid:{cid}>', [
+            route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
+            route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
+        ]),
+
 
         # Containers
 
@@ -265,14 +273,6 @@ endpoints = [
                 route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
                 route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
             ])
-        ]),
-
-
-        # Analysis notes
-
-        prefix('/<:{cname}>/<:{cid}>/<cont_name:analyses>/<cid:{cid}>', [
-            route('/<list_name:notes>',             NotesListHandler,               m=['POST']),
-            route('/<list_name:notes>/<_id:{nid}>', NotesListHandler, name='notes', m=['GET', 'PUT', 'DELETE']),
         ]),
 
 

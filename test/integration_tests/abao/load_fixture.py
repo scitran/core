@@ -36,15 +36,13 @@ def main():
         'root': True,
     })
     api_db = pymongo.MongoClient(SCITRAN_PERSISTENT_DB_URI).get_default_database()
-    api_db.users.update_one(
-        {'_id': abao_user},
-        {'$set': {
-            'api_key': {
-                'key': abao_api_key,
-                'created': datetime.datetime.utcnow()
-            }
-        }}
-    )
+    api_db.apikeys.insert_one({
+        '_id': abao_api_key,
+        'created': datetime.datetime.utcnow(),
+        'last_seen': None,
+        'type': 'user',
+        'uid': abao_user
+    })
 
     as_root = BaseUrlSession()
     as_root.headers.update({'Authorization': 'scitran-user {}'.format(abao_api_key)})
@@ -109,7 +107,7 @@ def main():
         'category': 'converter',
         'gear': {
             'inputs': {
-                'wat': {
+                'dicom': {
                     'base': 'file',
                     'type': { 'enum': [ 'wat' ] }
                 }

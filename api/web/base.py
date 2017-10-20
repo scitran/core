@@ -11,7 +11,8 @@ from .. import files
 from .. import config
 from ..types import Origin
 from .. import validators
-from ..auth.authproviders import AuthProvider, APIKeyAuthProvider
+from ..auth.authproviders import AuthProvider
+from ..auth.apikeys import APIKey
 from ..auth import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
 from elasticsearch import ElasticsearchException
@@ -54,6 +55,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def initialization_auth(self):
         drone_request = False
+        job_context = None
         session_token = self.request.headers.get('Authorization', None)
         drone_secret = self.request.headers.get('X-SciTran-Auth', None)
         drone_method = self.request.headers.get('X-SciTran-Method', None)
@@ -63,7 +65,11 @@ class RequestHandler(webapp2.RequestHandler):
             if session_token.startswith('scitran-user '):
                 # User (API key) authentication
                 key = session_token.split()[1]
-                self.uid = APIKeyAuthProvider.validate_user_api_key(key)
+                api_key = APIKey.validate(key)
+                self.uid = api_key['uid']
+                if 'job' in api_key:
+                    job_context = api_key['job']
+
             elif session_token.startswith('scitran-drone '):
                 # Drone (API key) authentication
                 # When supported, remove custom headers and shared secret
@@ -111,7 +117,7 @@ class RequestHandler(webapp2.RequestHandler):
                 self.superuser_request = False
 
         self.origin = None
-        self.set_origin(drone_request)
+        self.set_origin(drone_request, job_context)
 
     def authenticate_user_token(self, session_token):
         """
@@ -228,7 +234,7 @@ class RequestHandler(webapp2.RequestHandler):
         config.db.authtokens.insert_one(token_entry)
 
         # Set origin now that the uid is known
-        self.set_origin(False)
+        self.set_origin(False, None)
 
         return {'token': session_token}
 
@@ -246,7 +252,7 @@ class RequestHandler(webapp2.RequestHandler):
         return {'tokens_removed': result.deleted_count}
 
 
-    def set_origin(self, drone_request):
+    def set_origin(self, drone_request, job_context):
         """
         Add an origin to the request object. Used later in request handler logic.
 
@@ -260,6 +266,11 @@ class RequestHandler(webapp2.RequestHandler):
                 'type': str(Origin.user),
                 'id': self.uid
             }
+            if job_context:
+                self.origin['via'] = {
+                    'type': str(Origin.job),
+                    'id': job_context
+                }
         elif drone_request:
 
             method = self.request.headers.get('X-SciTran-Method')

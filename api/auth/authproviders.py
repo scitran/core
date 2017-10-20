@@ -7,6 +7,7 @@ import urlparse
 from xml.etree import ElementTree
 
 from . import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
+from .apikeys import APIKey
 from .. import config, util
 from ..dao import dbutil
 
@@ -14,9 +15,7 @@ log = config.log
 
 class AuthProvider(object):
     """
-    This class provides access to mongodb collection elements (called containers).
-    It is used by ContainerHandler istances for get, create, update and delete operations on containers.
-    Examples: projects, sessions, acquisitions and collections
+    Abstract auth provider class
     """
 
     def __init__(self, auth_type, set_config=True):
@@ -352,42 +351,20 @@ class APIKeyAuthProvider(AuthProvider):
         """
         super(APIKeyAuthProvider, self).__init__('api-key', set_config=False)
 
-    @staticmethod
-    def _preprocess_key(key):
-        """
-        Convention for API keys is that they can have arbitrary information, separated by a :,
-        before the actual key. Generally, this will have a connection string in it.
-        Strip this preamble, if any, before processing the key.
-        """
-
-        return key.split(":")[-1] # Get the last segment of the string after any : separators
-
     def validate_code(self, code, **kwargs):
-        code = APIKeyAuthProvider._preprocess_key(code)
 
-        uid = self.validate_user_api_key(code)
+        api_key = APIKey.validate(code)
+        if api_key['type'] != 'user':
+            raise APIAuthProviderException('Only user API keys can be used to grant a session.')
         return {
             'access_token': code,
-            'uid': uid,
+            'uid': api_key['uid'],
             'auth_type': self.auth_type,
             'expires': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
         }
 
-    @staticmethod
-    def validate_user_api_key(key):
-        """
-        AuthN for user accounts via api key.
 
-        401s via APIAuthProviderException on failure.
-        """
-        key = APIKeyAuthProvider._preprocess_key(key)
 
-        timestamp = datetime.datetime.utcnow()
-        user = config.db.users.find_one_and_update({'api_key.key': key}, {'$set': {'api_key.last_used': timestamp}}, ['_id'])
-        if user:
-            return user['_id']
-        else:
-            raise APIAuthProviderException('Invalid API key')
 
 
 AuthProviders = {

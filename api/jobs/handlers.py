@@ -5,21 +5,23 @@ import bson
 import os
 import StringIO
 from jsonschema import ValidationError
+from urlparse import urlparse
 
 from .. import upload
 from .. import util
 from ..auth import require_login, has_access
 from ..dao import APIPermissionException, APINotFoundException
 from ..dao.containerstorage import ProjectStorage, AcquisitionStorage
-from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference, ContainerReference
+from ..dao.containerutil import ContainerReference
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
-from ..validators import InputValidationException
 from .. import config
 from . import batch
-from ..validators import validate_data, verify_payload_exists
+from ..validators import InputValidationException, validate_data, verify_payload_exists
 
-from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name
+from ..auth.apikeys import JobApiKey
+
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name, check_for_gear_insertion
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
@@ -42,6 +44,17 @@ class GearsHandler(base.RequestHandler):
             gears = list(filter(lambda x: len(x["gear"]["inputs"].keys()) <= 1, gears))
 
         return gears
+
+    def check(self):
+        """
+        Check if a gear upload is likely to succeed.
+        """
+
+        if self.public_request:
+            self.abort(403, 'Request requires login')
+
+        check_for_gear_insertion(self.request.json)
+        return None
 
 class GearHandler(base.RequestHandler):
     """Provide /gears/x API routes."""
@@ -74,7 +87,6 @@ class GearHandler(base.RequestHandler):
         gear = get_gear(_id)
         return suggest_container(gear, cont_name+'s', cid)
 
-    # Temporary Function
     def upload(self): # pragma: no cover
         """Upload new gear tarball file"""
         if not self.user_is_admin:
@@ -88,7 +100,6 @@ class GearHandler(base.RequestHandler):
 
         return {'_id': str(gear_id)}
 
-    # Temporary Function
     def download(self, **kwargs): # pragma: no cover
         """Download gear tarball file"""
         dl_id = kwargs.pop('cid')
@@ -175,7 +186,6 @@ class RulesHandler(base.RequestHandler):
         result = config.db.project_rules.insert_one(doc)
         return { '_id': result.inserted_id }
 
-
 class RuleHandler(base.RequestHandler):
 
     def get(self, cid, rid):
@@ -247,7 +257,6 @@ class RuleHandler(base.RequestHandler):
             raise APINotFoundException('Rule not found.')
         return
 
-
 class JobsHandler(base.RequestHandler):
     """Provide /jobs API routes."""
     def get(self): # pragma: no cover (no route)
@@ -258,99 +267,15 @@ class JobsHandler(base.RequestHandler):
 
     def add(self):
         """Add a job to the queue."""
-        submit = self.request.json
+        payload = self.request.json
 
-        gear_id = str(submit['gear_id'])
-
-        # Translate maps to FileReferences
-        inputs = {}
-        for x in submit['inputs'].keys():
-            input_map = submit['inputs'][x]
-            inputs[x] = create_filereference_from_dictionary(input_map)
-
-        # Add job tags, config, attempt number, and/or previous job ID, if present
-        tags            = submit.get('tags', [])
-        config_         = submit.get('config', {})
-        attempt_n       = submit.get('attempt_n', 1)
-        previous_job_id = submit.get('previous_job_id', None)
-        now_flag        = submit.get('now', False) # A flag to increase job priority
-
-        # Add destination container, or select one
-        destination = None
-        if submit.get('destination', None) is not None:
-            destination = create_containerreference_from_dictionary(submit['destination'])
-        else:
-            key = inputs.keys()[0]
-            destination = create_containerreference_from_filereference(inputs[key])
-
-        # Permission check
+        uid = None
         if not self.superuser_request:
-            for x in inputs:
-                inputs[x].check_access(self.uid, 'ro')
-            destination.check_access(self.uid, 'rw')
-            now_flag = False # Only superuser requests are allowed to set "now" flag
+            uid = self.uid
 
-        # Config manifest check
-        gear = get_gear(gear_id)
+        job = Queue.enqueue_job(payload,self.origin, perm_check_uid=uid)
 
-        if gear is None:
-            self.abort(400, 'Could not find gear ' + gear_id)
-
-        if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
-            self.abort(400, 'Gear marked as invalid, will not run!')
-        validate_gear_config(gear, config_)
-
-        # Config options are stored on the job object under the "config" key
-        config_ = {
-            'config': config_,
-            'inputs': { }
-        }
-
-        # Implementation notes: with regard to sending the gear file information, we have two options:
-        #
-        # 1) Send the file object as it existed when you enqueued the job
-        # 2) Send the file object as it existed when the job was started
-        #
-        # Option #2 is possibly more convenient - it's more up to date - but the only file modifications after a job is enqueued would be from
-        #
-        # A) a gear finishing, and updating the file object
-        # B) a user editing the file object
-        #
-        # You can count on neither occurring before a job starts, because the queue is not globally FIFO.
-        # So option #2 is potentially more convenient, but unintuitive and prone to user confusion.
-
-
-        for x in inputs:
-            if gear['gear']['inputs'][x]['base'] == 'file':
-
-                obj = inputs[x].get_file()
-                cr = create_containerreference_from_filereference(inputs[x])
-
-                # Whitelist file fields passed to gear to those that are scientific-relevant
-                whitelisted_keys = ['info', 'tags', 'measurements', 'mimetype', 'type', 'modality', 'size']
-                obj_projection = { key: obj[key] for key in whitelisted_keys }
-
-                config_['inputs'][x] = {
-                    'base': 'file',
-                    'hierarchy': cr.__dict__,
-                    'location': {
-                        'name': obj['name'],
-                        'path': '/flywheel/v0/input/' + x + '/' + obj['name'],
-                    },
-                    'object': obj_projection,
-                }
-            else:
-                self.abort(500, 'Non-file input base type')
-
-        gear_name = gear['gear']['name']
-
-        if gear_name not in tags:
-            tags.append(gear_name)
-
-        job = Job(gear_id, inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=self.origin)
-        result = job.insert()
-
-        return { '_id': result }
+        return { '_id': job.id_ }
 
     def stats(self):
         if not self.superuser_request and not self.user_is_admin:
@@ -391,7 +316,6 @@ class JobHandler(base.RequestHandler):
         if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires admin')
 
-
         return Job.get(_id)
 
     def get_config(self, _id):
@@ -399,7 +323,8 @@ class JobHandler(base.RequestHandler):
         if not self.superuser_request:
             self.abort(403, 'Request requires superuser')
 
-        c = Job.get(_id).config
+        j = Job.get(_id)
+        c = j.config
         if c is None:
             c = {}
 
@@ -412,6 +337,35 @@ class JobHandler(base.RequestHandler):
 
         if c.get('config') is not None and c.get('inputs') is not None:
             # New behavior
+
+            # API keys are only returned in-flight, when the job is running, and not persisted to the job object.
+            if j.state == 'running':
+                gear = get_gear(j.gear_id)
+
+                for key in gear['gear']['inputs']:
+                    the_input = gear['gear']['inputs'][key]
+
+                    if the_input['base'] == 'api-key':
+                        if j.origin['type'] != 'user':
+                            raise Exception('Cannot provide an API key to a job not launched by a user')
+
+                        uid = j.origin['id']
+                        api_key = JobApiKey.generate(uid, j.id_)
+                        parsed_url = urlparse(config.get_item('site', 'api_url'))
+
+                        if parsed_url.port != 443:
+                            api_key = parsed_url.hostname + ':' + str(parsed_url.port) + ':' + api_key
+                        else:
+                            api_key = parsed_url.hostname + ':' + api_key
+
+                        if c.get('inputs') is None:
+                            c['inputs'] = {}
+
+                        c['inputs'][key] = {
+                            'base': 'api-key',
+                            'key': api_key
+                        }
+
             encoded = pseudo_consistent_json_encode(c)
             self.response.app_iter = StringIO.StringIO(encoded)
         else:
@@ -440,11 +394,14 @@ class JobHandler(base.RequestHandler):
         Queue.mutate(j, mutation)
 
         # If the job failed or succeeded, check state of the batch
-        if 'state' in mutation and mutation['state'] in ['complete', 'failed'] and j.batch:
-            batch_id = j.batch
-            new_state = check_state(batch_id)
-            if new_state:
-                update(batch_id, {'state': new_state})
+        if 'state' in mutation and mutation['state'] in ['complete', 'failed']:
+            # Remove any API keys for this job
+            JobApiKey.remove(_id)
+            if j.batch:
+                batch_id = j.batch
+                new_state = check_state(batch_id)
+                if new_state:
+                    update(batch_id, {'state': new_state})
 
 
     def _log_read_check(self, _id):
@@ -455,9 +412,10 @@ class JobHandler(base.RequestHandler):
 
         # Permission check
         if not self.superuser_request:
-            for x in job.inputs:
-                job.inputs[x].check_access(self.uid, 'ro')
-            # Unlike jobs-add, explicitly not checking write access to destination.
+            if job.inputs is not None:
+                for x in job.inputs:
+                    job.inputs[x].check_access(self.uid, 'ro')
+                # Unlike jobs-add, explicitly not checking write access to destination.
 
 
     def get_logs(self, _id):

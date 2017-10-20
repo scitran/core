@@ -20,7 +20,7 @@ def test_jobs_access(as_user):
     assert r.status_code == 403
 
 
-def test_jobs(data_builder, default_payload, as_user, as_admin, as_root, api_db, file_form):
+def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_root, api_db, file_form):
     gear_doc = default_payload['gear']['gear']
     gear_doc['inputs'] = {
         'dicom': {
@@ -204,3 +204,131 @@ def test_jobs(data_builder, default_payload, as_user, as_admin, as_root, api_db,
     r = as_admin.get('/jobs/next', params={'tags': 'test-tag'})
     assert r.ok
     job_rw_id = r.json()['id']
+
+    # Add job with gear that uses api-key base type and get config
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'dicom': {
+            'base': 'file'
+        },
+        'api_key': {
+            'base': 'api-key'
+        }
+    }
+    gear1 = data_builder.create_gear(gear=gear_doc)
+
+    job4 = copy.deepcopy(job_data)
+    job4['gear_id'] = gear1
+
+    r = as_admin.post('/jobs/add', json=job4)
+    assert r.status_code == 200
+    job_id = r.json()['_id']
+
+    # start job
+    r = as_root.put('/jobs/' + job_id, json={'state': 'running'})
+    assert r.ok
+
+    # get config
+    r = as_root.get('/jobs/'+ job_id +'/config.json')
+    assert r.ok
+    config = r.json()
+
+    assert type(config['inputs']['dicom']) is dict
+    assert config['destination']['id'] == acquisition
+    assert type(config['config']) is dict
+    api_key = config['inputs']['api_key']['key']
+
+    # ensure api_key works
+    as_job_key = as_public
+    as_job_key.headers.update({'Authorization': 'scitran-user ' + api_key})
+    r = as_job_key.get('/users/self')
+    assert r.ok
+
+    # complete job and ensure API key no longer works
+    r = as_root.put('/jobs/' + job_id, json={'state': 'complete'})
+    assert r.ok
+
+    r = as_job_key.get('/users/self')
+    assert r.status_code == 401
+
+    # try to add job with no inputs and no destination
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {}
+    gear2 = data_builder.create_gear(gear=gear_doc)
+
+    job5 = copy.deepcopy(job_data)
+    job5['gear_id'] = gear2
+    job5.pop('inputs')
+    job5.pop('destination')
+
+    r = as_admin.post('/jobs/add', json=job5)
+    assert r.status_code == 400
+
+    # try to add job with input type that is not file nor api-key
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'dicom': {
+            'base': 'made-up'
+        }
+    }
+    gear3 = str(api_db.gears.insert(gear_doc))
+
+    job6 = copy.deepcopy(job_data)
+    job6['gear_id'] = gear3
+
+    r = as_admin.post('/jobs/add', json=job6)
+    assert r.status_code == 500
+
+    # Attempt to set a malformed file reference as input
+    job7 = copy.deepcopy(job_data)
+    job7['inputs'] = {
+        'dicom': {
+                # missing type
+                'id': acquisition,
+                'name': 'test.zip'
+        }
+    }
+    r = as_admin.post('/jobs/add', json=job7)
+    assert r.status_code == 400
+
+
+def test_analysis_job_creation_errors(data_builder, default_payload, as_admin, file_form):
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'csv': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
+
+    # Add project file
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('job_1.csv'))
+    assert r.ok
+
+    # ensure analysis with improper gear id is not created
+    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
+        'analysis': {'label': 'with-job'},
+        'job': {
+            # no gear id
+            'inputs': {
+                'csv': {'type': 'project', 'id': project, 'name': 'job_1.csv'}
+            }
+        }
+    })
+    assert r.status_code == 400
+    assert len(as_admin.get('/sessions/' + session).json().get('analyses', [])) == 0
+
+    # ensure analysis with improper inputs is not created
+    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
+        'analysis': {'label': 'with-job'},
+        'job': {
+            'gear_id': gear,
+            'inputs': {
+                'made-up': {'type': 'project', 'id': project, 'name': 'job_1.csv'}
+            }
+        }
+    })
+    assert r.status_code == 400
+    assert len(as_admin.get('/sessions/' + session).json().get('analyses', [])) == 0

@@ -8,6 +8,7 @@ from .. import util
 from .. import config
 from .. import validators
 from ..auth import userauth, require_admin
+from ..auth.apikeys import UserApiKey
 from ..dao import containerstorage
 from ..dao import noop, APIStorageException
 
@@ -23,9 +24,9 @@ class UserHandler(base.RequestHandler):
     def get(self, _id):
         user = self._get_user(_id)
         permchecker = userauth.default(self, user)
-        projection = {'api_key': 0}
+        projection = None
         if not self.user_is_admin:
-            projection['wechat'] = 0
+            projection = {'wechat': 0}
         result = permchecker(self.storage.exec_op)('GET', _id, projection=projection or None)
         if result is None:
             self.abort(404, 'User does not exist')
@@ -38,6 +39,13 @@ class UserHandler(base.RequestHandler):
         user = self.storage.exec_op('GET', self.uid)
         if not user:
             self.abort(403, 'user does not exist')
+        api_key = UserApiKey.get(self.uid)
+        if api_key:
+            user['api_key'] = {
+                'key': api_key['_id'],
+                'created': api_key['created'],
+                'last_used': api_key['last_used']
+            }
         return user
 
     def get_all(self):
@@ -167,14 +175,8 @@ class UserHandler(base.RequestHandler):
     def generate_api_key(self):
         if not self.uid:
             self.abort(400, 'no user is logged in')
-        generated_key = util.create_nonce()
-        now = datetime.datetime.utcnow()
-        payload = {'api_key': {'key': generated_key, 'created': now, 'last_used': None}}
-        result = self.storage.exec_op('PUT', _id=self.uid, payload=payload)
-        if result.modified_count == 1:
-            return {'key': generated_key}
-        else:
-            self.abort(500, 'New key for user {} not generated'.format(self.uid))
+        generated_key = UserApiKey.generate(self.uid)
+        return {'key': generated_key}
 
     @require_admin
     def reset_registration(self, uid):

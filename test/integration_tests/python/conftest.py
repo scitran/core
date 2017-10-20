@@ -297,15 +297,14 @@ class DataBuilder(object):
 
         # inject api key if it was provided
         if resource == 'user' and user_api_key:
-            _api_db.users.update_one(
-                {'_id': _id},
-                {'$set': {
-                    'api_key': {
-                        'key': user_api_key,
-                        'created': datetime.datetime.utcnow()
-                    }
-                }}
-            )
+            _api_db.apikeys.insert_one({
+                '_id': user_api_key,
+                'created': datetime.datetime.utcnow(),
+                'last_seen': None,
+                'type': 'user',
+                'uid': _id
+            })
+
         self.resources.append((resource, _id))
         return _id
 

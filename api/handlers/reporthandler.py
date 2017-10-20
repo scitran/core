@@ -25,6 +25,8 @@ ACCESS_LOG_FIELDS = [
     "origin.method",
     "origin.name",
     "origin.type",
+    "origin.via.type",
+    "origin.via.id",
     "context.group.id",
     "context.group.label",
     "context.project.id",

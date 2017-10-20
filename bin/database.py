@@ -1220,6 +1220,32 @@ def upgrade_to_37():
         process_cursor(cursor, upgrade_to_32_closure, context = coll)
 
 
+def upgrade_to_37_closure(user):
+
+    api_key = user['api_key']
+    new_api_key_doc = {
+        '_id': api_key['key'],
+        'created': api_key['created'],
+        'last_used': api_key['last_used'],
+        'uid': user['_id'],
+        'type': 'user'
+    }
+
+    config.db.apikeys.insert(new_api_key_doc)
+    config.db.users.update_one({'_id': user['_id']}, {'$unset': {'api_key': 0}})
+
+    return True
+
+
+def upgrade_to_37():
+    """
+    Move existing user api keys to new 'apikeys' collection
+    """
+    cursor = config.db.users.find({'api_key': {'$exists': True }})
+    process_cursor(cursor, upgrade_to_37_closure)
+
+
+
 ###
 ### BEGIN RESERVED UPGRADE SECTION
 ###

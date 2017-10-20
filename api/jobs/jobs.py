@@ -11,6 +11,7 @@ from ..types import Origin
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
 from .. import config
+from ..util import render_template
 
 
 class Job(object):
@@ -50,6 +51,9 @@ class Job(object):
         """
 
         # TODO: validate inputs against the manifest
+
+        if type(gear_id) is bson.ObjectId:
+            raise Exception('gear_id should be a string, not an ObjectId.')
 
         time_now = datetime.datetime.utcnow()
 
@@ -219,6 +223,7 @@ class Job(object):
             raise Exception('Cannot insert job that has already been inserted')
 
         result = config.db.jobs.insert_one(self.mongo())
+        self.id_ = result.inserted_id
         return result.inserted_id
 
     def save(self):
@@ -253,7 +258,7 @@ class Job(object):
                 }
             ],
             'target': {
-                'command': ['bash', '-c', 'rm -rf output; mkdir -p output; ./run'],
+                'command': None,
                 'env': {
                     'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
                 },
@@ -270,6 +275,20 @@ class Job(object):
 
         # Map destination to upload URI
         r['outputs'][0]['uri'] = '/engine?level=' + self.destination.type + '&id=' + self.destination.id
+
+        # Add environment, if any
+        for key in gear['gear'].get('environment', {}).keys():
+            r['target']['env'][key] = gear['gear']['environment'][key]
+
+        # Add command, if any
+        command_base = 'env; rm -rf output; mkdir -p output; '
+        if gear['gear'].get('command') is not None:
+
+            command = render_template(gear['gear']['command'], self.config['config'])
+
+            r['target']['command'] = ['bash', '-c', command_base + command ]
+        else:
+            r['target']['command'] = ['bash', '-c', command_base + './run' ]
 
         # Add config, if any
         if self.config is not None:
@@ -290,21 +309,24 @@ class Job(object):
                 bash_variable_letters = set(string.ascii_letters + string.digits + ' ' + '_')
 
                 for x in cf:
+                    # Strip non-whitelisted characters, set to underscore, and uppercase
+                    config_name = filter(lambda char: char in bash_variable_letters, x)
+                    config_name = config_name.replace(' ', '_').upper()
 
-                    if isinstance(cf[x], list) or isinstance(cf[x], dict):
-                        # Current gear spec only allows for scalars!
-                        raise Exception('Non-scalar config value ' + x + ' ' + str(cf[x]))
+                    # Don't set nonsensical environment variables
+                    if config_name == '':
+                        print 'The gear config name ' + x + ' has no whitelisted characters!'
+                        continue
+
+                    if isinstance(cf[x], list):
+                        # Stringify array or set
+                        # Might have same issue as scalars with "True" >:(
+                        r['target']['env']['FW_CONFIG_' + config_name] = str(cf[x])
+
+                    elif isinstance(cf[x], dict):
+                        raise Exception('Disallowed object-type config value ' + x + ' ' + str(cf[x]))
+
                     else:
-
-                        # Strip non-whitelisted characters, set to underscore, and uppercase
-                        config_name = filter(lambda char: char in bash_variable_letters, x)
-                        config_name = config_name.replace(' ', '_').upper()
-
-                        # Don't set nonsensical environment variables
-                        if config_name == '':
-                            print 'The gear config name ' + x + ' has no whitelisted characters!'
-                            continue
-
                         # Stringify scalar
                         # Python strings true as "True"; fix
                         if not isinstance(cf[x], bool):
@@ -323,14 +345,15 @@ class Job(object):
             })
 
         # Add the files
-        for input_name in self.inputs.keys():
-            i = self.inputs[input_name]
+        if self.inputs is not None:
+            for input_name in self.inputs.keys():
+                i = self.inputs[input_name]
 
-            r['inputs'].append({
-                'type': 'scitran',
-                'uri': i.file_uri(i.name),
-                'location': '/flywheel/v0/input/' + input_name,
-            })
+                r['inputs'].append({
+                    'type': 'scitran',
+                    'uri': i.file_uri(i.name),
+                    'location': '/flywheel/v0/input/' + input_name,
+                })
 
         # Log job origin if provided
         if self.id_:

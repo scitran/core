@@ -235,6 +235,7 @@ def test_usage_report(data_builder, file_form, as_user, as_admin):
     usage = r.json()
     assert len(usage) == 1
     assert (usage[0]['year'], usage[0]['month']) == (str(today.year), str(today.month))
+    print usage
     assert usage[0]['session_count'] == 0
     assert usage[0]['file_mbs'] == 0
     assert usage[0]['gear_execution_count'] == 0
