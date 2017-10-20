@@ -1,6 +1,5 @@
 import os
 import cgi
-import json
 import shutil
 import hashlib
 import collections
