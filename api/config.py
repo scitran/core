@@ -158,6 +158,7 @@ expected_input_schemas = set([
     'collection.json',
     'collection-update.json',
     'container.json',
+    'custom-phi-update.json',
     'device.json',
     'file.json',
     'file-update.json',
