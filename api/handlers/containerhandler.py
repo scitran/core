@@ -585,35 +585,6 @@ class ContainerHandler(base.RequestHandler):
         group_ids = list(set((p['group'] for p in self.get_all('projects'))))
         return list(config.db.groups.find({'_id': {'$in': group_ids}}, ['label']))
 
-    def set_project_template(self, **kwargs):
-        project_id = kwargs.pop('cid')
-        self.config = self.container_handler_configurations['projects']
-        self.storage = self.config['storage']
-        container = self._get_container(project_id)
-
-        template = self.request.json_body
-        validators.validate_data(template, 'project-template.json', 'input', 'POST')
-        payload = {'template': template}
-        payload['modified'] = datetime.datetime.utcnow()
-
-        permchecker = self._get_permchecker(container)
-        result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload)
-        return {'modified': result.modified_count}
-
-    def delete_project_template(self, **kwargs):
-        project_id = kwargs.pop('cid')
-        self.config = self.container_handler_configurations['projects']
-        self.storage = self.config['storage']
-        container = self._get_container(project_id)
-
-        payload = {'modified': datetime.datetime.utcnow()}
-        unset_payload = {'template': ''}
-
-        permchecker = self._get_permchecker(container)
-        result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload, unset_payload=unset_payload)
-        return {'modified': result.modified_count}
-
-
     def calculate_project_compliance(self, **kwargs):
         project_id = kwargs.pop('cid', None)
         log.debug("project_id is {}".format(project_id))

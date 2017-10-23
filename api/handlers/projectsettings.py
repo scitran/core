@@ -47,7 +47,7 @@ class ProjectSettings(base.RequestHandler):
 
     def get_phi(self, cid):
         projection = None
-        
+
         if cid == 'site':
             if self.public_request:
                 raise APIPermissionException('Viewing site-level PHI fields requires login.')
@@ -68,7 +68,7 @@ class ProjectSettings(base.RequestHandler):
             project = self.storage.get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('User does not have access to project {} PHI fields'.format(cid))
-        
+
         result = self.storage.add_phi_fields(cid, self.request.json_body)
         log.debug(result)
         if result['nModified'] == 1 or result.get('upserted'):
@@ -84,6 +84,7 @@ class ProjectSettings(base.RequestHandler):
         else:
             permchecker = containerauth.default_container
             return permchecker(self, container, parent_container)
+
 
 class RulesHandler(base.RequestHandler):
 
@@ -118,7 +119,8 @@ class RulesHandler(base.RequestHandler):
 
         doc = self.request.json
 
-        validate_data(doc, 'rule-add.json', 'input', 'POST', optional=True)
+        validate_data(doc, 'rule-new.json', 'input', 'POST', optional=True)
+        validate_regexes(doc)
         try:
             get_gear_by_name(doc['alg'])
         except APINotFoundException:
@@ -128,7 +130,6 @@ class RulesHandler(base.RequestHandler):
 
         result = config.db.project_rules.insert_one(doc)
         return { '_id': result.inserted_id }
-
 
 class RuleHandler(base.RequestHandler):
 
@@ -172,6 +173,7 @@ class RuleHandler(base.RequestHandler):
 
         updates = self.request.json
         validate_data(updates, 'rule-update.json', 'input', 'POST', optional=True)
+        validate_regexes(updates)
         if updates.get('alg'):
             try:
                 get_gear_by_name(updates['alg'])
