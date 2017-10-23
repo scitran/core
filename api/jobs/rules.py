@@ -5,6 +5,7 @@ from ..dao.containerutil import FileReference
 
 from . import gears
 from .jobs import Job
+from .queue import Queue
 
 log = config.log
 
@@ -237,9 +238,12 @@ def create_jobs(db, container_before, container_after, container_type):
     spawned_jobs = []
 
     for pj in potential_jobs:
-        pj['job'].insert()
+        job_map = pj['job'].map()
+        try:
+            Queue.enqueue_job(job_map, None) # passing no origin results in system origin
+        except Exception as e: # pylint: disable=broad-except
+            config.log.exception('Unable to enqueue job from rules: {}'.format(e))
         spawned_jobs.append(pj['rule']['alg'])
-
 
     return spawned_jobs
 
