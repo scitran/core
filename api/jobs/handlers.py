@@ -335,7 +335,7 @@ class JobHandler(base.RequestHandler):
         # Detect if config is old- or new-style.
         # TODO: remove this logic with a DB upgrade, ref database.py's reserved upgrade section.
 
-        if c.get('config') is not None and c.get('inputs') is not None:
+        if 'config' in c and c.get('inputs') is not None:
             # New behavior
 
             # API keys are only returned in-flight, when the job is running, and not persisted to the job object.
