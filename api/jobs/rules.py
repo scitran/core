@@ -239,10 +239,8 @@ def create_jobs(db, container_before, container_after, container_type):
 
     for pj in potential_jobs:
         job_map = pj['job'].map()
-        try:
-            Queue.enqueue_job(job_map, None) # passing no origin results in system origin
-        except Exception as e: # pylint: disable=broad-except
-            config.log.exception('Unable to enqueue job from rules: {}'.format(e))
+        Queue.enqueue_job(job_map, None) # passing no origin results in system origin
+
         spawned_jobs.append(pj['rule']['alg'])
 
     return spawned_jobs
