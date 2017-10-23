@@ -97,7 +97,12 @@ class ProjectStorage(ContainerStorage):
         return changed_sessions
 
     def get_phi_fields(self, cid, projection=None):
-        return config.db.project_phi.find_one({"project_id": cid}, projection=projection)
+        log.debug(cid)
+        phi = config.db.project_phi.find_one({"project_id": str(cid)}, projection=projection)
+        if phi == None:
+            return {}
+        else:
+            return phi
 
     def add_phi_fields(self, cid, update):
         return config.db.project_phi.update({"project_id": cid}, {"$set": update}, upsert=True)

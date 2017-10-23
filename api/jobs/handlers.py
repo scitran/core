@@ -10,18 +10,16 @@ from urlparse import urlparse
 from .. import upload
 from .. import util
 from ..auth import require_login, has_access
-from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
 from ..dao.containerutil import ContainerReference
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
 from .. import config
 from . import batch
-from ..validators import validate_data, verify_payload_exists
 
 from ..auth.apikeys import JobApiKey
 
-from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name, check_for_gear_insertion
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue

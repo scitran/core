@@ -44,7 +44,6 @@ class ProjectSettings(base.RequestHandler):
         result = permchecker(self.storage.exec_op)('PUT', _id=project_id, payload=payload, unset_payload=unset_payload)
         return {'modified': result.modified_count}
 
-
     def get_phi(self, cid):
         projection = None
 
