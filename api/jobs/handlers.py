@@ -546,29 +546,47 @@ class BatchHandler(base.RequestHandler):
                     self.abort(400, 'targets must all be of same type.')
             container_ids.append(t.get('id'))
 
-        # Get acquisitions associated with targets
         objectIds = [bson.ObjectId(x) for x in container_ids]
-        containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
-            collection_id=collection_id, include_archived=False)
+
+        # Determine if gear is no-input gear
+        file_inputs = False
+        for input_ in gear['gear'].get('inputs', {}).itervalues():
+            if input_['base'] == 'file':
+                file_inputs = True
+                break
+
+        if not file_inputs:
+            # Grab sessions rather than acquisitions
+            containers = SessionStorage().get_all_for_targets(container_type, objectIds,
+                collection_id=collection_id, include_archived=False)
+
+        else:
+            # Get acquisitions associated with targets
+            containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
+                collection_id=collection_id, include_archived=False)
 
         if not containers:
             self.abort(404, 'Could not find acquisitions from targets.')
 
         improper_permissions = []
-        acquisitions = []
+        perm_checked_conts = []
 
         # Make sure user has read-write access, add those to acquisition list
         for c in containers:
             if self.superuser_request or has_access(self.uid, c, 'rw'):
                 c.pop('permissions')
-                acquisitions.append(c)
+                perm_checked_conts.append(c)
             else:
                 improper_permissions.append(c['_id'])
 
-        if not acquisitions:
+        if not perm_checked_conts:
             self.abort(403, 'User does not have write access to targets.')
 
-        results = batch.find_matching_conts(gear, acquisitions, 'acquisition')
+        if not file_inputs:
+
+        else:
+            # Look for file matches in each acquisition
+            results = batch.find_matching_conts(gear, perm_checked_conts, 'acquisition')
 
         matched = results['matched']
         batch_proposal = {}
