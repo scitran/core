@@ -129,9 +129,14 @@ def fill_gear_default_values(gear, config_):
     Given a gear and a config map, fill any missing keys using defaults from the gear's config
     """
 
-    for k,v in gear['gear'].get('config', {}).itervalues:
+    if config_ is None:
+        config_ = {}
+
+    for k,v in gear['gear'].get('config', {}).iteritems():
         if 'default' in v:
             config_.setdefault(k, v['default'])
+
+    return config_
 
 
 def insert_gear(doc):
