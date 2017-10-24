@@ -11,7 +11,7 @@ from .. import upload
 from .. import util
 from ..auth import require_login, has_access
 from ..dao import APIPermissionException, APINotFoundException
-from ..dao.containerstorage import ProjectStorage, AcquisitionStorage
+from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
 from ..dao.containerutil import ContainerReference
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
@@ -557,8 +557,7 @@ class BatchHandler(base.RequestHandler):
 
         if not file_inputs:
             # Grab sessions rather than acquisitions
-            containers = SessionStorage().get_all_for_targets(container_type, objectIds,
-                collection_id=collection_id, include_archived=False)
+            containers = SessionStorage().get_all_for_targets(container_type, objectIds, include_archived=False)
 
         else:
             # Get acquisitions associated with targets
@@ -566,7 +565,7 @@ class BatchHandler(base.RequestHandler):
                 collection_id=collection_id, include_archived=False)
 
         if not containers:
-            self.abort(404, 'Could not find acquisitions from targets.')
+            self.abort(404, 'Could not find necessary containers from targets.')
 
         improper_permissions = []
         perm_checked_conts = []
@@ -583,6 +582,11 @@ class BatchHandler(base.RequestHandler):
             self.abort(403, 'User does not have write access to targets.')
 
         if not file_inputs:
+            # All containers become matched destinations
+
+            results = {
+                'matched': [{'id': x['_id'], 'type': 'session'} for x in containers]
+            }
 
         else:
             # Look for file matches in each acquisition
@@ -601,18 +605,22 @@ class BatchHandler(base.RequestHandler):
                 'state': 'pending',
                 'origin': self.origin,
                 'proposal': {
-                    'inputs': [c.pop('inputs') for c in matched],
                     'analysis': analysis_data,
                     'tags': tags
                 }
             }
 
+            if not file_inputs:
+                batch_proposal['proposal']['destinations'] = matched
+            else:
+                batch_proposal['proposal']['inputs'] = [c.pop('inputs') for c in matched]
+
             batch.insert(batch_proposal)
             batch_proposal.pop('proposal')
 
         # Either way, return information about the status of the containers
-        batch_proposal['not_matched'] = results['not_matched']
-        batch_proposal['ambiguous'] = results['ambiguous']
+        batch_proposal['not_matched'] = results.get('not_matched', [])
+        batch_proposal['ambiguous'] = results.get('ambiguous', [])
         batch_proposal['matched'] = matched
         batch_proposal['improper_permissions'] = improper_permissions
 

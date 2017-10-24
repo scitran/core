@@ -1,6 +1,7 @@
 import datetime
 
 import bson
+import copy
 
 from . import APIStorageException, APINotFoundException
 from . import containerutil
@@ -186,6 +187,43 @@ class SessionStorage(ContainerStorage):
                 super(SessionStorage, self).update_el(session_id, update)
                 return True
         return False
+
+    def get_all_for_targets(self, target_type, target_ids,
+            user=None, projection=None, include_archived=True):
+        """
+        Given a container type and list of ids, get all sessions that are in those hierarchies.
+
+        For example, if target_type='projects' and target_ids=['id1', 'id2'], this method will return
+        all sessions that are in project id1 and project id2.
+
+        Params `target_ids` and `collection`
+
+        If user is supplied, will only return sessions with user in its perms list.
+        If projection is supplied, it will be applied to the session query.
+        If inlude_archived is false, it will ignore archived sessions.
+        """
+
+        query = {}
+        if not include_archived:
+            query['archived'] = {'$ne': True}
+
+        if containerutil.singularize(target_type) == 'project':
+            query['project'] = {'$in':target_ids}
+
+        elif containerutil.singularize(target_type) == 'session':
+            query['_id'] = {'$in':target_ids}
+
+        elif containerutil.singularize(target_type) == 'acquisition':
+            a_query = copy.deepcopy(query)
+            a_query['session'] = {'$in':target_ids}
+            session_ids = list(set([a['session'] for a in AcquisitionStorage().get_all_el(a_query, user, {'session':1})]))
+            query['_id'] = {'$in':session_ids}
+
+        else:
+            raise ValueError('Cannot get all sessions from target container {}'.format(target_type))
+
+        return self.get_all_el(query, user, projection)
+
 
 
 class AcquisitionStorage(ContainerStorage):
