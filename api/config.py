@@ -8,6 +8,7 @@ import datetime
 import elasticsearch
 
 from . import util
+from .dao.dbutil import try_replace_one
 
 logging.basicConfig(
     format='%(asctime)s %(name)16.16s %(filename)24.24s %(lineno)5d:%(levelname)4.4s %(message)s',
@@ -269,7 +270,16 @@ def get_config():
             __config['created'] = now
         __config['modified'] = now
 
-        db.singletons.replace_one({'_id': 'config'}, __config, upsert=True)
+        # Attempt to set the config object, ignoring duplicate key problems.
+        # This worker might have lost the race - in which case, be grateful about it.
+        #
+        # Ref:
+        # https://github.com/scitran/core/issues/212
+        # https://github.com/scitran/core/issues/844
+        _, success = try_replace_one(db, 'singletons', {'_id': 'config'}, __config, upsert=True)
+        if not success:
+            log.debug('Worker lost config upsert race; ignoring.')
+
         __config_persisted = True
         __last_update = now
     elif now - __last_update > datetime.timedelta(seconds=120):

@@ -81,7 +81,7 @@ class AuthProvider(object):
             'auth_type': self.auth_type,
             'uid': uid
         }
-        dbutil.fault_tolerant_replace_one('refreshtokens', query, refresh_doc, upsert=True)
+        dbutil.fault_tolerant_replace_one(config.db, 'refreshtokens', query, refresh_doc, upsert=True)
 
 class JWTAuthProvider(AuthProvider):
 
