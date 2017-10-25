@@ -139,6 +139,7 @@ expected_mongo_schemas = set([
     'collection.json',
     'container.json',
     'file.json',
+    'filetype.json',
     'group.json',
     'note.json',
     'permission.json',
