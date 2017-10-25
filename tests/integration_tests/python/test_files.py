@@ -21,3 +21,10 @@ def test_qa():
 
 def test_unknown():
     assert files.guess_type_from_filename('example.unknown') == None
+
+def test_insert_delete(as_drone):
+    as_drone.post('/filetype', json={'_id': 'new', 'regex': '.*\.new$'})
+    assert files.guess_type_from_filename('example.new') == 'new'
+    as_drone.post('/filetype', json={'_id': 'new', 'regex': '.*\.new2$'})
+    assert files.guess_type_from_filename('example.new') == None
+    assert files.guess_type_from_filename('example.new2') == 'new'
