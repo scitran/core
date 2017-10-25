@@ -262,7 +262,7 @@ def test_get_all_for_user(as_admin, as_public):
     r = as_admin.get('/users/' + user_id + '/sessions')
     assert r.ok
 
-def test_phi_access(as_user, as_admin, data_builder, log_db):
+def test_phi_access(as_user, as_admin, as_root, data_builder, log_db):
     group = data_builder.create_group()
     project = data_builder.create_project()
     session = data_builder.create_session()
@@ -314,11 +314,11 @@ def test_phi_access(as_user, as_admin, data_builder, log_db):
 
     # Test phi access for individual elements without phi access level but with super_user
     pre_log = log_db.access_log.count({})
-    r = as_admin.get('/sessions/' + session)
+    r = as_root.get('/sessions/' + session)
     assert r.ok
-    assert r.json().get('subject').get('firstname') == None
+    assert r.json().get('subject').get('firstname') == "FirstName"
     assert r.json().get('subject').get('code') == 'Subject_Code'
-    assert pre_log == log_db.access_log.count({})
+    assert pre_log == log_db.access_log.count({}) - 1
 
     r = as_admin.get('/sessions/' + session, params={'phi':True})
     assert r.status_code == 200
