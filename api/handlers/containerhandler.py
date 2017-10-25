@@ -92,11 +92,16 @@ class ContainerHandler(base.RequestHandler):
     @log_access(AccessType.view_container)
     def get(self, cont_name, **kwargs):
         _id = kwargs.get('cid')
-        projection = self.PHI_FIELDS
+        projection = self.PHI_FIELDS.copy()
+        log.debug(self.PHI_FIELDS)
+        log.debug(projection)
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container = self._get_container(_id)
+        log.debug(container)
         if check_phi(self.uid, container) or self.superuser_request:
+            log.debug("PHI")
+            log.debug(self.superuser_request)
             self.phi = True
             projection = None
 
@@ -323,7 +328,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             phi = False
             if projection == None:
-                projection = self.PHI_FIELDS
+                projection = self.PHI_FIELDS.copy()
             else:
                 projection.update(self.PHI_FIELDS)
         # select which permission filter will be applied to the list of results.
@@ -403,7 +408,7 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('phi'):
             phi = True
         else:
-            projection = self.PHI_FIELDS
+            projection = self.PHI_FIELDS.copy()
             
         # select which permission filter will be applied to the list of results.
         if self.superuser_request or self.user_is_admin:

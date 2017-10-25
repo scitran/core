@@ -114,7 +114,7 @@ def test_collections(data_builder, as_admin, as_user):
     r = as_admin.get('/acquisitions/' + acquisition)
     assert collection not in r.json()['collections']
 
-def test_collections_phi(data_builder, as_admin, as_user, log_db, file_form):
+def test_collections_phi(data_builder, as_admin, as_user, as_root, log_db, file_form):
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
 
@@ -167,9 +167,34 @@ def test_collections_phi(data_builder, as_admin, as_user, log_db, file_form):
     assert r.ok
     assert r.json().get('files',[{}])[0].get('info').get('a') == "b"
     assert pre_log == log_db.access_log.count({}) - 1
+
+    # Test phi access without phi access 
+    r = as_admin.put("/collections/" + collection + "/permissions/admin@user.com", json={"phi-access":False})
+    assert r.ok
+    r = as_admin.get("/collections/" + collection + "/permissions/admin@user.com")
+    assert r.ok
+    assert r.json().get("phi-access") == False
+
+    pre_log = log_db.access_log.count({})
+    r = as_admin.get('/collections', params={"phi":False})
+    assert r.ok
+    for collection_ in r.json():
+        assert collection_.get('files',[{}])[0].get('info') == None
+    assert pre_log == log_db.access_log.count({})
+    r = as_admin.get('/collections', params={'phi':True})
+    assert r.status_code == 403
+
+    # Test phi access for individual elements without phi access level
+    pre_log = log_db.access_log.count({})
+    r = as_admin.get('/collections/' + collection)
+    assert r.ok
+    assert r.json().get('files',[{}])[0].get('info') == None
+    assert pre_log == log_db.access_log.count({})
     pre_log = log_db.access_log.count({})
 
-    r = as_admin.get('/collections/' + collection, params={'phi':True})
+    # Test phi access for individual elements without phi access level but with root
+    r = as_root.get('/collections/' + collection)
     assert r.ok
     assert r.json().get('files',[{}])[0].get('info').get('a') == "b"
     assert pre_log == log_db.access_log.count({}) - 1
+

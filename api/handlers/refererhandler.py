@@ -136,7 +136,7 @@ class AnalysesHandler(RefererHandler):
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
         parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
-        projection = self.PHI_FIELDS
+        projection = self.PHI_FIELDS.copy()
         if check_phi(self.uid, parent)or self.superuser_request:
             self.phi = True
             projection = None
