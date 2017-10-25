@@ -9,7 +9,7 @@ import datetime
 
 from .. import config
 from .jobs import Job
-from .gears import get_gear, validate_gear_config
+from .gears import get_gear, validate_gear_config, fill_gear_default_values
 from ..validators import InputValidationException
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 
@@ -156,7 +156,7 @@ class Queue(object):
         if gear.get('gear', {}).get('custom', {}).get('flywheel', {}).get('invalid', False):
             raise InputValidationException('Gear marked as invalid, will not run!')
 
-        config_ = job_map.get('config', {})
+        config_ = fill_gear_default_values(gear, job_map.get('config', {}))
         validate_gear_config(gear, config_)
 
         # Translate maps to FileReferences
