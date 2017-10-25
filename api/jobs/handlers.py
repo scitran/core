@@ -16,8 +16,9 @@ from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
 from .. import config
 from . import batch
-
 from ..auth.apikeys import JobApiKey
+
+from .gears import check_for_gear_insertion
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container
 from .jobs import Job, Logs

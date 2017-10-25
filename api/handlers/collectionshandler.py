@@ -32,6 +32,7 @@ class CollectionsHandler(ContainerHandler):
         self.storage = self.container_handler_configurations['collections']['storage']
 
     def get(self, **kwargs):
+        log.debug(kwargs)
         return super(CollectionsHandler, self).get(cont_name='collections', **kwargs)
 
     def post(self):

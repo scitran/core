@@ -326,7 +326,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             phi = False
             if projection == None:
-                projection = self._get_phi_fields(cont_name, "site")
+                projection = self.PHI_FIELDS
             else:
                 projection.update(self.PHI_FIELDS)
         # select which permission filter will be applied to the list of results.
@@ -615,22 +615,26 @@ class ContainerHandler(base.RequestHandler):
             return _id
         elif cont_name == "sessions":
             return self._get_container(_id, projection={'project':1}).get('project')
-        else:
+        elif cont_name == "acquisitions":
             return containerstorage.SessionStorage().get_container(self._get_container(_id,projection={'session':1}).get('session'), projection={'project':1}).get('project')
+        elif cont_name == "collections":
+            return "site"
+        else:
+            self.abort(401, "{} are not a container".format(cont_name))
 
     def _get_phi_fields(self, cont_name, _id):
         project_storage = containerstorage.ProjectStorage()
-        if self.public_request:
-            self.abort(403, "login please")
-        if _id == "site":
+        project_id = self._get_project_id(cont_name, _id)
+        if _id == "site" or project_id == "site":
             site_phi = project_storage.get_phi_fields("site")
             phi_fields = list(set(site_phi.get("fields",[])))
         else:
-            project_id = self._get_project_id(cont_name, _id)
             project_phi = project_storage.get_phi_fields(project_id)
             site_phi = project_storage.get_phi_fields("site")
             phi_fields = list(set(site_phi.get("fields",[]) + project_phi.get("fields",[])))
         projection = {x:0 for x in phi_fields}
+        if len(projection) == 0:
+            projection = None
         log.debug(projection)
         return projection
 

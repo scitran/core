@@ -71,7 +71,7 @@ class ProjectSettings(base.RequestHandler):
         result = self.storage.add_phi_fields(cid, self.request.json_body)
         log.debug(result)
         if result['nModified'] == 1 or result.get('upserted'):
-            return {"modified": result['nModified']}
+            return {"modified": result['nModified'], "upserted": result.get('upserted')}
         else:
             self.abort(404, "Unable to update phi fields for project_id:{}".format(cid))
 
