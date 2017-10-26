@@ -254,7 +254,7 @@ def initialize_db():
 
     now = datetime.datetime.utcnow()
     try_update_one(db,
-                   'singletons', {'_id': 'unknown'},
+                   'groups', {'_id': 'unknown'},
                    {'$setOnInsert': {'created': now, 'modified': now, 'label': 'Unknown', 'permissions': []}},
                    upsert=True)
 
