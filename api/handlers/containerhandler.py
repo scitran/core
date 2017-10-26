@@ -276,7 +276,7 @@ class ContainerHandler(base.RequestHandler):
             return should_add
 
         match_ids.unique_job_ids = set()
-        results = filter(lambda x: match_ids(x), results)
+        results = filter(match_ids, results)
 
         # Ensure job uniqueness
         seen_jobs = []
