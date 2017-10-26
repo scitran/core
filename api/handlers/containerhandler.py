@@ -162,10 +162,11 @@ class ContainerHandler(base.RequestHandler):
                 # Join from database if we haven't for this origin before
                 if j_type != 'unknown' and result['join-origin'][j_type].get(j_id, None) is None:
                     # Initial join
-                    join_doc = config.db[j_type + 's'].find_one({'_id': j_id_b})
+                    j_types = containerutil.pluralize(j_type)
+                    join_doc = config.db[j_types].find_one({'_id': j_id_b})
 
                     # Join in gear name on the job doc if requested
-                    if join_gear_name and j_type == 'job':
+                    if join_doc is not None and join_gear_name and j_type == 'job':
 
                         gear_id = join_doc['gear_id']
                         gear_name = None
@@ -266,6 +267,16 @@ class ContainerHandler(base.RequestHandler):
             id_array = [str(c['_id']) for c in analyses]
             cont_array = [containerutil.ContainerReference('analysis', cid) for cid in id_array]
             results += Queue.search(cont_array, states=states, tags=tags)
+
+        # Stateful closure to remove search duplicates
+        # Eventually, this code should not call Queue.search and should instead do its own work.
+        def match_ids(x):
+            should_add = str(x['_id']) in match_ids.unique_job_ids
+            match_ids.unique_job_ids.add(str(x['_id']))
+            return should_add
+
+        match_ids.unique_job_ids = set()
+        results = filter(lambda x: match_ids(x), results)
 
         # Ensure job uniqueness
         seen_jobs = []
