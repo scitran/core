@@ -8,12 +8,15 @@ from ..auth import has_access
 
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
 SINGULAR_TO_PLURAL = {
+    'acquisition': 'acquisitions',
+    'analysis':    'analyses',
+    'collection':  'collections',
+    'device':      'devices',
     'group':       'groups',
+    'job':         'jobs',
     'project':     'projects',
     'session':     'sessions',
-    'acquisition': 'acquisitions',
-    'collection':  'collections',
-    'analysis':    'analyses',
+    'user':        'users',
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
 
