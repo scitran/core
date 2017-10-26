@@ -11,11 +11,12 @@ SINGULAR_TO_PLURAL = {
     'acquisition': 'acquisitions',
     'analysis':    'analyses',
     'collection':  'collections',
-    'device':      'device',
+    'device':      'devices',
     'group':       'groups',
-    'job':         'job',
+    'job':         'jobs',
     'project':     'projects',
     'session':     'sessions',
+    'user':        'users',
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
 
