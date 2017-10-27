@@ -335,6 +335,9 @@ def test_phi_access(as_user, as_admin, as_root, data_builder, log_db):
     r = as_user.get('/sessions/' + session, params={'phi':True})
     assert r.status_code == 200
 
+    r = as_admin.delete('/sessions/' + session)
+    assert r.ok
+
 
 def test_get_container(data_builder, default_payload, file_form, as_drone, as_admin, as_public, api_db):
     project = data_builder.create_project()

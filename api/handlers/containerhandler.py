@@ -123,7 +123,7 @@ class ContainerHandler(base.RequestHandler):
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
 
         inflate_job_info = cont_name == 'sessions'
-        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info, self.PHI_FIELDS)
+        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info, self.PHI_FIELDS.copy())
         return self.handle_origin(result)
 
     def handle_origin(self, result):
