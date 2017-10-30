@@ -2,6 +2,7 @@ import bson
 import datetime
 
 from .. import config
+from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok, has_access
 from ..dao import APIPermissionException, APINotFoundException
@@ -13,6 +14,21 @@ from ..web import base
 
 
 log = config.log
+
+######## I don't think this is the right spot but util methods for phi access
+
+
+def phi_payload_decorator(handler_method):
+    def phi_payload_check(self, *args, **kwargs):
+        payload = util.mongo_dict(self.request.json_body)
+        self.config = self.container_handler_configurations[kwargs['cont_name']]
+        self.storage = self.config['storage']
+        phi_fields = self._get_phi_fields(kwargs['cont_name'], kwargs['cid'])
+        if any([True for x in payload.keys() if x in phi_fields.keys()]):
+            raise APIPermissionException("User not allowed to write to phi fields")
+        else:
+            return handler_method(self, *args, **kwargs)
+    return phi_payload_check
 
 class ProjectSettings(base.RequestHandler):
 
