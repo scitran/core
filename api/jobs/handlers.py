@@ -11,7 +11,7 @@ from urlparse import urlparse
 from . import batch
 from .. import config
 from .. import upload
-from .. import util
+from .. import files
 from ..auth import require_drone, require_login, require_admin, has_access
 from ..auth.apikeys import JobApiKey
 from ..dao import hierarchy
@@ -89,10 +89,10 @@ class GearHandler(base.RequestHandler):
         """Download gear tarball file"""
         dl_id = kwargs.pop('cid')
         gear = get_gear(dl_id)
-        hash_ = gear['exchange']['rootfs-hash']
-        filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash('v0-' + hash_.replace(':', '-')))
+        file_id = gear['exchange']['rootfs-id']
+        file_path = files.get_file_abs_path(file_id)
 
-        stream = open(filepath, 'rb')
+        stream = open(file_path, 'rb')
         set_for_download(self.response, stream=stream, filename='gear.tar')
 
     @require_admin
