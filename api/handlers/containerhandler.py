@@ -15,7 +15,7 @@ from ..types import Origin
 from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
-from .projectsettings import phi_payload_decorator
+from .projectsettings import phi_payload
 
 log = config.log
 
@@ -95,7 +95,7 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.get('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        projection = self._get_phi_fields(cont_name, _id)
+        projection = self.get_phi_fields(cont_name, _id)
         container = self._get_container(_id)
         log.debug(container)
         if check_phi(self.uid, container) or self.superuser_request:
@@ -432,6 +432,7 @@ class ContainerHandler(base.RequestHandler):
         self._filter_all_permissions(results, uid)
         return results
 
+    @phi_payload(method="POST")
     def post(self, cont_name):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
@@ -443,12 +444,6 @@ class ContainerHandler(base.RequestHandler):
         # Load the parent container in which the new container will be created
         # to check permissions.
         parent_container, parent_id_property = self._get_parent_container(payload)
-        if cont_name != "projects":
-            payload_check = util.mongo_dict(payload)
-                    
-            phi_fields = self._get_phi_fields(containerutil.pluralize(parent_id_property), payload[parent_id_property])
-            if any([True for x in payload_check.keys() if x in phi_fields.keys()]):
-                self.abort(400, "User not allowed to write to phi fields")
         # Always add the id of the parent to the container
         payload[parent_id_property] = parent_container['_id']
         # If the new container is a session add the group of the parent project in the payload
@@ -477,7 +472,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not added in container {}'.format(self.storage.cont_name))
 
-    @phi_payload_decorator
+    @phi_payload(method="PUT")
     @validators.verify_payload_exists
     def put(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
@@ -633,7 +628,7 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(401, "{} are not a container".format(cont_name))
 
-    def _get_phi_fields(self, cont_name, _id):
+    def get_phi_fields(self, cont_name, _id):
         project_storage = containerstorage.ProjectStorage()
         project_id = self._get_project_id(cont_name, _id)
         log.debug(project_id)

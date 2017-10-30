@@ -4,9 +4,10 @@ import datetime
 from .. import config
 from .. import util
 from .. import validators
-from ..auth import containerauth, always_ok, has_access
-from ..dao import APIPermissionException, APINotFoundException
-from ..dao.containerstorage import ProjectStorage
+from ..auth import containerauth, always_ok, has_access, check_phi
+from ..dao import APIPermissionException, APINotFoundException, APIValidationException, containerstorage
+from ..dao.base import PARENT_MAP
+from ..dao.containerutil import singularize
 from ..jobs.gears import get_gear_by_name
 from ..validators import validate_data, verify_payload_exists
 from ..web import base
@@ -16,25 +17,105 @@ from ..web import base
 log = config.log
 
 ######## I don't think this is the right spot but util methods for phi access
+CONT_STORAGE = {
+    "projects": containerstorage.ProjectStorage(),
+    "sessions": containerstorage.SessionStorage(),
+    "acquisitions": containerstorage.AcquisitionStorage(),
+    "analyses": containerstorage.AnalysisStorage(),
+    "collections": containerstorage.CollectionStorage()
+}
+
+def get_project_id(cont_name, _id):
+    if cont_name == "projects":
+        return _id
+    elif cont_name == "sessions":
+        log.debug(_id)
+        log.debug(cont_name)
+        session = get_container(_id, cont_name, projection={'project':1})
+        log.debug(session)
+        return session.get('project')
+    elif cont_name == "acquisitions":
+        return containerstorage.SessionStorage().get_container(get_container(_id, cont_name, projection={'session':1}).get('session'), projection={'project':1}).get('project')
+    elif cont_name == "collections":
+        return "site"
+    else:
+        raise APINotFoundException("{} are not a container".format(cont_name))
+
+def get_phi_fields(cont_name, _id):
+    project_storage = containerstorage.ProjectStorage()
+    project_id = get_project_id(cont_name, _id)
+    log.debug(project_id)
+    if _id == "site" or project_id == "site":
+        site_phi = project_storage.get_phi_fields("site")
+        phi_fields = list(set(site_phi.get("fields",[])))
+    else:
+        project_phi = project_storage.get_phi_fields(project_id)
+        site_phi = project_storage.get_phi_fields("site")
+        phi_fields = list(set(site_phi.get("fields",[]) + project_phi.get("fields",[])))
+    projection = {x:0 for x in phi_fields}
+    if len(projection) == 0:
+        projection = None
+    log.debug(projection)
+    return projection
+
+def get_container(_id, cont_name, projection=None, get_children=False):
+    container = CONT_STORAGE[cont_name].get_container(_id, projection=projection, get_children=get_children)
+    if container is not None:
+        return container
+    else:
+        raise APINotFoundException(404, 'Element {} not found in container {}'.format(_id, cont_name))
 
 
-def phi_payload_decorator(handler_method):
-    def phi_payload_check(self, *args, **kwargs):
-        payload = util.mongo_dict(self.request.json_body)
-        self.config = self.container_handler_configurations[kwargs['cont_name']]
-        self.storage = self.config['storage']
-        phi_fields = self._get_phi_fields(kwargs['cont_name'], kwargs['cid'])
-        if any([True for x in payload.keys() if x in phi_fields.keys()]):
-            raise APIPermissionException("User not allowed to write to phi fields")
-        else:
+def phi_payload(method=None):
+    def phi_payload_decorator(handler_method):
+        def phi_payload_check(self, *args, **kwargs):
+            log.debug(PARENT_MAP)
+            # Check payload of container POST and PUT methods
+            if method in ["POST", "PUT"]:
+                # No Phi checks for making a project
+                if not (method == "POST" and kwargs['cont_name'] == "projects"):
+                    payload = util.mongo_dict(self.request.json_body)
+                    log.debug(payload)
+                    self.config = self.container_handler_configurations[kwargs['cont_name']]
+                    self.storage = self.config['storage']
+                    cid = kwargs.get('cid')
+                    cont_name = kwargs.get('cont_name')
+                    # Check the using the parent of the container to be created
+                    if method == "POST":
+                        cont_name = PARENT_MAP[kwargs['cont_name']]
+                        cid = payload[singularize(cont_name)]
+                        log.debug("POSTING child of {}".format(cont_name))
+                    if not cid or not cont_name:
+                        raise APIValidationException("Request body malformed")
+                    phi_fields = get_phi_fields(cont_name, cid)
+                    log.debug("POSTING2 child of {}".format(cont_name))
+
+                    # If the request is not a superuser/has phi and one of fields in the payload is considered phi by the project the container is in, Raise a permission exception
+                    if not (self.superuser_request or check_phi(self.uid, get_container(cid, cont_name))) and phi_fields and any([True for x in payload if x.startswith(tuple(phi_fields.keys()))]):
+                        raise APIPermissionException("User not allowed to write to phi fields")
+            # For the list handler just check if the list is considered phi
+            elif method == "List":
+                log.debug(args)
+                log.debug(kwargs)
+                if args:
+                    cont_name = args[0]
+                    list_name = args[1]
+                else:
+                    cont_name = kwargs['cont_name']
+                    list_name = kwargs['list_name']
+                if not (cont_name == 'groups' or self.superuser_request or check_phi(self.uid, get_container(kwargs['cid'], cont_name))):
+                    phi_fields = get_phi_fields(cont_name, kwargs['cid'])
+                    if phi_fields and list_name in phi_fields:
+                        raise APIPermissionException("User not allowed to write to phi fields")
             return handler_method(self, *args, **kwargs)
-    return phi_payload_check
+        return phi_payload_check
+    return phi_payload_decorator
 
 class ProjectSettings(base.RequestHandler):
 
     def __init__(self, request=None, response=None):
         super(ProjectSettings, self).__init__(request, response)
-        self.storage = ProjectStorage()
+        self.storage = containerstorage.ProjectStorage()
 
     def set_project_template(self, **kwargs):
         project_id = kwargs.pop('cid')
@@ -113,7 +194,7 @@ class RulesHandler(base.RequestHandler):
                 raise APIPermissionException('Viewing site-level rules requires login.')
             projection = {'project_id': 0}
         else:
-            project = ProjectStorage().get_container(cid, projection={'permissions': 1})
+            project = containerstorage.ProjectStorage().get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'ro'):
                 raise APIPermissionException('User does not have access to project {} rules'.format(cid))
 
@@ -128,7 +209,7 @@ class RulesHandler(base.RequestHandler):
             if not self.user_is_admin:
                 raise APIPermissionException('Adding site-level rules can only be done by a site admin.')
         else:
-            project = ProjectStorage().get_container(cid, projection={'permissions': 1})
+            project = containerstorage.ProjectStorage().get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('Adding rules to a project can only be done by a project admin.')
 
@@ -157,7 +238,7 @@ class RuleHandler(base.RequestHandler):
                 raise APIPermissionException('Viewing site-level rules requires login.')
             projection = {'project_id': 0}
         else:
-            project = ProjectStorage().get_container(cid, projection={'permissions': 1})
+            project = containerstorage.ProjectStorage().get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'ro'):
                 raise APIPermissionException('User does not have access to project {} rules'.format(cid))
 
@@ -177,7 +258,7 @@ class RuleHandler(base.RequestHandler):
             if not self.user_is_admin:
                 raise APIPermissionException('Modifying site-level rules can only be done by a site admin.')
         else:
-            project = ProjectStorage().get_container(cid, projection={'permissions': 1})
+            project = containerstorage.ProjectStorage().get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('Modifying project rules can only be done by a project admin.')
 
@@ -208,7 +289,7 @@ class RuleHandler(base.RequestHandler):
             if not self.user_is_admin:
                 raise APIPermissionException('Modifying site-level rules can only be done by a site admin.')
         else:
-            project = ProjectStorage().get_container(cid, projection={'permissions': 1})
+            project = containerstorage.ProjectStorage().get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('Modifying project rules can only be done by a project admin.')
 
