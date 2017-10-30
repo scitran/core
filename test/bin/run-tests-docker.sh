@@ -1,85 +1,81 @@
 #!/usr/bin/env bash
-set -e
-
+set -eu
 unset CDPATH
 cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
 
-IMAGE_NAME_SCITRAN_CORE="scitran-core:run-tests"
-IMAGE_NAME_MONGO=mongo
-CONTAINER_NAME_MONGO=scitran-core-test-mongo
-CONTAINER_NAME_SCITRAN_CORE=scitran-core-test-uwsgi
 
+function usage() {
+cat >&2 <<EOF
+Build scitran-core image and run tests in a docker container
 
-USAGE="
-    Run scitran-core tests using docker
-\n
-    Usage:\n
-    \n
-    --help: print help and exit\n
-    -b, --build-image: Rebuild scitran-core base image\n
-    -L, --no-lint: Skip linter\n
+Usage:
+    $0 [OPTION...] [-- TEST_ARGS...]
 
-"
+Options:
+    -B, --no-build      Skip docker build
+    -h, --help          Print this help and exit
+    -- TEST_ARGS        Arguments passed to test/bin/run-tests-ubuntu.sh
 
-SCITRAN_RUN_LINT="true"
-BUILD_IMAGE="false"
-
-while [ "$#" -gt 0 ]; do
-    key="$1"
-    case $key in
-        --help)
-        echo -e $USAGE >&2
-        exit 1
-        ;;
-        -b|--build-image)
-        BUILD_IMAGE="true"
-        ;;
-        -L|--no-lint)
-        SCITRAN_RUN_LINT="false"
-        ;;
-        *)
-        echo "Invalid option: $key" >&2
-        echo -e $USAGE >&2
-        exit 1
-        ;;
-    esac
-    shift
-done
-
-
-clean_up () {
-  # Copy coverage file to host for possible further reporting
-  docker cp "$CONTAINER_NAME_SCITRAN_CORE":/var/scitran/code/api/.coverage .coverage || true
-  # Stop and remove containers
-  docker rm -v -f "$CONTAINER_NAME_MONGO"
-  docker rm -v -f "$CONTAINER_NAME_SCITRAN_CORE"
+EOF
 }
+
+
+function main() {
+    local DOCKER_BUILD=true
+    local TEST_ARGS=
+
+    while [[ "$#" > 0 ]]; do
+        case "$1" in
+            -B|--no-build)    DOCKER_BUILD=false;              ;;
+            -h|--help)        usage;                    exit 0 ;;
+            --)               TEST_ARGS="${@:2}";       break  ;;
+            *) echo "Invalid argument: $1" >&2; usage;  exit 1 ;;
+        esac
+        shift
+    done
+
+    if ${DOCKER_BUILD}; then
+        echo "Building scitran-core:run-tests ..."
+        docker build -t scitran-core:run-tests .
+    fi
+
+    docker network create scitran-core-test-network
+
+    # Launch Mongo instance
+    docker run -d \
+        --name scitran-core-test-mongo \
+        --network scitran-core-test-network \
+        mongo
+
+    # Execute tests
+    docker run -it \
+        --name scitran-core-test-uwsgi \
+        --network scitran-core-test-network \
+        -e SCITRAN_PERSISTENT_DB_URI=mongodb://scitran-core-test-mongo:27017/scitran \
+        -e SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://scitran-core-test-mongo:27017/logs \
+        -v $(pwd):/var/scitran/code/api \
+        --entrypoint bash \
+        scitran-core:run-tests \
+        /var/scitran/code/api/test/bin/run-tests-ubuntu.sh \
+        $TEST_ARGS
+}
+
+
+function clean_up() {
+    export TEST_RESULT_CODE=$?
+    set +e
+
+    # Copy coverage file to host for possible further reporting
+    docker cp scitran-core-test-uwsgi:/var/scitran/code/api/.coverage .coverage
+
+    # Spin down dependencies
+    docker rm -f -v scitran-core-test-uwsgi
+    docker rm -f -v scitran-core-test-mongo
+    docker network rm scitran-core-test-network
+    exit $TEST_RESULT_CODE
+}
+
 trap clean_up EXIT
 
-if [[ $( docker images "$IMAGE_NAME_SCITRAN_CORE" | tail -n +2 ) == "" ]]; then
-  echo "$IMAGE_NAME_SCITRAN_CORE image not found.  Building"
-  BUILD_IMAGE="true"
-fi
 
-if [ "$BUILD_IMAGE" == "true" ]; then
-  docker build -t "$IMAGE_NAME_SCITRAN_CORE" .
-fi
-
-# Sub-shell the test steps to make the functionality of the trap execution explicit
-(
-# Launch Mongo isinstance
-docker run --name "$CONTAINER_NAME_MONGO" -d "$IMAGE_NAME_MONGO"
-
-# Execute tests
-docker run \
-  -it \
-  --name "$CONTAINER_NAME_SCITRAN_CORE"\
-  -e "SCITRAN_PERSISTENT_DB_URI=mongodb://$CONTAINER_NAME_MONGO:27017/scitran" \
-  -e "SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://$CONTAINER_NAME_MONGO:27017/logs" \
-  -e "SCITRAN_RUN_LINT=$SCITRAN_RUN_LINT" \
-  --link "$CONTAINER_NAME_MONGO" \
-  -v $(pwd):/var/scitran/code/api \
-  --entrypoint bash \
-  "$IMAGE_NAME_SCITRAN_CORE" \
-    /var/scitran/code/api/test/bin/run-tests-ubuntu.sh
-)
+main "$@"

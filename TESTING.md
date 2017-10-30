@@ -1,20 +1,30 @@
 ## Run the tests
-### OSX
-```
-./test/bin/run-tests-osx.sh
-```
 
 ### Ubuntu
+Run automated tests:
 ```
 # Follow installation instructions in README first
 . /runtime/bin/activate # Or wherever your scitran virtualenv is
 ./test/bin/setup-integration-tests-ubuntu.sh
 ./test/bin/run-tests-ubuntu.sh
 ```
+* To skip linting, use `--no-lint` (`-L`)
+* To skip unit tests, use `--no-unit` (`-U`)
+* To skip integration tests, use `--no-integ` (`-I`)
+* To pass any arguments to `py.test`, use `-- PYTEST_ARGS`
 
 ### Docker
+Build scitran-core image and run automated tests in a docker container:
 ```
 ./test/bin/run-tests-docker.sh
+```
+* To skip building the image, use `--no-build` (`-B`)
+* To pass any arguments to `run-tests-ubuntu.sh`, use `-- TEST_ARGS`
+
+#### Example
+Without rebuilding the image, run only unit tests matching `foo`, use the highest verbosity level for test output and jump into a python debugger session in case an assertion fails:
+```
+./test/bin/run-tests-docker.sh -B -- -L -I -- -k foo -vvv --pdb
 ```
 
 ### Tools
