@@ -367,11 +367,6 @@ class AnalysesHandler(RefererHandler):
             self.abort(400, 'ticket not for this resource')
         return ticket
 
-    def _input_or_output(self, file_):
-        if file_.get('input'):
-            return 'input'
-        else:
-            return 'output'
 
     def _prepare_batch(self, fileinfo, analysis):
         ## duplicated code from download.py
@@ -383,7 +378,7 @@ class AnalysesHandler(RefererHandler):
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
                 targets.append((filepath,
-                                util.sanitize_string_to_filename(analysis['label']) + '/' + self._input_or_output(f) + '/'+ f['name'],
+                                util.sanitize_string_to_filename(analysis['label']) + '/' + 'input' if f.get('input') else 'output' + '/'+ f['name'],
                                 'analyses', analysis['_id'], f['size']))
                 total_size += f['size']
                 total_cnt += 1

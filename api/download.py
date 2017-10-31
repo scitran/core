@@ -33,12 +33,6 @@ def _filter_check(property_filter, property_values):
 
 class Download(base.RequestHandler):
 
-    def _input_or_output(self, file_):
-        if file_.get('input'):
-            return 'input'
-        else:
-            return 'output'
-
     def _append_targets(self, targets, cont_name, container, prefix, total_size, total_cnt, optional, data_path, filters):
         for f in container.get('files', []):
             if filters:
@@ -57,7 +51,7 @@ class Download(base.RequestHandler):
                 filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
                 if os.path.exists(filepath): # silently skip missing files
                     if cont_name == 'analyses':
-                        targets.append((filepath, prefix + '/' + self._input_or_output(f) + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                        targets.append((filepath, prefix + '/' + 'input' if f.get('input') else 'output' + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                     else:
                         targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                     total_size += f['size']
@@ -344,7 +338,7 @@ class Download(base.RequestHandler):
             level = node['level']
 
             containers = {'projects':0, 'sessions':0, 'acquisitions':0, 'analyses':0}
-            
+
             if level == 'project':
                 # Grab sessions and their ids
                 sessions = config.db.sessions.find({'project': node['_id']}, {'_id': 1})
@@ -383,7 +377,7 @@ class Download(base.RequestHandler):
                 containers['analyses'] = 1
 
             else:
-                self.abort(400, "{} not a recognized level".format(level)) 
+                self.abort(400, "{} not a recognized level".format(level))
 
             containers = [cont for cont in containers if containers[cont] == 1]
 
@@ -395,7 +389,7 @@ class Download(base.RequestHandler):
                 {'$project': {'_id': '$_id', 'type': '$files.type','mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
                 {'$group': {
                     '_id': '$type',
-                    'count': {'$sum' : 1}, 
+                    'count': {'$sum' : 1},
                     'mb_total': {'$sum':'$mbs'}
                 }}
             ]
