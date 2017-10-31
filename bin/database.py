@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 37 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 38 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1220,29 +1220,39 @@ def upgrade_to_37():
         process_cursor(cursor, upgrade_to_32_closure, context = coll)
 
 
-def upgrade_to_37_closure(user):
+def upgrade_to_38_closure(user):
+
+    # if user has existing API key in correct db location, remove API key stored on user and move on
+    # otherwise, migrate api key to new location
 
     api_key = user['api_key']
-    new_api_key_doc = {
-        '_id': api_key['key'],
-        'created': api_key['created'],
-        'last_used': api_key['last_used'],
-        'uid': user['_id'],
-        'type': 'user'
-    }
+    doc = config.db.apikeys.find_one({'uid': user['_id'], 'type': 'user'})
 
-    config.db.apikeys.insert(new_api_key_doc)
+    if not doc:
+
+        # migrate existing API key
+
+        new_api_key_doc = {
+            '_id': api_key['key'],
+            'created': api_key['created'],
+            'last_used': api_key['last_used'],
+            'uid': user['_id'],
+            'type': 'user'
+        }
+
+        config.db.apikeys.insert(new_api_key_doc)
+
     config.db.users.update_one({'_id': user['_id']}, {'$unset': {'api_key': 0}})
 
     return True
 
 
-def upgrade_to_37():
+def upgrade_to_38():
     """
     Move existing user api keys to new 'apikeys' collection
     """
     cursor = config.db.users.find({'api_key': {'$exists': True }})
-    process_cursor(cursor, upgrade_to_37_closure)
+    process_cursor(cursor, upgrade_to_38_closure)
 
 
 
