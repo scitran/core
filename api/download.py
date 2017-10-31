@@ -1,5 +1,4 @@
 import bson
-import json
 import pytz
 import os.path
 import tarfile
