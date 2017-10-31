@@ -131,7 +131,6 @@ class RequestHandler(webapp2.RequestHandler):
         cached_token = config.db.authtokens.find_one({'_id': session_token})
 
         if cached_token:
-            self.request.logger.debug('looked up cached token in %dms', ((datetime.datetime.utcnow() - timestamp).total_seconds() * 1000.))
 
             # Check if site has inactivity timeout
             try:

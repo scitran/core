@@ -54,7 +54,6 @@ def decorator_from_schema_path(schema_url):
     def g(exec_op):
         def validator(method, **kwargs):
             payload = kwargs['payload']
-            log.debug(payload)
             if method == 'PUT' and schema.get('required'):
                 _schema = copy.copy(schema)
                 _schema.pop('required')
@@ -105,7 +104,6 @@ def key_check(schema_url):
     if schema_url is None:
         return no_op
     schema, _ = _resolve_schema(schema_url)
-    log.debug(schema)
     if schema.get('key_fields') is None:
         return no_op
     def g(exec_op):

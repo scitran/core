@@ -233,22 +233,17 @@ class StringListStorage(ListStorage):
         return super(StringListStorage, self).exec_op(action, _id, query_params, payload, exclude_params)
 
     def _create_el(self, _id, payload, exclude_params):
-        log.debug('payload {}'.format(payload))
         query = {'_id': _id, self.list_name: {'$ne': payload}}
         update = {
             '$push': {self.list_name: payload},
             '$set': {'modified': datetime.datetime.utcnow()}
         }
-        log.debug('query {}'.format(query))
-        log.debug('update {}'.format(update))
         result = self.dbc.update_one(query, update)
         if result.matched_count < 1:
             raise APIConflictException('Item already exists in list.')
         return result
 
     def _update_el(self, _id, query_params, payload, exclude_params):
-        log.debug('query_params {}'.format(payload))
-        log.debug('payload {}'.format(query_params))
         query = {
             '_id': _id,
             '$and':[
@@ -260,16 +255,11 @@ class StringListStorage(ListStorage):
             '$set': {self.list_name + '.$': payload,
             'modified': datetime.datetime.utcnow()}
         }
-        log.debug('query {}'.format(query))
-        log.debug('update {}'.format(update))
         return self.dbc.update_one(query, update)
 
     def _get_el(self, _id, query_params):
-        log.debug('query_params {}'.format(query_params))
         query = {'_id': _id, self.list_name: query_params}
         projection = {self.list_name + '.$': 1}
-        log.debug('query {}'.format(query))
-        log.debug('projection {}'.format(projection))
         result = self.dbc.find_one(query, projection)
         if result and result.get(self.list_name):
             return result.get(self.list_name)[0]

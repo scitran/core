@@ -29,7 +29,6 @@ class GroupStorage(ContainerStorage):
         return cont
 
     def create_el(self, payload):
-        log.debug(payload)
         permissions = payload.pop('permissions')
         return self.dbc.update_one(
             {'_id': payload['_id']},

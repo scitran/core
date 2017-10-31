@@ -95,7 +95,6 @@ def suggest_for_files(gear, files):
         schemas[x] = Draft4Validator(schema)
 
     suggested_files = {}
-    log.debug(schemas)
     for input_name, schema in schemas.iteritems():
         suggested_files[input_name] = []
         for f in files:
