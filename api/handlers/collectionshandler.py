@@ -37,7 +37,6 @@ class CollectionsHandler(ContainerHandler):
         mongo_validator, payload_validator = self._get_validators()
 
         payload = self.request.json_body
-        log.debug(payload)
         payload_validator(payload, 'POST')
         payload['permissions'] = [{
             '_id': self.uid,
@@ -92,7 +91,6 @@ class CollectionsHandler(ContainerHandler):
             elif item['level'] == 'acquisition':
                 acq_ids += [item_id]
         operator = '$addToSet' if contents['operation'] == 'add' else '$pull'
-        log.info(' '.join(['collection', _id, operator, str(acq_ids)]))
         if not bson.ObjectId.is_valid(_id):
             self.abort(400, 'not a valid object id')
         config.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': bson.ObjectId(_id)}})
@@ -147,8 +145,6 @@ class CollectionsHandler(ContainerHandler):
         if not self.is_true('archived'):
             query['archived'] = {'$ne': True}
         projection = self.container_handler_configurations['sessions']['list_projection']
-        log.debug(query)
-        log.debug(projection)
         sessions = list(config.db.sessions.find(query, projection))
         self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):

@@ -531,7 +531,6 @@ class DataExplorerHandler(base.RequestHandler):
 
         nodes = []
         results = helpers.scan(client=config.es, query={'query': query}, scroll='5m', size=1000, index='data_explorer', doc_type='flywheel', _source=[return_type+'._id'])
-        log.debug(results)
         for result in results:
             nodes.append({'level': return_type, '_id': result['_source'][return_type]['_id']})
         return {'nodes':nodes}

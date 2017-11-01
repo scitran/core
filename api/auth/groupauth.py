@@ -43,8 +43,7 @@ def list_permission_checker(handler, uid=None):
                         query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'access': 'admin'}}
                     else:
                         query['permissions._id'] = handler.uid
-            log.debug(query)
-            log.debug(projection)
+
             return exec_op(method, query=query, projection=projection)
         return f
     return g

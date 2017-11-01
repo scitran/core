@@ -124,7 +124,6 @@ class ContainerStorage(object):
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
     def create_el(self, payload):
-        log.debug(payload)
         payload = self._to_mongo(payload)
         try:
             result = self.dbc.insert_one(payload)
@@ -187,8 +186,6 @@ class ContainerStorage(object):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
             else:
                 query['permissions'] = {'$elemMatch': user}
-        log.debug(query)
-        log.debug(projection)
 
         # if projection includes files.info, add new key `info_exists`
         if projection and 'files.info' in projection:

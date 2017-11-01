@@ -1,5 +1,4 @@
 import bson
-import json
 import pytz
 import os.path
 import tarfile
@@ -216,7 +215,6 @@ class Download(base.RequestHandler):
                 total_size, file_cnt = self._append_targets(targets, 'analyses', analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
         if len(targets) > 0:
-            log.debug(json.dumps(targets, sort_keys=True, indent=4, separators=(',', ': ')))
             if not filename:
                 filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
             ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
@@ -316,8 +314,6 @@ class Download(base.RequestHandler):
                 payload_schema_uri = validators.schema_uri('input', 'download.json')
                 validator = validators.from_schema_path(payload_schema_uri)
                 validator(req_spec, 'POST')
-                log.debug(json.dumps(req_spec, sort_keys=True, indent=4, separators=(',', ': ')))
-
                 return self._preflight_archivestream(req_spec, collection=self.get_param('collection'))
 
     def summary(self):
@@ -335,7 +331,7 @@ class Download(base.RequestHandler):
             level = node['level']
 
             containers = {'projects':0, 'sessions':0, 'acquisitions':0, 'analyses':0}
-            
+
             if level == 'project':
                 # Grab sessions and their ids
                 sessions = config.db.sessions.find({'project': node['_id']}, {'_id': 1})
@@ -374,7 +370,7 @@ class Download(base.RequestHandler):
                 containers['analyses'] = 1
 
             else:
-                self.abort(400, "{} not a recognized level".format(level)) 
+                self.abort(400, "{} not a recognized level".format(level))
 
             containers = [cont for cont in containers if containers[cont] == 1]
 
@@ -386,7 +382,7 @@ class Download(base.RequestHandler):
                 {'$project': {'_id': '$_id', 'type': '$files.type','mbs': {'$divide': ['$files.size', BYTES_IN_MEGABYTE]}}},
                 {'$group': {
                     '_id': '$type',
-                    'count': {'$sum' : 1}, 
+                    'count': {'$sum' : 1},
                     'mb_total': {'$sum':'$mbs'}
                 }}
             ]
