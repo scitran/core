@@ -266,6 +266,8 @@ def test_phi_access(as_user, as_admin, as_root, data_builder, log_db):
     group = data_builder.create_group()
     project = data_builder.create_project()
     session = data_builder.create_session()
+
+    # Set site wide phi fields
     r = as_admin.post('/projects/site/phi', json={'fields': [ 'info', 'subject.firstname', 'subject.lastname', 'subject.sex',
                   'subject.age', 'subject.race', 'subject.ethnicity', 'subject.info', 'tags', 'files.info']})
     r = as_admin.put('/sessions/' + session, json={"subject":{"firstname":"FirstName", "code":"Subject_Code"}}, params={'replace_metadata':True})
@@ -338,6 +340,9 @@ def test_phi_access(as_user, as_admin, as_root, data_builder, log_db):
     assert r.status_code == 200
 
     r = as_admin.delete('/sessions/' + session)
+    assert r.ok
+
+    r = as_admin.put('/projects/site/phi', json={"fields":[]})
     assert r.ok
 
 
