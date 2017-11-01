@@ -51,7 +51,7 @@
                   }
               }
           },
-          "additionalProperties":false
+          "additionalProperties":true
         }
     }
 }

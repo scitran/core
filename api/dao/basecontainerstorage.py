@@ -227,8 +227,6 @@ class ContainerStorage(object):
             if replace_info_with_bool:
                 for f in cont.get('files', []):
                     f['info_exists'] = bool(f.pop('info', False))
-        # if replace_info_with_bool:
-        #     projection['files.info'] = file_info_projection 
         return results
 
     def modify_info(self, _id, payload, modify_subject=False):

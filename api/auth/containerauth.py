@@ -3,6 +3,8 @@ Purpose of this module is to define all the permissions checker decorators for t
 """
 from copy import deepcopy
 from . import _get_access, check_phi, INTEGER_PERMISSIONS
+from .. import config
+log = config.log
 
 
 def default_container(handler, container=None, target_parent_container=None):
@@ -143,6 +145,8 @@ def list_permission_checker(handler):
             if phi:
                 temp_query = deepcopy(query)
                 temp_query['permissions'] = {'$elemMatch': {'_id': handler.uid, 'phi-access': False}}
+                log.debug(temp_query)
+                log.debug(query)
                 not_allowed = exec_op(method, query=temp_query, user=user, public=public, projection=projection)
                 if not_allowed:
                     handler.abort(403, "User does not have PHI access to one or more elements")

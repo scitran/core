@@ -46,7 +46,7 @@
                     }
                 }
             },
-            "additionalProperties": false
+            "additionalProperties": true
         }
     }
 }

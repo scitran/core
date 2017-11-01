@@ -83,7 +83,7 @@
               "size":{"$ref":"#/definitions/size"},
               "info_exists": {"type": "boolean"}
             },
-            "additionalProperties": false,
+            "additionalProperties": true,
             "required":["modified", "size"]
         }
     }
