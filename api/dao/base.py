@@ -155,7 +155,7 @@ class ContainerStorage(object):
         if self.use_object_id:
             try:
                 _id = bson.ObjectId(_id)
-            except bson.InvalidId as e:
+            except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         if recursive and r_payload is not None:
             containerutil.propagate_changes(self.cont_name, _id, {}, {'$set': util.mongo_dict(r_payload)})
@@ -165,7 +165,7 @@ class ContainerStorage(object):
         if self.use_object_id:
             try:
                 _id = bson.ObjectId(_id)
-            except bson.InvalidId as e:
+            except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         return self.dbc.delete_one({'_id':_id})
 
@@ -173,7 +173,7 @@ class ContainerStorage(object):
         if self.use_object_id:
             try:
                 _id = bson.ObjectId(_id)
-            except bson.InvalidId as e:
+            except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
         cont = self._from_mongo(self.dbc.find_one(_id, projection))
         if fill_defaults:
