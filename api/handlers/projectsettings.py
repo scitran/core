@@ -73,19 +73,22 @@ def phi_payload(method=None):
         def phi_payload_check(self, *args, **kwargs):
             log.debug(PARENT_MAP)
             if not self.superuser_request:
+                if method == "Analysis POST":
+                    if not check_phi(self.uid, get_container(kwargs['cid'], kwargs['cont_name'])):
+                        raise APIPermissionException("User cannot POST analyses on {} without PHI access".format(kwargs['cont_name']))
                 # Check payload of container POST and PUT methods
-                if method in ["POST", "PUT"]:
-                    # No Phi checks for making a project
-                    if not (method == "POST" and kwargs['cont_name'] == "projects"):
-                        payload = util.mongo_dict(self.request.json_body)
-                        log.debug(payload)
-                        self.config = self.container_handler_configurations[kwargs['cont_name']]
-                        self.storage = self.config['storage']
-                        cid = kwargs.get('cid')
-                        cont_name = kwargs.get('cont_name')
+                elif method in ["POST", "PUT"]:                    # No Phi checks for making a project
+                    cid = kwargs.get('cid')
+                    cont_name = kwargs.get('cont_name')
+                    if not (method == "POST" and cont_name == "projects"):
+                        if cont_name == "analyses" and self.is_true("job"):
+                            payload = util.mongo_dict(self.request.json_body.get("analysis"))
+                        else:
+                            payload = util.mongo_dict(self.request.json_body)
+                        self.storage = CONT_STORAGE[cont_name]
                         # Check the using the parent of the container to be created
                         if method == "POST":
-                            cont_name = PARENT_MAP[kwargs['cont_name']]
+                            cont_name = PARENT_MAP[cont_name]
                             cid = payload[singularize(cont_name)]
                             log.debug("POSTING child of {}".format(cont_name))
                         if not cid or not cont_name:

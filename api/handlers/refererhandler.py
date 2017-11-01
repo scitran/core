@@ -19,12 +19,12 @@ from .. import validators
 from ..auth import containerauth, always_ok, check_phi
 from ..dao import containerstorage, noop
 from ..dao.basecontainerstorage import ContainerStorage
-from ..dao.containerutil import singularize
+from ..dao.containerutil import pluralize, singularize
 from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
 from .listhandler import FileListHandler
-from .projectsettings import phi_payload, get_phi_fields
+from .projectsettings import get_phi_fields
 
 
 log = config.log
@@ -69,7 +69,7 @@ class AnalysesHandler(RefererHandler):
         super(AnalysesHandler, self).__init__(request, response)
         self.phi = False
 
-    @phi_payload(method="POST")
+    # @phi_payload(method="Analysis POST")
     def post(self, cont_name, cid):
         """
         Default behavior:
@@ -110,7 +110,7 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
-    @phi_payload(method="PUT")
+    # @phi_payload(method="PUT")
     @validators.verify_payload_exists
     def put(self, cont_name, **kwargs):
         cid = kwargs.pop('cid')
@@ -137,7 +137,7 @@ class AnalysesHandler(RefererHandler):
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
         parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
-        projection = get_phi_fields("analyses", _id)
+        projection = get_phi_fields(pluralize(analysis['parent']['type']),analysis['parent']['id'])
         if check_phi(self.uid, parent)or self.superuser_request:
             self.phi = True
             projection = None

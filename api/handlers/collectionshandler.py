@@ -9,6 +9,7 @@ from ..validators import verify_payload_exists
 from ..web.request import AccessType
 
 from .containerhandler import ContainerHandler
+from .projectsettings import get_phi_fields
 
 log = config.log
 
@@ -167,8 +168,7 @@ class CollectionsHandler(ContainerHandler):
             permchecker = containerauth.list_public_request
         else:
             permchecker = containerauth.list_permission_checker(self)
-
-        projection = self.PHI_FIELDS.copy()
+        projection = get_phi_fields("sessions", "site")
         if self.is_true('phi'):
             projection = None
             phi = True
@@ -176,7 +176,6 @@ class CollectionsHandler(ContainerHandler):
             phi = False
 
         sessions = permchecker(containerstorage.SessionStorage().exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
-        log.debug(sessions)
         self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
@@ -211,8 +210,7 @@ class CollectionsHandler(ContainerHandler):
             permchecker = containerauth.list_public_request
         else:
             permchecker = containerauth.list_permission_checker(self)
-
-        projection = self.PHI_FIELDS.copy()
+        projection = get_phi_fields("acquisitions", "site")
         if self.is_true('phi'):
             projection = None
             phi = True
