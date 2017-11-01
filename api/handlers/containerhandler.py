@@ -44,10 +44,6 @@ class ContainerHandler(base.RequestHandler):
         'acquisitions': True
     }
 
-    # Hard-coded PHI fields, will be changed to user set PHI fields
-    PHI_FIELDS = {'info': 0, 'subject.firstname':0, 'subject.lastname': 0, 'subject.sex': 0,
-                  'subject.age': 0, 'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0, 'tags': 0, 'files.info':0}
-
     # This configurations are used by the ContainerHandler class to load the storage,
     # the permissions checker and the json schema validators used to handle a request.
     #
@@ -122,7 +118,7 @@ class ContainerHandler(base.RequestHandler):
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
 
         inflate_job_info = cont_name == 'sessions'
-        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info, self.PHI_FIELDS.copy())
+        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info, projection)
         return self.handle_origin(result)
 
     def handle_origin(self, result):
@@ -327,9 +323,9 @@ class ContainerHandler(base.RequestHandler):
         else:
             phi = False
             if projection == None:
-                projection = self.PHI_FIELDS
+                projection = get_phi_fields(cont_name, "site")
             else:
-                projection.update(self.PHI_FIELDS)
+                projection.update(get_phi_fields(cont_name, "site"))
         # select which permission filter will be applied to the list of results.
         if self.superuser_request:
             permchecker = always_ok

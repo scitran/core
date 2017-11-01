@@ -24,6 +24,7 @@ from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
 from .listhandler import FileListHandler
+from .projectsettings import phi_payload, get_phi_fields
 
 
 log = config.log
@@ -63,13 +64,12 @@ class AnalysesHandler(RefererHandler):
     payload_schema_file = 'analysis.json'
     update_payload_schema_file = 'analysis-update.json'
 
-    # Hard-coded PHI fields, will be changed to user set PHI fields
-    PHI_FIELDS = {'info': 0, 'tags': 0, 'files.info':0}
 
     def __init__(self, request=None, response=None):
         super(AnalysesHandler, self).__init__(request, response)
         self.phi = False
 
+    @phi_payload(method="POST")
     def post(self, cont_name, cid):
         """
         Default behavior:
@@ -110,6 +110,7 @@ class AnalysesHandler(RefererHandler):
         else:
             self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
 
+    @phi_payload(method="PUT")
     @validators.verify_payload_exists
     def put(self, cont_name, **kwargs):
         cid = kwargs.pop('cid')
