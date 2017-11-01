@@ -15,7 +15,7 @@ from ..types import Origin
 from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
-from .projectsettings import phi_payload
+from .projectsettings import phi_payload, get_phi_fields
 
 log = config.log
 
@@ -403,8 +403,7 @@ class ContainerHandler(base.RequestHandler):
         if self.is_true('phi'):
             phi = True
         else:
-            projection = self.PHI_FIELDS.copy()
-
+            projection = get_phi_fields(cont_name, "site")
         # select which permission filter will be applied to the list of results.
         if self.superuser_request or self.user_is_admin:
             permchecker = always_ok

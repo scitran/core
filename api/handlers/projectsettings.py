@@ -26,6 +26,8 @@ CONT_STORAGE = {
 }
 
 def get_project_id(cont_name, _id):
+    if _id == "site":
+        return "site"
     if cont_name == "projects":
         return _id
     elif cont_name == "sessions":
@@ -70,43 +72,44 @@ def phi_payload(method=None):
     def phi_payload_decorator(handler_method):
         def phi_payload_check(self, *args, **kwargs):
             log.debug(PARENT_MAP)
-            # Check payload of container POST and PUT methods
-            if method in ["POST", "PUT"]:
-                # No Phi checks for making a project
-                if not (method == "POST" and kwargs['cont_name'] == "projects"):
-                    payload = util.mongo_dict(self.request.json_body)
-                    log.debug(payload)
-                    self.config = self.container_handler_configurations[kwargs['cont_name']]
-                    self.storage = self.config['storage']
-                    cid = kwargs.get('cid')
-                    cont_name = kwargs.get('cont_name')
-                    # Check the using the parent of the container to be created
-                    if method == "POST":
-                        cont_name = PARENT_MAP[kwargs['cont_name']]
-                        cid = payload[singularize(cont_name)]
-                        log.debug("POSTING child of {}".format(cont_name))
-                    if not cid or not cont_name:
-                        raise APIValidationException("Request body malformed")
-                    phi_fields = get_phi_fields(cont_name, cid)
-                    log.debug("POSTING2 child of {}".format(cont_name))
+            if not self.superuser_request:
+                # Check payload of container POST and PUT methods
+                if method in ["POST", "PUT"]:
+                    # No Phi checks for making a project
+                    if not (method == "POST" and kwargs['cont_name'] == "projects"):
+                        payload = util.mongo_dict(self.request.json_body)
+                        log.debug(payload)
+                        self.config = self.container_handler_configurations[kwargs['cont_name']]
+                        self.storage = self.config['storage']
+                        cid = kwargs.get('cid')
+                        cont_name = kwargs.get('cont_name')
+                        # Check the using the parent of the container to be created
+                        if method == "POST":
+                            cont_name = PARENT_MAP[kwargs['cont_name']]
+                            cid = payload[singularize(cont_name)]
+                            log.debug("POSTING child of {}".format(cont_name))
+                        if not cid or not cont_name:
+                            raise APIValidationException("Request body malformed")
+                        phi_fields = get_phi_fields(cont_name, cid)
+                        log.debug("POSTING2 child of {}".format(cont_name))
 
-                    # If the request is not a superuser/has phi and one of fields in the payload is considered phi by the project the container is in, Raise a permission exception
-                    if not (self.superuser_request or check_phi(self.uid, get_container(cid, cont_name))) and phi_fields and any([True for x in payload if x.startswith(tuple(phi_fields.keys()))]):
-                        raise APIPermissionException("User not allowed to write to phi fields")
-            # For the list handler just check if the list is considered phi
-            elif method == "List":
-                log.debug(args)
-                log.debug(kwargs)
-                if args:
-                    cont_name = args[0]
-                    list_name = args[1]
-                else:
-                    cont_name = kwargs['cont_name']
-                    list_name = kwargs['list_name']
-                if not (cont_name == 'groups' or self.superuser_request or check_phi(self.uid, get_container(kwargs['cid'], cont_name))):
-                    phi_fields = get_phi_fields(cont_name, kwargs['cid'])
-                    if phi_fields and list_name in phi_fields:
-                        raise APIPermissionException("User not allowed to write to phi fields")
+                        # If the request is not a superuser/has phi and one of fields in the payload is considered phi by the project the container is in, Raise a permission exception
+                        if not check_phi(self.uid, get_container(cid, cont_name)) and phi_fields and any([True for x in payload if x.startswith(tuple(phi_fields.keys()))]):
+                            raise APIPermissionException("User not allowed to write to phi fields")
+                # For the list handler just check if the list is considered phi
+                elif method == "List":
+                    log.debug(args)
+                    log.debug(kwargs)
+                    if args:
+                        cont_name = args[0]
+                        list_name = args[1]
+                    else:
+                        cont_name = kwargs['cont_name']
+                        list_name = kwargs['list_name']
+                    if not (cont_name == 'groups' or check_phi(self.uid, get_container(kwargs['cid'], cont_name))):
+                        phi_fields = get_phi_fields(cont_name, kwargs['cid'])
+                        if phi_fields and list_name in phi_fields:
+                            raise APIPermissionException("User not allowed to write to phi fields")
             return handler_method(self, *args, **kwargs)
         return phi_payload_check
     return phi_payload_decorator
