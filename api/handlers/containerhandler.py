@@ -271,9 +271,9 @@ class ContainerHandler(base.RequestHandler):
         # Stateful closure to remove search duplicates
         # Eventually, this code should not call Queue.search and should instead do its own work.
         def match_ids(x):
-            should_add = str(x['_id']) in match_ids.unique_job_ids
+            in_set = str(x['_id']) in match_ids.unique_job_ids
             match_ids.unique_job_ids.add(str(x['_id']))
-            return should_add
+            return not in_set
 
         match_ids.unique_job_ids = set()
         results = filter(match_ids, results)
