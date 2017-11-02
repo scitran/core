@@ -21,6 +21,8 @@ def test_jobs_access(as_user):
 
 
 def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_root, api_db, file_form):
+
+    # Dupe of test_queue.py
     gear_doc = default_payload['gear']['gear']
     gear_doc['inputs'] = {
         'dicom': {
