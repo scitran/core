@@ -200,26 +200,74 @@ def test_filelist_download(data_builder, file_form, as_admin):
     assert r.ok
 
 
-def test_analysis_download(data_builder, file_form, as_admin):
+def test_analysis_download(data_builder, file_form, as_admin, default_payload):
     session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'csv': {
+            'base': 'file'
+        },
+        'zip': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
+
+
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('one.csv')).ok
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('two.zip')).ok
+
     zip_cont = cStringIO.StringIO()
     with zipfile.ZipFile(zip_cont, 'w') as zip_file:
         zip_file.writestr('two.csv', 'sample\ndata\n')
     zip_cont.seek(0)
-    analysis = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
+
+    # analysis for testing most of the download functionality 
+    # analysis_files and new_analysis_files refer to this analyisis
+    analysis1 = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
         'one.csv', ('two.zip', zip_cont),
         meta={'label': 'test', 'inputs': [{'name': 'one.csv'}, {'name': 'two.csv'}]}
     )).json()['_id']
-    analysis_files = '/sessions/' + session + '/analyses/' + analysis + '/files'
-    new_analysis_files = '/analyses/' + analysis + '/files'
 
+    # Analyis Only for testing that inputs are in their own folder
+    r = as_admin.post('/sessions/' + session + '/analyses', 
+        json={
+            'analysis': {'label': 'test'}, 
+            'job': {
+                'gear_id': gear,
+                'inputs': {
+                    'csv': {
+                        'name': 'one.csv',
+                        'type': 'acquisition',
+                        'id': acquisition
+                    }, 
+                    'zip': {
+                        'name': 'two.zip',
+                        'type': 'acquisition',
+                        'id': acquisition
+                    }
+                }
+            }
+        }, 
+        params={'job':True}
+    )
+    assert r.ok
+    analysis = r.json()['_id']
+    analysis_files = '/sessions/' + session + '/analyses/' + analysis1 + '/files'
+    new_analysis_files = '/analyses/' + analysis1 + '/files'
+
+    # Check that analysis files are labelled as inputs
+    r = as_admin.get('/sessions/' + session + '/analyses/' + analysis)
+    assert r.ok
+    assert r.json().get('files')[0].get('input')
 
     # try to download analysis files w/ non-existent ticket
     r = as_admin.get(analysis_files, params={'ticket': '000000000000000000000000'})
     assert r.status_code == 404
 
     # get analysis batch download ticket for all files
-    r = as_admin.get(analysis_files, params={'ticket': ''}, json={"optional":True,"nodes":[{"level":"analysis","_id":analysis}]})
+    r = as_admin.get(analysis_files, params={'ticket': ''}, json={"optional":True,"nodes":[{"level":"analysis","_id":analysis1}]})
     assert r.ok
     ticket = r.json()['ticket']
 
@@ -258,6 +306,7 @@ def test_analysis_download(data_builder, file_form, as_admin):
     assert len(members) == 2
     for tarinfo in members:
         assert os.path.basename(tarinfo.name) in ['one.csv', 'two.zip']
+        assert 'input' in tarinfo.name
 
     tar.close()
 
@@ -345,6 +394,13 @@ def test_analysis_download(data_builder, file_form, as_admin):
 
     # get zip member
     r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ticket, 'member': 'two.csv'})
+    assert r.ok
+
+
+    # delete session analysis (job)
+    r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis)
+    assert r.ok
+    r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis1)
     assert r.ok
 
 def test_filters(data_builder, file_form, as_admin):
