@@ -8,7 +8,7 @@ import pymongo
 import datetime
 
 from .. import config
-from .jobs import Job
+from .jobs import Job, Logs
 from .gears import get_gear, validate_gear_config, fill_gear_default_values
 from ..validators import InputValidationException
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
@@ -411,6 +411,7 @@ class Queue(object):
             else:
                 orphaned += 1
                 j = Job.load(doc)
-                Queue.retry(j)
-
+                Logs.add(j.id_, [{"msg":"The job did not report in for a long time and was canceled.", "fd":-1}])
+                new_id = Queue.retry(j)
+                Logs.add(j.id_, [{"msg": "Retried job as " + str(new_id) if new_id else "Job retries exceeded maximum allowed", "fd":-1}])
         return orphaned
