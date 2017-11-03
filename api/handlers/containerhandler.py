@@ -91,7 +91,7 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.get('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        projection = self.get_phi_fields(cont_name, _id)
+        projection = get_phi_fields(cont_name, _id)
         container = self._get_container(_id)
         log.debug(container)
         if check_phi(self.uid, container) or self.superuser_request:
@@ -607,38 +607,6 @@ class ContainerHandler(base.RequestHandler):
         session_measurements = {sess['_id']: sess['measurements'] for sess in session_measurements}
         for sess in results:
             sess['measurements'] = session_measurements.get(sess['_id'], None)
-
-    def _get_project_id(self, cont_name, _id):
-        if cont_name == "projects":
-            return _id
-        elif cont_name == "sessions":
-            log.debug(_id)
-            session = self._get_container(_id, projection={'project':1})
-            log.debug(session)
-            return session.get('project')
-        elif cont_name == "acquisitions":
-            return containerstorage.SessionStorage().get_container(self._get_container(_id,projection={'session':1}).get('session'), projection={'project':1}).get('project')
-        elif cont_name == "collections":
-            return "site"
-        else:
-            self.abort(401, "{} are not a container".format(cont_name))
-
-    def get_phi_fields(self, cont_name, _id):
-        project_storage = containerstorage.ProjectStorage()
-        project_id = self._get_project_id(cont_name, _id)
-        log.debug(project_id)
-        if _id == "site" or project_id == "site":
-            site_phi = project_storage.get_phi_fields("site")
-            phi_fields = list(set(site_phi.get("fields",[])))
-        else:
-            project_phi = project_storage.get_phi_fields(project_id)
-            site_phi = project_storage.get_phi_fields("site")
-            phi_fields = list(set(site_phi.get("fields",[]) + project_phi.get("fields",[])))
-        projection = {x:0 for x in phi_fields}
-        if len(projection) == 0:
-            projection = None
-        log.debug(projection)
-        return projection
 
     def _get_parent_container(self, payload):
         if not self.config.get('parent_storage'):
