@@ -84,9 +84,12 @@ class UserHandler(base.RequestHandler):
         payload_schema_uri = validators.schema_uri('input', 'user-update.json')
         payload_validator = validators.from_schema_path(payload_schema_uri)
         payload_validator(payload, 'PUT')
+
         payload['modified'] = datetime.datetime.utcnow()
         result = mongo_validator(permchecker(self.storage.exec_op))('PUT', _id=_id, payload=payload)
         if result.modified_count == 1:
+            if payload.get('disabled', False) and self.is_true('clear_permissions'):
+                self._cleanup_user_permissions(_id)
             return {'modified': result.modified_count}
         else:
             self.abort(404, 'User {} not updated'.format(_id))
@@ -114,14 +117,13 @@ class UserHandler(base.RequestHandler):
 
     def _cleanup_user_permissions(self, uid):
         try:
-            config.db.collections.delete_many({'curator': uid})
-            config.db.groups.update_many({'permissions._id': uid}, {'$pull': {'permissions' : {'_id': uid}}})
 
             query = {'permissions._id': uid}
             update = {'$pull': {'permissions' : {'_id': uid}}}
-            config.db.projects.update_many(query, update)
-            config.db.sessions.update_many(query, update)
-            config.db.acquisitions.update_many(query, update)
+
+            for cont in ['collections', 'groups', 'projects', 'sessions', 'acquisitions']:
+                config.db[cont].update_many(query, update)
+
         except APIStorageException:
             self.abort(500, 'Site-wide user permissions for {} were unabled to be removed'.format(uid))
 
