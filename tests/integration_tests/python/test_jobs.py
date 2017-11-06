@@ -325,7 +325,7 @@ def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_ro
     assert r.json().get('orphaned') == 1
     r = as_admin.get('/jobs/'+str(job_instance['_id'])+'/logs')
     assert r.ok
-    assert "The job did not report in for a long time and was canceled." in [log["msg"] for log in r.json().get('logs',[])]
+    assert "The job did not report in for a long time and was canceled." in [log["msg"] for log in r.json()['logs']]
     api_db.jobs.delete_one({"_id": bson.ObjectId("5a007cdb0f352600d94c845f")})
 
 
