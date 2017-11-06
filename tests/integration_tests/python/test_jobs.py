@@ -1,7 +1,7 @@
 import copy
 
 import bson
-
+import datetime
 
 def test_jobs_access(as_user):
     r = as_user.get('/jobs/next')
@@ -292,6 +292,41 @@ def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_ro
     }
     r = as_admin.post('/jobs/add', json=job7)
     assert r.status_code == 400
+
+    # Insert non-running job into database
+    job_instance = {
+        "_id" : bson.ObjectId("5a007cdb0f352600d94c845f"),
+        "inputs" : [{
+            "input": 'dicom',
+            'type': 'acquisition',
+            'id': acquisition,
+            'name': 'test.zip'
+        }],
+        # Set attempt to 5 so that job isn't retried, throwing off the usage report tests
+        "attempt" : 5,
+        "tags" : [
+            "ad-hoc"
+        ],
+        "destination" : {
+            "type" : "acquisition",
+            "id" : acquisition
+        },
+        "modified" : datetime.datetime(1980, 1, 1),
+        "created" : datetime.datetime(1980, 1, 1),
+        "produced_metadata" : {},
+        "saved_files" : [],
+        "state" : "running",
+        "gear_id" : gear3,
+        "batch" : None,
+    }
+    api_db.jobs.insert_one(job_instance)
+    r = as_root.post('/jobs/reap')
+    assert r.ok
+    assert r.json().get('orphaned') == 1
+    r = as_admin.get('/jobs/'+str(job_instance['_id'])+'/logs')
+    assert r.ok
+    assert "The job did not report in for a long time and was canceled." in [log["msg"] for log in r.json().get('logs',[])]
+    api_db.jobs.delete_one({"_id": bson.ObjectId("5a007cdb0f352600d94c845f")})
 
 
 def test_analysis_job_creation_errors(data_builder, default_payload, as_admin, file_form):
