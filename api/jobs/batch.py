@@ -2,6 +2,7 @@
 Batch
 """
 import bson
+import copy
 import datetime
 
 from .. import config
@@ -134,6 +135,7 @@ def run(batch_job):
     if not proposal:
         raise APIStorageException('The batch job is not formatted correctly.')
     proposed_inputs = proposal.get('inputs', [])
+    proposed_destinations = proposal.get('destinations', [])
 
     gear_id = batch_job['gear_id']
     gear = gears.get_gear(gear_id)
@@ -154,15 +156,19 @@ def run(batch_job):
 
     jobs = []
     job_ids = []
+
+    job_defaults = {
+        'config':   config_,
+        'gear_id':  gear_id,
+        'tags':     tags,
+        'batch':    str(batch_job.get('_id')),
+        'inputs':   {}
+    }
+
     for inputs in proposed_inputs:
 
-        job_map = {
-            'config':   config_,
-            'gear_id':  gear_id,
-            'inputs':   inputs,
-            'tags':     tags,
-            'batch':    str(batch_job.get('_id'))
-        }
+        job_map = copy.deepcopy(job_defaults)
+        job_map['inputs'] = inputs
 
         if gear.get('category') == 'analysis':
 
@@ -170,6 +176,27 @@ def run(batch_job):
             acquisition_id = inputs.values()[0].get('id')
             session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
             result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin, None)
+            job = result.get('job')
+            job_id = result.get('job_id')
+
+        else:
+
+            job = Queue.enqueue_job(job_map, origin)
+            job_id = job.id_
+
+
+        jobs.append(job)
+        job_ids.append(job_id)
+
+    for dest in proposed_destinations:
+
+        job_map = copy.deepcopy(job_defaults)
+        job_map['destination'] = dest
+
+        if gear.get('category') == 'analysis':
+
+            # Create analysis
+            result = an_storage.create_job_and_analysis('sessions', bson.ObjectId(dest['id']), analysis, job_map, origin, None)
             job = result.get('job')
             job_id = result.get('job_id')
 

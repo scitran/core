@@ -11,7 +11,7 @@ from .. import upload
 from .. import util
 from ..auth import require_login, has_access
 from ..dao import APIPermissionException, APINotFoundException
-from ..dao.containerstorage import ProjectStorage, AcquisitionStorage
+from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
 from ..dao.containerutil import ContainerReference
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
@@ -546,29 +546,51 @@ class BatchHandler(base.RequestHandler):
                     self.abort(400, 'targets must all be of same type.')
             container_ids.append(t.get('id'))
 
-        # Get acquisitions associated with targets
         objectIds = [bson.ObjectId(x) for x in container_ids]
-        containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
-            collection_id=collection_id, include_archived=False)
+
+        # Determine if gear is no-input gear
+        file_inputs = False
+        for input_ in gear['gear'].get('inputs', {}).itervalues():
+            if input_['base'] == 'file':
+                file_inputs = True
+                break
+
+        if not file_inputs:
+            # Grab sessions rather than acquisitions
+            containers = SessionStorage().get_all_for_targets(container_type, objectIds, include_archived=False)
+
+        else:
+            # Get acquisitions associated with targets
+            containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
+                collection_id=collection_id, include_archived=False)
 
         if not containers:
-            self.abort(404, 'Could not find acquisitions from targets.')
+            self.abort(404, 'Could not find necessary containers from targets.')
 
         improper_permissions = []
-        acquisitions = []
+        perm_checked_conts = []
 
         # Make sure user has read-write access, add those to acquisition list
         for c in containers:
             if self.superuser_request or has_access(self.uid, c, 'rw'):
                 c.pop('permissions')
-                acquisitions.append(c)
+                perm_checked_conts.append(c)
             else:
                 improper_permissions.append(c['_id'])
 
-        if not acquisitions:
+        if not perm_checked_conts:
             self.abort(403, 'User does not have write access to targets.')
 
-        results = batch.find_matching_conts(gear, acquisitions, 'acquisition')
+        if not file_inputs:
+            # All containers become matched destinations
+
+            results = {
+                'matched': [{'id': str(x['_id']), 'type': 'session'} for x in containers]
+            }
+
+        else:
+            # Look for file matches in each acquisition
+            results = batch.find_matching_conts(gear, perm_checked_conts, 'acquisition')
 
         matched = results['matched']
         batch_proposal = {}
@@ -583,18 +605,22 @@ class BatchHandler(base.RequestHandler):
                 'state': 'pending',
                 'origin': self.origin,
                 'proposal': {
-                    'inputs': [c.pop('inputs') for c in matched],
                     'analysis': analysis_data,
                     'tags': tags
                 }
             }
 
+            if not file_inputs:
+                batch_proposal['proposal']['destinations'] = matched
+            else:
+                batch_proposal['proposal']['inputs'] = [c.pop('inputs') for c in matched]
+
             batch.insert(batch_proposal)
             batch_proposal.pop('proposal')
 
         # Either way, return information about the status of the containers
-        batch_proposal['not_matched'] = results['not_matched']
-        batch_proposal['ambiguous'] = results['ambiguous']
+        batch_proposal['not_matched'] = results.get('not_matched', [])
+        batch_proposal['ambiguous'] = results.get('ambiguous', [])
         batch_proposal['matched'] = matched
         batch_proposal['improper_permissions'] = improper_permissions
 
