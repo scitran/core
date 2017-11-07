@@ -1,3 +1,4 @@
+import bson
 import time
 
 def test_batch(data_builder, as_user, as_admin, as_root):
@@ -247,18 +248,26 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     r = as_admin.get('/batch/' + batch_id)
     assert r.json()['state'] == 'failed'
 
-def test_no_input_batch(data_builder, as_admin, as_root):
+def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_root, api_db):
     project = data_builder.create_project()
     session = data_builder.create_session(project=project)
     acquisition = data_builder.create_acquisition(session=session)
 
-    gear_doc = default_payload['gear']['gear']
-    gear_doc['inputs'] = {
+    gear_name = randstr()
+    gear_doc = default_payload['gear']
+    gear_doc['gear']['name'] = gear_name
+    gear_doc['gear']['inputs'] = {
         'api_key': {
             'base': 'api-key'
         }
     }
-    gear = data_builder.create_gear(gear=gear_doc)
+
+
+    r = as_root.post('/gears/' + gear_name, json=gear_doc)
+    assert r.ok
+
+    gear = r.json()['_id']
+
 
     # create a batch w/o inputs targeting session
     r = as_admin.post('/batch', json={
@@ -267,6 +276,7 @@ def test_no_input_batch(data_builder, as_admin, as_root):
     })
     assert r.ok
     batch1 = r.json()
+
     assert len(batch1['matched']) == 1
     assert batch1['matched'][0]['id'] == session
 
@@ -293,14 +303,15 @@ def test_no_input_batch(data_builder, as_admin, as_root):
     batch_id = batch1['_id']
 
     # run batch
-    r = as_admin.post('/batch/' + batch_id['_id'] + '/run')
+    r = as_admin.post('/batch/' + batch_id + '/run')
     assert r.ok
 
     # test batch.state after calling run
     r = as_admin.get('/batch/' + batch_id)
     assert r.json()['state'] == 'running'
+    jobs = r.json()['jobs']
 
-    for job in r.json()['jobs']:
+    for job in jobs:
         # set jobs to failed
         r = as_root.put('/jobs/' + job, json={'state': 'running'})
         assert r.ok
@@ -310,3 +321,59 @@ def test_no_input_batch(data_builder, as_admin, as_root):
     # test batch is complete
     r = as_admin.get('/batch/' + batch_id)
     assert r.json()['state'] == 'complete'
+
+    ## Test no-input anlaysis gear ##
+
+    gear_name = randstr()
+    gear_doc = default_payload['gear']
+    gear_doc['category'] = 'analysis'
+    gear_doc['gear']['name'] = gear_name
+    gear_doc['gear']['inputs'] = {
+        'api_key': {
+            'base': 'api-key'
+        }
+    }
+
+    r = as_root.post('/gears/' + gear_name, json=gear_doc)
+    assert r.ok
+
+    gear2 = r.json()['_id']
+
+    # create a batch w/o inputs targeting session
+    r = as_admin.post('/batch', json={
+        'gear_id': gear2,
+        'targets': [{'type': 'session', 'id': session}]
+    })
+    assert r.ok
+    batch4 = r.json()
+
+    assert len(batch4['matched']) == 1
+    assert batch4['matched'][0]['id'] == session
+    batch_id = batch4['_id']
+
+    # run batch
+    r = as_admin.post('/batch/' + batch_id + '/run')
+    assert r.ok
+
+    # test batch.state after calling run
+    r = as_admin.get('/batch/' + batch_id)
+    assert r.json()['state'] == 'running'
+    jobs = r.json()['jobs']
+
+    for job in jobs:
+        # set jobs to failed
+        r = as_root.put('/jobs/' + job, json={'state': 'running'})
+        assert r.ok
+        r = as_root.put('/jobs/' + job, json={'state': 'complete'})
+        assert r.ok
+
+    # cleanup
+
+    r = as_root.delete('/gears/' + gear)
+    assert r.ok
+
+    r = as_root.delete('/gears/' + gear2)
+    assert r.ok
+
+    # must remove jobs manually because gears were added manually
+    api_db.jobs.remove({'gear_id': {'$in': [gear, gear2]}})

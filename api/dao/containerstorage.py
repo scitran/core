@@ -207,15 +207,17 @@ class SessionStorage(ContainerStorage):
         if not include_archived:
             query['archived'] = {'$ne': True}
 
-        if containerutil.singularize(target_type) == 'project':
+        target_type = containerutil.singularize(target_type)
+
+        if target_type == 'project':
             query['project'] = {'$in':target_ids}
 
-        elif containerutil.singularize(target_type) == 'session':
+        elif target_type == 'session':
             query['_id'] = {'$in':target_ids}
 
-        elif containerutil.singularize(target_type) == 'acquisition':
+        elif target_type == 'acquisition':
             a_query = copy.deepcopy(query)
-            a_query['session'] = {'$in':target_ids}
+            a_query['_id'] = {'$in':target_ids}
             session_ids = list(set([a['session'] for a in AcquisitionStorage().get_all_el(a_query, user, {'session':1})]))
             query['_id'] = {'$in':session_ids}
 

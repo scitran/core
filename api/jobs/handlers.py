@@ -585,7 +585,7 @@ class BatchHandler(base.RequestHandler):
             # All containers become matched destinations
 
             results = {
-                'matched': [{'id': x['_id'], 'type': 'session'} for x in containers]
+                'matched': [{'id': str(x['_id']), 'type': 'session'} for x in containers]
             }
 
         else:
