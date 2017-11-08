@@ -14,7 +14,7 @@ Usage:
 Options:
     -B, --no-build      Skip docker build
     -h, --help          Print this help and exit
-    -- TEST_ARGS        Arguments passed to test/bin/run-tests-ubuntu.sh
+    -- TEST_ARGS        Arguments passed to tests/bin/run-tests-ubuntu.sh
 
 EOF
 }
@@ -58,7 +58,7 @@ function main() {
         -v $(pwd):/var/scitran/code/api \
         --entrypoint bash \
         scitran-core:run-tests \
-        /var/scitran/code/api/test/bin/run-tests-ubuntu.sh \
+        /var/scitran/code/api/tests/bin/run-tests-ubuntu.sh \
         $TEST_ARGS
 }
 

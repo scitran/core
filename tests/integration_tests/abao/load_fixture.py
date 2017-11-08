@@ -59,7 +59,7 @@ def main():
     # upload file to test-project-1/test-session-1/test-acquisition-1
     # depends on 'create test-group'
     r = as_root.post('/upload/label', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'group': { '_id': 'test-group' },
             'project': {
@@ -157,7 +157,7 @@ def main():
     # upload file to test-collection-1
     # depends on 'create test-collection-1'
     r = as_root.post('/collections/' + test_collection['_id'] + '/files', files={
-        'file': ('notes.txt', open('test/integration_tests/abao/test_files/notes.txt', 'rb'))
+        'file': ('notes.txt', open('tests/integration_tests/abao/test_files/notes.txt', 'rb'))
     })
     assert r.ok
 
@@ -170,14 +170,14 @@ def main():
     # upload file to test-project-1
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/projects/' + test_project['_id'] + '/files', files={
-        'file': ('notes.txt', open('test/integration_tests/abao/test_files/notes.txt', 'rb'))
+        'file': ('notes.txt', open('tests/integration_tests/abao/test_files/notes.txt', 'rb'))
     })
     assert r.ok
 
     # upload file to test-session-1
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/sessions/' + test_session['_id'] + '/files', files={
-        'file': ('notes.txt', open('test/integration_tests/abao/test_files/notes.txt', 'rb'))
+        'file': ('notes.txt', open('tests/integration_tests/abao/test_files/notes.txt', 'rb'))
     })
     assert r.ok
 
@@ -232,7 +232,7 @@ def main():
     # create session 1 test-analysis (file upload)
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/sessions/' + test_session['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis',
             'inputs': [ { 'name': 'test-1.dcm' } ]
@@ -249,7 +249,7 @@ def main():
     # create acquisition 1 test-analysis (file upload)
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/acquisitions/' + test_acquisition['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis',
             'inputs': [ { 'name': 'test-1.dcm' } ]
@@ -261,7 +261,7 @@ def main():
     # create acquisition 1 test-analysis 2 (file upload)
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/acquisitions/' + test_acquisition['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis',
             'inputs': [ { 'name': 'test-1.dcm' } ]
@@ -272,7 +272,7 @@ def main():
     # create collection 1 test-analysis (file upload)
     # depends on 'create test-collection-1'
     r = as_root.post('/collections/' + test_collection['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis',
             'inputs': [ { 'name': 'test-1.dcm' } ]
@@ -284,7 +284,7 @@ def main():
     # create collection 1 test-analysis 2 (file upload)
     # depends on 'create test-collection-1'
     r = as_root.post('/collections/' + test_collection['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis 2',
             'inputs': [ { 'name': 'test-1.dcm' } ]
@@ -295,7 +295,7 @@ def main():
     # create project 1 test-analysis (file upload)
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/projects/' + test_project['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis',
             'inputs': [ { 'name': 'test-1.dcm' } ]
@@ -307,7 +307,7 @@ def main():
     # create project 1 test-analysis 2 (file upload)
     # depends on 'upload file to test-project-1/test-session-1/test-acquisition-1'
     r = as_root.post('/projects/' + test_project['_id'] + '/analyses', files={
-        'file': ('test-1.dcm', open('test/integration_tests/abao/test_files/test-1.dcm', 'rb')),
+        'file': ('test-1.dcm', open('tests/integration_tests/abao/test_files/test-1.dcm', 'rb')),
         'metadata': ('', json.dumps({
             'label': 'test analysis',
             'inputs': [ { 'name': 'test-1.dcm' } ]

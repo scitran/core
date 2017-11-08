@@ -65,8 +65,8 @@ function main() {
     # Remove __pycache__ directories for issue with __file__ attribute due to
     # running the tests on the host creating bytecode files hich have a
     # mismatched __file__ attribute when loaded in docker container
-    rm -rf test/unit_tests/python/__pycache__
-    rm -rf test/integration_tests/python/__pycache__
+    rm -rf tests/unit_tests/python/__pycache__
+    rm -rf tests/integration_tests/python/__pycache__
 
     export PYTHONPATH="$(pwd)"
     export SCITRAN_SITE_API_URL="http://localhost:8081/api"
@@ -90,7 +90,7 @@ function main() {
     if ${RUN_UNIT}; then
         echo "Running unit tests ..."
         rm -f .coverage
-        py.test --cov=api --cov-report= test/unit_tests/python $PYTEST_ARGS
+        py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_INTEG} || ${RUN_ABAO}; then
@@ -120,20 +120,20 @@ function main() {
 
     if ${RUN_INTEG}; then
         echo "Running integration tests ..."
-        py.test test/integration_tests/python $PYTEST_ARGS
+        py.test tests/integration_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_ABAO}; then
         echo "Running abao tests ..."
         # Create resources that Abao relies on
-        python test/integration_tests/abao/load_fixture.py
+        python tests/integration_tests/abao/load_fixture.py
 
         # If no VIRTUAL_ENV, make sure /usr/local/bin is in the path
         if [[ -z "${VIRTUAL_ENV:-}" ]]; then
             PATH="/usr/local/bin:$PATH"
-            npm install test/integration_tests
+            npm install tests/integration_tests
         else
-            npm install --global test/integration_tests
+            npm install --global tests/integration_tests
         fi
 
         PATH="$(npm bin):$PATH"
@@ -145,7 +145,7 @@ function main() {
         # Have to change into definitions directory to resolve
         # relative $ref's in the jsonschema's
         pushd raml/schemas/definitions
-        NODE_PATH="$integration_test_node_modules" abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../test/integration_tests/abao/abao_test_hooks.js"
+        NODE_PATH="$integration_test_node_modules" abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
         popd
     fi
 }
