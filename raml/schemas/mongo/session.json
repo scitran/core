@@ -16,7 +16,7 @@
         "project_has_template": {"type": "boolean"},
         "tags": {},
         "info": {},
-
+        "operator": {},
         "group":        {"type": "string"},
         "project":      {},
         "uid":          {"type": "string"},

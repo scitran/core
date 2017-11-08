@@ -393,6 +393,18 @@ def test_post_container(data_builder, as_admin, as_user):
     })
     assert r.ok
 
+    # create a session w/ operator
+    r = as_user.post('/sessions', json={
+        'project': project,
+        'label': 'test-timestamp-session',
+        'operator': 'Operator'
+    })
+    assert r.ok
+    session = r.json()['_id']
+    r = as_user.get('/sessions/' + session)
+    assert r.ok
+    assert r.json()['operator'] == "Operator"
+
     data_builder.delete_group(group, recursive=True)
 
 
