@@ -34,6 +34,8 @@ function main() {
         shift
     done
 
+    trap clean_up EXIT
+
     if ${DOCKER_BUILD}; then
         echo "Building scitran-core:run-tests ..."
         docker build -t scitran-core:run-tests .
@@ -62,7 +64,7 @@ function main() {
 
 
 function clean_up() {
-    export TEST_RESULT_CODE=$?
+    local TEST_RESULT_CODE=$?
     set +e
 
     # Copy coverage file to host for possible further reporting
@@ -74,8 +76,6 @@ function clean_up() {
     docker network rm scitran-core-test-network
     exit $TEST_RESULT_CODE
 }
-
-trap clean_up EXIT
 
 
 main "$@"

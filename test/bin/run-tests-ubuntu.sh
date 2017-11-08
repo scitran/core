@@ -15,6 +15,8 @@ Options:
     -L, --no-lint           Skip linting
     -U, --no-unit           Skip unit tests
     -I, --no-integ          Skip integration tests
+    -A, --no-abao           Skip abao tests
+    -R, --no-report         Skip coverage report
     -h, --help              Print this help and exit
     -- PYTEST_ARGS          Arguments passed to py.test
 
@@ -34,19 +36,31 @@ function main() {
     local RUN_LINT=true
     local RUN_UNIT=true
     local RUN_INTEG=true
+    local RUN_ABAO=true
     local PYTEST_ARGS=
+
+    export RUN_REPORT=true
 
     while [[ "$#" > 0 ]]; do
         case "$1" in
-            -L|--no-lint)     RUN_LINT=false  ;;
-            -U|--no-unit)     RUN_UNIT=false  ;;
-            -I|--no-integ)    RUN_INTEG=false ;;
+            -L|--no-lint)     RUN_LINT=false   ;;
+            -U|--no-unit)     RUN_UNIT=false   ;;
+            -I|--no-integ)    RUN_INTEG=false  ;;
+            -A|--no-abao)     RUN_ABAO=false   ;;
+            -R|--no-report)   RUN_REPORT=false ;;
             -h|--help)        usage;                   exit 0 ;;
             --)               PYTEST_ARGS="${@:2}";    break  ;;
             *) echo "Invalid argument: $1" >&2; usage; exit 1 ;;
         esac
         shift
     done
+
+    if ! (${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG} && ${RUN_ABAO}); then
+        # Skip coverage report if any tests are skipped
+        RUN_REPORT=false
+    fi
+
+    trap clean_up EXIT
 
     # Remove __pycache__ directories for issue with __file__ attribute due to
     # running the tests on the host creating bytecode files hich have a
@@ -79,8 +93,8 @@ function main() {
         py.test --cov=api --cov-report= test/unit_tests/python $PYTEST_ARGS
     fi
 
-    if ${RUN_INTEG}; then
-        echo "Running integration tests ..."
+    if ${RUN_INTEG} || ${RUN_ABAO}; then
+        echo "Spinning up dependencies ..."
         uwsgi --http "localhost:8081" --master --http-keepalive \
             --so-keepalive --add-header "Connection: Keep-Alive" \
             --processes 1 --threads 1 \
@@ -102,10 +116,15 @@ function main() {
             printf '.'
             sleep 1
         done
+    fi
 
+    if ${RUN_INTEG}; then
+        echo "Running integration tests ..."
         py.test test/integration_tests/python $PYTEST_ARGS
+    fi
 
-
+    if ${RUN_ABAO}; then
+        echo "Running abao tests ..."
         # Create resources that Abao relies on
         python test/integration_tests/abao/load_fixture.py
 
@@ -133,7 +152,7 @@ function main() {
 
 
 function clean_up () {
-    export TEST_RESULT_CODE=$?
+    local TEST_RESULT_CODE=$?
     set +e
 
     echo
@@ -141,11 +160,11 @@ function clean_up () {
 
     if [[ -n "${API_PID:-}" ]]; then
         # Killing uwsgi
-        kill $API_PID || true
+        kill $API_PID
         wait 2> /dev/null
     fi
 
-    if [[ "${TEST_RESULT_CODE}" == "0" ]]; then
+    if ${RUN_REPORT} && [[ "${TEST_RESULT_CODE}" == "0" ]]; then
         echo
         echo "UNIT TEST COVERAGE:"
         coverage report --skip-covered
@@ -154,12 +173,12 @@ function clean_up () {
         coverage combine
         coverage report --show-missing
         coverage html
+    else
+        echo "Some tests were skipped or failed, skipping coverage report"
     fi
 
     exit $TEST_RESULT_CODE
 }
-
-trap clean_up EXIT
 
 
 main "$@"

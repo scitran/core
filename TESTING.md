@@ -11,7 +11,10 @@ Run automated tests:
 * To skip linting, use `--no-lint` (`-L`)
 * To skip unit tests, use `--no-unit` (`-U`)
 * To skip integration tests, use `--no-integ` (`-I`)
+* To skip abao tests, use `--no-abao` (`-A`)
 * To pass any arguments to `py.test`, use `-- PYTEST_ARGS`
+
+See [py.test usage](https://docs.pytest.org/en/latest/usage.html) for more.
 
 ### Docker
 Build scitran-core image and run automated tests in a docker container:
@@ -22,9 +25,9 @@ Build scitran-core image and run automated tests in a docker container:
 * To pass any arguments to `run-tests-ubuntu.sh`, use `-- TEST_ARGS`
 
 #### Example
-Without rebuilding the image, run only unit tests matching `foo`, use the highest verbosity level for test output and jump into a python debugger session in case an assertion fails:
+Without rebuilding the image, run only integration tests matching `foo`, use the highest verbosity level for test output and jump into a python debugger session in case an assertion fails:
 ```
-./test/bin/run-tests-docker.sh -B -- -L -I -- -k foo -vvv --pdb
+./test/bin/run-tests-docker.sh -B -- -L -U -A -- -k foo -vvv --pdb
 ```
 
 ### Tools
