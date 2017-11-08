@@ -34,12 +34,12 @@ function main() {
         shift
     done
 
-    trap clean_up EXIT
-
     if ${DOCKER_BUILD}; then
         echo "Building scitran-core:run-tests ..."
         docker build -t scitran-core:run-tests .
     fi
+
+    trap clean_up EXIT
 
     docker network create scitran-core-test-network
 

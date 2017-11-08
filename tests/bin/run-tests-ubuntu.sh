@@ -11,14 +11,17 @@ Run scitran-core tests
 Usage:
     $0 [OPTION...]
 
+Runs linting and all tests if no options are provided.
+Runs subset of tests when using the filtering options.
+Displays coverage report if all tests ran and passed.
+
 Options:
-    -L, --no-lint           Skip linting
-    -U, --no-unit           Skip unit tests
-    -I, --no-integ          Skip integration tests
-    -A, --no-abao           Skip abao tests
-    -R, --no-report         Skip coverage report
-    -h, --help              Print this help and exit
-    -- PYTEST_ARGS          Arguments passed to py.test
+    -l, --lint           Run linting
+    -u, --unit           Run unit tests
+    -i, --integ          Run integration tests
+    -a, --abao           Run abao tests
+    -h, --help           Print this help and exit
+    -- PYTEST_ARGS       Arguments passed to py.test
 
 Envvars:
     SCITRAN_PERSISTENT_DB_PORT    (9001)
@@ -33,31 +36,35 @@ EOF
 
 
 function main() {
-    local RUN_LINT=true
-    local RUN_UNIT=true
-    local RUN_INTEG=true
-    local RUN_ABAO=true
+    export RUN_ALL=true
+    local RUN_LINT=false
+    local RUN_UNIT=false
+    local RUN_INTEG=false
+    local RUN_ABAO=false
     local PYTEST_ARGS=
-
-    export RUN_REPORT=true
 
     while [[ "$#" > 0 ]]; do
         case "$1" in
-            -L|--no-lint)     RUN_LINT=false   ;;
-            -U|--no-unit)     RUN_UNIT=false   ;;
-            -I|--no-integ)    RUN_INTEG=false  ;;
-            -A|--no-abao)     RUN_ABAO=false   ;;
-            -R|--no-report)   RUN_REPORT=false ;;
-            -h|--help)        usage;                   exit 0 ;;
-            --)               PYTEST_ARGS="${@:2}";    break  ;;
+            -l|--lint)      RUN_ALL=false; RUN_LINT=true      ;;
+            -u|--unit)      RUN_ALL=false; RUN_UNIT=true      ;;
+            -i|--integ)     RUN_ALL=false; RUN_INTEG=true     ;;
+            -a|--abao)      RUN_ALL=false; RUN_ABAO=true      ;;
+            -h|--help)      usage;                     exit 0 ;;
+            --)             PYTEST_ARGS="${@:2}";      break  ;;
             *) echo "Invalid argument: $1" >&2; usage; exit 1 ;;
         esac
         shift
     done
 
-    if ! (${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG} && ${RUN_ABAO}); then
-        # Skip coverage report if any tests are skipped
-        RUN_REPORT=false
+    if ${RUN_ALL}; then
+        # No filtering options used, run everything by default
+        RUN_LINT=true
+        RUN_UNIT=true
+        RUN_INTEG=true
+        RUN_ABAO=true
+    elif ${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG} && ${RUN_ABAO}; then
+        # All filtering options were used, the same as none
+        RUN_ALL=true
     fi
 
     trap clean_up EXIT
@@ -164,7 +171,7 @@ function clean_up () {
         wait 2> /dev/null
     fi
 
-    if ${RUN_REPORT} && [[ "${TEST_RESULT_CODE}" == "0" ]]; then
+    if ${RUN_ALL} && [[ "${TEST_RESULT_CODE}" == "0" ]]; then
         echo
         echo "UNIT TEST COVERAGE:"
         coverage report --skip-covered
