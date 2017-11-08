@@ -108,8 +108,6 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
     assert r.status_code == 404
 
 
-
-
 def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_admin, as_root):
     gear_1_name = randstr()
     gear_1 = data_builder.create_gear(gear={'name': gear_1_name, 'version': '0.0.1'})
@@ -333,7 +331,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
 
-    # add valid container.has-<something> project rule w/ non-existent gear
+    # add valid container.has-<something> project rule
     # NOTE this is a legacy rule
     r = as_admin.post('/projects/' + project + '/rules', json={
         'alg': gear_name,
@@ -389,6 +387,31 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
 
     # delete rule
     r = as_admin.delete('/projects/' + project + '/rules/' + rule2)
+    assert r.ok
+
+    # add regex rule
+    # NOTE this is a legacy rule
+    r = as_admin.post('/projects/' + project + '/rules', json={
+        'alg': gear_name,
+        'name': 'file-measurement-regex',
+        'any': [],
+        'all': [
+            {'type': 'file.name', 'value': 'test\d+\.(csv|txt)', 'regex': True},
+        ]
+    })
+    assert r.ok
+    rule3 = r.json()['_id']
+
+    # upload file matching regex rule
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('test999.txt'))
+    assert r.ok
+
+    # test that job was created via regex rule
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    assert len(gear_jobs) == 3
+
+    # delete rule
+    r = as_admin.delete('/projects/' + project + '/rules/' + rule3)
     assert r.ok
 
     # TODO add and test 'new-style' rules

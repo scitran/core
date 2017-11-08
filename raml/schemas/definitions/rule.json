@@ -16,7 +16,8 @@
                             "container.has-measurement"
                         ]
                     },
-                    "value": { "type": "string" }
+                    "value": { "type": "string" },
+                    "regex": { "type": "boolean" }
                 },
                 "required": [ "type", "value" ],
                 "additionalProperties": false

@@ -1,4 +1,5 @@
 import fnmatch
+import re
 
 from .. import config
 from ..types import Origin
@@ -58,53 +59,53 @@ def get_base_rules():
 def _log_file_key_error(file_, container, error):
     log.warning('file ' + file_.get('name', '?') + ' in container ' + str(container.get('_id', '?')) + ' ' + error)
 
-def eval_match(match_type, match_param, file_, container):
+def eval_match(match_type, match_param, file_, container, regex=False):
     """
     Given a match entry, return if the match succeeded.
     """
 
-    def lower(x):
-        return x.lower()
-
+    def match(value):
+        if regex:
+            return re.match(match_param, value, flags=re.IGNORECASE) is not None
+        elif match_type == 'file.name':
+            return fnmatch.fnmatch(value.lower(), match_param.lower())
+        else:
+            return match_param.lower() == value.lower()
 
     # Match the file's type
     if match_type == 'file.type':
         file_type = file_.get('type')
         if file_type:
-            return file_type.lower() == match_param.lower()
+            return match(file_type)
         else:
             _log_file_key_error(file_, container, 'has no type')
             return False
 
     # Match a shell glob for the file name
     elif match_type == 'file.name':
-        return fnmatch.fnmatch(file_['name'].lower(), match_param.lower())
+        return match(file_['name'])
 
     # Match any of the file's measurements
     elif match_type == 'file.measurements':
-        try:
-            if match_param:
-                return match_param.lower() in map(lower, file_.get('measurements', []))
-            else:
-                return False
-        except KeyError:
-            _log_file_key_error(file_, container, 'has no measurements key')
+        if match_param:
+            return any(match(value) for value in file_.get('measurements', []))
+        else:
             return False
 
     # Match the container having any file (including this one) with this type
     elif match_type == 'container.has-type':
         for c_file in container['files']:
             c_file_type = c_file.get('type')
-            if c_file_type and match_param.lower() == c_file_type.lower():
+            if c_file_type and match(c_file_type):
                 return True
 
         return False
 
     # Match the container having any file (including this one) with this measurement
     elif match_type == 'container.has-measurement':
-        for c_file in container['files']:
-            if match_param:
-                if match_param.lower() in map(lower, c_file.get('measurements', [])):
+        if match_param:
+            for c_file in container['files']:
+                if any(match(value) for value in c_file.get('measurements', [])):
                     return True
 
         return False
@@ -121,7 +122,7 @@ def eval_rule(rule, file_, container):
     has_match = False
 
     for match in rule.get('any', []):
-        if eval_match(match['type'], match['value'], file_, container):
+        if eval_match(match['type'], match['value'], file_, container, regex=match.get('regex')):
             has_match = True
             break
 
@@ -131,7 +132,7 @@ def eval_rule(rule, file_, container):
 
     # Are there matches in the 'all' set?
     for match in rule.get('all', []):
-        if not eval_match(match['type'], match['value'], file_, container):
+        if not eval_match(match['type'], match['value'], file_, container, regex=match.get('regex')):
             return False
 
     return True
