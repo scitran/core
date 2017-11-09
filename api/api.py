@@ -256,6 +256,9 @@ endpoints = [
         prefix('/<cont_name:{cname}>', [
             route( '/<cid:{cid}>',     ContainerHandler,                                m=['GET','PUT','DELETE']),
             prefix('/<cid:{cid}>', [
+
+                route( '/info',                                ContainerHandler, h='modify_info',    m=['POST']),
+
                 route('/<list_name:tags>',               TagsListHandler, m=['POST']),
                 route('/<list_name:tags>/<value:{tag}>', TagsListHandler, m=['GET', 'PUT', 'DELETE']),
 

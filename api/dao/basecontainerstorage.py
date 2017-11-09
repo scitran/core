@@ -1,4 +1,5 @@
 import bson
+import datetime
 import pymongo.errors
 
 from . import consistencychecker
@@ -203,3 +204,40 @@ class ContainerStorage(object):
                 for f in cont.get('files', []):
                     f['info_exists'] = bool(f.pop('info', False))
         return results
+
+    def modify_info(self, _id, payload):
+        update = {}
+        set_payload = payload.get('set')
+        delete_payload = payload.get('delete')
+        replace_payload = payload.get('replace')
+
+        if (set_payload or delete_payload) and replace_payload is not None:
+            raise APIStorageException('Cannot set or delete AND replace info fields.')
+
+        if replace_payload is not None:
+            update = {
+                '$set': {
+                    'info': util.mongo_sanitize_fields(replace_payload)
+                }
+            }
+
+        else:
+            if set_payload:
+                update['$set'] = {}
+                for k,v in set_payload.items():
+                    update['$set']['info.' + k] = util.mongo_sanitize_fields(v)
+            if delete_payload:
+                update['$unset'] = {}
+                for k in delete_payload:
+                    update['$unset']['info.' + k] = ''
+
+        if self.use_object_id:
+            _id = bson.objectid.ObjectId(_id)
+        query = {'_id': _id }
+
+        if not update.get('$set'):
+            update['$set'] = {'modified': datetime.datetime.utcnow()}
+        else:
+            update['$set']['modified'] = datetime.datetime.utcnow()
+
+        return self.dbc.update_one(query, update)

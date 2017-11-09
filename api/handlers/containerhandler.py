@@ -508,6 +508,21 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
 
+    def modify_info(self, cont_name, **kwargs):
+        _id = kwargs.pop('cid')
+        self.config = self.container_handler_configurations[cont_name]
+        self.storage = self.config['storage']
+        container = self._get_container(_id)
+        permchecker = self._get_permchecker(container)
+        payload = self.request.json_body
+
+        validators.validate_data(payload, 'info_update.json', 'input', 'POST')
+
+        permchecker(noop)('PUT', _id=_id)
+        self.storage.modify_info(_id, payload)
+
+        return
+
     def delete(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
