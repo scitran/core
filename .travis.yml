@@ -9,10 +9,10 @@ env:
 
 install:
   - bin/install-ubuntu.sh
-  - test/bin/setup-integration-tests-ubuntu.sh
+  - tests/bin/setup-integration-tests-ubuntu.sh
 
 script:
-  - SCITRAN_PERSISTENT_DB_PORT=27017 test/bin/run-tests-ubuntu.sh
+  - SCITRAN_PERSISTENT_DB_PORT=27017 tests/bin/run-tests-ubuntu.sh
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" -o  "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
