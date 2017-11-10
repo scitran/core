@@ -1,8 +1,9 @@
-import os
 import cgi
-import shutil
-import hashlib
 import collections
+import hashlib
+import os
+import re
+import shutil
 
 from . import util
 from . import config
@@ -152,8 +153,10 @@ def getHashingFieldStorage(upload_dir, hash_alg):
 
 def guess_type_from_filename(filename):
     filetype = None
-    result = config.db.filetypes.find_one({'$where': 'function() {return RegExp(this.regex).test(\'%s\');}' % filename})
-    if result:
-        filetype = result['_id']
+    cursor = config.db.filetypes.find({})
+    for document in cursor:
+        if re.match(document['regex'], filename):
+            filetype = document['_id']
+            break
 
     return filetype
