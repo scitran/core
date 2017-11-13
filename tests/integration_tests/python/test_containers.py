@@ -374,20 +374,26 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
     r = as_admin.put('/projects/site/phi', json={"fields":[]})
     assert r.ok
 
-def test_phi_access_post_put(data_builder, as_user, as_admin, as_root):
+# Test both POST and PUT containers and on the project phi lists
+def test_phi_access_post_put(data_builder, as_user, as_admin, as_root, log_db):
     group = data_builder.create_group()
     project = data_builder.create_project()
 
     r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'admin', 'phi-access': False, '_id': 'user@user.com'})
     assert r.ok
 
+
+    pre_log = log_db.access_log.count({})
     # Try setting a field that is not a PHI candidate as phi
     r = as_admin.post('/projects/site/phi', json={"fields": ["label"]})
     assert r.status_code == 400
+    assert pre_log == log_db.access_log.count({})
 
+    pre_log = log_db.access_log.count({})
     # Set a valid field as phi at site level
     r = as_admin.post('/projects/site/phi', json={"fields": ["info.age", "info"]})
     assert r.ok
+    assert pre_log == log_db.access_log.count({}) - 1
 
     # Post a session writing to phi field with phi-access
     r = as_admin.post('/sessions', json={"timestamp": "2017-11-08T21:20:00.000Z", "label": "s1", "subject": {"code": "ex1"}, "project": project, "info": {"phi":"possible"}})

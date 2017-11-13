@@ -11,6 +11,7 @@ from ..dao.containerutil import singularize
 from ..jobs.gears import get_gear_by_name
 from ..validators import validate_data, verify_payload_exists
 from ..web import base
+from ..web.request import log_access, AccessType
 
 
 
@@ -157,6 +158,7 @@ class ProjectSettings(base.RequestHandler):
 
         return self.storage.get_phi_fields(cid, projection=projection)
 
+    @log_access(AccessType.modify_phi_list)
     def update_phi(self, cid):
         payload = self.request.json_body
         if cid == 'site':
