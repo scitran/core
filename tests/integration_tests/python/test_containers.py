@@ -267,6 +267,10 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
     project = data_builder.create_project()
     session = data_builder.create_session()
 
+    project_2 = data_builder.create_project(phi=False)
+    age = 4
+    session_no_phi = data_builder.create_session(info={"age": age})
+
     # Set site wide phi fields
     r = as_admin.post('/projects/site/phi', json={'fields': [ 'info', 'subject.firstname', 'subject.lastname', 'subject.sex',
                                                               'subject.age', 'subject.race', 'subject.ethnicity', 'subject.info',
@@ -316,6 +320,8 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
     r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'phi-access': False})
     assert r.ok
     r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'ro', 'phi-access': False, '_id': 'user@user.com'})
+    assert r.ok
+    r = as_admin.post('/projects/' + project_2 + '/permissions', json={'access': 'ro', 'phi-access': False, '_id': 'user@user.com'})
     assert r.ok
 
     # Test phi access for list returns without phi access level
@@ -368,6 +374,12 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
         assert session_.get('subject').get('code') == 'Subject_Code'  # Not considered phi
         assert session_.get('subject').get('lastname') == None  # Considered phi at site level
 
+
+    # Test that project with phi disabled, user without phi can access site level phi fields
+    r = as_user.get('/sessions/'+ session_no_phi)
+    assert r.ok
+    assert r.json()["info"]["age"] == age
+
     r = as_admin.delete('/sessions/' + session)
     assert r.ok
 
@@ -378,10 +390,14 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
 def test_phi_access_post_put(data_builder, as_user, as_admin, as_root, log_db):
     group = data_builder.create_group()
     project = data_builder.create_project()
+    project_phi_disabled = data_builder.create_project(phi=False)
 
     r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'admin', 'phi-access': False, '_id': 'user@user.com'})
     assert r.ok
 
+    # Test that user cannot post custom list to project_phi_disabled
+    r = as_admin.post('/projects/' + project_phi_disabled + '/phi', json={"fields": []})
+    assert r.status_code == 400
 
     pre_log = log_db.access_log.count({})
     # Try setting a field that is not a PHI candidate as phi

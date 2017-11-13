@@ -103,7 +103,7 @@ def default_payload():
     return attrdict.AttrDict({
         'user': {'firstname': 'test', 'lastname': 'user'},
         'group': {},
-        'project': {'public': True},
+        'project': {'public': True, 'phi':True},
         'session': {'public': True},
         'acquisition': {'public': True},
         'collection': {},
