@@ -100,7 +100,7 @@ class ProjectStorage(ContainerStorage):
         log.debug(cid)
         phi = config.db.project_phi.find_one({"project_id": str(cid)}, projection=projection)
         if phi == None:
-            return {}
+            return {"fields":[]}
         else:
             return phi
 

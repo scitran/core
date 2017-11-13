@@ -17,9 +17,11 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import containerutil
 from ..web.errors import APIStorageException
+from ..dao.containerstorage import ProjectStorage
+from ..handlers.projectsettings import get_project_id
 from ..web.request import log_access, AccessType
-from .projectsettings import phi_payload
 
+log = config.log
 
 def initialize_list_configurations():
     """
@@ -122,8 +124,15 @@ class ListHandler(base.RequestHandler):
     def get(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+        project_storage = ProjectStorage()
         try:
-            result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
+            # Check to see if list_name in phi lists of site level or project
+            if list_name in ["tags", "notes"]:
+                phi = list_name in (project_storage.get_phi_fields("site")["fields"] + project_storage.get_phi_fields(get_project_id(cont_name,_id))["fields"])
+                log.debug("Phi: {}".format(phi))
+                result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs, phi=phi)
+            else:
+                result = keycheck(permchecker(storage.exec_op))('GET', _id, query_params=kwargs)
         except APIStorageException as e:
             self.abort(400, e.message)
 
@@ -131,7 +140,6 @@ class ListHandler(base.RequestHandler):
             self.abort(404, 'Element not found in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
         return result
 
-    @phi_payload(method="List")
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
@@ -145,7 +153,6 @@ class ListHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
-    @phi_payload(method="List")
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
@@ -162,7 +169,6 @@ class ListHandler(base.RequestHandler):
         else:
             return {'modified':result.modified_count}
 
-    @phi_payload(method="List")
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
@@ -192,7 +198,7 @@ class ListHandler(base.RequestHandler):
             query_params = None
         container = storage.get_container(_id, query_params)
         if container is not None:
-            if self.superuser_request or self.user_is_admin:
+            if self.superuser_request:
                 permchecker = always_ok
             elif self.public_request:
                 permchecker = listauth.public_request(self, container)
@@ -283,7 +289,6 @@ class NotesListHandler(ListHandler):
     e.g. _id, user, created, etc.
     """
 
-    @phi_payload(method="List")
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
@@ -302,7 +307,6 @@ class NotesListHandler(ListHandler):
         else:
             self.abort(404, 'Element not added in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
-    @phi_payload(method="List")
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
         permchecker, storage, mongo_validator, input_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
@@ -325,7 +329,6 @@ class TagsListHandler(ListHandler):
     TagsListHandler overrides put, delete methods of ListHandler to propagate changes to group tags
     If a tag is renamed or deleted at the group level, project, session and acquisition tags will also be renamed/deleted
     """
-    @phi_payload(method="List")
     def put(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(TagsListHandler, self).put(cont_name, list_name, **kwargs)
@@ -338,7 +341,6 @@ class TagsListHandler(ListHandler):
             self._propagate_group_tags(cont_name, _id, query, update)
         return result
 
-    @phi_payload(method="List")
     def delete(self, cont_name, list_name, **kwargs):
         _id = kwargs.get('cid')
         result = super(TagsListHandler, self).delete(cont_name, list_name, **kwargs)

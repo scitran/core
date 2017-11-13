@@ -32,7 +32,7 @@ PHI_CANDIDATES = ['info', 'files.info', 'files.tags', 'notes', 'subject.firstnam
                   'subject.age', 'subject.race', 'subject.ethnicity', 'subject.info', 'tags']
 
 def get_project_id(cont_name, _id):
-    if _id == "site":
+    if _id == "site" or cont_name == 'groups':
         return "site"
     if cont_name == "projects":
         return _id
@@ -97,19 +97,6 @@ def phi_payload(method=None):
                     if not check_phi(self.uid, get_container(cid, cont_name)) and phi_fields and any([True for x in payload if x.startswith(tuple(phi_fields.keys()))]):
                         log.debug("PHI fields: " + str(phi_fields))
                         raise APIPermissionException("User not allowed to write to phi fields")
-                # For the list handler just check if the list is considered phi
-                elif method == "List":
-                    if args:
-                        cont_name = args[0]
-                        list_name = args[1]
-                    else:
-                        cont_name = kwargs['cont_name']
-                        list_name = kwargs['list_name']
-                    if not (cont_name == 'groups' or check_phi(self.uid, get_container(kwargs['cid'], cont_name))):
-                        phi_fields = get_phi_fields(cont_name, kwargs['cid'])
-                        if phi_fields and list_name in phi_fields:
-                            log.debug("PHI fields: " + str(phi_fields))
-                            raise APIPermissionException("User not allowed to write to phi fields")
             return handler_method(self, *args, **kwargs)
         return phi_payload_check
     return phi_payload_decorator

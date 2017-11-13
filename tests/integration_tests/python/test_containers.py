@@ -312,7 +312,7 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
     assert r.json().get('subject').get('code') == 'Subject_Code'
     assert pre_log == log_db.access_log.count({}) - 2
 
-    # Set no-phi flag to true
+    # Set phi-access to false
     r = as_admin.put('/projects/' + project + '/permissions/admin@user.com', json={'phi-access': False})
     assert r.ok
     r = as_admin.post('/projects/' + project + '/permissions', json={'access': 'ro', 'phi-access': False, '_id': 'user@user.com'})
@@ -410,9 +410,58 @@ def test_phi_access_post_put(data_builder, as_user, as_admin, as_root, log_db):
     assert r.ok
     session_3 = r.json()['_id']
 
-    r = as_admin.post('/projects/site/phi', json={"fields": []})
+    r = as_admin.post('/projects/site/phi', json={"fields": ["tags", "notes"]})
     assert r.ok
 
+    # Test posting and viewing tags
+    r = as_admin.post('/groups/' + group + '/tags', json={'value': "TagName"})
+    assert r.ok
+
+    # Test that user can post tags even if it is a phi field
+    r = as_user.post('/projects/' + project + '/tags', json={'value': "TagName"})
+    assert r.ok
+
+    # Test that user w/o phi-access cannot see tags
+    r = as_user.get('/projects/' + project + '/tags/TagName')
+    assert r.status_code == 403
+
+    # Test that user w/ phi-access can see tags
+    r = as_admin.put('/projects/' + project + '/permissions/user@user.com', json={'phi-access': True})
+    assert r.ok
+    r = as_user.get('/projects/' + project + '/tags/TagName')
+    assert r.ok
+    r = as_admin.put('/projects/' + project + '/permissions/user@user.com', json={'phi-access': False})
+    assert r.ok
+
+    # Test that user w/o phi-access can delete tags
+    r = as_user.delete('/projects/' + project + '/tags/TagName')
+    assert r.ok
+
+    # Test that user w/o phi can add notes
+    r = as_user.post('/projects/' + project + '/notes', json={'text': "Note"})
+    assert r.ok
+
+    # Test that user cannot see any notes (ideally user would be able to see only notes that they created)
+    r = as_admin.get("/projects/" + project)
+    assert r.ok
+    note = r.json()['notes'][0]["_id"]
+    r = as_user.get('/projects/' + project + '/notes/' + note)
+    assert r.status_code == 403
+
+    # Test that user with phi-access can see the notes
+    r = as_admin.put('/projects/' + project + '/permissions/user@user.com', json={'phi-access': True})
+    assert r.ok
+    r = as_user.get('/projects/' + project + '/notes/' + note)
+    assert r.ok
+    r = as_admin.put('/projects/' + project + '/permissions/user@user.com', json={'phi-access': False})
+    assert r.ok
+
+    # Test that user w/o phi-access can delete notes
+    r = as_user.delete('/projects/' + project + '/notes/' + note)
+    assert r.ok
+
+    r = as_admin.post('/projects/site/phi', json={"fields": []})
+    assert r.ok
     r = as_admin.delete('/sessions/' + session_2)
     assert r.ok
     r = as_admin.delete('/sessions/' + session_3)
