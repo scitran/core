@@ -166,8 +166,7 @@ class ProjectSettings(base.RequestHandler):
             project = self.storage.get_container(cid, projection={'permissions': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('User does not have access to project {} PHI fields'.format(cid))
-
-        if any([field not in PHI_CANDIDATES for field in payload["fields"]]):
+        if not all([x.startswith(tuple(PHI_CANDIDATES)) for x in payload["fields"]]):
             self.abort(400, "All fields to be set must be valid phi candidates")
         result = self.storage.add_phi_fields(cid, payload)
         if result['nModified'] == 1 or result.get('upserted'):

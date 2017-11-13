@@ -386,7 +386,7 @@ def test_phi_access_post_put(data_builder, as_user, as_admin, as_root):
     assert r.status_code == 400
 
     # Set a valid field as phi at site level
-    r = as_admin.post('/projects/site/phi', json={"fields": ["info"]})
+    r = as_admin.post('/projects/site/phi', json={"fields": ["info.age", "info"]})
     assert r.ok
 
     # Post a session writing to phi field with phi-access
@@ -397,7 +397,19 @@ def test_phi_access_post_put(data_builder, as_user, as_admin, as_root):
     r = as_user.post('/sessions', json={"timestamp": "2017-11-08T21:20:00.000Z", "label": "s1", "subject": {"code": "ex1"}, "project": project, "info": {"phi":"possible"}})
     assert r.status_code == 403
 
+    # Post a session writing to info field when only a different info field is phi
+    r = as_admin.post('/projects/site/phi', json={"fields": ["info.age"]})
+    assert r.ok
+    r = as_user.post('/sessions', json={"timestamp": "2017-11-08T21:20:00.000Z", "label": "s1", "subject": {"code": "ex1"}, "project": project, "info": {"phi":"possible"}})
+    assert r.ok
+    session_3 = r.json()['_id']
+
+    r = as_admin.post('/projects/site/phi', json={"fields": []})
+    assert r.ok
+
     r = as_admin.delete('/sessions/' + session_2)
+    assert r.ok
+    r = as_admin.delete('/sessions/' + session_3)
     assert r.ok
 
 def test_get_container(data_builder, default_payload, file_form, as_drone, as_admin, as_public, api_db):
