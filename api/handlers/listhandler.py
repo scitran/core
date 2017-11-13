@@ -18,7 +18,7 @@ from ..dao import liststorage
 from ..dao import containerutil
 from ..web.errors import APIStorageException
 from ..dao.containerstorage import ProjectStorage
-from ..handlers.projectsettings import get_project_id
+from ..handlers.projectsettings import get_project_id, get_container
 from ..web.request import log_access, AccessType
 
 log = config.log
@@ -145,6 +145,8 @@ class ListHandler(base.RequestHandler):
         permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         payload = self.request.json_body
+        if list_name == "permissions" and not (cont_name in ["groups", "collections"] or get_container(get_project_id(cont_name, _id), "projects").get("phi")):
+            payload["phi-access"] = True
         payload_validator(payload, 'POST')
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id=_id, payload=payload)
 
@@ -158,6 +160,8 @@ class ListHandler(base.RequestHandler):
         permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         payload = self.request.json_body
+        if list_name == "permissions" and not (cont_name in ["groups", "collections"] or get_container(get_project_id(cont_name, _id), "projects").get("phi")):
+            payload["phi-access"] = True
         payload_validator(payload, 'PUT')
         try:
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id=_id, query_params=kwargs, payload=payload)
@@ -223,6 +227,8 @@ class PermissionsListHandler(ListHandler):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
         payload = self.request.json_body
+        if not (cont_name in ["groups", "collections"] or get_container(get_project_id(cont_name, _id), "projects").get("phi")):
+            payload["phi-access"] = True
 
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
             self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access'], 'permissions.$.phi-access': payload['phi-access']}})
@@ -237,6 +243,8 @@ class PermissionsListHandler(ListHandler):
         result = super(PermissionsListHandler, self).put(cont_name, list_name, **kwargs)
         payload = self.request.json_body
         payload['_id'] = kwargs.get('_id')
+        if not (cont_name in ["groups", "collections"] or get_container(get_project_id(cont_name, _id), "projects").get("phi")):
+            payload["phi-access"] = True
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
             group = self.get("groups","permissions",**kwargs)
             update = {'$set': {'permissions.$.access': payload.get('access'), 'permissions.$.phi-access': payload.get('phi-access')}}

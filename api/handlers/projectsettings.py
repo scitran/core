@@ -139,9 +139,11 @@ class ProjectSettings(base.RequestHandler):
                 raise APIPermissionException('Viewing site-level PHI fields requires login.')
             projection = {'project_id': 0}
         else:
-            project = self.storage.get_container(cid, projection={'permissions': 1})
+            project = self.storage.get_container(cid, projection={'permissions': 1, 'phi': 1})
             if not self.user_is_admin and not has_access(self.uid, project, 'ro'):
                 raise APIPermissionException('User does not have access to project {} PHI fields'.format(cid))
+            if not project.get('phi'):
+                self.abort(400, "Project {} does not have custom phi list enabled".format(project.get('_id')))
 
         return self.storage.get_phi_fields(cid, projection=projection)
 
@@ -152,9 +154,11 @@ class ProjectSettings(base.RequestHandler):
             if not self.user_is_admin:
                 raise APIPermissionException('Modifying site-level PHI fields can only be done by a site admin.')
         else:
-            project = self.storage.get_container(cid, projection={'permissions': 1})
+            project = self.storage.get_container(cid, projection={'permissions': 1, 'phi':1})
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('User does not have access to project {} PHI fields'.format(cid))
+            if not project.get('phi'):
+                self.abort(400, "Project {} does not have custom phi list enabled".format(project.get('_id')))
         if not all([x.startswith(tuple(PHI_CANDIDATES)) for x in payload["fields"]]):
             self.abort(400, "All fields to be set must be valid phi candidates")
         result = self.storage.add_phi_fields(cid, payload)

@@ -264,12 +264,15 @@ def test_get_all_for_user(as_admin, as_public):
 
 def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
     group = data_builder.create_group()
-    project = data_builder.create_project()
+    project = data_builder.create_project(phi=True)
     session = data_builder.create_session()
 
     project_2 = data_builder.create_project(phi=False)
     age = 4
-    session_no_phi = data_builder.create_session(info={"age": age})
+    session_no_phi = data_builder.create_session(project=project_2, info={"age": age}, subject={"firstname":"FirstName", "code":"Subject_Code", "lastname": "LastName"})
+    r = as_root.get('/sessions/'+ session_no_phi)
+    assert r.ok
+    assert r.json()["info"]["age"]
 
     # Set site wide phi fields
     r = as_admin.post('/projects/site/phi', json={'fields': [ 'info', 'subject.firstname', 'subject.lastname', 'subject.sex',
@@ -611,7 +614,8 @@ def test_post_container(data_builder, as_admin, as_user):
     # create project w/ param inherit=true
     r = as_admin.post('/projects', params={'inherit': 'true'}, json={
         'group': group,
-        'label': 'test-inheritance-project'
+        'label': 'test-inheritance-project',
+        'phi' : True
     })
     assert r.ok
     project = r.json()['_id']
@@ -631,7 +635,8 @@ def test_post_container(data_builder, as_admin, as_user):
     # try to add project without admin on group
     r = as_user.post('/projects', json={
         'group': group,
-        'label': 'test project post'
+        'label': 'test project post',
+        'phi' : True
     })
     assert r.status_code == 403
 
