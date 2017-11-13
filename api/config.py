@@ -258,11 +258,6 @@ def initialize_db():
                    {'$setOnInsert': {'created': now, 'modified': now, 'label': 'Unknown', 'permissions': []}},
                    upsert=True)
 
-    with open(os.path.join(os.path.dirname(__file__), 'filetypes.json')) as fd:
-        filetypes = json.load(fd)
-        for filetype in filetypes:
-            try_replace_one(db, 'filetypes', {'_id': filetype['_id']}, filetype, upsert=True)
-
     log.info('Initializing database, creating indexes ....DONE')
 
 def get_config():
