@@ -157,6 +157,5 @@ def guess_type_from_filename(filename):
     for document in cursor:
         if re.match(document['regex'], filename):
             filetype = document['_id']
-            break
 
     return filetype
