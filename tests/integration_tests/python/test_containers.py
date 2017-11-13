@@ -622,6 +622,117 @@ def test_edit_file_attributes(data_builder, as_admin, file_form):
     assert r.status_code == 400
 
 
+def test_edit_container_info(data_builder, as_admin, as_user):
+    """
+    When files become their own collections in Mongo, consider combining
+    the file info and container info tests.
+    """
+
+    project = data_builder.create_project()
+
+
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert not r.json()['info']
+
+    # Send improper payload
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'delete': ['map'],
+        'replace': {'not_going': 'to_happen'}
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'delete': {'a': 'map'},
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'set': 'cannot do this',
+    })
+    assert r.status_code == 400
+
+    # Attempt full replace of info
+    project_info = {
+        'a': 'b',
+        'test': 123,
+        'map': {
+            'a': 'b'
+        },
+        'list': [1,2,3]
+    }
+
+
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'replace': project_info
+    })
+    assert r.ok
+
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert r.json()['info'] == project_info
+
+
+    # Use 'set' to add new key
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'set': {'new': False}
+    })
+    assert r.ok
+
+    project_info['new'] = False
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert r.json()['info'] == project_info
+
+
+    # Use 'set' to do full replace of "map" key
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'set': {'map': 'no longer a map'}
+    })
+    assert r.ok
+
+    project_info['map'] = 'no longer a map'
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert r.json()['info'] == project_info
+
+
+    # Use 'delete' to unset "map" key
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'delete': ['map', 'a']
+    })
+    assert r.ok
+
+    project_info.pop('map')
+    project_info.pop('a')
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert r.json()['info'] == project_info
+
+
+    # Use 'delete' on keys that do not exist
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'delete': ['madeup', 'keys']
+    })
+    assert r.ok
+
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert r.json()['info'] == project_info
+
+
+    # Use 'replace' to set file info to {}
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'replace': {}
+    })
+    assert r.ok
+
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+    assert r.json()['info'] == {}
+
 def test_edit_file_info(data_builder, as_admin, file_form):
     project = data_builder.create_project()
     file_name = 'test_file.txt'
