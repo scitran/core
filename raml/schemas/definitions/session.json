@@ -1,15 +1,17 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
+        "operator":     {"type": "string"},
         "project":      {"type": "string"},
         "project_has_template":{"type":"boolean"},
         "satisfies_template":{"type":"boolean"},
         "session-input":{
             "type": "object",
             "properties": {
-                "public": {"$ref": "../definitions/container.json#/definitions/public"},
-                "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "operator":     {"$ref": "#/definitions/operator"},
+                "public":       {"$ref": "../definitions/container.json#/definitions/public"},
+                "label":        {"$ref": "../definitions/container.json#/definitions/label"},
+                "info":         {"$ref": "../definitions/container.json#/definitions/info"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "project":      {"$ref":"#/definitions/project"},
                 "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
@@ -24,11 +26,12 @@
         "session-output":{
             "type": "object",
             "properties": {
-                "_id": {"$ref":"../definitions/objectid.json#"},
-                "public": {"$ref": "../definitions/container.json#/definitions/public"},
-                "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "_id":          {"$ref":"../definitions/objectid.json#"},
+                "public":       {"$ref": "../definitions/container.json#/definitions/public"},
+                "label":        {"$ref": "../definitions/container.json#/definitions/label"},
+                "info":         {"$ref": "../definitions/container.json#/definitions/info"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
+                "operator":     {"$ref": "#/definitions/operator"},
                 "project":      {"$ref":"#/definitions/project"},
                 "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
                 "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
