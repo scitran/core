@@ -1,62 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "title": "rule",
+    "title": "Rule",
     "type": "object",
-    "properties": {
-        "_id": {
-            "type": "string"
-        },
-        "project_id": {
-            "type": "string"
-        },
-        "alg": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "any": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [
-                            "file.type",
-                            "file.name",
-                            "file.measurements",
-                            "container.has-type",
-                            "container.has-measurement"
-                        ]
-                    },
-                    "value": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "all": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [
-                            "file.type",
-                            "file.name",
-                            "file.measurements",
-                            "container.has-type",
-                            "container.has-measurement"
-                        ]
-                    },
-                    "value": {
-                        "type": "string"
-                    }
-                }
-            }
-        }
-    },
-    "additionalProperties": false
+    "allOf": [{"$ref": "../definitions/rule.json#/definitions/rule-input"}]
 }

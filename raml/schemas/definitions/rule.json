@@ -1,22 +1,51 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "properties": {
-      "alg": {
-        "type": "string"
-      },
-      "all":{
-        "type":"array",
-        "items":{
-          "type":"array",
-          "items":{
-            "type":"string"
-          }
+    "definitions": {
+        "rule-items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "file.type",
+                            "file.name",
+                            "file.measurements",
+                            "container.has-type",
+                            "container.has-measurement"
+                        ]
+                    },
+                    "value": { "type": "string" },
+                    "regex": { "type": "boolean" }
+                },
+                "required": [ "type", "value" ],
+                "additionalProperties": false
+            }
+        },
+
+        "rule-input": {
+            "type": "object",
+            "properties": {
+                "_id":        { "type": "string" },
+                "project_id": { "type": "string" },
+                "alg":        { "type": "string" },
+                "name":       { "type": "string" },
+                "any":        { "$ref": "#/definitions/rule-items" },
+                "all":        { "$ref": "#/definitions/rule-items" }
+            },
+            "additionalProperties": false
+        },
+
+        "rule-output": {
+            "type": "object",
+            "properties": {
+                "_id":  { "type": "string" },
+                "alg":  { "type": "string" },
+                "name": { "type": "string" },
+                "any":  { "$ref": "#/definitions/rule-items" },
+                "all":  { "$ref": "#/definitions/rule-items" }
+            }
         }
-      }
-    },
-    "required": [
-      "alg",
-      "all"
-    ]
+    }
 }

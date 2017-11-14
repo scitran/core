@@ -1,25 +1,27 @@
-
 import pytest
+
 from api.jobs import rules
 
 # Statefully holds onto some construction args and can return tuples to unroll for calling rules.eval_match.
 # Might indicate a need for a match tuple in rules.py.
 class rulePart:
     # Hold onto some param state
-    def __init__(self, match_type=None, match_param=None, file_=None, container=None):
+    def __init__(self, match_type=None, match_param=None, file_=None, container=None, regex=None):
         self.match_type  = match_type
         self.match_param = match_param
         self.file_       = file_
         self.container   = container
+        self.regex       = regex
 
     # Return params as tuple, optionally with some modifications
-    def gen(self, match_type=None, match_param=None, file_=None, container=None):
+    def gen(self, match_type=None, match_param=None, file_=None, container=None, regex=None):
 
         return (
-            match_type  if match_type  else self.match_type,
-            match_param if match_param else self.match_param,
-            file_       if file_       else self.file_,
-            container   if container   else self.container,
+            match_type  if match_type  is not None else self.match_type,
+            match_param if match_param is not None else self.match_param,
+            file_       if file_       is not None else self.file_,
+            container   if container   is not None else self.container,
+            regex       if regex       is not None else self.regex,
         )
 
 # DISCUSS: this basically asserts that the log helper doesn't throw, which is of non-zero but questionable value.
@@ -41,6 +43,17 @@ def test_eval_match_file_type():
 
     # Check match returns false without raising when not given a file.type
     args = part.gen(file_={'a': 'b'}, container={'a': 'b'})
+    result = rules.eval_match(*args)
+    assert result == False
+
+def test_eval_match_file_type_regex():
+    part = rulePart(match_type='file.type', file_={'type': 'dicom'}, regex=True)
+
+    args = part.gen(match_param='DiC[o]{1}M$')
+    result = rules.eval_match(*args)
+    assert result == True
+
+    args = part.gen(match_param='DiC[o]{2}M$')
     result = rules.eval_match(*args)
     assert result == False
 
@@ -66,6 +79,17 @@ def test_eval_match_file_name_match_relative():
     result = rules.eval_match(*args)
     assert result == False
 
+def test_eval_match_file_name_match_regex():
+    part = rulePart(match_type='file.name', file_={'name': 'test.dicom.zip'}, regex=True)
+
+    args = part.gen(match_param='.*DiC[o]{1}M\.zip$')
+    result = rules.eval_match(*args)
+    assert result == True
+
+    args = part.gen(match_param='.*DiC[o]{2}M\.zip$')
+    result = rules.eval_match(*args)
+    assert result == False
+
 def test_eval_match_file_measurements():
     part = rulePart(match_type='file.measurements', file_={'measurements': ['a', 'diffusion', 'b'] })
 
@@ -77,8 +101,19 @@ def test_eval_match_file_measurements():
     result = rules.eval_match(*args)
     assert result == False
 
-    # Check match returns false without raising when not given a file.type
-    args = part.gen(file_={'a': 'b'}, match_param='', container={'a': 'b'})
+    # Check match returns false without raising when not given a file.measurement
+    args = part.gen(match_param='', file_={'a': 'b'}, container={'a': 'b'})
+    result = rules.eval_match(*args)
+    assert result == False
+
+def test_eval_match_file_measurements_regex():
+    part = rulePart(match_type='file.measurements', file_={'measurements': ['diffusion']}, regex=True)
+
+    args = part.gen(match_param='test|diffusion')
+    result = rules.eval_match(*args)
+    assert result == True
+
+    args = part.gen(match_param='test|foo')
     result = rules.eval_match(*args)
     assert result == False
 
@@ -93,6 +128,20 @@ def test_eval_match_container_has_type():
     assert result == True
 
     args = part.gen(match_param='d')
+    result = rules.eval_match(*args)
+    assert result == False
+
+def test_eval_match_container_has_type_regex():
+    part = rulePart(match_type='container.has-type', regex=True, container={'files': [
+        {'type': 'diffusion'},
+        {'type': 'other'},
+    ]})
+
+    args = part.gen(match_param='test|diffusion')
+    result = rules.eval_match(*args)
+    assert result == True
+
+    args = part.gen(match_param='test|foo')
     result = rules.eval_match(*args)
     assert result == False
 

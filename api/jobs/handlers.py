@@ -175,7 +175,7 @@ class RulesHandler(base.RequestHandler):
 
         doc = self.request.json
 
-        validate_data(doc, 'rule-add.json', 'input', 'POST', optional=True)
+        validate_data(doc, 'rule-new.json', 'input', 'POST', optional=True)
         try:
             get_gear_by_name(doc['alg'])
         except APINotFoundException:
