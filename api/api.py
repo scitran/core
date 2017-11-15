@@ -9,6 +9,7 @@ from .handlers.dataexplorerhandler  import DataExplorerHandler
 from .handlers.devicehandler        import DeviceHandler
 from .handlers.grouphandler         import GroupHandler
 from .handlers.listhandler          import FileListHandler, NotesListHandler, PermissionsListHandler, TagsListHandler
+from .handlers.modalityhandler      import ModalityHandler
 from .handlers.refererhandler       import AnalysesHandler
 from .handlers.reporthandler        import ReportHandler
 from .handlers.resolvehandler       import ResolveHandler
@@ -174,6 +175,15 @@ endpoints = [
             route('/status',            DeviceHandler, h='get_status', m=['GET']),
             route('/self',              DeviceHandler, h='get_self',   m=['GET']),
             route('/<device_id:[^/]+>', DeviceHandler,                 m=['GET']),
+        ]),
+
+
+        # Modalities
+
+        route( '/modalities',               ModalityHandler, h='get_all',    m=['GET']),
+        route( '/modalities',               ModalityHandler,                 m=['POST']),
+        prefix('/modalities', [
+            route('/<modality_name:[^/]+>', ModalityHandler,                 m=['GET', 'PUT', 'DELETE']),
         ]),
 
 
