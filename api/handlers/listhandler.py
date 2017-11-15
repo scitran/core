@@ -70,7 +70,7 @@ def initialize_list_configurations():
                 'use_object_id': False,
                 'get_full_container': True,
                 'storage_schema_file': 'permission.json',
-                'input_schema_file': 'permission.json'
+                'input_schema_file': 'group-permission.json'
             },
             'tags': {
                 'storage': liststorage.StringListStorage,
@@ -227,6 +227,8 @@ class PermissionsListHandler(ListHandler):
         _id = kwargs.get('cid')
         result = super(PermissionsListHandler, self).post(cont_name, list_name, **kwargs)
         payload = self.request.json_body
+        if cont_name == "groups" and not payload.get("phi-access"):
+            payload["phi-access"] = True
 
         if cont_name == 'groups' and self.request.params.get('propagate') =='true':
             self._propagate_permissions(cont_name, _id, query={'permissions._id' : payload['_id']}, update={'$set': {'permissions.$.access': payload['access'], 'permissions.$.phi-access': payload['phi-access']}})
