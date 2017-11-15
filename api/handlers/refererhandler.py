@@ -256,8 +256,8 @@ class AnalysesHandler(RefererHandler):
         filename = kwargs.get('filename')
 
         cid = analysis['parent']['id']
-        cont = analysis['parent']['cont']
-        parent = self.storage.get_parent(cont, cid)
+        cont_name = analysis['parent']['type']
+        parent = self.storage.get_parent(cont_name, cid)
         permchecker = self.get_permchecker(parent)
 
         ticket_id = self.get_param('ticket')
