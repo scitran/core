@@ -46,6 +46,12 @@ def get_project_id(cont_name, _id):
     else:
         raise APINotFoundException("{} are not a container".format(cont_name))
 
+def check_phi_enabled(cont_name, _id):
+    project_id = get_project_id(cont_name, _id)
+    if project_id != "site":
+        return get_container(project_id, "projects").get("phi")
+    else:
+        return True
 def get_phi_fields(cont_name, _id):
     project_storage = containerstorage.ProjectStorage()
     project_id = get_project_id(cont_name, _id)

@@ -24,7 +24,7 @@ from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
 from .listhandler import FileListHandler
-from .projectsettings import get_phi_fields
+from .projectsettings import get_phi_fields, check_phi_enabled
 
 
 log = config.log
@@ -139,7 +139,7 @@ class AnalysesHandler(RefererHandler):
         parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
         projection = get_phi_fields(pluralize(analysis['parent']['type']),analysis['parent']['id'])
         if check_phi(self.uid, parent)or self.superuser_request:
-            self.phi = True
+            self.phi = not check_phi_enabled(pluralize(analysis['parent']['type']), analysis['parent']['id'])
             projection = None
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET',phi=self.phi)

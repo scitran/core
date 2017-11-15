@@ -15,7 +15,7 @@ from ..types import Origin
 from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
-from .projectsettings import phi_payload, get_phi_fields
+from .projectsettings import phi_payload, get_phi_fields, check_phi_enabled
 
 log = config.log
 
@@ -94,6 +94,7 @@ class ContainerHandler(base.RequestHandler):
         projection = get_phi_fields(cont_name, _id)
         container = self._get_container(_id)
         log.debug(container)
+        self.phi = not check_phi_enabled(cont_name, _id)
         if check_phi(self.uid, container) or self.superuser_request:
             log.debug("PHI")
             log.debug(self.superuser_request)
