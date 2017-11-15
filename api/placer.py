@@ -19,12 +19,13 @@ from .jobs.jobs import Job
 from .types import Origin
 from .web import encoder
 
+
 class Placer(object):
     """
     Interface for a placer, which knows how to process files and place them where they belong - on disk and database.
     """
 
-    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context, file_fields):
         self.container_type = container_type
         self.container      = container
         self.id_            = id_
@@ -42,6 +43,7 @@ class Placer(object):
 
         # A list of files that have been saved via save_file() usually returned by finalize()
         self.saved          = []
+        self.file_fields    = file_fields
 
 
     def check(self):
@@ -74,7 +76,15 @@ class Placer(object):
         Helper function that throws unless metadata was provided.
         """
         if self.metadata == None:
-            raise Exception('Metadata required')
+            raise files.FileFormException('Metadata required')
+
+    def requireFiles(self):
+        """
+        Helper function that throws unless metadata was provided.
+        """
+        if not self.file_fields or len(self.file_fields) < 1:
+            raise files.FileFormException('No files selected to upload')
+
 
     def save_file(self, field=None, file_attrs=None):
         """
@@ -113,6 +123,16 @@ class TargetedPlacer(Placer):
     An exception is thrown in upload.process_upload() if you try. This could be fixed by making a better schema.
     """
 
+    # TODO: Change schemas to enabled targeted uploads of more than one file.
+    # Ref docs from placer.TargetedPlacer for details.
+    def requireFiles(self):
+        """
+        Helper function that throws unless metadata was provided.
+        """
+        if not self.file_fields or len(self.file_fields) != 1:
+            raise files.FileFormException("Targeted uploads can only send one file")
+
+
     def check(self):
         self.requireTarget()
         validators.validate_data(self.metadata, 'file.json', 'input', 'POST', optional=True)
@@ -137,14 +157,14 @@ class UIDPlacer(Placer):
     create_hierarchy = staticmethod(hierarchy.upsert_top_down_hierarchy)
     match_type = 'uid'
 
-    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
-        super(UIDPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context, file_fields):
+        super(UIDPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context, file_fields)
         self.metadata_for_file = {}
         self.session_id = None
 
-
     def check(self):
         self.requireMetadata()
+        self.requireFiles()
 
         payload_schema_uri = validators.schema_uri('input', self.metadata_schema)
         metadata_validator = validators.from_schema_path(payload_schema_uri)
@@ -315,8 +335,8 @@ class TokenPlacer(Placer):
     Intended for use with a token that tracks where the files will be stored.
     """
 
-    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
-        super(TokenPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context, file_fields):
+        super(TokenPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context, file_fields)
 
         self.paths  =   []
         self.folder =   None
@@ -354,8 +374,8 @@ class PackfilePlacer(Placer):
     A placer that can accept N files, save them into a zip archive, and place the result on an acquisition.
     """
 
-    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context):
-        super(PackfilePlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
+    def __init__(self, container_type, container, id_, metadata, timestamp, origin, context, file_fields):
+        super(PackfilePlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context, file_fields)
 
         # This endpoint is an SSE endpoint
         self.sse            = True
