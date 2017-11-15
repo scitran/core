@@ -94,8 +94,11 @@ class ContainerHandler(base.RequestHandler):
         projection = get_phi_fields(cont_name, _id)
         container = self._get_container(_id)
         log.debug(container)
-        self.phi = not check_phi_enabled(cont_name, _id)
-        if check_phi(self.uid, container) or self.superuser_request:
+        self.phi = False
+        if not check_phi_enabled(cont_name, _id):
+            self.phi = False
+            projection = None
+        elif check_phi(self.uid, container) or self.superuser_request:
             log.debug("PHI")
             log.debug(self.superuser_request)
             self.phi = True
@@ -107,6 +110,8 @@ class ContainerHandler(base.RequestHandler):
             result = permchecker(self.storage.exec_op)('GET', _id, projection=projection, phi=self.phi)
         except APIStorageException as e:
             self.abort(400, e.message)
+        if not check_phi_enabled(cont_name, _id):
+            self.phi = True
         if result is None:
             self.abort(404, 'Element not found in container {} {}'.format(self.storage.cont_name, _id))
         if not self.superuser_request and not self.is_true('join_avatars'):

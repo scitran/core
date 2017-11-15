@@ -379,9 +379,11 @@ def test_phi_access_get(as_user, as_admin, as_root, data_builder, log_db):
 
 
     # Test that project with phi disabled, user without phi can access site level phi fields
+    pre_log = log_db.access_log.count({})
     r = as_user.get('/sessions/'+ session_no_phi)
     assert r.ok
     assert r.json()["info"]["age"] == age
+    assert pre_log == log_db.access_log.count({}) - 1
 
     r = as_admin.delete('/sessions/' + session)
     assert r.ok

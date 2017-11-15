@@ -18,7 +18,7 @@ from ..dao import liststorage
 from ..dao import containerutil
 from ..web.errors import APIStorageException
 from ..dao.containerstorage import ProjectStorage
-from ..handlers.projectsettings import get_project_id, get_container, check_phi_enabled
+from ..handlers.projectsettings import get_project_id, check_phi_enabled
 from ..web.request import log_access, AccessType
 
 log = config.log
@@ -145,8 +145,6 @@ class ListHandler(base.RequestHandler):
         permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id)
 
         payload = self.request.json_body
-        if list_name == "permissions" and not (cont_name in ["groups", "collections"] or get_container(get_project_id(cont_name, _id), "projects").get("phi")):
-            payload["phi-access"] = True
         payload_validator(payload, 'POST')
         result = keycheck(mongo_validator(permchecker(storage.exec_op)))('POST', _id=_id, payload=payload)
 
@@ -160,8 +158,6 @@ class ListHandler(base.RequestHandler):
         permchecker, storage, mongo_validator, payload_validator, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         payload = self.request.json_body
-        if list_name == "permissions" and not (cont_name in ["groups", "collections"] or get_container(get_project_id(cont_name, _id), "projects").get("phi")):
-            payload["phi-access"] = True
         payload_validator(payload, 'PUT')
         try:
             result = keycheck(mongo_validator(permchecker(storage.exec_op)))('PUT', _id=_id, query_params=kwargs, payload=payload)

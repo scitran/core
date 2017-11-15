@@ -137,9 +137,13 @@ class AnalysesHandler(RefererHandler):
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
         parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
-        projection = get_phi_fields(pluralize(analysis['parent']['type']),analysis['parent']['id'])
-        if check_phi(self.uid, parent)or self.superuser_request:
-            self.phi = not check_phi_enabled(pluralize(analysis['parent']['type']), analysis['parent']['id'])
+        projection = get_phi_fields(pluralize(analysis['parent']['type']), analysis['parent']['id'])
+        self.phi = False
+        if not check_phi_enabled(pluralize(analysis['parent']['type']), analysis['parent']['id']):
+            self.phi = False
+            projection = None
+        elif check_phi(self.uid, parent) or self.superuser_request:
+            self.phi = True
             projection = None
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET',phi=self.phi)
@@ -148,6 +152,8 @@ class AnalysesHandler(RefererHandler):
         if self.is_true('inflate_job'):
             self.storage.inflate_job_info(analysis)
 
+        if not check_phi_enabled(pluralize(analysis['parent']['type']), analysis['parent']['id']):
+            self.phi = True
         self.log_user_access(AccessType.view_container, cont_name=analysis['parent']['type'], cont_id=analysis['parent']['id'])
         return analysis
 
