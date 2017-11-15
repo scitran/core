@@ -84,8 +84,6 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
     placer_class = strategy.value
     placer = placer_class(container_type, container, id_, metadata, timestamp, origin, context)
-    placer.check()
-
     # Browsers, when sending a multipart upload, will send files with field name "file" (if sinuglar)
     # or "file1", "file2", etc (if multiple). Following this convention is probably a good idea.
     # Here, we accept any
@@ -96,6 +94,10 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
         raise Exception("Targeted uploads can only send one file")
+    elif strategy in [Strategy.reaper, Strategy.uidupload, Strategy.labelupload, Strategy.uidmatch] and len(file_fields) < 1:
+        raise Exception("No files selected for uploading")
+    placer.check()
+
 
 
     for field in file_fields:
