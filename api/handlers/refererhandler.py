@@ -260,7 +260,6 @@ class AnalysesHandler(RefererHandler):
         parent = self.storage.get_parent(cont, cid)
         permchecker = self.get_permchecker(parent)
 
-        permchecker = self.get_permchecker(parent)
         ticket_id = self.get_param('ticket')
         ticket = None
         if ticket_id is None:
