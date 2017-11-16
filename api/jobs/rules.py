@@ -3,6 +3,7 @@ import re
 
 from .. import config
 from ..types import Origin
+from ..dao import APIValidationException
 from ..dao.containerutil import FileReference
 
 from . import gears
@@ -288,4 +289,17 @@ def copy_site_rules_for_project(project_id):
         config.db.project_rules.insert_one(doc)
 
 
-
+def validate_regexes(rule):
+    invalid_patterns = set()
+    for match in rule.get('all', []) + rule.get('any', []):
+        if match.get('regex'):
+            pattern = match['value']
+            try:
+                re.compile(pattern)
+            except re.error:
+                invalid_patterns.add(pattern)
+    if invalid_patterns:
+        raise APIValidationException({
+            'reason': 'Cannot compile regex patterns',
+            'patterns': sorted(invalid_patterns),
+        })

@@ -31,7 +31,22 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
     assert r.status_code == 403
 
     # attempt to add site rule with empty payload
-    r = as_admin.post('site/rules', json={})
+    r = as_admin.post('/site/rules', json={})
+    assert r.status_code == 400
+    assert 'Empty Payload' in r.json()['message']
+
+    # attempt to add site rule with invalid regex
+    invalid_pattern = '^(?non-image$).+'
+    r = as_admin.post('/site/rules', json={
+        'alg': gear_name,
+        'name': 'invalid-regex-rule',
+        'any': [],
+        'all': [
+            {'type': 'file.measurements', 'value': invalid_pattern, 'regex': True},
+        ]
+    })
+    assert r.status_code == 422
+    assert invalid_pattern in r.json()['patterns']
 
     # add site rule
     r = as_admin.post('/site/rules', json=rule)
@@ -82,6 +97,15 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
     # attempt to modify site rule with empty payload
     r = as_admin.put('/site/rules/' + rule_id, json={})
     assert r.status_code == 400
+
+    # attempt to modify site rule with invalid regex
+    r = as_admin.put('/site/rules/' + rule_id, json={
+        'all': [
+            {'type': 'file.measurements', 'value': invalid_pattern, 'regex': True},
+        ]
+    })
+    assert r.status_code == 422
+    assert invalid_pattern in r.json()['patterns']
 
     # modify site rule
     r = as_admin.put('/site/rules/' + rule_id, json=update)

@@ -25,6 +25,7 @@ from .gears import validate_gear_config, get_gears, get_gear, get_invocation_sch
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
+from .rules import validate_regexes
 
 
 class GearsHandler(base.RequestHandler):
@@ -176,6 +177,7 @@ class RulesHandler(base.RequestHandler):
         doc = self.request.json
 
         validate_data(doc, 'rule-new.json', 'input', 'POST', optional=True)
+        validate_regexes(doc)
         try:
             get_gear_by_name(doc['alg'])
         except APINotFoundException:
@@ -228,6 +230,7 @@ class RuleHandler(base.RequestHandler):
 
         updates = self.request.json
         validate_data(updates, 'rule-update.json', 'input', 'POST', optional=True)
+        validate_regexes(updates)
         if updates.get('alg'):
             try:
                 get_gear_by_name(updates['alg'])
