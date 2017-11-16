@@ -1,6 +1,8 @@
+import re
+
 from .. import config
 from ..auth import require_admin, require_login
-from ..validators import validate_data
+from ..validators import validate_data, InputValidationException
 from ..web import base
 
 
@@ -19,6 +21,10 @@ class FileType(base.RequestHandler):
         """
         payload = self.request.json_body
         validate_data(payload, 'filetype.json', 'input', 'POST')
+        try:
+            re.compile(payload['regex'])
+        except re.error:
+            raise InputValidationException('Invalid regular expression')
         result = config.db.filetypes.replace_one({'_id': payload['_id']}, payload, upsert=True)
         if result.acknowledged:
             _id = result.upserted_id if result.upserted_id else payload['_id']

@@ -153,9 +153,12 @@ def getHashingFieldStorage(upload_dir, hash_alg):
 
 def guess_type_from_filename(filename):
     filetype = None
+    m_length = 0
     cursor = config.db.filetypes.find({})
+
     for document in cursor:
-        if re.match(document['regex'], filename):
+        m = re.search(document['regex'], filename)
+        if m and m_length < len(m.group(0)):
             filetype = document['_id']
 
     return filetype
