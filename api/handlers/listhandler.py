@@ -539,8 +539,23 @@ class FileListHandler(ListHandler):
         # abort if the query of the update wasn't able to find any matching documents
         if result.matched_count == 0:
             self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
-        else:
-            return {'modified':result.modified_count}
+
+    def modify_classification(self, cont_name, list_name, **kwargs):
+        _id = kwargs.pop('cid')
+        permchecker, storage, _, _, _ = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
+
+        payload = self.request.json_body
+
+        validators.validate_data(payload, 'classification_update.json', 'input', 'POST')
+
+        try:
+            permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
+            result = storage.modify_classification(_id, kwargs, payload)
+        except APIStorageException as e:
+            self.abort(400, e.message)
+        # abort if the query of the update wasn't able to find any matching documents
+        if result.matched_count == 0:
+            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')

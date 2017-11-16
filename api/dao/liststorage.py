@@ -8,6 +8,7 @@ from . import consistencychecker
 from .. import config
 from .. import util
 from ..jobs import rules
+from ..handlers.modalityhandler import check_and_format_classification
 from .containerstorage import SessionStorage, AcquisitionStorage
 
 log = config.log
@@ -204,6 +205,51 @@ class FileStorage(ListStorage):
                 update['$unset'] = {}
                 for k in delete_payload:
                     update['$unset'][self.list_name + '.$.info.' + k] = ''
+
+        if self.use_object_id:
+            _id = bson.objectid.ObjectId(_id)
+        query = {'_id': _id }
+        query[self.list_name] = {'$elemMatch': query_params}
+
+        if not update.get('$set'):
+            update['$set'] = {'modified': datetime.datetime.utcnow()}
+        else:
+            update['$set']['modified'] = datetime.datetime.utcnow()
+
+        return self.dbc.update_one(query, update)
+
+    def modify_classification(self, _id, query_params, payload):
+        update = {}
+        modality = self.get_container(_id)['files'][0].get('modality') #TODO: make this more reliable if the file isn't there
+        add_payload = payload.get('add')
+        delete_payload = payload.get('delete')
+        replace_payload = payload.get('replace')
+
+        if (add_payload or delete_payload) and replace_payload is not None:
+            raise APIStorageException('Cannot add or delete AND replace classification fields.')
+
+        if replace_payload is not None:
+            replace_payload = check_and_format_classification(modality, replace_payload)
+            update = {
+                '$set': {
+                    self.list_name + '.$.classification': util.mongo_sanitize_fields(replace_payload)
+                }
+            }
+
+        else:
+            if add_payload:
+                add_payload = check_and_format_classification(modality, add_payload)
+
+                update['$addToSet'] = {}
+                for k,v in add_payload.iteritems():
+                    update['$addToSet'][self.list_name + '.$.classification.' + k] = {'$each': v}
+            if delete_payload:
+                delete_payload = check_and_format_classification(modality, delete_payload)
+
+                # TODO: Test to make sure $pull succeeds when key does not exist
+                update['$pullAll'] = {}
+                for k,v in delete_payload.iteritems():
+                    update['$pullAll'][self.list_name + '.$.classification.' + k] = v
 
         if self.use_object_id:
             _id = bson.objectid.ObjectId(_id)
