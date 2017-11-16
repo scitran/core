@@ -153,9 +153,11 @@ class AnalysesHandler(RefererHandler):
             self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 
 
-    def download(self, cont_name, cid, _id, filename=None):
+    def download(self, **kwargs):
         """
-        .. http:get:: /api/(cont_name)/(cid)/analyses/(analysis_id)/files/(file_name)
+        .. http:get:: /api/(cont_name)*/(cid)*/analyses/(analysis_id)/files/(file_name)*
+
+            * - not required
 
             Download a file from an analysis or download a tar of all files
 
@@ -249,8 +251,15 @@ class AnalysesHandler(RefererHandler):
 
 
         """
+        _id = kwargs.get('_id')
+        analysis = self.storage.get_container(_id)
+        filename = kwargs.get('filename')
+
+        cid = analysis['parent']['id']
+        cont_name = analysis['parent']['type']
         parent = self.storage.get_parent(cont_name, cid)
         permchecker = self.get_permchecker(parent)
+
         ticket_id = self.get_param('ticket')
         ticket = None
         if ticket_id is None:
@@ -260,7 +269,6 @@ class AnalysesHandler(RefererHandler):
             if not self.origin.get('id'):
                 self.origin = ticket.get('origin')
 
-        analysis = self.storage.get_container(_id)
         fileinfo = analysis.get('files', [])
         if filename:
             fileinfo = [fi for fi in fileinfo if fi['name'] == filename]
