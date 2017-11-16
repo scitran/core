@@ -9,7 +9,7 @@ import re
 from .. import files
 from .. import util
 from .. import config
-from .base import ContainerStorage
+from .basecontainerstorage import ContainerStorage
 from ..auth import has_access
 from . import APIStorageException, APINotFoundException, APIPermissionException, containerutil
 

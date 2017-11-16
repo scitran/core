@@ -11,7 +11,7 @@ from .. import config
 from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..jobs.rules import copy_site_rules_for_project
-from .base import ContainerStorage
+from .basecontainerstorage import ContainerStorage
 
 
 log = config.log
