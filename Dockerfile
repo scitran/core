@@ -23,9 +23,11 @@ VOLUME /data/db
 
 WORKDIR /scr/core
 
-COPY . .
 COPY docker/unit.json /var/local/unit/conf.json
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
 
+COPY . .
 RUN pip install -e .
 
 CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
@@ -35,8 +37,6 @@ FROM dist as testing
 
 RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community mongodb=3.4.4-r0
 
-RUN pwd
+RUN pip install -r tests/requirements.txt
 
 CMD ["./docker/dev+mongo.sh"]
-
-#docker run -it --rm -p 8080:80 -p 8081:8080 scitran/core:testing
