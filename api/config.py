@@ -163,6 +163,7 @@ expected_input_schemas = set([
     'group-new.json',
     'group-update.json',
     'info_update.json',
+    'modality.json',
     'note.json',
     'packfile.json',
     'permission.json',
