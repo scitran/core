@@ -5,40 +5,59 @@ unset CDPATH
 cd "$( dirname "$0" )/../.."
 
 
-usage() {
-cat >&2 <<EOF
-Build scitran-core image and run tests in a docker container
-
+USAGE="
 Usage:
     $0 [OPTION...] [-- TEST_ARGS...]
 
+Build scitran-core image and run tests in a Docker container.
+
 Options:
-    -B, --no-build      Skip docker build
     -h, --help          Print this help and exit
+
+    -B, --no-build      Skip rebuilding default Docker image
+    --image IMAGE       Use custom Docker image
     -- TEST_ARGS        Arguments passed to tests/bin/run-tests-ubuntu.sh
 
-EOF
-}
-
+"
 
 main() {
-    local DOCKER_BUILD=true
+    local DOCKER_IMAGE=true
     local TEST_ARGS=
     local MONGO_VERSION=3.2
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            -B|--no-build)    DOCKER_BUILD=false;              ;;
-            -h|--help)        usage;                    exit 0 ;;
-            --)               TEST_ARGS="${@:2}";       break  ;;
-            *) echo "Invalid argument: $1" >&2; usage;  exit 1 ;;
+            -B|--no-build)
+                DOCKER_IMAGE="scitran-core:run-tests"
+                ;;
+            --image)
+                DOCKER_IMAGE="$2"
+                shift
+                ;;
+            --)
+                shift
+                TEST_ARGS="$@"
+                break
+                ;;
+            -h|--help)
+                printf "$USAGE" >&2
+                exit 0
+                ;;
+            *)
+                printf "Invalid argument: $1\n" >&2
+                printf "$USAGE" >&2
+                exit 1
+                ;;
         esac
         shift
     done
 
-    if ${DOCKER_BUILD}; then
-        echo "Building scitran-core:run-tests ..."
+    # Docker build
+    if [ -z "${DOCKER_IMAGE}" ]; then
+        log "Building scitran-core:run-tests ..."
         docker build -t scitran-core:run-tests .
+    else
+        docker tag "$DOCKER_IMAGE" "scitran-core:run-tests"
     fi
 
     trap clean_up EXIT
@@ -48,7 +67,6 @@ main() {
     # Launch core + mongo
     local SCITRAN_CORE_DRONE_SECRET=T+27oHSKw+WQqT/rre+iaiIY4vNzav/fPStHqW/Eczk=
 
-    set -x
     docker run -d \
         --name scitran-core-test-service \
         --network scitran-core-test-network \
@@ -80,9 +98,15 @@ clean_up() {
     docker cp scitran-core-test-service:/var/scitran/code/api/.coverage .coverage
 
     # Spin down dependencies
+    docker rm -f -v scitran-core-test-runner
     docker rm -f -v scitran-core-test-service
     docker network rm scitran-core-test-network
     exit $TEST_RESULT_CODE
+}
+
+
+log() {
+    printf "\n%s\n" "$@" >&2
 }
 
 

@@ -5,36 +5,29 @@ unset CDPATH
 cd "$( dirname "$0" )/../.."
 
 
-usage() {
-cat >&2 <<EOF
-Run scitran-core tests
-
+USAGE="
 Usage:
-    $0 [OPTION...]
+    $0 [OPTION...] [-- PYTEST_ARGS...]
 
 Runs linting and all tests if no options are provided.
 Runs subset of tests when using the filtering options.
 Displays coverage report if all tests ran and passed.
 
+Assumes running in scitran-core container or that core and all of its
+dependencies are installed the same way as in the Dockerfile, and that
+    * TODO scitran-core instance is running at...
+    * TODO mongodb is runnin at...
+
 Options:
+    -h, --help           Print this help and exit
+
     -l, --lint           Run linting
     -u, --unit           Run unit tests
     -i, --integ          Run integration tests
     -a, --abao           Run abao tests
-    -h, --help           Print this help and exit
     -- PYTEST_ARGS       Arguments passed to py.test
 
-Envvars:
-    SCITRAN_PERSISTENT_DB_PORT    (9001)
-    SCITRAN_PERSISTENT_DB_URI     (mongodb://localhost:9001/scitran)
-    SCITRAN_PERSISTENT_DB_LOG_URI (mongodb://localhost:9001/logs)
-
-Assumes mongo db instance is accessible at localhost, unless
-SCITRAN_PERSISTENT_DB_URI or SCITRAN_PERSISTENT_DB_LOG_URI specify otherwise.
-
-EOF
-}
-
+"
 
 main() {
     export RUN_ALL=true
@@ -46,13 +39,37 @@ main() {
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            -l|--lint)      RUN_ALL=false; RUN_LINT=true      ;;
-            -u|--unit)      RUN_ALL=false; RUN_UNIT=true      ;;
-            -i|--integ)     RUN_ALL=false; RUN_INTEG=true     ;;
-            -a|--abao)      RUN_ALL=false; RUN_ABAO=true      ;;
-            -h|--help)      usage;                     exit 0 ;;
-            --)             PYTEST_ARGS="${@:2}";      break  ;;
-            *) echo "Invalid argument: $1" >&2; usage; exit 1 ;;
+            -l|--lint)
+                RUN_ALL=false
+                RUN_LINT=true
+                ;;
+            -u|--unit)
+                RUN_ALL=false
+                RUN_UNIT=true
+                ;;
+            -i|--integ)
+                RUN_ALL=false
+                RUN_INTEG=true
+                ;;
+            -a|--abao)
+                RUN_ALL=false
+                RUN_ABAO=true
+                ;;
+            --)
+                shift
+                TEST_ARGS="$@"
+                break
+                ;;
+
+            -h|--help)
+                printf "$USAGE" >&2
+                exit 0
+                ;;
+            *)
+                printf "Invalid argument: $1\n" >&2
+                printf "$USAGE" >&2
+                exit 1
+                ;;
         esac
         shift
     done
@@ -84,28 +101,28 @@ main() {
     export SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-T+27oHSKw+WQqT/rre+iaiIY4vNzav/fPStHqW/Eczk=}
 
     if ${RUN_LINT}; then
-        echo "Running pylint ..."
+        log "Running pylint ..."
         # TODO Enable Refactor and Convention reports
         # TODO Move --disable into rc
         pylint --reports=no --disable=C,R,W0312,W0141,W0110 api
 
-        # echo "Running pep8 ..."
+        # log "Running pep8 ..."
         # pep8 --max-line-length=150 --ignore=E402 api
     fi
 
     if ${RUN_UNIT}; then
-        echo "Running unit tests ..."
+        log "Running unit tests ..."
         rm -f .coverage
         py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_INTEG}; then
-        echo "Running integration tests ..."
+        log "Running integration tests ..."
         py.test tests/integration_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_ABAO}; then
-        echo "Running abao tests ..."
+        log "Running abao tests ..."
         # Create resources that Abao relies on
         python tests/integration_tests/abao/load_fixture.py
 
@@ -131,15 +148,18 @@ main() {
     fi
 
     if ${RUN_ALL}; then
-        echo
-        echo "UNIT TEST COVERAGE:"
+        log "\nUNIT TEST COVERAGE:"
         coverage report --skip-covered
-        echo
-        echo "OVERALL COVERAGE:"
+        log "\nOVERALL COVERAGE:"
         coverage combine
         coverage report --show-missing
         coverage html
     fi
+}
+
+
+log() {
+    printf "\n%s\n" "$@" >&2
 }
 
 
