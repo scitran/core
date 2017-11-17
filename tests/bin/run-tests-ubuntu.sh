@@ -68,8 +68,6 @@ main() {
         RUN_ALL=true
     fi
 
-    trap clean_up EXIT
-
     # Remove __pycache__ directories for issue with __file__ attribute due to
     # running the tests on the host creating bytecode files hich have a
     # mismatched __file__ attribute when loaded in docker container
@@ -77,7 +75,7 @@ main() {
     rm -rf tests/integration_tests/python/__pycache__
 
     export PYTHONPATH="$(pwd)"
-    export SCITRAN_SITE_API_URL="http://localhost:8081/api"
+    export SCITRAN_SITE_API_URL="http://scitran-core-test-service:8081/api"
     export SCITRAN_PERSISTENT_DB_PORT=${SCITRAN_PERSISTENT_DB_PORT:-"9001"}
     export SCITRAN_PERSISTENT_DB_URI=${SCITRAN_PERSISTENT_DB_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"}
     export SCITRAN_PERSISTENT_DB_LOG_URI=${SCITRAN_PERSISTENT_DB_LOG_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/logs"}
@@ -99,31 +97,6 @@ main() {
         echo "Running unit tests ..."
         rm -f .coverage
         py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
-    fi
-
-    if ${RUN_INTEG} || ${RUN_ABAO}; then
-        echo "Spinning up dependencies ..."
-        uwsgi --http "localhost:8081" --master --http-keepalive \
-            --so-keepalive --add-header "Connection: Keep-Alive" \
-            --processes 1 --threads 1 \
-            --enable-threads \
-            --wsgi-file bin/api.wsgi \
-            --die-on-term \
-            --logformat '%(addr) - %(user) [%(ltime)] "%(method) %(uri) %(proto)" %(status) %(size) "%(referer)" "%(uagent)" request_id=%(request_id)' \
-            --env "SCITRAN_PERSISTENT_DB_URI=$SCITRAN_PERSISTENT_DB_URI" \
-            --env "SCITRAN_PERSISTENT_DB_LOG_URI=$SCITRAN_PERSISTENT_DB_LOG_URI" \
-            --env "SCITRAN_PERSISTENT_PATH=$SCITRAN_PERSISTENT_PATH" \
-            --env "SCITRAN_PERSISTENT_DATA_PATH=$SCITRAN_PERSISTENT_DATA_PATH" \
-            --env "SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET" \
-            --env "SCITRAN_RUNTIME_COVERAGE=true" \
-            --env "SCITRAN_CORE_ACCESS_LOG_ENABLED=true" &
-        export API_PID=$!
-
-        echo "Connecting to API"
-        until $(curl --output /dev/null --silent --head --fail "$SCITRAN_SITE_API_URL"); do
-            printf '.'
-            sleep 1
-        done
     fi
 
     if ${RUN_INTEG}; then
@@ -156,23 +129,8 @@ main() {
         NODE_PATH="$integration_test_node_modules" abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
         popd
     fi
-}
 
-
-clean_up() {
-    local TEST_RESULT_CODE=$?
-    set +e
-
-    echo
-    echo "Test return code = $TEST_RESULT_CODE"
-
-    if [ "${API_PID:-}" ]; then
-        # Killing uwsgi
-        kill $API_PID
-        wait 2> /dev/null
-    fi
-
-    if ${RUN_ALL} && [[ "${TEST_RESULT_CODE}" == "0" ]]; then
+    if ${RUN_ALL}; then
         echo
         echo "UNIT TEST COVERAGE:"
         coverage report --skip-covered
@@ -181,11 +139,7 @@ clean_up() {
         coverage combine
         coverage report --show-missing
         coverage html
-    else
-        echo "Some tests were skipped or failed, skipping coverage report"
     fi
-
-    exit $TEST_RESULT_CODE
 }
 
 
