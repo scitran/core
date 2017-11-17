@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
+
 set -eu
 unset CDPATH
-cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
+cd "$( dirname "$0" )/../.."
 
 
-function usage() {
+usage() {
 cat >&2 <<EOF
 Run scitran-core tests
 
@@ -35,7 +36,7 @@ EOF
 }
 
 
-function main() {
+main() {
     export RUN_ALL=true
     local RUN_LINT=false
     local RUN_UNIT=false
@@ -43,7 +44,7 @@ function main() {
     local RUN_ABAO=false
     local PYTEST_ARGS=
 
-    while [[ "$#" > 0 ]]; do
+    while [ $# -gt 0 ]; do
         case "$1" in
             -l|--lint)      RUN_ALL=false; RUN_LINT=true      ;;
             -u|--unit)      RUN_ALL=false; RUN_UNIT=true      ;;
@@ -82,7 +83,7 @@ function main() {
     export SCITRAN_PERSISTENT_DB_LOG_URI=${SCITRAN_PERSISTENT_DB_LOG_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/logs"}
     export SCITRAN_PERSISTENT_PATH=`mktemp -d`
     export SCITRAN_PERSISTENT_DATA_PATH="$SCITRAN_PERSISTENT_PATH/data"
-    export SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-$( openssl rand -base64 32 )}
+    export SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-T+27oHSKw+WQqT/rre+iaiIY4vNzav/fPStHqW/Eczk=}
 
     if ${RUN_LINT}; then
         echo "Running pylint ..."
@@ -158,14 +159,14 @@ function main() {
 }
 
 
-function clean_up () {
+clean_up() {
     local TEST_RESULT_CODE=$?
     set +e
 
     echo
     echo "Test return code = $TEST_RESULT_CODE"
 
-    if [[ -n "${API_PID:-}" ]]; then
+    if [ "${API_PID:-}" ]; then
         # Killing uwsgi
         kill $API_PID
         wait 2> /dev/null

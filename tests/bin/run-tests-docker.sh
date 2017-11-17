@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
+
 set -eu
 unset CDPATH
-cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
+cd "$( dirname "$0" )/../.."
 
 
-function usage() {
+usage() {
 cat >&2 <<EOF
 Build scitran-core image and run tests in a docker container
 
@@ -20,12 +21,12 @@ EOF
 }
 
 
-function main() {
+main() {
     local DOCKER_BUILD=true
     local TEST_ARGS=
     local MONGO_VERSION=3.2
 
-    while [[ "$#" > 0 ]]; do
+    while [ $# -gt 0 ]; do
         case "$1" in
             -B|--no-build)    DOCKER_BUILD=false;              ;;
             -h|--help)        usage;                    exit 0 ;;
@@ -57,14 +58,14 @@ function main() {
         -e SCITRAN_PERSISTENT_DB_URI=mongodb://scitran-core-test-mongo:27017/scitran \
         -e SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://scitran-core-test-mongo:27017/logs \
         -v $(pwd):/var/scitran/code/api \
-        --entrypoint bash \
+        --entrypoint sh \
         scitran-core:run-tests \
         /var/scitran/code/api/tests/bin/run-tests-ubuntu.sh \
         $TEST_ARGS
 }
 
 
-function clean_up() {
+clean_up() {
     local TEST_RESULT_CODE=$?
     set +e
 
