@@ -1,6 +1,6 @@
 from ..web import base
 from .. import config
-from ..auth import require_login, require_superuser
+from ..auth import require_login, require_admin
 from ..dao import containerstorage, APINotFoundException, APIValidationException
 #from ..validators import validate_data
 
@@ -21,7 +21,7 @@ class ModalityHandler(base.RequestHandler):
     def get_all(self):
         return self.storage.get_all_el(None, None, None)
 
-    @require_superuser
+    @require_admin
     def post(self):
         payload = self.request.json_body
         # Clean this up when validate_data method is fixed to use new schemas
@@ -34,7 +34,7 @@ class ModalityHandler(base.RequestHandler):
         else:
             self.abort(400, 'Modality not inserted')
 
-    @require_superuser
+    @require_admin
     def put(self, modality_name):
         payload = self.request.json_body
         # Clean this up when validate_data method is fixed to use new schemas
@@ -47,7 +47,7 @@ class ModalityHandler(base.RequestHandler):
         else:
             raise APINotFoundException('Modality with name {} not found, modality not updated'.format(modality_name))
 
-    @require_superuser
+    @require_admin
     def delete(self, modality_name):
         result = self.storage.delete_el(modality_name)
         if result.deleted_count == 1:
@@ -118,7 +118,7 @@ def check_and_format_classification(modality_name, classification_map):
 
     Returns properly formatted classification map:
         classification_map = {
-            "Example1": ["Blue"],
+            "Example1": ["blue"],
             "custom":   ["anything"]
         }
 
@@ -131,7 +131,7 @@ def check_and_format_classification(modality_name, classification_map):
     try:
         modality = containerstorage.ContainerStorage('modalities', use_object_id=False).get_container(modality_name)
     except APINotFoundException as e:
-        if classification_map.keys() == ['custom']:
+        if classification_map.keys() == ['Custom']:
             # for unknown modalities allow only list of custom values
             return classification_map
         else:
@@ -143,9 +143,9 @@ def check_and_format_classification(modality_name, classification_map):
     bad_kvs = [] # a list of errors to report, formatted like ['k:v', 'k:v', 'k:v']
 
     for k,array in classification_map.iteritems():
-        if k == 'custom':
+        if k.lower() == 'custom':
             # any unique value is allowed in custom list
-            formatted_map[k] = array
+            formatted_map['Custom'] = array
 
         else:
             for v in array:
