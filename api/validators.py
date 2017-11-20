@@ -4,14 +4,10 @@ import jsonschema
 import os
 
 from . import config
+from .web.errors import DBValidationException, InputValidationException
 
 log = config.log
 
-class InputValidationException(Exception):
-    pass
-
-class DBValidationException(Exception):
-    pass
 
 def validate_data(data, schema_json, schema_type, verb, optional=False):
     """

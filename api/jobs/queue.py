@@ -10,8 +10,8 @@ import datetime
 from .. import config
 from .jobs import Job, Logs
 from .gears import get_gear, validate_gear_config, fill_gear_default_values
-from ..validators import InputValidationException
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
+from ..web.errors import InputValidationException
 
 
 log = config.log

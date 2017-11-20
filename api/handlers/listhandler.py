@@ -15,8 +15,8 @@ from .. import validators
 from ..auth import listauth, always_ok
 from ..dao import noop
 from ..dao import liststorage
-from ..dao import APIStorageException
 from ..dao import containerutil
+from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
 
 

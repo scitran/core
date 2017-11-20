@@ -5,6 +5,7 @@ import os.path
 import shutil
 
 from .web import base
+from .web.errors import FileStoreException
 from . import config
 from . import files
 from . import placer as pl
@@ -79,7 +80,7 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
         try:
             metadata = json.loads(form['metadata'].value)
         except Exception:
-            raise files.FileStoreException('wrong format for field "metadata"')
+            raise FileStoreException('wrong format for field "metadata"')
 
     placer_class = strategy.value
     placer = placer_class(container_type, container, id_, metadata, timestamp, origin, context)

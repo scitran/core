@@ -12,8 +12,9 @@ import pymongo
 
 from .. import config
 from .jobs import Job
-from ..dao import APIValidationException, APINotFoundException
+
 from ..dao.basecontainerstorage import ContainerStorage
+from ..web.errors import APIValidationException, APINotFoundException
 
 log = config.log
 

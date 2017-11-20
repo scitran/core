@@ -7,14 +7,11 @@ import traceback
 import webapp2
 
 from .. import util
-from .. import files
 from .. import config
 from ..types import Origin
-from .. import validators
 from ..auth.authproviders import AuthProvider
 from ..auth.apikeys import APIKey
-from ..auth import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
-from ..dao import APIConsistencyException, APIConflictException, APINotFoundException, APIPermissionException, APIValidationException
+from ..web import errors
 from elasticsearch import ElasticsearchException
 from ..dao.hierarchy import get_parent_tree
 from ..web.request import log_access, AccessType
@@ -170,7 +167,7 @@ class RequestHandler(webapp2.RequestHandler):
 
                     try:
                         updated_token_info = auth_provider.refresh_token(refresh_token['token'])
-                    except APIAuthProviderException as e:
+                    except errors.APIAuthProviderException as e:
 
                         # Remove the bad refresh token and session token:
                         config.db.refreshtokens.delete_one({'_id': refresh_token['_id']})
@@ -335,28 +332,30 @@ class RequestHandler(webapp2.RequestHandler):
         message = str(exception)
         if isinstance(exception, webapp2.HTTPException):
             code = exception.code
-        elif isinstance(exception, validators.InputValidationException):
+        elif isinstance(exception, errors.InputValidationException):
             code = 400
             self.request.logger.warning(str(exception))
-        elif isinstance(exception, APIAuthProviderException):
+        elif isinstance(exception, errors.APIAuthProviderException):
             code = 401
-        elif isinstance(exception, APIRefreshTokenException):
+        elif isinstance(exception, errors.APIRefreshTokenException):
             code = 401
             custom_errors = exception.errors
-        elif isinstance(exception, APIUnknownUserException):
+        elif isinstance(exception, errors.APIUnknownUserException):
             code = 402
-        elif isinstance(exception, APIConsistencyException):
+        elif isinstance(exception, errors.APIConsistencyException):
             code = 400
-        elif isinstance(exception, APIPermissionException):
+        elif isinstance(exception, errors.APIPermissionException):
             code = 403
-        elif isinstance(exception, APINotFoundException):
+        elif isinstance(exception, errors.APINotFoundException):
             code = 404
-        elif isinstance(exception, APIConflictException):
+        elif isinstance(exception, errors.APIConflictException):
             code = 409
-        elif isinstance(exception, APIValidationException):
+        elif isinstance(exception, errors.APIValidationException):
             code = 422
             custom_errors = exception.errors
-        elif isinstance(exception, files.FileStoreException):
+        elif isinstance(exception, errors.FileStoreException):
+            code = 400
+        elif isinstance(exception, errors.FileFormException):
             code = 400
         elif isinstance(exception, ElasticsearchException):
             code = 503

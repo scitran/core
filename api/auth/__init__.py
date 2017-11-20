@@ -1,5 +1,5 @@
-from ..dao import APIPermissionException
 from ..types import Origin
+from ..web.errors import APIPermissionException
 
 PERMISSIONS = [
     {
@@ -27,20 +27,6 @@ def _get_access(uid, container):
 
 def has_access(uid, container, perm):
     return _get_access(uid, container) >= INTEGER_PERMISSIONS[perm]
-
-class APIAuthProviderException(Exception):
-    pass
-
-class APIUnknownUserException(Exception):
-    pass
-
-class APIRefreshTokenException(Exception):
-    # Specifically alert a client when the user's refresh token expires
-    # Requires client to ask for `offline=true` permission to receive a new one
-    def __init__(self, msg):
-
-        super(APIRefreshTokenException, self).__init__(msg)
-        self.errors = {'core_status_code': 'invalid_refresh_token'}
 
 
 def always_ok(exec_op):

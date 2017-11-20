@@ -6,10 +6,11 @@ import urlparse
 
 from xml.etree import ElementTree
 
-from . import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 from .apikeys import APIKey
 from .. import config, util
 from ..dao import dbutil
+
+from ..web.errors import APIAuthProviderException, APIUnknownUserException, APIRefreshTokenException
 
 log = config.log
 

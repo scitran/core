@@ -3,7 +3,7 @@ import bson.objectid
 import datetime
 import pymongo
 
-from . import APIStorageException, APIConflictException, APINotFoundException
+from ..web.errors import APIStorageException, APIConflictException, APINotFoundException
 from . import consistencychecker
 from .. import config
 from .. import util

@@ -10,14 +10,14 @@ from urlparse import urlparse
 from .. import upload
 from .. import util
 from ..auth import require_login, has_access
-from ..dao import APIPermissionException, APINotFoundException
 from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
 from ..dao.containerutil import ContainerReference
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
+from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
 from .. import config
 from . import batch
-from ..validators import InputValidationException, validate_data, verify_payload_exists
+from ..validators import validate_data, verify_payload_exists
 
 from ..auth.apikeys import JobApiKey
 

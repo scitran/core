@@ -3,7 +3,6 @@ import datetime
 import bson
 import copy
 
-from . import APIStorageException, APINotFoundException
 from . import containerutil
 from . import hierarchy
 from .. import config
@@ -11,8 +10,8 @@ from .. import config
 from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..jobs.rules import copy_site_rules_for_project
+from ..web.errors import APIStorageException, APINotFoundException
 from .basecontainerstorage import ContainerStorage
-
 
 log = config.log
 

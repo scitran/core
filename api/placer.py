@@ -8,7 +8,6 @@ import shutil
 import zipfile
 
 from . import config
-from .web import encoder
 from . import files
 from . import tempdir as tempfile
 from . import util
@@ -18,7 +17,7 @@ from .dao import containerutil, hierarchy
 from .jobs import rules
 from .jobs.jobs import Job
 from .types import Origin
-
+from .web import encoder
 
 class Placer(object):
     """

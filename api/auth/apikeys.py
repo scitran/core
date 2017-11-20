@@ -1,8 +1,8 @@
 import bson
 import datetime
 
-from . import APIAuthProviderException
 from .. import config, util
+from ..web.errors import APIAuthProviderException
 
 log = config.log
 

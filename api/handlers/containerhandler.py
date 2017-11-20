@@ -6,13 +6,14 @@ from .. import config
 from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage, containerutil, noop
+from ..dao import containerstorage, containerutil, noop
 from ..dao.containerstorage import AnalysisStorage
 from ..jobs.gears import get_gear
 from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..types import Origin
 from ..web import base
+from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
 
 log = config.log
