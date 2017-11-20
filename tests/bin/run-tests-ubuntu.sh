@@ -94,7 +94,7 @@ main() {
         log "Running pylint ..."
         # TODO Enable Refactor and Convention reports
         # TODO Move --disable into rc
-        pylint --reports=no --disable=C,R,W0312,W0141,W0110 api
+        pylint --jobs=4 --reports=no --disable=C,R,W0312,W0141,W0110 api
 
         # log "Running pep8 ..."
         # pep8 --max-line-length=150 --ignore=E402 api
