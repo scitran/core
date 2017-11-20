@@ -60,7 +60,6 @@ main() {
                 TEST_ARGS="$@"
                 break
                 ;;
-
             -h|--help)
                 printf "$USAGE" >&2
                 exit 0
@@ -90,15 +89,6 @@ main() {
     # mismatched __file__ attribute when loaded in docker container
     rm -rf tests/unit_tests/python/__pycache__
     rm -rf tests/integration_tests/python/__pycache__
-
-    export PYTHONPATH="$(pwd)"
-    export SCITRAN_SITE_API_URL="http://scitran-core-test-service:8081/api"
-    export SCITRAN_PERSISTENT_DB_PORT=${SCITRAN_PERSISTENT_DB_PORT:-"9001"}
-    export SCITRAN_PERSISTENT_DB_URI=${SCITRAN_PERSISTENT_DB_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/scitran"}
-    export SCITRAN_PERSISTENT_DB_LOG_URI=${SCITRAN_PERSISTENT_DB_LOG_URI:-"mongodb://localhost:$SCITRAN_PERSISTENT_DB_PORT/logs"}
-    export SCITRAN_PERSISTENT_PATH=`mktemp -d`
-    export SCITRAN_PERSISTENT_DATA_PATH="$SCITRAN_PERSISTENT_PATH/data"
-    export SCITRAN_CORE_DRONE_SECRET=${SCITRAN_CORE_DRONE_SECRET:-T+27oHSKw+WQqT/rre+iaiIY4vNzav/fPStHqW/Eczk=}
 
     if ${RUN_LINT}; then
         log "Running pylint ..."

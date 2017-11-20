@@ -21,7 +21,7 @@ Options:
 "
 
 main() {
-    local DOCKER_IMAGE=true
+    local DOCKER_IMAGE=
     local TEST_ARGS=
     local MONGO_VERSION=3.2
 
@@ -84,6 +84,7 @@ main() {
         --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
         --env SCITRAN_PERSISTENT_DB_URI=mongodb://scitran-core-test-service:27017/scitran \
         --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://scitran-core-test-service:27017/logs \
+        --env SCITRAN_SITE_API_URL=http://scitran-core-test-service/api \
         scitran-core:run-tests \
         /var/scitran/code/api/tests/bin/run-tests-ubuntu.sh \
         $TEST_ARGS
