@@ -57,7 +57,7 @@ main() {
                 ;;
             --)
                 shift
-                TEST_ARGS="$@"
+                PYTEST_ARGS="$@"
                 break
                 ;;
             -h|--help)

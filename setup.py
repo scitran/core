@@ -1,10 +1,9 @@
 from setuptools import setup, find_packages
 
-install_requires = open('requirements.txt').readlines()
+requirements = open('requirements.txt').readlines()
+install_requires = [r for r in requirements if not r.startswith('git+')]
+dependency_links = [r for r in requirements if r.startswith('git+')]
 tests_require = open('tests/requirements.txt').readlines()
-dependency_links = [
-    'git+https://github.com/flywheel-io/gears.git@v0.1.4#egg=gears',
-]
 
 setup(
     name = 'example',
