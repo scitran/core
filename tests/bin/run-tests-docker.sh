@@ -95,6 +95,13 @@ clean_up() {
     local TEST_RESULT_CODE=$?
     set +e
 
+    log "INFO: Test return code = $TEST_RESULT_CODE"
+    if [ "${TEST_RESULT_CODE}" != "0" ]; then
+        log "INFO: Printing container logs..."
+        docker logs scitran-core-test-service
+        log "ERROR: Test return code = $TEST_RESULT_CODE. Container logs printed above."
+    fi
+
     # Copy coverage file to host for possible further reporting
     docker cp scitran-core-test-service:/var/scitran/code/api/.coverage .coverage
 
