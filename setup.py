@@ -6,7 +6,7 @@ dependency_links = [r for r in requirements if r.startswith('git+')]
 tests_require = open('tests/requirements.txt').readlines()
 
 setup(
-    name = 'example',
+    name = 'api',
     version = '0.0.1',
     description = '',
     author = '',

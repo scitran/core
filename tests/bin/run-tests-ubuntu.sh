@@ -116,31 +116,14 @@ main() {
         # Create resources that Abao relies on
         python tests/integration_tests/abao/load_fixture.py
 
-        # If no VIRTUAL_ENV, make sure /usr/local/bin is in the path
-        if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-            PATH="/usr/local/bin:$PATH"
-            npm install tests/integration_tests
-        else
-            npm install --global tests/integration_tests
-        fi
-
-        PATH="$(npm bin):$PATH"
-
-        # Allow us to require modules from package.json,
-        # since abao_test_hooks.js is not being called from the package directory
-        integration_test_node_modules="$(pwd)/node_modules/scitran-core-integration-tests/node_modules"
-
-        # Have to change into definitions directory to resolve
-        # relative $ref's in the jsonschema's
-        pushd raml/schemas/definitions
-        NODE_PATH="$integration_test_node_modules" abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
-        popd
+        local BASEDIR=$(pwd)
+        cd raml/schemas/definitions
+        abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
+        cd $BASEDIR
     fi
 
     if ${RUN_ALL}; then
-        log "\nUNIT TEST COVERAGE:"
-        coverage report --skip-covered
-        log "\nOVERALL COVERAGE:"
+        log "OVERALL COVERAGE:"
         coverage combine
         coverage report --show-missing
         coverage html
