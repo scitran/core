@@ -4,7 +4,7 @@ import datetime
 from .. import config
 from ..auth import containerauth, always_ok
 from ..dao import containerstorage, containerutil
-from ..dao import APIStorageException
+from ..web.errors import APIStorageException
 from ..validators import verify_payload_exists
 
 from .containerhandler import ContainerHandler

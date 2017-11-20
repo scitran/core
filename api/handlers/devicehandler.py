@@ -4,7 +4,8 @@ from ..web import base
 from .. import config
 from .. import util
 from ..auth import require_drone, require_login, require_superuser
-from ..dao import containerstorage, APINotFoundException
+from ..dao import containerstorage
+from ..web.errors import APINotFoundException
 from ..validators import validate_data
 
 log = config.log

@@ -16,8 +16,9 @@ from .. import upload
 from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
-from ..dao import APIStorageException, containerstorage, noop
+from ..dao import containerstorage, noop
 from ..web import base
+from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
 from .listhandler import FileListHandler
 

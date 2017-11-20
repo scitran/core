@@ -6,10 +6,10 @@ import copy
 import datetime
 
 from .. import config
-from ..dao import APINotFoundException, APIStorageException
 from ..dao.containerstorage import AcquisitionStorage, AnalysisStorage
 from .jobs import Job
 from .queue import Queue
+from ..web.errors import APINotFoundException, APIStorageException
 from . import gears
 
 log = config.log

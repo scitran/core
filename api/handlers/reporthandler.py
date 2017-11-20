@@ -12,6 +12,7 @@ from .. import tempdir as tempfile
 from .. import util
 from ..web import base
 
+from ..web.errors import APIReportException, APIReportParamsException
 from ..web.request import AccessTypeList
 
 
@@ -45,12 +46,6 @@ ACCESS_LOG_FIELDS = [
     "request_method",
     "request_path"
 ]
-
-class APIReportException(Exception):
-    pass
-
-class APIReportParamsException(Exception):
-    pass
 
 class ReportHandler(base.RequestHandler):
 

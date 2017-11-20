@@ -1,10 +1,10 @@
 import bson.objectid
 import copy
 
-from . import APIPermissionException
 from .. import config
 from ..auth import has_access
 
+from ..web.errors import APIPermissionException
 
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
 SINGULAR_TO_PLURAL = {

@@ -3,8 +3,8 @@ import re
 
 from .. import config
 from ..types import Origin
-from ..dao import APIValidationException
 from ..dao.containerutil import FileReference
+from ..web.errors import APIValidationException
 
 from . import gears
 from .jobs import Job

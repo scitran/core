@@ -10,7 +10,9 @@ from .. import validators
 from ..auth import userauth, require_admin
 from ..auth.apikeys import UserApiKey
 from ..dao import containerstorage
-from ..dao import noop, APIStorageException
+from ..dao import noop
+
+from ..web.errors import APIStorageException
 
 log = config.log
 

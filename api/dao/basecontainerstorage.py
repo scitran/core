@@ -1,12 +1,12 @@
 import bson
 import pymongo.errors
 
-from . import APIStorageException, APIConflictException, APINotFoundException
 from . import consistencychecker
 from . import containerutil
 from .. import config
 from .. import util
 
+from ..web.errors import APIStorageException, APIConflictException, APINotFoundException
 
 log = config.log
 

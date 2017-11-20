@@ -2,7 +2,7 @@
 do some verification against the database before allowing the operation"""
 
 from .. import config
-from . import APIConsistencyException
+from ..web.errors import APIConsistencyException
 
 def noop(*args, **kwargs): # pylint: disable=unused-argument
     pass

@@ -11,7 +11,8 @@ from .. import util
 from .. import config
 from .basecontainerstorage import ContainerStorage
 from ..auth import has_access
-from . import APIStorageException, APINotFoundException, APIPermissionException, containerutil
+from ..web.errors import APIStorageException, APINotFoundException, APIPermissionException
+from . import containerutil
 
 log = config.log
 

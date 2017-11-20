@@ -2,7 +2,7 @@ import random
 import time
 
 from pymongo.errors import DuplicateKeyError
-from . import APIStorageException
+from ..web.errors import APIStorageException
 
 def try_replace_one(db, coll_name, query, update, upsert=False):
     """
