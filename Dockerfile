@@ -21,7 +21,7 @@ EXPOSE 80 8080 27017
 
 VOLUME /data/db
 
-WORKDIR /scr/core
+WORKDIR /src/core
 
 COPY docker/unit.json /var/local/unit/conf.json
 COPY requirements.txt requirements.txt
