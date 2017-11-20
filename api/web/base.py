@@ -328,6 +328,7 @@ class RequestHandler(webapp2.RequestHandler):
         For all others use a generic 500 error code and log the stack trace
         """
 
+        request_id = self.request.id
         custom_errors = None
         message = str(exception)
         if isinstance(exception, webapp2.HTTPException):
@@ -369,9 +370,9 @@ class RequestHandler(webapp2.RequestHandler):
             self.request.logger.error(tb)
 
         if return_json:
-            return util.create_json_http_exception_response(message, code, custom=custom_errors)
+            return util.create_json_http_exception_response(message, code, request_id, custom=custom_errors)
 
-        util.send_json_http_exception(self.response, message, code, custom=custom_errors)
+        util.send_json_http_exception(self.response, message, code, request_id, custom=custom_errors)
 
     def log_user_access(self, access_type, cont_name=None, cont_id=None, multifile=False):
 
