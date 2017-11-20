@@ -70,7 +70,8 @@ main() {
     docker run -d \
         --name scitran-core-test-service \
         --network scitran-core-test-network \
-        --volume $(pwd):/var/scitran/code/api \
+        --volume $(pwd)/api:/src/core/api \
+        --volume $(pwd)/tests:/src/core/tests \
         --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
         --env SCITRAN_RUNTIME_COVERAGE=true \
         --env SCITRAN_CORE_ACCESS_LOG_ENABLED=true \
@@ -80,13 +81,14 @@ main() {
     docker run -it \
         --name scitran-core-test-runner \
         --network scitran-core-test-network \
-        --volume $(pwd):/var/scitran/code/api \
+        --volume $(pwd)/api:/src/core/api \
+        --volume $(pwd)/tests:/src/core/tests \
         --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
         --env SCITRAN_PERSISTENT_DB_URI=mongodb://scitran-core-test-service:27017/scitran \
         --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://scitran-core-test-service:27017/logs \
         --env SCITRAN_SITE_API_URL=http://scitran-core-test-service/api \
         scitran-core:run-tests \
-        /var/scitran/code/api/tests/bin/run-tests-ubuntu.sh \
+        /src/core/tests/bin/run-tests-ubuntu.sh \
         $TEST_ARGS
 }
 
@@ -103,7 +105,7 @@ clean_up() {
     fi
 
     # Copy coverage file to host for possible further reporting
-    docker cp scitran-core-test-service:/var/scitran/code/api/.coverage .coverage
+    docker cp scitran-core-test-service:/src/core/.coverage .coverage
 
     # Spin down dependencies
     docker rm -f -v scitran-core-test-runner
