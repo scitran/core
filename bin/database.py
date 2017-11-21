@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 38 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 39 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1255,6 +1255,41 @@ def upgrade_to_38():
     process_cursor(cursor, upgrade_to_38_closure)
 
 
+def upgrade_to_39_closure(job):
+    """
+    Done in python because:
+    " the source and target field for $rename must not be on the same path "
+    """
+
+    config_ = job.pop('config', {})
+    config.db.jobs.update({'_id': job['_id']}, {'$set': {'config': {'config': config_}}})
+
+    return True
+
+def upgrade_to_39():
+    """
+    Move old jobs without extra config down one level to match new jobs
+    with additional keys.
+
+    Before:
+    {
+        'config': {
+            'a': 'b'
+        }
+    }
+
+    After:
+    {
+        'config': {
+            'config': {
+                'a': 'b'
+            }
+        }
+    }
+    """
+    cursor = config.db.jobs.find({'config': {'$exists': True }, 'config.config': {'$exists': False }})
+    process_cursor(cursor, upgrade_to_39_closure)
+
 
 ###
 ### BEGIN RESERVED UPGRADE SECTION
@@ -1264,14 +1299,6 @@ def upgrade_to_38():
 # The team contract is that if you write an upgrade touch one of the tables mentioned below, you MUST also implement any reserved upgrades.
 # This way, we can bundle changes together that need large cursor iterations and save multi-hour upgrade times.
 
-
-## Jobs table
-
-# The old job.config format was a set of keys, which was manually placed on a "config": key when fetched.
-# Now, it's a { "config": , "inputs": } map, with the old values being placed under the "config": key when stored.
-# Move the keys accordingly so that legacy logic can be removed.
-#
-# Ref: JobHandler.get_config, Job.generate_request
 
 
 ###
