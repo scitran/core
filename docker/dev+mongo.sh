@@ -3,4 +3,4 @@
 mongod &
 MONGOD_PID=$!
 
-unitd --control "*:8888" --no-daemon --log /dev/stdout
+exec unitd --control "*:8888" --no-daemon --log /dev/stdout

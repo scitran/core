@@ -98,14 +98,22 @@ clean_up() {
     set +e
 
     log "INFO: Test return code = $TEST_RESULT_CODE"
-    if [ "${TEST_RESULT_CODE}" != "0" ]; then
+    if [ "${TEST_RESULT_CODE}" = "0" ]; then
+        # Copy unit test coverage
+        docker cp scitran-core-test-runner:/src/core/.coverage .coverage.unit-tests
+
+        # Gracefully stop API then copy integration test coverage
+        # TODO added exec to dev+mongo.sh and tried (TERM|KILL|INT|QUIT) signals to no avail
+        # Somehow api.web.start/save_coverage() (atexit) is NOT triggered
+        # docker kill --signal=SIGTERM scitran-core-test-service
+        # docker cp scitran-core-test-service:/src/core/.coverage.integration-tests ./
+
+        # TODO report/combine/htmlize coverage using a test container
+    else
         log "INFO: Printing container logs..."
         docker logs scitran-core-test-service
         log "ERROR: Test return code = $TEST_RESULT_CODE. Container logs printed above."
     fi
-
-    # Copy coverage file to host for possible further reporting
-    docker cp scitran-core-test-runner:/src/core/.coverage .coverage
 
     # Spin down dependencies
     docker rm -f -v scitran-core-test-runner

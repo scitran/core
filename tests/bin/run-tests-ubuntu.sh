@@ -115,13 +115,6 @@ main() {
         abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
         cd $BASEDIR
     fi
-
-    if ${RUN_ALL}; then
-        log "OVERALL COVERAGE:"
-        coverage combine
-        coverage report --show-missing
-        coverage html
-    fi
 }
 
 
