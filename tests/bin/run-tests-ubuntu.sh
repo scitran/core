@@ -84,12 +84,6 @@ main() {
         RUN_ALL=true
     fi
 
-    # Remove __pycache__ directories for issue with __file__ attribute due to
-    # running the tests on the host creating bytecode files hich have a
-    # mismatched __file__ attribute when loaded in docker container
-    rm -rf tests/unit_tests/python/__pycache__
-    rm -rf tests/integration_tests/python/__pycache__
-
     if ${RUN_LINT}; then
         log "Running pylint ..."
         # TODO Enable Refactor and Convention reports
@@ -103,12 +97,12 @@ main() {
     if ${RUN_UNIT}; then
         log "Running unit tests ..."
         rm -f .coverage
-        py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
+        PYTHONDONTWRITEBYTECODE=1 py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_INTEG}; then
         log "Running integration tests ..."
-        py.test tests/integration_tests/python $PYTEST_ARGS
+        PYTHONDONTWRITEBYTECODE=1 py.test tests/integration_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_ABAO}; then

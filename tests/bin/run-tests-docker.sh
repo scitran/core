@@ -105,7 +105,7 @@ clean_up() {
     fi
 
     # Copy coverage file to host for possible further reporting
-    docker cp scitran-core-test-service:/src/core/.coverage .coverage
+    docker cp scitran-core-test-runner:/src/core/.coverage .coverage
 
     # Spin down dependencies
     docker rm -f -v scitran-core-test-runner
