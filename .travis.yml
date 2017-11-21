@@ -1,26 +1,34 @@
-sudo: required
 dist: trusty
+sudo: required
 
 services:
-  - mongodb
-env:
-  global:
-    secure: HELJx6WPr+W2S0FV47KkRdlS9NCqlMcdRMK8xWgRqqrEPv24KEvNnHxCy0tRbzITqadYtyvI1MtqtmpG04uty8Gpkc7w6L6LMJ/OuLG0gVX7AnaUovYTlY04m1/L9oyzOrTDXk5J/BKbcyiz7uJtkTc/A8MMZAFfZh7hmhLID78= # BUILD_TRIGGER_URL
+    - docker
 
-install:
-  - bin/install-ubuntu.sh
-  - tests/bin/setup-integration-tests-ubuntu.sh
+env:
+    global:
+        - secure: HELJx6WPr+W2S0FV47KkRdlS9NCqlMcdRMK8xWgRqqrEPv24KEvNnHxCy0tRbzITqadYtyvI1MtqtmpG04uty8Gpkc7w6L6LMJ/OuLG0gVX7AnaUovYTlY04m1/L9oyzOrTDXk5J/BKbcyiz7uJtkTc/A8MMZAFfZh7hmhLID78= # BUILD_TRIGGER_URL
+
+#cache:
+#    directories:
+#        - $TESTDATA_DIR
+#        - $DOCKER_DIR
+
+before_install:
+    - sudo apt-get update
+    - sudo apt-get -y install docker-ce realpath
+
+install: true
 
 script:
-  - SCITRAN_PERSISTENT_DB_PORT=27017 tests/bin/run-tests-ubuntu.sh
+    - ./tests/bin/run-tests-docker.sh
 
 after_success:
-  - if [ "$TRAVIS_BRANCH" == "master" -o  "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
-        bash <(curl -s https://codecov.io/bash) -cF python;
-    fi
-  - if [ "$TRAVIS_TAG" ]; then
-        ./docker/build-trigger.sh Tag "$TRAVIS_TAG" "$BUILD_TRIGGER_URL";
-    fi
-  - if [ "$TRAVIS_EVENT_TYPE" == "push" -a "$TRAVIS_BRANCH" == "master" ]; then
-        ./docker/build-trigger.sh Branch "$TRAVIS_BRANCH" "$BUILD_TRIGGER_URL";
-    fi
+    - if [ "$TRAVIS_BRANCH" == "master" -o  "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
+          bash <(curl -s https://codecov.io/bash) -cF python;
+      fi
+    - if [ "$TRAVIS_TAG" ]; then
+          ./docker/build-trigger.sh Tag "$TRAVIS_TAG" "$BUILD_TRIGGER_URL";
+      fi
+    - if [ "$TRAVIS_EVENT_TYPE" == "push" -a "$TRAVIS_BRANCH" == "master" ]; then
+          ./docker/build-trigger.sh Branch "$TRAVIS_BRANCH" "$BUILD_TRIGGER_URL";
+      fi
