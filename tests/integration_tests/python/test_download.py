@@ -8,8 +8,10 @@ def test_download(data_builder, file_form, as_admin, api_db):
     project = data_builder.create_project(label='project1')
     session = data_builder.create_session(label='session1')
     session2 = data_builder.create_session(label='session1')
+    session3 = data_builder.create_session(label='session1')
     acquisition = data_builder.create_acquisition(session=session)
     acquisition2 = data_builder.create_acquisition(session=session2)
+    acquisition3 = data_builder.create_acquisition(session=session3)
 
     # upload the same file to each container created and use different tags to
     # facilitate download filter tests:
@@ -20,6 +22,9 @@ def test_download(data_builder, file_form, as_admin, api_db):
 
     as_admin.post('/acquisitions/' + acquisition2 + '/files', files=file_form(
         file_name, meta={'name': file_name, 'type': 'csv'}))
+
+    as_admin.post('/acquisitions/' + acquisition3 + '/files', files=file_form(
+        'test.txt', meta={'name': file_name, 'type': 'text'}))
 
     as_admin.post('/sessions/' + session + '/files', files=file_form(
         file_name, meta={'name': file_name, 'type': 'csv', 'tags': ['plus']}))
@@ -55,10 +60,13 @@ def test_download(data_builder, file_form, as_admin, api_db):
 
     # Verify a single file in tar with correct file name
     found_second_session = False
+    found_third_session = False
     for tarinfo in tar:
         assert os.path.basename(tarinfo.name) == file_name
         if 'session1_0' in str(tarinfo.name):
             found_second_session = True
+        if 'session1_1' in str(tarinfo.name):
+            found_third_session = True
     assert found_second_session
 
     tar.close()
@@ -223,7 +231,7 @@ def test_analysis_download(data_builder, file_form, as_admin, default_payload):
         zip_file.writestr('two.csv', 'sample\ndata\n')
     zip_cont.seek(0)
 
-    # analysis for testing most of the download functionality 
+    # analysis for testing most of the download functionality
     # analysis_files and new_analysis_files refer to this analyisis
     analysis1 = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
         'one.csv', ('two.zip', zip_cont),
@@ -231,9 +239,9 @@ def test_analysis_download(data_builder, file_form, as_admin, default_payload):
     )).json()['_id']
 
     # Analyis Only for testing that inputs are in their own folder
-    r = as_admin.post('/sessions/' + session + '/analyses', 
+    r = as_admin.post('/sessions/' + session + '/analyses',
         json={
-            'analysis': {'label': 'test'}, 
+            'analysis': {'label': 'test'},
             'job': {
                 'gear_id': gear,
                 'inputs': {
@@ -241,7 +249,7 @@ def test_analysis_download(data_builder, file_form, as_admin, default_payload):
                         'name': 'one.csv',
                         'type': 'acquisition',
                         'id': acquisition
-                    }, 
+                    },
                     'zip': {
                         'name': 'two.zip',
                         'type': 'acquisition',
@@ -249,7 +257,7 @@ def test_analysis_download(data_builder, file_form, as_admin, default_payload):
                     }
                 }
             }
-        }, 
+        },
         params={'job':True}
     )
     assert r.ok
@@ -508,12 +516,12 @@ def test_summary(data_builder, as_admin, file_form):
     r = as_admin.post('/download/summary', json=[{"level":"project", "_id":project}])
     assert r.ok
     assert len(r.json()) == 1
-    assert r.json().get("csv", {}).get("count",0) == 4 
+    assert r.json().get("csv", {}).get("count",0) == 4
 
     r = as_admin.post('/download/summary', json=[{"level":"session", "_id":session}])
     assert r.ok
     assert len(r.json()) == 1
-    assert r.json().get("csv", {}).get("count",0) == 2 
+    assert r.json().get("csv", {}).get("count",0) == 2
 
     r = as_admin.post('/download/summary', json=[{"level":"acquisition", "_id":acquisition},{"level":"acquisition", "_id":acquisition2}])
     assert r.ok
@@ -527,7 +535,7 @@ def test_summary(data_builder, as_admin, file_form):
         file_name, meta={'label': 'test', 'inputs':[{'name':file_name}]}))
     assert r.ok
     analysis = r.json()['_id']
-    
+
     r = as_admin.post('/download/summary', json=[{"level":"analysis", "_id":analysis}])
     assert r.ok
     assert len(r.json()) == 1
