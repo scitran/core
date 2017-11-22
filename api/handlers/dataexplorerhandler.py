@@ -386,7 +386,19 @@ class DataExplorerHandler(base.RequestHandler):
         # Parse and "validate" search_string, allowed to be non-existent
         search_string = str(request.get('search_string', ''))
 
-        return return_type, modified_filters, search_string
+        # Determine query size, if size=all figure out max for return type.
+        size = self.request.params.get('size')
+        if not size:
+            size = self.request.json_body.get("size", 100)
+        if size == 'all':
+            size = self.search_size(return_type, filters=modified_filters)
+        elif not isinstance(size, int):
+            try:
+                size = int(size)
+            except ValueError:
+                self.abort(400, 'Size must be an int or "all".')
+
+        return return_type, modified_filters, search_string, size
 
     @require_login
     def aggregate_field_values(self):
@@ -574,22 +586,7 @@ class DataExplorerHandler(base.RequestHandler):
 
     @require_login
     def search(self):
-        return_type, filters, search_string = self._parse_request()
-
-        # Set size, if all figure out max for return type.
-        # This could get more efficient (and more exact) if we build the query
-        # first and allow search_size() to take a query, but leave for now unless
-        # problems arise.
-        size = self.request.params.get('size', 100)
-        if size == 'all':
-            size = self.search_size(return_type, filters)
-            log.debug(size)
-        elif not isinstance(size, int):
-            try:
-                size = int(size)
-            except ValueError:
-                self.abort(400, 'Size must be an int or "all".')
-
+        return_type, filters, search_string, size = self._parse_request()
 
         results = self._run_query(self._construct_query(return_type, search_string, filters, size), return_type)
 

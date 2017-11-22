@@ -209,6 +209,38 @@ def test_search(as_public, as_drone, es):
     assert r.ok
     assert r.json['results'] == formatted_file_results
 
+    # file search size=all and filters
+    # file search w/ search string and filter
+    es.search.return_value = {
+        "hits": {
+            "total": 0,
+            "max_score": 0,
+            "hits": []
+        },
+        "aggregations": {
+            "count": {
+                "value": 0
+            }
+        }
+    }
+    r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'filters': [
+       {'terms': {filter_key: filter_value}},
+    ], 'size':"all"})
+    es.search.assert_called_with(
+        body={
+            '_source': deh.SOURCE[cont_type],
+            'query': {'bool': {
+                'filter': {'bool': {'must': [
+                    {'term': {'container_type': cont_type}},
+                    {'terms': {filter_key + '.raw': filter_value}},
+                ]}}
+            }},
+            'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
+            'size': 0},
+        doc_type='flywheel',
+        index='data_explorer')
+    assert r.ok
+
 
 
 def test_get_facets(as_public, as_drone, es):
