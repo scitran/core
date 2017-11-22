@@ -28,7 +28,7 @@ main() {
     while [ $# -gt 0 ]; do
         case "$1" in
             -B|--no-build)
-                DOCKER_IMAGE="scitran-core:run-tests"
+                DOCKER_IMAGE="scitran/core:testing"
                 ;;
             --image)
                 DOCKER_IMAGE="$2"
@@ -54,40 +54,40 @@ main() {
 
     # Docker build
     if [ -z "${DOCKER_IMAGE}" ]; then
-        log "Building scitran-core:run-tests ..."
-        docker build -t scitran-core:run-tests .
+        log "Building scitran/core:testing ..."
+        docker build -t scitran/core:testing .
     else
-        docker tag "$DOCKER_IMAGE" "scitran-core:run-tests"
+        docker tag "$DOCKER_IMAGE" "scitran/core:testing"
     fi
 
     trap clean_up EXIT
 
-    docker network create scitran-core-test-network
+    docker network create core-test
+
+    local SCITRAN_CORE_DRONE_SECRET="secret"
 
     # Launch core + mongo
-    local SCITRAN_CORE_DRONE_SECRET=T+27oHSKw+WQqT/rre+iaiIY4vNzav/fPStHqW/Eczk=
-
     docker run -d \
-        --name scitran-core-test-service \
-        --network scitran-core-test-network \
+        --name core-test-service \
+        --network core-test \
         --volume $(pwd)/api:/src/core/api \
         --volume $(pwd)/tests:/src/core/tests \
         --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
         --env SCITRAN_RUNTIME_COVERAGE=true \
         --env SCITRAN_CORE_ACCESS_LOG_ENABLED=true \
-        scitran-core:run-tests
+        scitran/core:testing
 
     # Execute tests
     docker run -it \
-        --name scitran-core-test-runner \
-        --network scitran-core-test-network \
+        --name core-test-runner \
+        --network core-test \
         --volume $(pwd)/api:/src/core/api \
         --volume $(pwd)/tests:/src/core/tests \
         --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
-        --env SCITRAN_PERSISTENT_DB_URI=mongodb://scitran-core-test-service:27017/scitran \
-        --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://scitran-core-test-service:27017/logs \
-        --env SCITRAN_SITE_API_URL=http://scitran-core-test-service/api \
-        scitran-core:run-tests \
+        --env SCITRAN_PERSISTENT_DB_URI=mongodb://core-test-service:27017/scitran \
+        --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://core-test-service:27017/logs \
+        --env SCITRAN_SITE_API_URL=http://core-test-service/api \
+        scitran/core:testing \
         /src/core/tests/bin/run-tests-ubuntu.sh \
         $TEST_ARGS
 }
@@ -100,25 +100,25 @@ clean_up() {
     log "INFO: Test return code = $TEST_RESULT_CODE"
     if [ "${TEST_RESULT_CODE}" = "0" ]; then
         # Copy unit test coverage
-        docker cp scitran-core-test-runner:/src/core/.coverage .coverage.unit-tests
+        docker cp core-test-runner:/src/core/.coverage .coverage.unit-tests
 
         # Gracefully stop API then copy integration test coverage
         # TODO added exec to dev+mongo.sh and tried (TERM|KILL|INT|QUIT) signals to no avail
         # Somehow api.web.start/save_coverage() (atexit) is NOT triggered
-        # docker kill --signal=SIGTERM scitran-core-test-service
-        # docker cp scitran-core-test-service:/src/core/.coverage.integration-tests ./
+        # docker kill --signal=SIGTERM core-test-service
+        # docker cp core-test-service:/src/core/.coverage.integration-tests ./
 
         # TODO report/combine/htmlize coverage using a test container
     else
         log "INFO: Printing container logs..."
-        docker logs scitran-core-test-service
+        docker logs core-test-service
         log "ERROR: Test return code = $TEST_RESULT_CODE. Container logs printed above."
     fi
 
     # Spin down dependencies
-    docker rm -f -v scitran-core-test-runner
-    docker rm -f -v scitran-core-test-service
-    docker network rm scitran-core-test-network
+    docker rm -f -v core-test-runner
+    docker rm -f -v core-test-service
+    docker network rm core-test
     exit $TEST_RESULT_CODE
 }
 
