@@ -229,6 +229,7 @@ class Download(base.RequestHandler):
     def _path_from_container(self, container, used_subpaths, ids_of_paths, _id):
         def _find_new_path(path, list_used_subpaths, ids_of_paths, _id):
             """from the input path finds a path that hasn't been used"""
+
             path = str(path).replace('/', '_')
             if path in list_used_subpaths:
                 return path
@@ -238,10 +239,11 @@ class Download(base.RequestHandler):
             i = 0
             while True:
                 modified_path = path + '_' + str(i)
-                if modified_path not in list_used_subpaths:
+                if modified_path not in ids_of_paths.keys():
                     ids_of_paths[modified_path] = _id
                     return modified_path
                 i += 1
+
         path = None
         if not path and container.get('label'):
             path = container['label']
@@ -257,7 +259,9 @@ class Download(base.RequestHandler):
             path = container['code']
         if not path:
             path = 'untitled'
-        path = _find_new_path(path, used_subpaths.get(id, []), ids_of_paths, _id)
+
+        path = _find_new_path(path, used_subpaths.get(_id, []), ids_of_paths, _id)
+
         used_subpaths[_id] = used_subpaths.get(_id, []) + [path]
         return path
 
