@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/scitran/core.svg?branch=master)](https://travis-ci.org/scitran/core)
-[![Coverage Status](https://codecov.io/gh/scitran/core/branch/master/graph/badge.svg)](https://codecov.io/gh/scitran/core/branch/master/graph/badge.svg)
+[![Coverage Status](https://codecov.io/gh/scitran/core/branch/master/graph/badge.svg)](https://codecov.io/gh/scitran/core/branch/master)
 [![Code Climate](https://codeclimate.com/github/scitran/core/badges/gpa.svg)](https://codeclimate.com/github/scitran/core)
 
 # SciTran – Scientific Transparency
