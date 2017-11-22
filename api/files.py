@@ -48,16 +48,6 @@ def hash_file_formatted(path, hash_alg=None, buffer_size=65536):
 
     return util.format_hash(hash_alg, hasher.hexdigest())
 
-<<<<<<< HEAD
-=======
-
-class FileStoreException(Exception):
-    pass
-
-class FileFormException(Exception):
-    pass
-
->>>>>>> Empty uploads 400 instead of 500
 class HashingFile(file):
     def __init__(self, file_path, hash_alg):
         super(HashingFile, self).__init__(file_path, "wb")

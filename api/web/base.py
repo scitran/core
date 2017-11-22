@@ -358,7 +358,7 @@ class RequestHandler(webapp2.RequestHandler):
             code = 400
         elif isinstance(exception, errors.FileFormException):
             code = 400
-        elif isinstance(exception, files.FileFormException):
+        elif isinstance(exception, errors.FileFormException):
             code = 400
         elif isinstance(exception, ElasticsearchException):
             code = 503
