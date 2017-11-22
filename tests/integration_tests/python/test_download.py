@@ -68,6 +68,7 @@ def test_download(data_builder, file_form, as_admin, api_db):
         if 'session1_1' in str(tarinfo.name):
             found_third_session = True
     assert found_second_session
+    assert found_third_session
 
     tar.close()
 
