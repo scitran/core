@@ -483,7 +483,7 @@ class DataExplorerHandler(base.RequestHandler):
         aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
 
-    def search_size(self, return_type):
+    def search_size(self, return_type, filter=None):
         body = {
             "size": 0,
             "aggs" : {
@@ -495,6 +495,13 @@ class DataExplorerHandler(base.RequestHandler):
                 }
             }
         }
+
+        if filter:
+            body["query"] = {
+                "bool": {
+                    "filter": filter
+                }
+            }
 
         size = config.es.search(
             index='data_explorer',
@@ -573,7 +580,8 @@ class DataExplorerHandler(base.RequestHandler):
         # problems arise.
         size = self.request.params.get('size', 100)
         if size == 'all':
-            size = self.search_size(return_type)
+            size = self.search_size(return_type, filters)
+            log.debug(size)
         elif not isinstance(size, int):
             try:
                 size = int(size)
