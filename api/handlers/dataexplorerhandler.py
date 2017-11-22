@@ -483,7 +483,7 @@ class DataExplorerHandler(base.RequestHandler):
         aggs['by_session']['subject.age'] = age_node['subject.age']
         return {'facets': aggs}
 
-    def search_size(self, return_type, filter=None):
+    def search_size(self, return_type, filters=None):
         body = {
             "size": 0,
             "aggs" : {
@@ -496,18 +496,20 @@ class DataExplorerHandler(base.RequestHandler):
             }
         }
 
-        if filter:
+        if filters:
             body["query"] = {
                 "bool": {
-                    "filter": filter
+                    "filter": filters
                 }
             }
-
-        size = config.es.search(
-            index='data_explorer',
-            doc_type='flywheel',
-            body=body)['aggregations']['count']['value']
-        size = int(size*1.02)
+        try:
+            size = config.es.search(
+                index='data_explorer',
+                doc_type='flywheel',
+                body=body)['aggregations']['count']['value']
+            size = int(size*1.02)
+        except TransportError:
+            self.abort(400, "Reuest to large, filter your request")
         return size
 
     def get_nodes(self):
