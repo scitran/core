@@ -362,6 +362,9 @@ class RequestHandler(webapp2.RequestHandler):
             code = 503
             message = "Search is currently down. Try again later."
             self.request.logger.error(traceback.format_exc())
+        elif isinstance(exception, KeyError):
+            code = 500
+            message = "Key {} was not found".format(str(exception))
         else:
             code = 500
 
