@@ -1,7 +1,8 @@
 from ..web import base
 from .. import config
 from ..auth import require_login, require_admin
-from ..dao import containerstorage, APINotFoundException, APIValidationException
+from ..dao import containerstorage
+from ..web.errors import APINotFoundException, APIValidationException
 #from ..validators import validate_data
 
 log = config.log

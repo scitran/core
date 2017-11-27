@@ -567,7 +567,7 @@ class PackfilePlacer(Placer):
 
             # OPPORTUNITY: packfile endpoint could be extended someday to take additional metadata.
             'modality': None,
-            'measurements': [],
+            'classification': {},
             'tags': [],
             'info': {},
 
