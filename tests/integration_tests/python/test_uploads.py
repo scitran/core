@@ -943,6 +943,33 @@ def test_packfile_upload(data_builder, file_form, as_admin, as_root, api_db):
     assert packfile['mimetype'] == 'application/zip'
     assert packfile['type'] == 'test'
 
+    # Test that acquisition timestamp was parsed into date type
+    r = as_admin.post('/projects/' + project + '/packfile-start')
+    assert r.ok
+    token = r.json()['token']
+    r = as_admin.post('/projects/' + project + '/packfile',
+        params={'token': token}, files=file_form('one.csv'))
+    assert r.ok
+
+    metadata_json = json.dumps({
+        'project': {'_id': project},
+        'session': {
+            'label': 'test-packfile-timestamp'
+        },
+        'acquisition': {
+            'label': 'test-packfile-timestamp',
+            'timestamp': '1990-01-01T00:00:00+00:00'
+        },
+        'packfile': {'type': 'test'}
+    })
+
+    r = as_admin.post('/projects/' + project + '/packfile-end',
+        params={'token': token, 'metadata': metadata_json})
+    assert r.ok
+
+    acquisition = api_db.acquisitions.find_one({'label':'test-packfile-timestamp', 'timestamp':{'$type':'date'}})
+    assert acquisition.get('label') == 'test-packfile-timestamp'
+
 
     # get another token (start packfile-upload)
     r = as_admin.post('/projects/' + project + '/packfile-start')

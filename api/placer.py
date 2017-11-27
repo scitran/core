@@ -567,6 +567,8 @@ class PackfilePlacer(Placer):
         insert_map = copy.deepcopy(query)
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['acquisition'])
+        if 'timestamp' in insert_map:
+            insert_map['timestamp'] = dateutil.parser.parse(insert_map['timestamp'])
 
         acquisition = config.db['acquisition' + 's'].find_one_and_update(
             query, {
