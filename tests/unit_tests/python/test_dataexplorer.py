@@ -241,6 +241,12 @@ def test_search(as_public, as_drone, es):
         index='data_explorer')
     assert r.ok
 
+    # file search size > 10000
+    r = as_drone.post('/dataexplorer/search', json={'return_type': cont_type, 'all_data': True, 'filters': [
+       {'terms': {filter_key: filter_value}},
+    ], 'size':"10000000"})
+    assert r.status_code == 400
+
 
 
 def test_get_facets(as_public, as_drone, es):

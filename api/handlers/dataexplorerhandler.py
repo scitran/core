@@ -398,6 +398,10 @@ class DataExplorerHandler(base.RequestHandler):
             except ValueError:
                 self.abort(400, 'Size must be an int or "all".')
 
+        # Check that size is less than 10,000
+        if int(size) > 10000:
+            self.abort(400, "Request would return more than 10,000 results. Please add additional filters.")
+
         return return_type, modified_filters, search_string, size
 
     @require_login
@@ -514,14 +518,11 @@ class DataExplorerHandler(base.RequestHandler):
                     "filter": filters
                 }
             }
-        try:
-            size = config.es.search(
-                index='data_explorer',
-                doc_type='flywheel',
-                body=body)['aggregations']['count']['value']
-            size = int(size*1.02)
-        except TransportError:
-            self.abort(400, "Reuest to large, filter your request")
+        size = config.es.search(
+            index='data_explorer',
+            doc_type='flywheel',
+            body=body)['aggregations']['count']['value']
+        size = int(size*1.02)
         return size
 
     def get_nodes(self):
