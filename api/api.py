@@ -141,6 +141,8 @@ endpoints = [
             route('/<:[^/]+>/logs/text',   JobHandler,  h='get_logs_text', m=['GET']),
             route('/<:[^/]+>/logs/html',   JobHandler,  h='get_logs_html', m=['GET']),
             route('/<:[^/]+>/logs',        JobHandler,  h='add_logs',      m=['POST']),
+            route('/<:[^/]+>/prepare-complete',     JobHandler,  h='prepare_complete',     m=['POST']),
+            route('/<:[^/]+>/accept-failed-output', JobHandler,  h='accept_failed_output', m=['POST']),
         ]),
         route('/gears',                                  GearsHandler),
         route('/gears/check',                            GearsHandler, h='check', m=['POST']),

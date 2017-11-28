@@ -186,7 +186,7 @@ class Upload(base.RequestHandler):
         elif strategy == 'reaper':
             strategy = Strategy.reaper
         else:
-            self.abort(500, 'stragegy {} not implemented'.format(strategy))
+            self.abort(500, 'strategy {} not implemented'.format(strategy))
         return process_upload(self.request, strategy, origin=self.origin, context=context)
 
     def engine(self):
@@ -204,7 +204,10 @@ class Upload(base.RequestHandler):
             self.abort(400, 'container id is required')
         else:
             cid = bson.ObjectId(cid)
-        context = {'job_id': self.get_param('job')}
+        context = {
+            'job_id': self.get_param('job'),
+            'job_ticket_id': self.get_param('job_ticket'),
+        }
         if level == 'analysis':
             return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id_=cid, context=context)
         else:

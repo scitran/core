@@ -9,9 +9,10 @@ from urlparse import urlparse
 
 from .. import upload
 from .. import util
-from ..auth import require_login, has_access
+from ..auth import require_drone, require_login, has_access
+from ..dao import hierarchy
 from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
-from ..dao.containerutil import ContainerReference
+from ..dao.containerutil import ContainerReference, pluralize
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
@@ -458,7 +459,7 @@ class JobHandler(base.RequestHandler):
         try:
             Job.get(_id)
         except Exception: # pylint: disable=broad-except
-            self.abort(404, 'Job not found')
+            raise APINotFoundException('Job not found')
 
         return Logs.add(_id, doc)
 
@@ -478,6 +479,57 @@ class JobHandler(base.RequestHandler):
 
         new_id = Queue.retry(j, force=True)
         return { "_id": new_id }
+
+
+    @require_drone
+    def prepare_complete(self, _id):
+        try:
+            j = Job.get(_id)
+        except Exception: # pylint: disable=broad-except
+            # TBD maybe raise APINotFound from Job.get?
+            raise APINotFoundException('Job not found')
+        payload = self.request.json
+        ticket = {
+            'job': j.id_,
+            'success': payload.get('success', False),
+        }
+        # TBD why not store success on the job itself?
+        return {'ticket': config.db.job_tickets.insert_one(ticket).inserted_id}
+
+
+    @require_login
+    def accept_failed_output(self, _id):
+        try:
+            j = Job.get(_id)
+        except Exception: # pylint: disable=broad-except
+            raise APINotFoundException('Job not found')
+
+        # Permission check
+        if not self.superuser_request:
+            j.destination.check_access(self.uid, 'rw')
+
+        if j.state != 'failed':
+            self.abort(400, 'Can only accept failed output of a job that failed')
+
+        # TBD recording user/timestamp? logging?
+        # TBD ticket cleanup/purging?
+
+        # Remove flag from files
+        container = j.destination.get()
+        for f in container.get('files'):
+            if f['origin'] == {'type': 'job', 'id': _id}:
+                del f['from_failed_job']
+        collection = pluralize(j.destination.type)
+        query = {'_id': container['_id']}
+        updates = {'$set': {'files': container['files']}}
+        config.db[collection].update_one(query, updates)
+
+        # Apply metadata
+        hierarchy.update_container_hierarchy(j.produced_metadata, container['_id'], j.destination.type)
+
+        j.failed_output_accepted = True
+        j.save()
+
 
 class BatchHandler(base.RequestHandler):
 
