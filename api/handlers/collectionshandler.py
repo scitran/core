@@ -132,20 +132,29 @@ class CollectionsHandler(ContainerHandler):
 
     def get_sessions(self, cid):
         """Return the list of sessions in a collection."""
-        if not bson.ObjectId.is_valid(cid):
-            self.abort(400, 'not a valid object id')
-        _id = bson.ObjectId(cid)
-        if not self.storage.dbc.find_one({'_id': _id}):
-            self.abort(404, 'no such Collection')
+
+        # Confirm user has access to collection
+        container = self._get_container(cid)
+        permchecker = self._get_permchecker(container=container)
+        permchecker(noop)('GET', _id=cid)
+
+        # Find list of relevant sessions
         agg_res = config.db.acquisitions.aggregate([
                 {'$match': {'collections': _id}},
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
+
+
         if not self.is_true('archived'):
             query['archived'] = {'$ne': True}
+        if not self.superuser_request:
+            query['permissions._id'] = self.uid
+
         projection = self.container_handler_configurations['sessions']['list_projection']
-        sessions = list(config.db.sessions.find(query, projection))
+
+        sessions = list(containerstorage.SessionStorage().get_all_el(query, None, projection))
+
         self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
