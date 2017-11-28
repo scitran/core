@@ -140,7 +140,7 @@ class CollectionsHandler(ContainerHandler):
 
         # Find list of relevant sessions
         agg_res = config.db.acquisitions.aggregate([
-                {'$match': {'collections': _id}},
+                {'$match': {'collections': bson.ObjectId(cid)}},
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
