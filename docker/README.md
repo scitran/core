@@ -59,31 +59,3 @@ preserving their contents across container instances.
      scitran-core \
        echo "Data bootstrap complete."
 ```
-
-
-## NewRelic
-To enable NewRelic APM reporting, create the docker container with the
-environment variable "SCITRAN_CORE_NEWRELIC=/var/scitran/config/newrelic.ini"
-and the necessary environment variables documented here: https://docs.newrelic.com/docs/agents/python-agent/installation-configuration/python-agent-configuration
-
-Example:
-```
-docker run \
-  --name scitran-core \
-  -e "SCITRAN_PERSISTENT_DB_URI=mongodb://some-mongo:27017/scitran" \
-  -e "SCITRAN_CORE_INSECURE=true" \
-  -e "SCITRAN_CORE_NEWRELIC=/var/scitran/config/newrelic.ini" \
-  -e "NEW_RELIC_LICENSE_KEY=<your_key_here>" \
-  -e "NEW_RELIC_APP_NAME=new-scitran-core-app-name"
-  -e "NEW_RELIC_MONITOR_MODE=true"
-  -v $(pwd)/persistent/data:/var/scitran/data \
-  -v $(pwd):/var/scitran/code/api \
-  --link some-mongo \
-  -p 0.0.0.0:8080:8080 \
-  scitran-core \
-    uwsgi \
-      --ini /var/scitran/config/uwsgi-config.ini \
-      --http 0.0.0.0:8080 \
-      --http-keepalive \
-      --python-autoreload 1
-```
