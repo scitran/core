@@ -192,6 +192,8 @@ endpoints = [
 
             route('/<cid:{gid}>/<list_name:tags>',                           TagsListHandler, m=['POST']),
             route('/<cid:{gid}>/<list_name:tags>/<value:{tag}>',             TagsListHandler, m=['GET', 'PUT', 'DELETE']),
+
+            route( '/<cid:{gid}>/analyses',                                     AnalysesHandler, h='get_all',       m=['GET']),
         ]),
 
 

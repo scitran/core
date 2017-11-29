@@ -156,6 +156,11 @@ class AnalysesHandler(RefererHandler):
         if cont_name not in parent_names:
             self.abort(400, "Analysis list not supported for {}".format(cont_name))
 
+        # Check that user has permission to container
+        container = storages[cont_name].get_container(cid)
+        permchecker = self.get_permchecker(container)
+        permchecker(noop)('GET')
+
         parent_tree = {
             cont_name: [cid]
         }
@@ -168,11 +173,13 @@ class AnalysesHandler(RefererHandler):
 
             # For each parent id, find all of its children and add them to the list of child ids in the parent tree
             for parent_id in parent_tree[parent_name]:
-                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children(parent_id, projection={'_id':1})]
+                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children(parent_id, projection={'_id':1}, uid=self.uid)]
 
             parent_name = child_name
         # We only need a list of all the ids, no need for the tree anymore
         parents = [pid for parent in parent_tree.keys() for pid in parent_tree[parent]]
+
+        # We set User to None because we check for permission when finding the parents
         analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':{'$in':parents}},None,{'info': 0, 'files.info': 0})
         return analyses
 
