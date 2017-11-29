@@ -270,6 +270,7 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='modify_info',    m=['POST']),
 
+                route( '/analyses',                                     AnalysesHandler, h='get_all',       m=['GET']),
                 route( '/analyses',                                     AnalysesHandler,                    m=['POST']),
                 prefix('/analyses', [
                     route('/<_id:{cid}>',                               AnalysesHandler,                    m=['GET', 'PUT', 'DELETE']),

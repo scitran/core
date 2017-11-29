@@ -136,6 +136,47 @@ class AnalysesHandler(RefererHandler):
         self.log_user_access(AccessType.view_container, cont_name=analysis['parent']['type'], cont_id=analysis['parent']['id'])
         return analysis
 
+    def get_all(self, cont_name, cid):
+
+        parent_to_child = {
+            'groups': 'projects',
+            'projects': 'sessions',
+            'sessions': 'acquisitions'
+        }
+
+        storages = {
+            'groups':       containerstorage.GroupStorage(),
+            'projects':     containerstorage.ProjectStorage(),
+            'sessions':     containerstorage.SessionStorage(),
+            'acquisitions': containerstorage.AcquisitionStorage()
+        }
+        parent_names = ['groups','projects','sessions', 'acquisitions']
+
+        # Only support groups/projects/sessions/acquisitions
+        if cont_name not in parent_names:
+            self.abort(400, "Analysis list not supported for {}".format(cont_name))
+
+        parent_tree = {
+            cont_name: [cid]
+        }
+        parent_name = cont_name
+        while parent_to_child.get(parent_name):
+            # Parent storage
+            storage = storages[parent_name]
+            child_name = parent_to_child[parent_name]
+            parent_tree[child_name] = []
+
+            # For each parent id, find all of its children and add them to the list of child ids in the parent tree
+            for parent_id in parent_tree[parent_name]:
+                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children(parent_id, projection={'_id':1})]
+
+            parent_name = child_name
+        # We only need a list of all the ids, no need for the tree anymore
+        parents = [pid for parent in parent_tree.keys() for pid in parent_tree[parent]]
+        analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':{'$in':parents}},None,{'info': 0, 'files.info': 0})
+        return analyses
+
+
 
     @log_access(AccessType.delete_analysis)
     def delete(self, cont_name, cid, _id):
