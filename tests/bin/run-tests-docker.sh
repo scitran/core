@@ -88,8 +88,7 @@ main() {
         --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://core-test-service:27017/logs \
         --env SCITRAN_SITE_API_URL=http://core-test-service/api \
         scitran/core:testing \
-        /src/core/tests/bin/run-tests-ubuntu.sh \
-        $TEST_ARGS
+        tests/bin/run-tests-ubuntu.sh $TEST_ARGS
 }
 
 
@@ -100,15 +99,23 @@ clean_up() {
     log "INFO: Test return code = $TEST_RESULT_CODE"
     if [ "${TEST_RESULT_CODE}" = "0" ]; then
         # Copy unit test coverage
-        docker cp core-test-runner:/src/core/.coverage .coverage.unit-tests
+        docker cp core-test-runner:/src/core/.coverage .coverage.unit-tests 2>/dev/null
 
-        # Gracefully stop API then copy integration test coverage
-        # TODO added exec to dev+mongo.sh and tried (TERM|KILL|INT|QUIT) signals to no avail
-        # Somehow api.web.start/save_coverage() (atexit) is NOT triggered
-        # docker kill --signal=SIGTERM core-test-service
-        # docker cp core-test-service:/src/core/.coverage.integration-tests ./
+        # Save integration test coverage
+        docker exec core-test-service python -c 'import requests; requests.post("http://localhost/api/save-coverage")'
+        docker cp core-test-service:/src/core/.coverage.integration-tests ./ 2>/dev/null
 
-        # TODO report/combine/htmlize coverage using a test container
+        # Combine unit/integ coverage and report/grenerate html
+        docker run --rm \
+            --name core-test-coverage \
+            --volume $(pwd):/src/core \
+            scitran/core:testing \
+            sh -c '
+                rm .coverage;
+                coverage combine;
+                coverage report --skip-covered --show-missing;
+                coverage html;
+            '
     else
         log "INFO: Printing container logs..."
         docker logs core-test-service
@@ -116,8 +123,8 @@ clean_up() {
     fi
 
     # Spin down dependencies
-    docker rm -f -v core-test-runner
-    docker rm -f -v core-test-service
+    docker rm --force --volumes core-test-runner
+    docker rm --force --volumes core-test-service
     docker network rm core-test
     exit $TEST_RESULT_CODE
 }
