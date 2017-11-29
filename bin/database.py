@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 39 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 40 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1290,6 +1290,16 @@ def upgrade_to_39():
     cursor = config.db.jobs.find({'config': {'$exists': True }, 'config.config': {'$exists': False }})
     process_cursor(cursor, upgrade_to_39_closure)
 
+def upgrade_to_40_closure(acquisition):
+    config.db.acquisitions.update_one({'_id':acquisition['_id']},{'$set':{'timestamp':dateutil.parser.parse(acquisition['timestamp'])}})
+    return True
+
+def upgrade_to_40():
+    """
+    Convert all string acquisition timestamps to type date
+    """
+    cursor = config.db.acquisitions.find({'timestamp':{'$type':'string'}})
+    process_cursor(cursor, upgrade_to_40_closure)
 
 ###
 ### BEGIN RESERVED UPGRADE SECTION
