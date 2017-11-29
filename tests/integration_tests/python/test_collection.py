@@ -1,11 +1,10 @@
-def test_collections(data_builder, as_admin):
+def test_collections(data_builder, as_admin, as_user):
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
 
     # create collection
     r = as_admin.post('/collections', json={
-        'label': 'SciTran/Testing',
-        'public': True
+        'label': 'SciTran/Testing'
     })
     assert r.ok
     collection = r.json()['_id']
@@ -38,6 +37,66 @@ def test_collections(data_builder, as_admin):
     r = as_admin.get('/acquisitions/' + acquisition)
     assert r.ok
     assert collection in r.json()['collections']
+
+
+    ###
+    #   Test user only sees sessions/acquisitions they have access to
+    ###
+
+    project2 = data_builder.create_project()
+    session2 = data_builder.create_session(project=project2)
+    acquisition2 = data_builder.create_acquisition(session=session2)
+
+    # add session2 to collection
+    r = as_admin.put('/collections/' + collection, json={
+        'contents': {
+            'operation': 'add',
+            'nodes': [
+                {'level': 'session', '_id': session2}
+            ],
+        }
+    })
+    assert r.ok
+
+    # test user cannot access sessions/acquisitions of collection without perms
+    r = as_user.get('/collections/' + collection)
+    assert r.status_code == 403
+
+
+    # add user to collection
+    r = as_user.get('/users/self')
+    assert r.ok
+    uid = r.json()['_id']
+
+    r = as_admin.post('/collections/' + collection + '/permissions', json={'_id': uid, 'access': 'ro'})
+    assert r.ok
+
+    # test user cannot see sessions or acquisitions
+    r = as_user.get('/collections/' + collection + '/sessions')
+    assert r.ok
+    assert r.json() == []
+
+    r = as_user.get('/collections/' + collection + '/acquisitions')
+    assert r.ok
+    assert r.json() == []
+
+    # add user to project
+    r = as_admin.post('/projects/' + project2 + '/permissions', json={'_id': uid, 'access': 'ro'})
+    assert r.ok
+
+    # test user can now see some of sessions and acquisitions
+    r = as_user.get('/collections/' + collection + '/sessions')
+    assert r.ok
+    sessions = r.json()
+    assert len(sessions) == 1
+    assert sessions[0]['_id'] == session2
+
+    r = as_user.get('/collections/' + collection + '/acquisitions')
+    assert r.ok
+    acquisitions = r.json()
+    assert len(acquisitions) == 1
+    assert acquisitions[0]['_id'] == acquisition2
+
 
     # delete collection
     r = as_admin.delete('/collections/' + collection)
