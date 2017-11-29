@@ -3,7 +3,7 @@ import datetime
 
 from .. import config
 from ..auth import containerauth, always_ok
-from ..dao import containerstorage, containerutil
+from ..dao import containerstorage, containerutil, noop
 from ..web.errors import APIStorageException
 from ..validators import verify_payload_exists
 
@@ -132,20 +132,29 @@ class CollectionsHandler(ContainerHandler):
 
     def get_sessions(self, cid):
         """Return the list of sessions in a collection."""
-        if not bson.ObjectId.is_valid(cid):
-            self.abort(400, 'not a valid object id')
-        _id = bson.ObjectId(cid)
-        if not self.storage.dbc.find_one({'_id': _id}):
-            self.abort(404, 'no such Collection')
+
+        # Confirm user has access to collection
+        container = self._get_container(cid)
+        permchecker = self._get_permchecker(container=container)
+        permchecker(noop)('GET', _id=cid)
+
+        # Find list of relevant sessions
         agg_res = config.db.acquisitions.aggregate([
-                {'$match': {'collections': _id}},
+                {'$match': {'collections': bson.ObjectId(cid)}},
                 {'$group': {'_id': '$session'}},
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
+
+
         if not self.is_true('archived'):
             query['archived'] = {'$ne': True}
+        if not self.superuser_request:
+            query['permissions._id'] = self.uid
+
         projection = self.container_handler_configurations['sessions']['list_projection']
-        sessions = list(config.db.sessions.find(query, projection))
+
+        sessions = list(containerstorage.SessionStorage().get_all_el(query, None, projection))
+
         self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
@@ -155,24 +164,32 @@ class CollectionsHandler(ContainerHandler):
 
     def get_acquisitions(self, cid):
         """Return the list of acquisitions in a collection."""
-        if not bson.ObjectId.is_valid(cid):
-            self.abort(400, 'not a valid object id')
-        _id = bson.ObjectId(cid)
-        if not self.storage.dbc.find_one({'_id': _id}):
-            self.abort(404, 'no such Collection')
-        query = {'collections': _id}
-        if not self.is_true('archived'):
-            query['archived'] = {'$ne': True}
+
+        # Confirm user has access to collection
+        container = self._get_container(cid)
+        permchecker = self._get_permchecker(container=container)
+        permchecker(noop)('GET', _id=cid)
+
+
+        query = {'collections': bson.ObjectId(cid)}
         sid = self.get_param('session', '')
         if bson.ObjectId.is_valid(sid):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
+
+        if not self.is_true('archived'):
+            query['archived'] = {'$ne': True}
+
+        if not self.superuser_request:
+            query['permissions._id'] = self.uid
+
         projection = self.container_handler_configurations['acquisitions']['list_projection']
-        acquisitions = list(config.db.acquisitions.find(query, projection))
+
+        acquisitions = list(containerstorage.AcquisitionStorage().get_all_el(query, None, projection))
+
         self._filter_all_permissions(acquisitions, self.uid)
-        for acq in acquisitions:
-            acq.setdefault('timestamp', datetime.datetime.utcnow())
+
         for acquisition in acquisitions:
             acquisition = self.handle_origin(acquisition)
         return acquisitions
