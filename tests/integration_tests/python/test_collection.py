@@ -61,6 +61,10 @@ def test_collections(data_builder, as_admin, as_user):
     # test user cannot access sessions/acquisitions of collection without perms
     r = as_user.get('/collections/' + collection)
     assert r.status_code == 403
+    r = as_user.get('/collections/' + collection + '/sessions')
+    assert r.status_code == 403
+    r = as_user.get('/collections/' + collection + '/acquisitions')
+    assert r.status_code == 403
 
 
     # add user to collection
