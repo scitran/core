@@ -10,9 +10,7 @@
     "size":           { "type": "integer" },
     "hash":           { "type": "string" },
     "modality":       { "type": "string" },
-    "classification": {
-      "type": "object",
-    },
+    "classification": { "type": "object" },
     "tags": {
       "items": { "type": "string"},
       "type": "array",
