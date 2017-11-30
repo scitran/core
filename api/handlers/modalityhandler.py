@@ -30,10 +30,7 @@ class ModalityHandler(base.RequestHandler):
         #validate_data(payload, 'modality.json', 'input', 'POST', optional=True)
 
         result = self.storage.create_el(payload)
-        if result.acknowledged:
-            return {'_id': result.inserted_id}
-        else:
-            self.abort(400, 'Modality not inserted')
+        return {'_id': result.inserted_id}
 
     @require_admin
     def put(self, modality_name):
@@ -42,18 +39,14 @@ class ModalityHandler(base.RequestHandler):
         # POST unnecessary, used to avoid run-time modification of schema
         #validate_data(payload, 'modality.json', 'input', 'POST', optional=True)
 
-        result = self.storage.update_el(modality_name, payload)
-        if result.matched_count == 1:
-            return {'modified': result.modified_count}
-        else:
+        result = self.storage.replace_el(modality_name, payload)
+        if result.matched_count != 1:
             raise APINotFoundException('Modality with name {} not found, modality not updated'.format(modality_name))
 
     @require_admin
     def delete(self, modality_name):
         result = self.storage.delete_el(modality_name)
-        if result.deleted_count == 1:
-            return {'deleted': result.deleted_count}
-        else:
+        if result.deleted_count != 1:
             raise APINotFoundException('Modality with name {} not found, modality not deleted'.format(modality_name))
 
 

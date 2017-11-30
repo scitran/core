@@ -438,8 +438,6 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     r = as_admin.delete('/projects/' + project + '/rules/' + rule3)
     assert r.ok
 
-    # TODO add and test 'new-style' rules
-
 
 def test_disabled_rules(randstr, data_builder, api_db, as_admin, file_form):
     # Create gear, project and *disabled* rule triggering on any csv (once enabled)
@@ -477,3 +475,4 @@ def test_disabled_rules(randstr, data_builder, api_db, as_admin, file_form):
     assert len(gear_jobs) == 1
     assert len(gear_jobs[0]['inputs']) == 1
     assert gear_jobs[0]['inputs'][0]['name'] == 'test2.csv'
+
