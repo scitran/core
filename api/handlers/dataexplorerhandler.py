@@ -249,6 +249,7 @@ SOURCE_COMMON = [
 
 SOURCE_COLLECTION = [
     "permissions",
+    "collection._id",
     "collection.label",
     "collection.curator",
     "collection.created",
