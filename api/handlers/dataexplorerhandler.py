@@ -480,10 +480,10 @@ class DataExplorerHandler(base.RequestHandler):
     @require_login
     def get_facets(self):
 
-        _, filters, search_string = self._parse_request(request_type='facet')
+        _, filters, search_string, _ = self._parse_request(request_type='facet')
 
         facets_q = copy.deepcopy(FACET_QUERY)
-        facets_q['query'] = self._construct_query(None, search_string, filters)['query']
+        facets_q['query'] = self._construct_query(None, search_string, filters, 0)['query']
 
         # if the query comes back with a return_type agg, remove it
         facets_q['query'].pop('aggs', None)
@@ -528,11 +528,10 @@ class DataExplorerHandler(base.RequestHandler):
 
     def get_nodes(self):
 
-        return_type, filters, search_string = self._parse_request()
+        return_type, filters, search_string, size = self._parse_request()
         if return_type == 'file':
             return self.get_file_nodes(return_type, filters, search_string)
 
-        size = self.search_size(return_type)
         body = self._construct_query(return_type, search_string, filters, size)
 
         body['aggs']['by_container'].pop('aggs')
