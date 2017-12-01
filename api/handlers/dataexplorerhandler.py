@@ -321,7 +321,7 @@ class DataExplorerHandler(base.RequestHandler):
         except (ValueError):
             if request_type == 'search':
                 self.abort(400, 'Must specify return type')
-            return None, None, None
+            return None, None, None, 0
 
         # Parse and validate return_type
         return_type = request.get('return_type')
@@ -386,6 +386,11 @@ class DataExplorerHandler(base.RequestHandler):
 
         # Parse and "validate" search_string, allowed to be non-existent
         search_string = str(request.get('search_string', ''))
+
+
+        if request_type == 'facet':
+            # size is assumed 0 for facets
+            return return_type, modified_filters, search_string, 0
 
         # Determine query size, if size=all figure out max for return type.
         size = self.request.params.get('size')
