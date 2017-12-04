@@ -32,7 +32,7 @@ def _filter_check(property_filter, property_values):
 
 class Download(base.RequestHandler):
 
-    def _append_targets(self, targets, cont_name, container, prefix, total_size, total_cnt, optional, data_path, filters):
+    def _append_targets(self, targets, cont_name, container, prefix, total_size, total_cnt, data_path, filters):
         for f in container.get('files', []):
             if filters:
                 filtered = True
@@ -46,15 +46,14 @@ class Download(base.RequestHandler):
                         break
                 if filtered:
                     continue
-            if optional or not f.get('optional', False):
-                filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
-                if os.path.exists(filepath): # silently skip missing files
-                    if cont_name == 'analyses':
-                        targets.append((filepath, prefix + '/' + ('input' if f.get('input') else 'output') + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
-                    else:
-                        targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
-                    total_size += f['size']
-                    total_cnt += 1
+            filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
+            if os.path.exists(filepath): # silently skip missing files
+                if cont_name == 'analyses':
+                    targets.append((filepath, prefix + '/' + ('input' if f.get('input') else 'output') + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                else:
+                    targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                total_size += f['size']
+                total_cnt += 1
         return total_size, total_cnt
 
     def _bulk_preflight_archivestream(self, file_refs):
@@ -129,11 +128,12 @@ class Download(base.RequestHandler):
             if item['level'] == 'project':
                 project = config.db.projects.find_one(base_query, ['group', 'label', 'files'])
                 if not project:
-                    # silently skip missing objects/objects user does not have access to
+                    # silently(while logging it) skip missing objects/objects user does not have access to
+                    log.warn("Skipped project {}".format(item_id))
                     continue
 
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
-                total_size, file_cnt = self._append_targets(targets, 'projects', project, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'projects', project, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
                 sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 session_dict = {session['_id']: session for session in sessions}
@@ -154,25 +154,26 @@ class Download(base.RequestHandler):
                 for code, subject in subject_dict.iteritems():
                     subject_prefix = self._path_from_container(prefix, subject, ids_of_paths, code)
                     subject_prefixes[code] = subject_prefix
-                    total_size, file_cnt = self._append_targets(targets, 'subjects', subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'subjects', subject, subject_prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
                 for session in session_dict.itervalues():
                     subject_code = session['subject'].get('code', 'unknown_subject')
                     subject = subject_dict[subject_code]
                     session_prefix = self._path_from_container(subject_prefixes[subject_code], session, ids_of_paths, session["_id"])
                     session_prefixes[session['_id']] = session_prefix
-                    total_size, file_cnt = self._append_targets(targets, 'sessions', session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'sessions', session, session_prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
                     acq_prefix = self._path_from_container(session_prefixes[session['_id']], acq, ids_of_paths, acq['_id'])
-                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
 
             elif item['level'] == 'session':
                 session = config.db.sessions.find_one(base_query, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 if not session:
-                    # silently skip missing objects/objects user does not have access to
+                    # silently(while logging it) skip missing objects/objects user does not have access to
+                    log.warn("Skipped session {}".format(item_id))
                     continue
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
@@ -180,7 +181,7 @@ class Download(base.RequestHandler):
                 if not subject.get('code'):
                     subject['code'] = 'unknown_subject'
                 prefix = self._path_from_container(self._path_from_container(project['group'] + '/' + project['label'], subject, ids_of_paths, subject["code"]), session, ids_of_paths, session['_id'])
-                total_size, file_cnt = self._append_targets(targets, 'sessions', session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'sessions', session, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
                 # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
                 a_query = {'session': item_id}
@@ -190,12 +191,13 @@ class Download(base.RequestHandler):
 
                 for acq in acquisitions:
                     acq_prefix = self._path_from_container(prefix, acq, ids_of_paths, acq['_id'])
-                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                    total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
             elif item['level'] == 'acquisition':
                 acq = config.db.acquisitions.find_one(base_query, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
                 if not acq:
-                    # silently skip missing objects/objects user does not have access to
+                    # silently(while logging it) skip missing objects/objects user does not have access to
+                    log.warn("Skipped acquisition {}".format(item_id))
                     continue
 
                 session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone', 'subject'])
@@ -205,16 +207,17 @@ class Download(base.RequestHandler):
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
                 prefix = self._path_from_container(self._path_from_container(self._path_from_container(project['group'] + '/' + project['label'], subject, ids_of_paths, subject['code']), session, ids_of_paths, session["_id"]), acq, ids_of_paths, acq['_id'])
-                total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
             elif item['level'] == 'analysis':
                 analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'files', 'uid', 'timestamp'])
                 if not analysis:
-                    # silently skip missing objects/objects user does not have access to
+                    # silently(while logging it) skip missing objects/objects user does not have access to
+                    log.warn("Skipped anaylysis {}".format(item_id))
                     continue
                 prefix = self._path_from_container("", analysis, ids_of_paths, util.sanitize_string_to_filename(analysis['label']))
                 filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
-                total_size, file_cnt = self._append_targets(targets, 'analyses', analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
+                total_size, file_cnt = self._append_targets(targets, 'analyses', analysis, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
         if len(targets) > 0:
             if not filename:
