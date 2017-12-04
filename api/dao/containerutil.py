@@ -20,47 +20,33 @@ SINGULAR_TO_PLURAL = {
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
 
-def propagate_changes(cont_name, _id, query, update):
+
+def propagate_changes(cont_name, cont_ids, query, update, include_refs=False):
     """
-    Propagates changes down the heirarchy tree.
+    Propagates changes down the heirarchy tree recursively.
 
-    cont_name and _id refer to top level container (which will not be modified here)
+    cont_name and cont_ids refer to top level containers (which will not be modified here)
     """
 
+    containers = ['groups', 'projects', 'sessions', 'acquisitions']
+    if not isinstance(cont_ids, list):
+        cont_ids = [cont_ids]
+    if query is None:
+        query = {}
 
-    if cont_name == 'groups':
-        project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
-        session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
+    if include_refs:
+        analysis_query = {'parent.type': singularize(cont_name), 'parent.id': {'$in': cont_ids}}
+        config.db.analyses.update_many(analysis_query, update)
 
-        project_q = copy.deepcopy(query)
-        project_q['_id'] = {'$in': project_ids}
-        session_q = copy.deepcopy(query)
-        session_q['_id'] = {'$in': session_ids}
-        acquisition_q = copy.deepcopy(query)
-        acquisition_q['session'] = {'$in': session_ids}
+    if cont_name in ('groups', 'projects', 'sessions'):
+        child_cont = containers[containers.index(cont_name) + 1]
+        child_ids = [c['_id'] for c in config.db[child_cont].find({singularize(cont_name): {'$in': cont_ids}}, [])]
+        child_query = copy.deepcopy(query)
+        child_query['_id'] = {'$in': child_ids}
+        config.db[child_cont].update_many(child_query, update)
 
-        config.db.projects.update_many(project_q, update)
-        config.db.sessions.update_many(session_q, update)
-        config.db.acquisitions.update_many(acquisition_q, update)
-
-
-    # Apply change to projects
-    elif cont_name == 'projects':
-        session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
-
-        session_q = copy.deepcopy(query)
-        session_q['project'] = _id
-        acquisition_q = copy.deepcopy(query)
-        acquisition_q['session'] = {'$in': session_ids}
-
-        config.db.sessions.update_many(session_q, update)
-        config.db.acquisitions.update_many(acquisition_q, update)
-
-    elif cont_name == 'sessions':
-        query['session'] = _id
-        config.db.acquisitions.update_many(query, update)
-    else:
-        raise ValueError('changes can only be propagated from group, project or session level')
+        # Recurse to the next hierarchy level
+        propagate_changes(child_cont, child_ids, query, update, include_refs=include_refs)
 
 
 def add_id_to_subject(subject, pid):
@@ -105,9 +91,9 @@ def get_stats(cont, cont_type):
     # Get session and non-compliant session count
     match_q = {}
     if cont_type == 'projects':
-        match_q = {'project': cont['_id'], 'archived': {'$in': [None, False]}}
+        match_q = {'project': cont['_id'], 'archived': {'$in': [None, False]}, 'deleted': {'$exists': False}}
     elif cont_type == 'collections':
-        result = config.db.acquisitions.find({'collections': cont['_id'], 'archived': {'$in': [None, False]}}, {'session': 1})
+        result = config.db.acquisitions.find({'collections': cont['_id'], 'archived': {'$in': [None, False]}, 'deleted': {'$exists': False}}, {'session': 1})
         session_ids = list(set([s['session'] for s in result]))
         match_q = {'_id': {'$in': session_ids}}
 
@@ -198,7 +184,7 @@ class ContainerReference(object):
 
     def get(self):
         collection = pluralize(self.type)
-        result = config.db[collection].find_one({'_id': bson.ObjectId(self.id)})
+        result = config.db[collection].find_one({'_id': bson.ObjectId(self.id), 'deleted': {'$exists': False}})
         if result is None:
             raise APINotFoundException('No such {} {} in database'.format(self.type, self.id))
         if 'parent' in result:

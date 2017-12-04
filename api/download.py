@@ -119,7 +119,7 @@ class Download(base.RequestHandler):
         filename = None
 
         ids_of_paths = {}
-        base_query = {}
+        base_query = {'deleted': {'$exists': False}}
         if not self.superuser_request:
             base_query['permissions._id'] = self.uid
 
@@ -138,9 +138,9 @@ class Download(base.RequestHandler):
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
                 total_size, file_cnt = self._append_targets(targets, 'projects', project, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
-                sessions = config.db.sessions.find({'project': item_id}, ['label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
+                sessions = config.db.sessions.find({'project': item_id, 'deleted': {'$exists': False}}, ['label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 session_dict = {session['_id']: session for session in sessions}
-                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}}, ['label', 'files', 'session', 'uid', 'timestamp', 'timezone'])
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_dict.keys()}, 'deleted': {'$exists': False}}, ['label', 'files', 'session', 'uid', 'timestamp', 'timezone'])
                 session_prefixes = {}
 
                 subject_dict = {}
@@ -187,7 +187,7 @@ class Download(base.RequestHandler):
                 total_size, file_cnt = self._append_targets(targets, 'sessions', session, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
                 # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
-                a_query = {'session': item_id}
+                a_query = {'session': item_id, 'deleted': {'$exists': False}}
                 if collection:
                     a_query['collections'] = bson.ObjectId(collection)
                 acquisitions = config.db.acquisitions.find(a_query, ['label', 'files', 'uid', 'timestamp', 'timezone'])
@@ -347,9 +347,9 @@ class Download(base.RequestHandler):
 
             if level == 'project':
                 # Grab sessions and their ids
-                sessions = config.db.sessions.find({'project': node['_id']}, {'_id': 1})
+                sessions = config.db.sessions.find({'project': node['_id'], 'deleted': {'$exists': False}}, {'_id': 1})
                 session_ids = [s['_id'] for s in sessions]
-                acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
+                acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}, 'deleted': {'$exists': False}}, {'_id': 1})
                 acquisition_ids = [a['_id'] for a in acquisitions]
 
                 containers['projects']=1
@@ -362,7 +362,7 @@ class Download(base.RequestHandler):
                 cont_query['acquisitions']['_id']['$in'] = cont_query['acquisitions']['_id']['$in'] + acquisition_ids
 
             elif level == 'session':
-                acquisitions = config.db.acquisitions.find({'session': node['_id']}, {'_id': 1})
+                acquisitions = config.db.acquisitions.find({'session': node['_id'], 'deleted': {'$exists': False}}, {'_id': 1})
                 acquisition_ids = [a['_id'] for a in acquisitions]
 
 
@@ -415,4 +415,3 @@ class Download(base.RequestHandler):
                     else:
                         res[type_] = doc
         return res
-

@@ -1064,6 +1064,7 @@ def test_edit_subject_info(data_builder, as_admin, as_user):
     assert r.ok
     assert r.json()['info'] == {}
 
+
 def test_fields_list_requests(data_builder, file_form, as_admin):
     # Ensure sensitive keys are not returned on list endpoints
     # Project: info and files.info
@@ -1166,3 +1167,23 @@ def test_fields_list_requests(data_builder, file_form, as_admin):
     assert not a.get('info')
     assert not a.get('tags')
     assert not a['files'][0].get('info')
+
+
+def test_container_delete_tag(data_builder, as_admin, file_form, api_db):
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+    r = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
+        'analysis.csv', meta={'label': 'no-job', 'inputs': [{'name': 'analysis.csv'}]}))
+    analysis = r.json()['_id']
+
+    assert as_admin.delete('/projects/' + project).ok
+
+    assert 'deleted' in api_db.projects.find_one({'_id': bson.ObjectId(project)})
+    assert 'deleted' in api_db.sessions.find_one({'_id': bson.ObjectId(session)})
+    assert 'deleted' in api_db.acquisitions.find_one({'_id': bson.ObjectId(acquisition)})
+    assert 'deleted' in api_db.analyses.find_one({'_id': bson.ObjectId(analysis)})
+
+    assert as_admin.get('/projects/' + project).status_code == 404
+    assert as_admin.get('/sessions/' + session).status_code == 404
+    assert as_admin.get('/acquisitions/' + acquisition).status_code == 404

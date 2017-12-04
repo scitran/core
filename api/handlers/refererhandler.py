@@ -192,8 +192,8 @@ class AnalysesHandler(RefererHandler):
             result = self.storage.delete_el(_id)
         except APIStorageException as e:
             self.abort(400, e.message)
-        if result.deleted_count == 1:
-            return {'deleted': result.deleted_count}
+        if result.modified_count == 1:
+            return {'deleted': result.modified_count}
         else:
             self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 

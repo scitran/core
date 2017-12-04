@@ -547,9 +547,10 @@ class ContainerHandler(base.RequestHandler):
             result = permchecker(self.storage.exec_op)('DELETE', _id)
         except APIStorageException as e:
             self.abort(400, e.message)
-
-        if result.deleted_count == 1:
-            return {'deleted': result.deleted_count}
+        if result.modified_count == 1:
+            update = {'$set': {'deleted': datetime.datetime.utcnow()}}
+            containerutil.propagate_changes(cont_name, bson.ObjectId(_id), {}, update, include_refs=True)
+            return {'deleted': 1}
         else:
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 

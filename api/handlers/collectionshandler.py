@@ -84,10 +84,10 @@ class CollectionsHandler(ContainerHandler):
                 self.abort(400, 'not a valid object id')
             item_id = bson.ObjectId(item['_id'])
             if item['level'] == 'project':
-                sess_ids = [s['_id'] for s in config.db.sessions.find({'project': item_id}, [])]
-                acq_ids += [a['_id'] for a in config.db.acquisitions.find({'session': {'$in': sess_ids}}, [])]
+                sess_ids = [s['_id'] for s in config.db.sessions.find({'project': item_id, 'deleted': {'$exists': False}}, [])]
+                acq_ids += [a['_id'] for a in config.db.acquisitions.find({'session': {'$in': sess_ids}, 'deleted': {'$exists': False}}, [])]
             elif item['level'] == 'session':
-                acq_ids += [a['_id'] for a in config.db.acquisitions.find({'session': item_id}, [])]
+                acq_ids += [a['_id'] for a in config.db.acquisitions.find({'session': item_id, 'deleted': {'$exists': False}}, [])]
             elif item['level'] == 'acquisition':
                 acq_ids += [item_id]
         operator = '$addToSet' if contents['operation'] == 'add' else '$pull'
@@ -96,9 +96,23 @@ class CollectionsHandler(ContainerHandler):
         config.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': bson.ObjectId(_id)}})
 
     def delete(self, **kwargs):
-        _id = kwargs.get('cid')
-        super(CollectionsHandler, self).delete('collections', **kwargs)
-        config.db.acquisitions.update_many({'collections': bson.ObjectId(_id)}, {'$pull': {'collections': bson.ObjectId(_id)}})
+        _id = bson.ObjectId(kwargs.pop('cid'))
+        self.config = self.container_handler_configurations['collections']
+        self.storage = self.config['storage']
+        container = self._get_container(_id)
+        container['has_children'] = container.get('files') or container.get('analyses')
+        permchecker = self._get_permchecker(container, None)
+        try:
+            # This line exec the actual delete checking permissions using the decorator permchecker
+            result = permchecker(self.storage.exec_op)('DELETE', _id)
+            config.db.acquisitions.update_many({'collections': _id}, {'$pull': {'collections': _id}})
+        except APIStorageException as e:
+            self.abort(400, e.message)
+
+        if result.deleted_count == 1:
+            return {'deleted': result.deleted_count}
+        else:
+            self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 
     def get_all(self):
         projection = self.container_handler_configurations['collections']['list_projection']

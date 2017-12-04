@@ -248,8 +248,6 @@ class PermissionsListHandler(ListHandler):
         """
         method to propagate permissions from a container/group to its sessions and acquisitions
         """
-        if query is None:
-            query = {}
         if cont_name == 'groups':
             try:
                 containerutil.propagate_changes(cont_name, _id, query, update)
@@ -259,7 +257,7 @@ class PermissionsListHandler(ListHandler):
             try:
                 oid = bson.ObjectId(_id)
                 update = {'$set': {
-                    'permissions': config.db[cont_name].find_one({'_id': oid},{'permissions': 1})['permissions']
+                    'permissions': config.db[cont_name].find_one({'_id': oid}, {'permissions': 1})['permissions']
                 }}
                 containerutil.propagate_changes(cont_name, oid, {}, update)
             except APIStorageException:
@@ -613,7 +611,7 @@ class FileListHandler(ListHandler):
             raise Exception('Packfiles can only be targeted at projects')
 
         # Authorize: confirm project exists
-        project = config.db['projects'].find_one({ '_id': bson.ObjectId(_id)})
+        project = config.db['projects'].find_one({'_id': bson.ObjectId(_id), 'deleted': {'$exists': False}})
 
         if project is None:
             raise Exception('Project ' + _id + ' does not exist')
