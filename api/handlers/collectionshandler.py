@@ -118,6 +118,7 @@ class CollectionsHandler(ContainerHandler):
             phi = False
             projection = {'info': 0, 'tags': 0, 'files.info':0}
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
+        log.debug(results)
         if not self.superuser_request and not self.is_true('join_avatars'):
             self._filter_all_permissions(results, self.uid)
         if self.is_true('join_avatars'):
@@ -158,8 +159,6 @@ class CollectionsHandler(ContainerHandler):
 
         if not self.is_true('archived'):
             query['archived'] = {'$ne': True}
-        if not self.superuser_request:
-            query['permissions._id'] = self.uid
 
         if self.superuser_request:
             permchecker = always_ok
@@ -175,7 +174,8 @@ class CollectionsHandler(ContainerHandler):
         else:
             phi = False
 
-        sessions = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
+        sessions = permchecker(containerstorage.SessionStorage().exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
+        log.debug(sessions)
         self._filter_all_permissions(sessions, self.uid)
         if self.is_true('measurements'):
             self._add_session_measurements(sessions)
@@ -218,9 +218,7 @@ class CollectionsHandler(ContainerHandler):
         else:
             phi = False
 
-        log.debug(query)
-        log.debug(projection)
-        acquisitions = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
+        acquisitions = permchecker(containerstorage.AcquisitionStorage().exec_op)('GET', query=query, public=self.public_request, projection=projection, phi=phi)
         self._filter_all_permissions(acquisitions, self.uid)
 
         for acquisition in acquisitions:
