@@ -54,6 +54,8 @@ class Download(base.RequestHandler):
                     targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                 total_size += f['size']
                 total_cnt += 1
+            else:
+                log.warn("Expected {} to exist but it is missing. File will be skipped in download.".format(filepath))
         return total_size, total_cnt
 
     def _bulk_preflight_archivestream(self, file_refs):
@@ -90,6 +92,7 @@ class Download(base.RequestHandler):
             except Exception: # pylint: disable=broad-except
                 # self.abort(404, 'File {} on Container {} {} not found'.format(filename, cont_name, cont_id))
                 # silently skip missing files/files user does not have access to
+                log.warn("Expected file {} on Container {} {} to exist but it is missing. File will be skipped in download.".format(filename, cont_name, cont_id))
                 continue
 
             filepath = os.path.join(data_path, util.path_from_hash(file_obj['hash']))
@@ -129,7 +132,7 @@ class Download(base.RequestHandler):
                 project = config.db.projects.find_one(base_query, ['group', 'label', 'files'])
                 if not project:
                     # silently(while logging it) skip missing objects/objects user does not have access to
-                    log.warn("Skipped project {}".format(item_id))
+                    log.warn("Expected project {} to exist but it is missing. Node will be skipped".format(item_id))
                     continue
 
                 prefix = '/'.join([arc_prefix, project['group'], project['label']])
@@ -173,7 +176,7 @@ class Download(base.RequestHandler):
                 session = config.db.sessions.find_one(base_query, ['project', 'label', 'files', 'uid', 'timestamp', 'timezone', 'subject'])
                 if not session:
                     # silently(while logging it) skip missing objects/objects user does not have access to
-                    log.warn("Skipped session {}".format(item_id))
+                    log.warn("Expected session {} to exist but it is missing. Node will be skipped".format(item_id))
                     continue
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
@@ -197,7 +200,7 @@ class Download(base.RequestHandler):
                 acq = config.db.acquisitions.find_one(base_query, ['session', 'label', 'files', 'uid', 'timestamp', 'timezone'])
                 if not acq:
                     # silently(while logging it) skip missing objects/objects user does not have access to
-                    log.warn("Skipped acquisition {}".format(item_id))
+                    log.warn("Expected acquisition {} to exist but it is missing. Node will be skipped".format(item_id))
                     continue
 
                 session = config.db.sessions.find_one({'_id': acq['session']}, ['project', 'label', 'uid', 'timestamp', 'timezone', 'subject'])
@@ -213,7 +216,7 @@ class Download(base.RequestHandler):
                 analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'files', 'uid', 'timestamp'])
                 if not analysis:
                     # silently(while logging it) skip missing objects/objects user does not have access to
-                    log.warn("Skipped anaylysis {}".format(item_id))
+                    log.warn("Expected anaylysis {} to exist but it is missing. Node will be skipped".format(item_id))
                     continue
                 prefix = self._path_from_container("", analysis, ids_of_paths, util.sanitize_string_to_filename(analysis['label']))
                 filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
