@@ -6,6 +6,7 @@ and are stored in their own collection instead of an embedded list on the
 container (eg. ListHandler)
 """
 
+import bson
 import os
 import zipfile
 import datetime
@@ -17,6 +18,8 @@ from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import containerstorage, noop
+from ..dao.basecontainerstorage import ContainerStorage
+from ..dao.containerutil import singularize
 from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
@@ -137,50 +140,23 @@ class AnalysesHandler(RefererHandler):
         return analysis
 
     def get_all(self, cont_name, cid):
-
-        parent_to_child = {
-            'groups': 'projects',
-            'projects': 'sessions',
-            'sessions': 'acquisitions'
-        }
-
-        storages = {
-            'groups':       containerstorage.GroupStorage(),
-            'projects':     containerstorage.ProjectStorage(),
-            'sessions':     containerstorage.SessionStorage(),
-            'acquisitions': containerstorage.AcquisitionStorage()
-        }
-        parent_names = ['groups','projects','sessions', 'acquisitions']
-
-        # Only support groups/projects/sessions/acquisitions
-        if cont_name not in parent_names:
-            self.abort(400, "Analysis list not supported for {}".format(cont_name))
-
+        cid = bson.ObjectId(cid)
         # Check that user has permission to container
-        container = storages[cont_name].get_container(cid)
+        container = ContainerStorage.factory(cont_name).get_container(cid)
+        if not container:
+            self.abort(404, 'Element not found in container {} {}'.format(cont_name, cid))
         permchecker = self.get_permchecker(container)
         permchecker(noop)('GET')
 
-        parent_tree = {
-            cont_name: [cid]
-        }
-        parent_name = cont_name
-        while parent_to_child.get(parent_name):
-            # Parent storage
-            storage = storages[parent_name]
-            child_name = parent_to_child[parent_name]
-            parent_tree[child_name] = []
+        if self.is_true("children"):
+            parent_tree = ContainerStorage.get_top_down_hierarchy(cont_name, cid)
+            # We only need a list of all the ids, no need for the tree anymore
+            parents = [pid for parent in parent_tree.keys() for pid in parent_tree[parent]]
 
-            # For each parent id, find all of its children and add them to the list of child ids in the parent tree
-            for parent_id in parent_tree[parent_name]:
-                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children(parent_id, projection={'_id':1}, uid=self.uid)]
-
-            parent_name = child_name
-        # We only need a list of all the ids, no need for the tree anymore
-        parents = [pid for parent in parent_tree.keys() for pid in parent_tree[parent]]
-
-        # We set User to None because we check for permission when finding the parents
-        analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':{'$in':parents}},None,{'info': 0, 'files.info': 0})
+            # We set User to None because we check for permission when finding the parents
+            analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':{'$in':parents}},None,{'info': 0, 'files.info': 0})
+        else:
+            analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':cid, 'parent.type':singularize(cont_name)},None,{'info': 0, 'files.info': 0})
         return analyses
 
 

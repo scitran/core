@@ -62,6 +62,31 @@ class ContainerStorage(object):
                 return subclass()
         return cls(containerutil.pluralize(cont_name))
 
+    @classmethod
+    def get_top_down_hierarchy(cls, cont_name, cid):
+        parent_to_child = {
+            'groups': 'projects',
+            'projects': 'sessions',
+            'sessions': 'acquisitions'
+        }
+
+        parent_tree = {
+            cont_name: [cid]
+        }
+        parent_name = cont_name
+        while parent_to_child.get(parent_name):
+            # Parent storage
+            storage = ContainerStorage.factory(parent_name)
+            child_name = parent_to_child[parent_name]
+            parent_tree[child_name] = []
+
+            # For each parent id, find all of its children and add them to the list of child ids in the parent tree
+            for parent_id in parent_tree[parent_name]:
+                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children(parent_id, projection={'_id':1})]
+
+            parent_name = child_name
+        return parent_tree
+
     def _fill_default_values(self, cont):
         if cont:
             defaults = BASE_DEFAULTS.copy()
