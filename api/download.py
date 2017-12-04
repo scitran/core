@@ -116,7 +116,6 @@ class Download(base.RequestHandler):
         targets = []
         filename = None
 
-        used_subpaths = {}
         ids_of_paths = {}
         base_query = {}
         if not self.superuser_request:
@@ -153,20 +152,20 @@ class Download(base.RequestHandler):
                         subject_dict[code] = subject
 
                 for code, subject in subject_dict.iteritems():
-                    subject_prefix = prefix + '/' + self._path_from_container(subject, used_subpaths, ids_of_paths, code)
+                    subject_prefix = self._path_from_container(prefix, subject, ids_of_paths, code)
                     subject_prefixes[code] = subject_prefix
                     total_size, file_cnt = self._append_targets(targets, 'subjects', subject, subject_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 for session in session_dict.itervalues():
                     subject_code = session['subject'].get('code', 'unknown_subject')
                     subject = subject_dict[subject_code]
-                    session_prefix = subject_prefixes[subject_code] + '/' + self._path_from_container(session, used_subpaths, ids_of_paths, session["_id"])
+                    session_prefix = self._path_from_container(subject_prefixes[subject_code], session, ids_of_paths, session["_id"])
                     session_prefixes[session['_id']] = session_prefix
                     total_size, file_cnt = self._append_targets(targets, 'sessions', session, session_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 for acq in acquisitions:
                     session = session_dict[acq['session']]
-                    acq_prefix = session_prefixes[session['_id']] + '/' + self._path_from_container(acq, used_subpaths, ids_of_paths, acq['_id'])
+                    acq_prefix = self._path_from_container(session_prefixes[session['_id']], acq, ids_of_paths, acq['_id'])
                     total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
 
@@ -180,7 +179,7 @@ class Download(base.RequestHandler):
                 subject = session.get('subject', {'code': 'unknown_subject'})
                 if not subject.get('code'):
                     subject['code'] = 'unknown_subject'
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, ids_of_paths, subject['code']) + '/' + self._path_from_container(session, used_subpaths, ids_of_paths, session['_id'])
+                prefix = self._path_from_container(self._path_from_container(project['group'] + '/' + project['label'], subject, ids_of_paths, subject["code"]), session, ids_of_paths, session['_id'])
                 total_size, file_cnt = self._append_targets(targets, 'sessions', session, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
                 # If the param `collection` holding a collection id is not None, filter out acquisitions that are not in the collection
@@ -190,7 +189,7 @@ class Download(base.RequestHandler):
                 acquisitions = config.db.acquisitions.find(a_query, ['label', 'files', 'uid', 'timestamp', 'timezone'])
 
                 for acq in acquisitions:
-                    acq_prefix = prefix + '/' + self._path_from_container(acq, used_subpaths, ids_of_paths, acq['_id'])
+                    acq_prefix = self._path_from_container(prefix, acq, ids_of_paths, acq['_id'])
                     total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, acq_prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'acquisition':
@@ -205,7 +204,7 @@ class Download(base.RequestHandler):
                     subject['code'] = 'unknown_subject'
 
                 project = config.db.projects.find_one({'_id': session['project']}, ['group', 'label'])
-                prefix = project['group'] + '/' + project['label'] + '/' + self._path_from_container(subject, used_subpaths, ids_of_paths, subject['code']) + '/' + self._path_from_container(session, used_subpaths, ids_of_paths, session['_id']) + '/' + self._path_from_container(acq, used_subpaths, ids_of_paths, acq['_id'])
+                prefix = self._path_from_container(self._path_from_container(self._path_from_container(project['group'] + '/' + project['label'], subject, ids_of_paths, subject['code']), session, ids_of_paths, session["_id"]), acq, ids_of_paths, acq['_id'])
                 total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
             elif item['level'] == 'analysis':
@@ -213,7 +212,7 @@ class Download(base.RequestHandler):
                 if not analysis:
                     # silently skip missing objects/objects user does not have access to
                     continue
-                prefix = self._path_from_container(analysis, used_subpaths, ids_of_paths, util.sanitize_string_to_filename(analysis['label']))
+                prefix = self._path_from_container("", analysis, ids_of_paths, util.sanitize_string_to_filename(analysis['label']))
                 filename = 'analysis_' + util.sanitize_string_to_filename(analysis['label']) + '.tar'
                 total_size, file_cnt = self._append_targets(targets, 'analyses', analysis, prefix, total_size, file_cnt, req_spec['optional'], data_path, req_spec.get('filters'))
 
@@ -226,23 +225,25 @@ class Download(base.RequestHandler):
         else:
             self.abort(404, 'No requested containers could be found')
 
-    def _path_from_container(self, container, used_subpaths, ids_of_paths, _id):
-        def _find_new_path(path, list_used_subpaths, ids_of_paths, _id):
-            """from the input path finds a path that hasn't been used"""
-
-            path = str(path).replace('/', '_')
-            if path in list_used_subpaths:
-                return path
-            elif _id == ids_of_paths.get(path,_id):
-                ids_of_paths[path] = _id
-                return path
+    def _path_from_container(self, prefix, container, ids_of_paths, _id):
+        """
+        Returns the full path of a container instead of just a subpath, it must be provided with a prefix though
+        """
+        def _find_new_path(path, ids_of_paths, _id):
+            """
+            Checks to see if the full path is used
+            """
+            if _id in ids_of_paths.keys():
+                # If the id is already associated with a path, use that instead of modifying it
+                return ids_of_paths[_id]
+            used_paths = [ids_of_paths[id_] for id_ in ids_of_paths if id_ != _id]
+            path = str(path)
             i = 0
-            while True:
+            modified_path = path
+            while modified_path in used_paths:
                 modified_path = path + '_' + str(i)
-                if modified_path not in ids_of_paths.keys():
-                    ids_of_paths[modified_path] = _id
-                    return modified_path
                 i += 1
+            return modified_path
 
         path = None
         if not path and container.get('label'):
@@ -260,9 +261,9 @@ class Download(base.RequestHandler):
         if not path:
             path = 'untitled'
 
-        path = _find_new_path(path, used_subpaths.get(_id, []), ids_of_paths, _id)
-
-        used_subpaths[_id] = used_subpaths.get(_id, []) + [path]
+        path = prefix + '/' + path
+        path = _find_new_path(path, ids_of_paths, _id)
+        ids_of_paths[_id] = path
         return path
 
     def archivestream(self, ticket):
