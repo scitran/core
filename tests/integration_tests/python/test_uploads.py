@@ -228,6 +228,130 @@ def test_reaper_upload_unknown_group_project(data_builder, file_form, as_root, a
     data_builder.delete_project(named_unknown_project, recursive=True)
 
 
+def test_reaper_project_search(data_builder, file_form, as_root):
+    """
+    When attempting to find a project, we do a case insensitive lookup.
+    Ensure that mongo regex works as expected.
+
+    Scenario: three sessions come in with similar but different group labels
+    and blank project lables.
+    1 - "Test with more info"
+    2 - "TeSt"
+    3 - "test"
+
+    Since neither of these groups exist by this id, they will be placed in the
+    "unknown" group with the above string as their project label. Ensure the first
+    is placed in a separate project than the second and third.
+    """
+
+    group_label_1 = 'Test with more info'
+    group_label_2 = 'TeSt'
+    group_label_3 = 'test'
+
+    expected_project_label_1 = 'Test with more info_'
+    expected_project_label_2 = 'TeSt_'
+
+    # Upload with group 1
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': group_label_1},
+            'project': {
+                'label': '',
+            },
+            'session': {
+                'label': 'test_session_label',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+
+    # get session created by the upload
+    r = as_root.get('/groups/unknown/projects')
+    assert r.ok
+    project_list = r.json()
+    assert len(project_list) == 1
+    project = project_list[0]
+    assert project_list[0]['label'] == expected_project_label_1
+    project_1 = project['_id']
+
+    assert len(as_root.get('/projects/' + project_1 + '/sessions').json()) == 1
+    session = as_root.get('/projects/' + project_1 + '/sessions').json()[0]['_id']
+    assert len(as_root.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    # Ensure group label 2 ends up in separate project
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': group_label_2},
+            'project': {
+                'label': '',
+            },
+            'session': {
+                'label': 'test_session_label',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+    # get session created by the upload
+    r = as_root.get('/groups/unknown/projects')
+    assert r.ok
+    project_list = r.json()
+    assert len(project_list) == 2
+    project = project_list[1]
+    assert project_list[1]['label'] == expected_project_label_2
+    project_2 = project['_id']
+
+    assert len(as_root.get('/projects/' + project_2 + '/sessions').json()) == 1
+    session = as_root.get('/projects/' + project_2 + '/sessions').json()[0]['_id']
+    assert len(as_root.get('/sessions/' + session + '/acquisitions').json()) == 1
+
+    # Upload with another "test" project with different case
+    r = as_root.post('/upload/label', files=file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': group_label_3},
+            'project': {
+                'label': '',
+            },
+            'session': {
+                'label': 'test_session_label_2',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label_2',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        })
+    )
+    assert r.ok
+
+    # get session created by the upload
+    r = as_root.get('/groups/unknown/projects')
+    assert r.ok
+    project_list = r.json()
+    # Ensure there are still only 2 projects
+    assert len(project_list) == 2
+    project = project_list[1]
+    assert project_list[1]['label'] == expected_project_label_2
+
+    assert len(as_root.get('/projects/' + project_2 + '/sessions').json()) == 2
+    session2 = as_root.get('/projects/' + project_2 + '/sessions').json()[1]['_id']
+    assert len(as_root.get('/sessions/' + session2 + '/acquisitions').json()) == 1
+
+    # clean up
+    data_builder.delete_group('unknown', recursive=True)
+
+
 def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
     group = data_builder.create_group()
     project3_id = data_builder.create_project()

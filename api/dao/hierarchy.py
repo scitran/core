@@ -337,7 +337,8 @@ def _find_or_create_destination_project(group_id, project_label, timestamp, user
     if project_label == '':
         project_label = 'Unknown'
 
-    project = config.db.projects.find_one({'group': group['_id'], 'label': {'$regex': re.escape(project_label), '$options': 'i'}})
+    project_regex = '^'+re.escape(project_label)+'$'
+    project = config.db.projects.find_one({'group': group['_id'], 'label': {'$regex': project_regex, '$options': 'i'}})
 
     if project:
         # If the project already exists, check the user's access
