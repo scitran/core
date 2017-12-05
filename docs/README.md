@@ -29,7 +29,7 @@
    ```
 
    ```javascript
-   var url=new URL(location.href);var branch=url.searchParams.get("branch")||"master";document.querySelector("raml-js-parser").loadApi("https://raw.githubusercontent.com/scitran/core/"+branch+"/raml/api.raml")
+   var url=new URL(location.href);var branch=new URLSearchParams(url.search).get("branch")||"master";document.querySelector("raml-js-parser").loadApi("https://raw.githubusercontent.com/scitran/core/"+branch+"/raml/api.raml")
    ```
 
 
