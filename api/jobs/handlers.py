@@ -14,7 +14,7 @@ from ..dao.containerstorage import AcquisitionStorage, SessionStorage
 from ..dao.containerutil import ContainerReference
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
-from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
+from ..web.errors import APIPermissionException, InputValidationException
 from .. import config
 from . import batch
 from ..auth.apikeys import JobApiKey
@@ -25,8 +25,6 @@ from .gears import validate_gear_config, get_gears, get_gear, get_invocation_sch
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
-from .rules import validate_regexes
-
 
 class GearsHandler(base.RequestHandler):
 

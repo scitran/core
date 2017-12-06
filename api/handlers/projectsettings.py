@@ -5,12 +5,14 @@ from .. import config
 from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok, has_access, check_phi
-from ..dao import APIPermissionException, APINotFoundException, APIValidationException, containerstorage
-from ..dao.base import PARENT_MAP
+from ..dao import containerstorage
+from ..dao.basecontainerstorage import PARENT_MAP
 from ..dao.containerutil import singularize
 from ..jobs.gears import get_gear_by_name
+from ..jobs.rules import validate_regexes
 from ..validators import validate_data, verify_payload_exists
 from ..web import base
+from ..web.errors import APIPermissionException, APINotFoundException, APIValidationException
 from ..web.request import log_access, AccessType
 
 
