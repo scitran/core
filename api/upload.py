@@ -94,8 +94,6 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
         raise FileFormException("Targeted uploads can only send one file")
-    elif strategy in [Strategy.reaper, Strategy.uidupload, Strategy.labelupload, Strategy.uidmatch] and len(file_fields) < 1:
-        raise FileFormException("No files selected for uploading")
     placer.check()
 
 
