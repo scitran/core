@@ -639,6 +639,9 @@ class ContainerHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if container is not None:
+            files = container.get('files', [])
+            if files:
+                container['files'] = [f for f in files if 'deleted' not in f]
             return container
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, self.storage.cont_name))

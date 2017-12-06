@@ -751,7 +751,7 @@ class UsageReport(Report):
 
             report[key]['session_count'] = r['session_count']
 
-        file_q = {}
+        file_q = {'deleted': {'$exists': False}}
         analysis_q = {'analyses.files.output': True}
 
         if 'created' in base_query:
@@ -891,7 +891,7 @@ class UsageReport(Report):
             }
 
             # Create queries for files and analyses based on created date if a range was provided
-            file_q = {}
+            file_q = {'deleted': {'$exists': False}}
             analysis_q = {'analyses.files.output': True}
 
             if 'created' in base_query:

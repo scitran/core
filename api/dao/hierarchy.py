@@ -179,7 +179,7 @@ def is_session_compliant(session, template):
                     min_count = fr_temp.pop('minimum')
                     count = 0
                     for f in cont.get('files', []):
-                        if not check_cont(f, fr_temp):
+                        if 'deleted' in f or not check_cont(f, fr_temp):
                             # Didn't find a match, on to the next one
                             continue
                         else:
@@ -234,11 +234,19 @@ def upsert_fileinfo(cont_name, _id, fileinfo):
     for f in container_before.get('files',[]):
         # Fine file in result and set to file_after
         if f['name'] == fileinfo['name']:
-            file_before = f
+            if 'deleted' in f:
+                # Ugly hack: remove already existing file that has the 'deleted' tag
+                # This creates a gap in the delete functionality, ie. this file cannot be restored from this point on.
+                # Note that the previous file in storage will be unreferenced from the DB (unless CAS edge case...)
+                config.db[cont_name].find_one_and_update(
+                    {'_id': _id, 'files.name': fileinfo['name']},
+                    {'$pull': {'files': {'name': fileinfo['name']}}}
+                )
+            else:
+                file_before = f
             break
 
     if file_before is None:
-
         fileinfo['created'] = fileinfo['modified']
         container_after = add_fileinfo(cont_name, _id, fileinfo)
     else:

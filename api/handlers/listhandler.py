@@ -524,19 +524,11 @@ class FileListHandler(ListHandler):
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-
-        # Ugly hack: ensure cont_name is singular. Pass singular or plural to code that expects it.
-        if cont_name.endswith('s'):
-            cont_name_plural = cont_name
-            cont_name = cont_name[:-1]
-        else:
-            cont_name_plural = cont_name + 's'
-
         # Authorize
-        permchecker, _, _, _, _ = self._initialize_request(cont_name_plural, list_name, _id)
+        permchecker, _, _, _, _ = self._initialize_request(containerutil.pluralize(cont_name), list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
-        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
+        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=containerutil.singularize(cont_name), id_=_id, origin=self.origin)
 
     @validators.verify_payload_exists
     def put(self, cont_name, list_name, **kwargs):
