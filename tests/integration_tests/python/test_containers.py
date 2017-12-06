@@ -175,6 +175,7 @@ def test_project_template(data_builder, file_form, as_admin):
 
 
 def test_get_all_containers(data_builder, as_admin, as_user, as_public, file_form):
+    group = data_builder.create_group()
     project_1 = data_builder.create_project()
     project_2 = data_builder.create_project()
     session = data_builder.create_session(project=project_1)
@@ -210,7 +211,7 @@ def test_get_all_containers(data_builder, as_admin, as_user, as_public, file_for
     assert r.ok
 
     # Test get_all analyses
-    project_3 = data_builder.create_project(public=False)
+    project_3 = data_builder.create_project(group=group, public=False)
     session_2 = data_builder.create_session(project=project_3, public=False)
 
     analysis_1 = as_admin.post('/sessions/' + session_2 + '/analyses', files=file_form(
@@ -221,19 +222,28 @@ def test_get_all_containers(data_builder, as_admin, as_user, as_public, file_for
     analysis_2 = as_admin.post('/acquisitions/' + acquisition + '/analyses', files=file_form(
         'analysis.csv', meta={'label': 'no-job', 'inputs': [{'name': 'analysis.csv'}]})).json()["_id"]
 
-    r = as_admin.get('/projects/' + project_3 + '/analyses', params={'children':True})
-    assert r.ok
-    assert len(r.json()) == 2
 
-    r = as_user.get('/projects/' + project_3 + '/analyses', params={'children':True})
-    assert r.status_code == 403
-
-
-    r = as_admin.get('/sessions/' + session_2 + '/analyses', params={'children':False})
+    r = as_admin.get('/groups/' + group + '/sessions/analyses')
     assert r.ok
     assert len(r.json()) == 1
 
-    r = as_user.get('/sessions/' + session_2 + '/analyses', params={'children':False})
+    r = as_admin.get('/projects/' + project_3 + '/sessions/analyses')
+    assert r.ok
+    assert len(r.json()) == 1
+
+    r = as_admin.get('/projects/' + project_3 + '/all/analyses')
+    assert r.ok
+    assert len(r.json()) == 2
+
+    r = as_user.get('/projects/' + project_3 + '/all/analyses')
+    assert r.status_code == 403
+
+
+    r = as_admin.get('/sessions/' + session_2 + '/analyses')
+    assert r.ok
+    assert len(r.json()) == 1
+
+    r = as_user.get('/sessions/' + session_2 + '/analyses')
     assert r.status_code == 403
 
 
