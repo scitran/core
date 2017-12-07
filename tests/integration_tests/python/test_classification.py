@@ -219,7 +219,7 @@ def test_edit_file_classification(data_builder, as_admin, as_user, file_form):
         }
     })
     assert r.status_code == 422
-    assert r.json()['malformed_keys'] == ['made-up:fake', 'Intent:not real']
+    assert r.json()['unaccepted_keys'] == ['made-up:fake', 'Intent:not real']
 
 
     # Use 'replace' to set file classification to {}
