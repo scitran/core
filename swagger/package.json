@@ -1,0 +1,13 @@
+{
+  "name": "scitran-core-swagger",
+  "version": "0.0.1",
+  "description": "REST API Documentation and Code Generation for the SciTran core SDK",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Justin Ehlert <justinehlert@flywheel.io>",
+  "license": "MIT",
+  "devDependencies": {
+  }
+}

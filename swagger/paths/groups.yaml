@@ -1,0 +1,9 @@
+get:
+  summary: 'List all groups on the site'
+  operationId: 'getAllGroups'
+  responses:
+    200:
+      description: OK
+      schema:
+        $ref: "../schemas/output/groups-list.json"
+

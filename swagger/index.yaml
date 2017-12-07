@@ -1,0 +1,18 @@
+swagger: '2.0'
+info:
+  version: 0.0.1
+  title: SciTran
+basePath: '/api'
+schemes: 
+- 'api'
+produces:
+- 'application/json'
+consumes:
+- 'application/json'
+paths:
+  $ref: ./paths/index.yaml
+definitions:
+  $ref: ./definitions/index.yaml
+
+
+
