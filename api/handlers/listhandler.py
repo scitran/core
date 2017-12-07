@@ -548,14 +548,9 @@ class FileListHandler(ListHandler):
 
         validators.validate_data(payload, 'classification_update.json', 'input', 'POST')
 
-        try:
-            permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
-            result = storage.modify_classification(_id, kwargs, payload)
-        except APIStorageException as e:
-            self.abort(400, e.message)
-        # abort if the query of the update wasn't able to find any matching documents
-        if result.matched_count == 0:
-            self.abort(404, 'Element not updated in list {} of container {} {}'.format(storage.list_name, storage.cont_name, _id))
+        permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
+        result = storage.modify_classification(_id, kwargs, payload)
+
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')

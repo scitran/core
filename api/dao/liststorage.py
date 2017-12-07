@@ -1,5 +1,6 @@
 import bson.errors
 import bson.objectid
+import copy
 import datetime
 import pymongo
 
@@ -219,7 +220,13 @@ class FileStorage(ListStorage):
         return self.dbc.update_one(query, update)
 
     def modify_classification(self, _id, query_params, payload):
-        update = {}
+        update = {'$set': {'modified': datetime.datetime.utcnow()}}
+
+        if self.use_object_id:
+            _id = bson.objectid.ObjectId(_id)
+        query = {'_id': _id }
+        query[self.list_name] = {'$elemMatch': query_params}
+
         modality = self.get_container(_id)['files'][0].get('modality') #TODO: make this more reliable if the file isn't there
         add_payload = payload.get('add')
         delete_payload = payload.get('delete')
@@ -230,38 +237,41 @@ class FileStorage(ListStorage):
 
         if replace_payload is not None:
             replace_payload = check_and_format_classification(modality, replace_payload)
-            update = {
-                '$set': {
-                    self.list_name + '.$.classification': util.mongo_sanitize_fields(replace_payload)
-                }
-            }
+
+            r_update = copy.deepcopy(update)
+            r_update['$set'][self.list_name + '.$.classification'] = util.mongo_sanitize_fields(replace_payload)
+
+            result = self.dbc.update_one(query, r_update)
+            if result.matched_count == 0:
+                raise APINotFoundException('File not found in container {} {}.'.format(self.cont_name, _id))
 
         else:
             if add_payload:
                 add_payload = check_and_format_classification(modality, add_payload)
 
-                update['$addToSet'] = {}
+                a_update = copy.deepcopy(update)
+                a_update['$addToSet'] = {}
                 for k,v in add_payload.iteritems():
-                    update['$addToSet'][self.list_name + '.$.classification.' + k] = {'$each': v}
+                    a_update['$addToSet'][self.list_name + '.$.classification.' + k] = {'$each': v}
+
+                result = self.dbc.update_one(query, a_update)
+                if result.matched_count == 0:
+                    raise APINotFoundException('File not found in container {} {}.'.format(self.cont_name, _id))
+
+
             if delete_payload:
                 delete_payload = check_and_format_classification(modality, delete_payload)
 
                 # TODO: Test to make sure $pull succeeds when key does not exist
-                update['$pullAll'] = {}
+                d_update = copy.deepcopy(update)
+                d_update['$pullAll'] = {}
                 for k,v in delete_payload.iteritems():
-                    update['$pullAll'][self.list_name + '.$.classification.' + k] = v
+                    d_update['$pullAll'][self.list_name + '.$.classification.' + k] = v
 
-        if self.use_object_id:
-            _id = bson.objectid.ObjectId(_id)
-        query = {'_id': _id }
-        query[self.list_name] = {'$elemMatch': query_params}
+                result = self.dbc.update_one(query, d_update)
+                if result.matched_count == 0:
+                    raise APINotFoundException('File not found in container {} {}.'.format(self.cont_name, _id))
 
-        if not update.get('$set'):
-            update['$set'] = {'modified': datetime.datetime.utcnow()}
-        else:
-            update['$set']['modified'] = datetime.datetime.utcnow()
-
-        return self.dbc.update_one(query, update)
 
 
 class StringListStorage(ListStorage):

@@ -82,9 +82,7 @@
             "type": "object",
             "properties": {
               "type":             {"$ref":"#/definitions/file-type"},
-              "modality":         {"$ref":"#/definitions/modality"},
-              "classification":   {"$ref":"#/definitions/classification"}
-          },
+              "modality":         {"$ref":"#/definitions/modality"}          },
           "additionalProperties": false
         },
         "file-output":{
