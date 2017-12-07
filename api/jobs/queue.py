@@ -32,6 +32,7 @@ JOB_STATES_ALLOWED_MUTATE = [
 JOB_TRANSITIONS = [
     'pending --> running',
     'pending --> cancelled',
+    'running --> cancelled',
     'running --> failed',
     'running --> complete',
 ]
@@ -57,8 +58,9 @@ class Queue(object):
         """
 
         if job.state not in JOB_STATES_ALLOWED_MUTATE:
-            raise Exception('Cannot mutate a job that is ' + job.state + '.')
+            raise InputValidationException('Cannot mutate a job that is ' + job.state + '.')
 
+        # TODO: This should use InputValidationException or similar
         if 'state' in mutation and not valid_transition(job.state, mutation['state']):
             raise Exception('Mutating job from ' + job.state + ' to ' + mutation['state'] + ' not allowed.')
 

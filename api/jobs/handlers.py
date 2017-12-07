@@ -310,7 +310,6 @@ class JobsHandler(base.RequestHandler):
         count = Queue.scan_for_orphans()
         return { 'orphaned': count }
 
-
 class JobHandler(base.RequestHandler):
     """Provides /Jobs/<jid> routes."""
 
@@ -376,7 +375,6 @@ class JobHandler(base.RequestHandler):
             encoded = pseudo_consistent_json_encode({"config": c})
             self.response.app_iter = StringIO.StringIO(encoded)
 
-
     @require_login
     def put(self, _id):
         """
@@ -419,7 +417,6 @@ class JobHandler(base.RequestHandler):
                 for x in job.inputs:
                     job.inputs[x].check_access(self.uid, 'ro')
                 # Unlike jobs-add, explicitly not checking write access to destination.
-
 
     def get_logs(self, _id):
         """Get a job's logs"""
