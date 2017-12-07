@@ -241,9 +241,7 @@ class FileStorage(ListStorage):
             r_update = copy.deepcopy(update)
             r_update['$set'][self.list_name + '.$.classification'] = util.mongo_sanitize_fields(replace_payload)
 
-            result = self.dbc.update_one(query, r_update)
-            if result.matched_count == 0:
-                raise APINotFoundException('File not found in container {} {}.'.format(self.cont_name, _id))
+            self.dbc.update_one(query, r_update)
 
         else:
             if add_payload:
@@ -254,10 +252,7 @@ class FileStorage(ListStorage):
                 for k,v in add_payload.iteritems():
                     a_update['$addToSet'][self.list_name + '.$.classification.' + k] = {'$each': v}
 
-                result = self.dbc.update_one(query, a_update)
-                if result.matched_count == 0:
-                    raise APINotFoundException('File not found in container {} {}.'.format(self.cont_name, _id))
-
+                self.dbc.update_one(query, a_update)
 
             if delete_payload:
                 delete_payload = check_and_format_classification(modality, delete_payload)
@@ -268,9 +263,7 @@ class FileStorage(ListStorage):
                 for k,v in delete_payload.iteritems():
                     d_update['$pullAll'][self.list_name + '.$.classification.' + k] = v
 
-                result = self.dbc.update_one(query, d_update)
-                if result.matched_count == 0:
-                    raise APINotFoundException('File not found in container {} {}.'.format(self.cont_name, _id))
+                self.dbc.update_one(query, d_update)
 
 
 

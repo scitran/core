@@ -195,7 +195,7 @@ class ListHandler(base.RequestHandler):
             else:
                 permchecker = permchecker(self, container)
         else:
-            self.abort(404, 'Element {} not found in container {}'.format(_id, storage.cont_name))
+            self.abort(404, 'Element {} not found in {} {}'.format(query_params.values()[0], containerutil.singularize(storage.cont_name), _id))
 
         mongo_schema_uri = validators.schema_uri('mongo', conf.get('storage_schema_file'))
         mongo_validator = validators.decorator_from_schema_path(mongo_schema_uri)
