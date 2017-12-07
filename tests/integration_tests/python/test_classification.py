@@ -199,6 +199,28 @@ def test_edit_file_classification(data_builder, as_admin, as_user, file_form):
     assert r.ok
     assert r.json()['classification'] == file_cls
 
+    # Ensure lowercase gets formatted in correct format via modality's classification
+    r = as_admin.post('/projects/' + project + '/files/' + file_name + '/classification', json={
+        'delete': {'contrast': ['t2'], 'custom': ['lowercase']}
+    })
+    assert r.ok
+
+    file_cls['Contrast'] = ['T1', 'B0']
+    file_cls['Custom'] = ['Custom Value']
+    r = as_admin.get('/projects/' + project + '/files/' + file_name + '/info')
+    assert r.ok
+    assert r.json()['classification'] == file_cls
+
+    # Try to replace with bad key names and values
+    r = as_admin.post('/projects/' + project + '/files/' + file_name + '/classification', json={
+        'replace': {
+            'made-up': ['fake'],
+            'Intent': ['not real']
+        }
+    })
+    assert r.status_code == 422
+    assert r.json()['malformed_keys'] == ['made-up:fake', 'Intent:not real']
+
 
     # Use 'replace' to set file classification to {}
     r = as_admin.post('/projects/' + project + '/files/' + file_name + '/classification', json={
