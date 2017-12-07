@@ -549,7 +549,7 @@ class FileListHandler(ListHandler):
         validators.validate_data(payload, 'classification_update.json', 'input', 'POST')
 
         permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
-        result = storage.modify_classification(_id, kwargs, payload)
+        storage.modify_classification(_id, kwargs, payload)
 
 
     def post(self, cont_name, list_name, **kwargs):
