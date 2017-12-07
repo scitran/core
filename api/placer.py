@@ -104,7 +104,6 @@ class Placer(object):
                 session_id = AcquisitionStorage().get_container(str(self.id_)).get('session')
             SessionStorage().recalc_session_compliance(session_id, hard=True)
 
-
 class TargetedPlacer(Placer):
     """
     A placer that can accept N files to a specific container (acquisition, etc).
