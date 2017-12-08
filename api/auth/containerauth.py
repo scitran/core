@@ -27,14 +27,10 @@ def default_container(handler, container=None, target_parent_container=None):
                 has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
             elif method == 'DELETE':
                 required_perm = 'rw'
-                if container.get('has_children'):
-                    # If the container has children or files, admin is required to delete
+                if target_parent_container.get('cont_name') == 'group':
+                    # Project deletion requires admin
                     required_perm = 'admin'
-                    additional_error_msg = 'Container is not empty.'
-                if target_parent_container:
-                    has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
-                else:
-                    has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS[required_perm]
+                has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
             elif method == 'PUT' and target_parent_container is not None:
                 has_access = (
                     _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['admin'] and

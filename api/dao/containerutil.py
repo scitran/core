@@ -144,6 +144,16 @@ def sanitize_info(info):
     return sanitized_info
 
 
+def get_analyses(acquisition_id, filename=None):
+    query = {'destination.type': 'analysis', 'inputs.type': 'acquisition', 'inputs.id': acquisition_id}
+    if filename:
+        query['inputs.name'] = filename
+    jobs = config.db.jobs.find(query, {'destination.id': True})
+    analysis_ids = [bson.ObjectId(job['destination']['id']) for job in jobs]
+    analyses = config.db.analyses.find({'_id': {'$in': analysis_ids}, 'deleted': {'$exists': False}})
+    return [str(analysis['_id']) for analysis in analyses]
+
+
 class ContainerReference(object):
     # pylint: disable=redefined-builtin
     # TODO: refactor to resolve pylint warning

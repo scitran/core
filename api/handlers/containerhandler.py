@@ -540,6 +540,12 @@ class ContainerHandler(base.RequestHandler):
             container['has_children'] = False
         if container.get('files') or container.get('analyses'):
             container['has_children'] = True
+
+        if cont_name == 'acquisitions':
+            analysis_ids = containerutil.get_analyses(_id)
+            if analysis_ids:
+                self.abort(400, 'Cannot delete acquisition {} referenced by analyses {}'.format(_id, analysis_ids))
+
         target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         try:

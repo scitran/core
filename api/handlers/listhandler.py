@@ -547,6 +547,12 @@ class FileListHandler(ListHandler):
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
+
+        if cont_name == 'acquisitions':
+            analysis_ids = containerutil.get_analyses(_id, kwargs['name'])
+            if analysis_ids:
+                self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(kwargs['name'], analysis_ids))
+
         self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
         try:
             result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
