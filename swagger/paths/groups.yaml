@@ -5,5 +5,5 @@ get:
     200:
       description: 'OK'
       schema:
-        $ref: "../schemas/output/groups-list.json"
+        $ref: "./schemas/output/groups-list.json"
 
