@@ -12,6 +12,7 @@ from ..dao.containerutil import create_filereference_from_dictionary, create_con
 
 from .. import config
 from ..util import render_template
+from ..web.errors import APINotFoundException
 
 
 class Job(object):
@@ -170,7 +171,7 @@ class Job(object):
     def get(cls, _id):
         doc = config.db.jobs.find_one({'_id': bson.ObjectId(_id)})
         if doc is None:
-            raise Exception('Job not found')
+            raise APINotFoundException('Job not found')
 
         return cls.load(doc)
 

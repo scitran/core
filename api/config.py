@@ -248,6 +248,7 @@ def initialize_db():
     create_or_recreate_ttl_index('authtokens', 'timestamp', 2592000)
     create_or_recreate_ttl_index('uploads', 'timestamp', 60)
     create_or_recreate_ttl_index('downloads', 'timestamp', 60)
+    create_or_recreate_ttl_index('job_tickets', 'timestamp', 300)
 
     now = datetime.datetime.utcnow()
     db.groups.update_one({'_id': 'unknown'}, {'$setOnInsert': { 'created': now, 'modified': now, 'label': 'Unknown', 'permissions': []}}, upsert=True)

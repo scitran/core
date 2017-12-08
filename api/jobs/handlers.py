@@ -483,26 +483,18 @@ class JobHandler(base.RequestHandler):
 
     @require_drone
     def prepare_complete(self, _id):
-        try:
-            j = Job.get(_id)
-        except Exception: # pylint: disable=broad-except
-            # TBD maybe raise APINotFound from Job.get?
-            raise APINotFoundException('Job not found')
+        j = Job.get(_id)
         payload = self.request.json
         ticket = {
             'job': j.id_,
             'success': payload.get('success', False),
         }
-        # TBD why not store success on the job itself?
         return {'ticket': config.db.job_tickets.insert_one(ticket).inserted_id}
 
 
     @require_login
     def accept_failed_output(self, _id):
-        try:
-            j = Job.get(_id)
-        except Exception: # pylint: disable=broad-except
-            raise APINotFoundException('Job not found')
+        j = Job.get(_id)
 
         # Permission check
         if not self.superuser_request:
@@ -510,9 +502,6 @@ class JobHandler(base.RequestHandler):
 
         if j.state != 'failed':
             self.abort(400, 'Can only accept failed output of a job that failed')
-
-        # TBD recording user/timestamp? logging?
-        # TBD ticket cleanup/purging?
 
         # Remove flag from files
         container = j.destination.get()
