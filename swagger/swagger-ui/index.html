@@ -26,6 +26,10 @@
       margin:0;
       background: #fafafa;
     }
+
+    .topbar .download-url-wrapper {
+        display: none !important;
+    }
   </style>
 </head>
 
@@ -74,9 +78,10 @@ window.onload = function() {
   
   // Build a system
   const ui = SwaggerUIBundle({
-    url: "./swagger.json",
+    url: "swagger.json",
     dom_id: '#swagger-ui',
     deepLinking: true,
+    validatorUrl: null,
     presets: [
       SwaggerUIBundle.presets.apis,
       SwaggerUIStandalonePreset

@@ -12,7 +12,7 @@ consumes:
 paths:
   $ref: ./paths/index.yaml
 definitions:
-  $ref: ./definitions/index.yaml
+  #  $ref: ./definitions/index.yaml
 
 
 

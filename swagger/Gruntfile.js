@@ -54,7 +54,7 @@ module.exports = function(grunt) {
 			 * Copy swagger to swagger-ui
 			 */
 			swaggerUiSchema: {
-				src: 'build/swagger-flat.json',
+				src: 'build/swagger-ui.json',
 				dest: 'build/swagger-ui/swagger.json'
 			}
 		},
@@ -67,6 +67,16 @@ module.exports = function(grunt) {
 			core: {
 				apiFile: 'index.yaml',
 				dest: 'build/swagger-flat.json'
+			}
+		},
+
+		/**
+		 * Resolve schema links in the swagger documentation
+		 */
+		resolveSchemaLinks: {
+			core: {
+				src: 'build/swagger-flat.json',
+				dest: 'build/swagger-ui.json'
 			}
 		},
 
@@ -109,7 +119,8 @@ module.exports = function(grunt) {
 	 */
 	grunt.registerTask('build-schema', [
 		'copy:schema', 
-		'flattenSwagger'
+		'flattenSwagger',
+		'resolveSchemaLinks'
 	]);
 
 	/**
