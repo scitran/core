@@ -3,7 +3,7 @@ get:
   operationId: 'getAllGroups'
   responses:
     200:
-      description: OK
+      description: 'OK'
       schema:
         $ref: "../schemas/output/groups-list.json"
 
