@@ -358,6 +358,8 @@ class RequestHandler(webapp2.RequestHandler):
             code = 400
         elif isinstance(exception, errors.FileFormException):
             code = 400
+        elif isinstance(exception, errors.FileFormException):
+            code = 400
         elif isinstance(exception, ElasticsearchException):
             code = 503
             message = "Search is currently down. Try again later."

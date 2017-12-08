@@ -55,6 +55,20 @@ def test_reaper_upload(data_builder, randstr, upload_file_form, as_admin):
     ))
     assert r.ok
 
+    # reaper-upload files to group_1/project_label_1 using session_uid without any files
+    file_form = upload_file_form(
+        group={'_id': group_1},
+        project={'label': project_label_1, "files":[]},
+        session={'uid': session_uid+"1", "files":[], 'subject': {
+                    'code': prefix + '-subject-code',
+                    'files': []
+                }}
+    )
+    print file_form
+    r = as_admin.post('/upload/reaper', files={"metadata": file_form.get("metadata")})
+    print r.json()
+    assert r.status_code == 400
+
     # get session created by the upload
     project_1 = as_admin.get('/groups/' + group_1 + '/projects').json()[0]['_id']
     session = as_admin.get('/projects/' + project_1 + '/sessions').json()[0]['_id']
@@ -172,6 +186,25 @@ def test_reaper_upload_unknown_group_project(data_builder, file_form, as_root, a
         })
     )
     assert r.ok
+
+    # Try uploading 0 files
+    r = as_root.post('/upload/label', files={"metadata":file_form(
+        'acquisition.csv',
+        meta={
+            'group': {'_id': 'not_a_real_group'},
+            'project': {
+                'label': 'new_project',
+            },
+            'session': {
+                'label': 'test_session_label',
+            },
+            'acquisition': {
+                'label': 'test_acquisition_label',
+                'files': [{'name': 'acquisition.csv'}]
+            }
+        }).get("metadata")}
+    )
+    assert r.status_code == 400
 
 
     # get session created by the upload
@@ -362,7 +395,7 @@ def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
 
     # try to uid-upload w/o metadata
     r = as_admin.post('/upload/uid', files=file_form('test.csv'))
-    assert r.status_code == 500
+    assert r.status_code == 400
 
     # NOTE unused.csv is testing code that discards files not referenced from meta
     uid_files = ('project.csv', 'subject.csv', 'session.csv', 'acquisition.csv', 'unused.csv')
@@ -389,6 +422,10 @@ def test_uid_upload(data_builder, file_form, as_admin, as_user, as_public):
     # try to uid-upload to new project w/o group rw perms
     r = as_user.post('/upload/uid', files=file_form(*uid_files, meta=uid_meta))
     assert r.status_code == 403
+
+    # try to uid-upload no files
+    r = as_admin.post('/upload/uid', files={"metadata": file_form(*uid_files, meta=uid_meta).get("metadata")})
+    assert r.status_code == 400
 
     # uid-upload files
     r = as_admin.post('/upload/uid', files=file_form(*uid_files, meta=uid_meta))

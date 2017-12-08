@@ -18,6 +18,7 @@ from .jobs import rules
 from .jobs.jobs import Job
 from .types import Origin
 from .web import encoder
+from .web.errors import FileFormException
 
 class Placer(object):
     """
@@ -74,7 +75,7 @@ class Placer(object):
         Helper function that throws unless metadata was provided.
         """
         if self.metadata == None:
-            raise Exception('Metadata required')
+            raise FileFormException('Metadata required')
 
     def save_file(self, field=None, file_attrs=None):
         """
@@ -140,7 +141,7 @@ class UIDPlacer(Placer):
         super(UIDPlacer, self).__init__(container_type, container, id_, metadata, timestamp, origin, context)
         self.metadata_for_file = {}
         self.session_id = None
-
+        self.count = 0
 
     def check(self):
         self.requireMetadata()
@@ -149,22 +150,25 @@ class UIDPlacer(Placer):
         metadata_validator = validators.from_schema_path(payload_schema_uri)
         metadata_validator(self.metadata, 'POST')
 
-        # If not a superuser request, pass uid of user making the upload request
-        targets = self.create_hierarchy(self.metadata, type_=self.match_type, user=self.context.get('uid'))
-
-        self.metadata_for_file = {}
-
-        for target in targets:
-            if target[0].level is 'session':
-                self.session_id = target[0].id_
-            for name in target[1]:
-                self.metadata_for_file[name] = {
-                    'container': target[0],
-                    'metadata': target[1][name]
-                }
 
 
     def process_file_field(self, field, file_attrs):
+        # Only create the hierarchy once
+        if self.count == 0:
+            # If not a superuser request, pass uid of user making the upload request
+            targets = self.create_hierarchy(self.metadata, type_=self.match_type, user=self.context.get('uid'))
+
+            self.metadata_for_file = {}
+
+            for target in targets:
+                if target[0].level is 'session':
+                    self.session_id = target[0].id_
+                for name in target[1]:
+                    self.metadata_for_file[name] = {
+                        'container': target[0],
+                        'metadata': target[1][name]
+                    }
+        self.count += 1
 
         # For the file, given self.targets, choose a target
         name        = field.filename
@@ -194,6 +198,9 @@ class UIDPlacer(Placer):
         self.saved.append(file_attrs)
 
     def finalize(self):
+        # Check that there is at least one file being uploaded
+        if self.count < 1:
+            raise FileFormException("No files selected for upload")
         if self.session_id:
             self.container_type = 'session'
             self.id_ = self.session_id

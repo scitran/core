@@ -5,7 +5,7 @@ import os.path
 import shutil
 
 from .web import base
-from .web.errors import FileStoreException
+from .web.errors import FileStoreException, FileFormException
 from . import config
 from . import files
 from . import placer as pl
@@ -95,7 +95,8 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
-        raise Exception("Targeted uploads can only send one file")
+        raise FileFormException("Targeted uploads can only send one file")
+
 
 
     for field in file_fields:
