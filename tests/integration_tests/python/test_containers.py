@@ -222,6 +222,8 @@ def test_get_all_containers(data_builder, as_admin, as_user, as_public, file_for
     analysis_2 = as_admin.post('/acquisitions/' + acquisition + '/analyses', files=file_form(
         'analysis.csv', meta={'label': 'no-job', 'inputs': [{'name': 'analysis.csv'}]})).json()["_id"]
 
+    r = as_admin.get('/sessions/' + session_2 + '/projects/analyses')
+    assert r.status_code == 400
 
     r = as_admin.get('/groups/' + group + '/sessions/analyses')
     assert r.ok
