@@ -24,7 +24,7 @@
         },
         "additionalProperties":false,
         "required":[
-           "id", "name", "inputs", "config",
+           "id", "gear_id", "inputs", "config",
            "destination", "tags", "state", "attempt"
         ]
       }

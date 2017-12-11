@@ -13,6 +13,17 @@
             },
             "additionalProperties": false
         },
+        "collection-input-with-contents":{
+            "type": "object",
+            "properties": {
+                "public": {"$ref": "../definitions/container.json#/definitions/public"},
+                "label": {"$ref": "../definitions/container.json#/definitions/label"},
+                "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "description":  {"$ref": "../definitions/project.json#/definitions/description"},
+                "contents": { "type": "object" }
+            },
+            "additionalProperties": false
+        },
         "collection-output":{
             "type": "object",
             "properties": {
