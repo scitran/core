@@ -1,0 +1,9 @@
+{
+  "_id": "version",
+  "build": {
+    "commit": "7d375e977aa023f537c1f1531f646fe65fc5d529",
+    "branch": "master",
+    "timestamp": "2017-01-12T15:38:09Z"
+  },
+  "database": 40
+}
