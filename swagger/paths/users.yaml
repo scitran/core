@@ -1,4 +1,4 @@
-users:
+/users:
   get:
     summary: Return a list of all users
     operationId: get_all_users
@@ -26,7 +26,7 @@ users:
           $ref: schemas/output/user-new.json
       '400':
         $ref: '#/responses/400:invalid-body-json'
-users-self:
+/users/self:
   get:
     summary: Get information about the current user
     operationId: get_current_user
@@ -41,7 +41,7 @@ users-self:
         examples:
           response:
             $ref: examples/user_jane_doe.json
-users-self-avatar:
+/users/self/avatar:
   get:
     summary: Get the avatar of the current user
     operationId: get_current_user_avatar
@@ -51,7 +51,7 @@ users-self-avatar:
       '307':
         description: |
           Redirects to the image file of the current user's avatar
-users-user:
+/users/{UserId}:
   parameters:
     - required: true
       type: string
@@ -109,7 +109,7 @@ users-user:
             $ref: examples/output/user-delete.json
       '404':
         description: User not found
-users-user-groups:
+/users/{UserId}/groups:
   parameters:
     - required: true
       type: string
@@ -128,7 +128,7 @@ users-user-groups:
         examples:
           response:
             $ref: examples/output/groups-list.json
-users-user-avatar:
+/users/{UserId}/avatar:
   parameters:
     - required: true
       type: string
@@ -143,7 +143,7 @@ users-user-avatar:
       '307':
         description: |
           Redirects to the image file of the specified user's avatar
-users-user-acquisitions:
+/users/{UserId}/acquisitions:
   parameters:
     - required: true
       type: string
@@ -162,7 +162,7 @@ users-user-acquisitions:
         examples:
           response:
             $ref: examples/output/acquisition-list.json
-users-user-collections:
+/users/{UserId}/collections:
   parameters:
     - required: true
       type: string
@@ -181,7 +181,7 @@ users-user-collections:
         examples:
           response:
             $ref: examples/output/collection-list.json
-users-user-projects:
+/users/{UserId}/projects:
   parameters:
     - required: true
       type: string
@@ -200,7 +200,7 @@ users-user-projects:
         examples:
           response:
             $ref: examples/output/project-list.json
-users-user-sessions:
+/users/{UserId}/sessions:
   parameters:
     - required: true
       type: string

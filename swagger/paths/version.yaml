@@ -1,4 +1,4 @@
-version:
+/version:
   get:
     description: Get database schema version info
     operationId: get_version

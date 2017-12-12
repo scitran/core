@@ -1,4 +1,4 @@
-devices:
+/devices:
   get:
     summary: List all devices.
     description: Requires login.
@@ -32,7 +32,7 @@ devices:
         in: body
         schema:
           $ref: schemas/input/device.json
-devices-self:
+/devices/self:
   get:
     summary: Get device document for device making the request.
     description: Request must be a drone request.
@@ -47,7 +47,7 @@ devices-self:
         examples:
           response:
               $ref: examples/output/device.json
-devices-status:
+/devices/status:
   get:
     summary: Get status for all known devices.
     description: ok - missing - error - unknown
@@ -62,7 +62,7 @@ devices-status:
         examples:
           response:
             $ref: examples/output/device-status.json
-devices-device:
+/devices/{DeviceId}:
   parameters:
     - required: true
       type: string

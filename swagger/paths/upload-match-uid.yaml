@@ -1,4 +1,4 @@
-upload-match-uid:
+/upload/uid-match:
   post:
     summary: Multipart form upload with N file fields, each with their desired filename.
     description: >

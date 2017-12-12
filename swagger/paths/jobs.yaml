@@ -1,4 +1,4 @@
-jobs-add:
+/jobs/add:
   post:
     summary: Add a job
     operationId: add_job
@@ -18,7 +18,7 @@ jobs-add:
         examples:
           response:
             _id: 573cb66b135d87002660597c
-jobs-next:
+/jobs/next:
   get:
     summary: Get the next job in the queue
     description: Used by the engine.
@@ -28,7 +28,7 @@ jobs-next:
     responses:
       default:
         description: ''
-jobs-stats:
+/jobs/stats:
   get:
     summary: Get stats about all current jobs
     operationId: get_jobs_stats
@@ -40,7 +40,7 @@ jobs-stats:
         schema:
           example:
             $ref: examples/job_stats.json
-jobs-reap:
+/jobs/reap:
   post:
     summary: Reap stale jobs
     operationId: reap_jobs
@@ -52,7 +52,7 @@ jobs-reap:
         schema:
           example:
             orphaned: 3
-jobs-job:
+/jobs/{JobId}:
   parameters:
     - required: true
       type: string
@@ -96,7 +96,7 @@ jobs-job:
         schema:
           example:
             $ref: examples/input/job-update.json
-jobs-job-retry:
+/jobs/{JobId}/retry:
   parameters:
     - required: true
       type: string
@@ -120,7 +120,7 @@ jobs-job-retry:
         schema:
           example:
             _id: 57a35c118120be0e8d1f3f5f
-jobs-job-config-json:
+/jobs/{JobId}/config.json:
   parameters:
     - required: true
       type: string
