@@ -1,4 +1,4 @@
-config-js:
+/config.js:
   get:
     summary: Return public Scitran configuration information in javascript format.
     operationId: get_config_js

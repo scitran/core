@@ -28,9 +28,23 @@ tags:
     description: Collection operations
 
 paths:
-  $ref: ./paths/index.yaml
-# definitions:
-  #  $ref: ./definitions/index.yaml
+  $include: 
+    - paths/login.yaml
+    - paths/download.yaml
+    - paths/upload-by-label.yaml
+    - paths/upload-by-uid.yaml
+    - paths/upload-match-uid.yaml
+    - paths/clean-packfiles.yaml
+    - paths/engine.yaml
+    - paths/config.yaml
+    - paths/config-js.yaml
+    - paths/version.yaml
+    - paths/users.yaml
+    - paths/jobs.yaml
+    - paths/gears.yaml
+    - paths/devices.yaml
+    - paths/groups.yaml
+    - paths/collections.yaml
 
 securityDefinitions:
   ApiKey:

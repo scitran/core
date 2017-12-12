@@ -1,4 +1,4 @@
-login:
+/login:
   post:
     summary: Login
     description: Scitran Authentication
@@ -9,7 +9,7 @@ login:
         schema:
           example:
             success: true
-logout:
+/logout:
   post:
     summary: Log Out
     description: Remove authtokens for user

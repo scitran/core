@@ -1,10 +1,5 @@
 # Global template arguments for collection
-collection_tmpl_args:
-  resource: collection
-  tag: collections
-  parameter: CollectionId
-
-collections:
+/collections:
   get:
     summary: List all collections.
     operationId: get_all_collections
@@ -37,7 +32,7 @@ collections:
       '400':
         $ref: '#/responses/400:invalid-body-json'
 
-collections-curators:
+/collections/curators:
   get:
     summary: List all curators of collections
     operationId: get_all_collections_curators
@@ -50,7 +45,7 @@ collections-curators:
         examples:
           response:
             $ref: examples/output/collection-curators-list.json
-collections-collection:
+/collections/{CollectionId}:
   parameters:
     - required: true
       type: string
@@ -92,7 +87,7 @@ collections-collection:
       '200':
         description: Collection was deleted
 
-collections-collection-sessions:
+/collections/{CollectionId}/sessions:
   parameters:
     - required: true
       type: string
@@ -112,7 +107,7 @@ collections-collection-sessions:
           response:
             $ref: examples/output/session-list.json
 
-collections-collection-acquisitions:
+/collections/{CollectionId}/acquisitions:
   parameters:
     - required: true
       type: string
@@ -133,82 +128,116 @@ collections-collection-acquisitions:
             $ref: examples/output/acquisition-list.json
 
 # ===== Tags =====
-collections-collection-tags:
+/collections/{CollectionId}/tags:
   $template: templates/tags.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-tags-tag:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
+    resource: collection
+    tag: collections
+    parameter: CollectionId
 
 # ===== Packfile =====
-collections-collection-packfile-start:
+/collections/{CollectionId}/packfile-start:
   $template: templates/packfile-start.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-packfile:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/packfile:
   $template: templates/packfile.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-packfile-end:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/packfile-end:
   $template: templates/packfile-end.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
+    resource: collection
+    tag: collections
+    parameter: CollectionId
 
 # ===== Files =====
-collections-collection-files:
+/collections/{CollectionId}/files:
   $template: templates/file-list-upload.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-files-file:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/files/{FileName}:
   $template: templates/file-item.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
+    resource: collection
+    tag: collections
+    parameter: CollectionId
 
 # ===== Permissions =====
-collections-collection-permissions:
+/collections/{CollectionId}/permissions:
   $template: templates/permissions.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-permissions-user:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/permissions/{UserId}:
   $template: templates/permissions-user.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
+    resource: collection
+    tag: collections
+    parameter: CollectionId
 
 # ===== Notes =====
-collections-collection-notes:
+/collections/{CollectionId}/notes:
   $template: templates/notes.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-notes-note:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/notes/{NoteId}:
   $template: templates/notes-note.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
+    resource: collection
+    tag: collections
+    parameter: CollectionId
 
 # ===== Analyses =====
-collections-collection-analyses:
+/collections/{CollectionId}/analyses:
   $template: templates/analyses-list.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-analyses-analysis:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-analyses-analysis-files:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-analyses-analysis-files-filename:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/analyses/{AnalysisId}/files/{Filename}:
   $template: templates/analysis-files-create-ticket-filename.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-analyses-analysis-notes:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/analyses/{AnalysisId}/notes:
   $template: templates/analysis-notes.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
-collections-collection-analyses-analysis-notes-note:
+    resource: collection
+    tag: collections
+    parameter: CollectionId
+/collections/{CollectionId}/analyses/{AnalysisId}/notes/{NoteId}:
   $template: templates/analysis-notes-item.yaml
   arguments:
-    $ref: '#/collection_tmpl_args'
+    resource: collection
+    tag: collections
+    parameter: CollectionId
     

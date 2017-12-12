@@ -1,4 +1,4 @@
-download:
+/download:
   post:
     summary: Create a download ticket
     description: |

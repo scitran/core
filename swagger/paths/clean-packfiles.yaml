@@ -1,4 +1,4 @@
-clean-packfiles:
+/clean-packfiles:
   post:
     summary: Clean up expired upload tokens and invalid token directories.
     operationId: clean_packfiles

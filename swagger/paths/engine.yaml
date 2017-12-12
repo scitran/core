@@ -1,4 +1,4 @@
-engine:
+/engine:
   post:
     summary: Upload a list of file fields.
     description: |

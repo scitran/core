@@ -1,4 +1,4 @@
-gears:
+/gears:
   get:
     summary: List all gears
     operationId: get_all_gears
@@ -7,7 +7,7 @@ gears:
     responses:
       default:
         description: ''
-gears-gear-by-name:
+/gears/{GearName}:
   parameters:
     - required: true
       description: Name of the gear to interact with
@@ -25,7 +25,7 @@ gears-gear-by-name:
     responses:
       default:
         description: ''
-gears-gear:
+gears/{GearId}:
   parameters:
     - required: true
       description: Id of the gear to interact with

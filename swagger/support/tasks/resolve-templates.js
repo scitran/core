@@ -19,13 +19,36 @@ module.exports = function(grunt) {
 					tmplpath = path.join(templates, obj['$template']);
 					if( !loaded_templates[tmplpath] ) {
 						if( !fs.existsSync(tmplpath) ) {
-							throw 'Template file does note exist:' + tmplpath;
+							throw 'Template file does not exist: ' + tmplpath;
 						}
 						loaded_templates[tmplpath] = yaml.safeLoad(fs.readFileSync(tmplpath).toString());
 					}
 
 					tmpl = _.cloneDeep(loaded_templates[tmplpath]['template']);
 					obj = walk(tmpl, resolveParamsFunc(obj['arguments']));
+				}
+
+				return obj;
+			});
+		};
+	}
+
+	function resolveIncludesFunc(templates) {
+		return function(obj) {
+			return walk(obj, function(obj) {
+				var i, includes, incpath, inc;
+
+				if( obj.hasOwnProperty('$include') ) {
+					includes = obj['$include'];
+					delete obj['$include'];
+					for( i = 0; i < includes.length; i++ ) {
+						incpath = path.join(templates, includes[i]);
+						if( !fs.existsSync(incpath) ) {
+							throw 'Included file does not exist: ' + incpath;
+						}
+						inc = yaml.safeLoad(fs.readFileSync(incpath).toString());
+						_.extend(obj, inc);
+					}
 				}
 
 				return obj;
@@ -47,6 +70,7 @@ module.exports = function(grunt) {
 		var dest = this.data.dest;
 		var templates = this.data.templates||process.cwd();
 		var resolveTemplates = resolveTemplatesFunc(templates);
+		var resolveIncludes = resolveIncludesFunc(templates);
 
 		if(!fs.existsSync(src)) {
 			grunt.log.writeln('Could not find:', src);
@@ -55,6 +79,7 @@ module.exports = function(grunt) {
 
 		var root = JSON.parse(fs.readFileSync(src).toString());
 		try {
+			root = resolveIncludes(root);
 			root = resolveTemplates(root);
 		} catch( e ) {
 			grunt.log.writeln('Error resolving templates:', e);

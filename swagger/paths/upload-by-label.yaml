@@ -1,4 +1,4 @@
-upload-by-label:
+/upload/label:
   post:
     summary: Multipart form upload with N file fields, each with their desired filename.
     description: >

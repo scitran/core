@@ -1,9 +1,4 @@
-group_tmpl_args:
-  resource: group
-  tag: groups
-  parameter: GroupId
-
-groups:
+/groups:
   get:
     summary: List all groups
     operationId: get_all_groups
@@ -34,7 +29,7 @@ groups:
           $ref: schemas/output/group-new.json
       '400':
         $ref: '#/responses/400:invalid-body-json'
-groups-group:
+/groups/{GroupId}:
   parameters:
     - required: true
       type: string
@@ -76,26 +71,34 @@ groups-group:
         $ref: '#/responses/200:deleted-with-count'
 
 # ===== Permissions =====
-groups-group-permissions:
+/groups/{GroupId}/permissions:
   $template: templates/permissions.yaml
   arguments:
-    $ref: '#/group_tmpl_args'
-groups-group-permissions-user:
+    resource: group
+    tag: groups
+    parameter: GroupId
+/groups/{GroupId}/permissions/{UserId}:
   $template: templates/permissions-user.yaml
   arguments:
-    $ref: '#/group_tmpl_args'
+    resource: group
+    tag: groups
+    parameter: GroupId
 
 # ===== Tags =====
-groups-group-tags:
+/groups/{GroupId}/tags:
   $template: templates/tags.yaml
   arguments:
-    $ref: '#/group_tmpl_args'
-groups-group-tags-tag:
+    resource: group
+    tag: groups
+    parameter: GroupId
+/groups/{GroupId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
   arguments:
-    $ref: '#/group_tmpl_args'
+    resource: group
+    tag: groups
+    parameter: GroupId
 
-groups-group-projects:
+/groups/{GroupId}/projects:
   parameters:
     - required: true
       type: string

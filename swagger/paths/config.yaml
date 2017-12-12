@@ -1,4 +1,4 @@
-config:
+/config:
   get:
     summary: Return public Scitran configuration information
     operationId: get_config
