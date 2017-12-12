@@ -1,0 +1,32 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Add files to an in-progress packfile
+    operationId: '{{resource}}_packfile_upload'
+    tags: 
+    - '{{tag}}'
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: formData
+        type: string
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/file-list.json
+        examples:
+          response:
+            $ref: examples/file_info_list.json

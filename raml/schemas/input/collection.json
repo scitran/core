@@ -3,5 +3,8 @@
     "title": "Collection",
     "type": "object",
     "allOf": [{"$ref": "../definitions/collection.json#/definitions/collection-input"}],
-    "required": ["label"]
+    "required": ["label"],
+    "example": {
+    	"$ref": "../../examples/input/collection.json"
+    }
 }

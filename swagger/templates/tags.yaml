@@ -1,0 +1,29 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Add a tag to {{resource}}.
+    description: Progates changes to projects, sessions and acquisitions
+    operationId: add_{{resource}}_tag
+    tags:
+    - '{{tag}}'
+    parameters:
+      - name: body
+        in: body
+        schema:
+          $ref: schemas/input/tag.json
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'
+      '400':
+        $ref: '#/responses/400:invalid-body-json'

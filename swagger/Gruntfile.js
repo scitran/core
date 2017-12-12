@@ -6,7 +6,7 @@ var SWAGGER_UI_LIVE_RELOAD_PORT = 19009;
 
 module.exports = function(grunt) {
 	require('load-grunt-tasks')(grunt);
-	grunt.task.loadTasks('tasks/');
+	grunt.task.loadTasks('support/tasks/');
 
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
@@ -77,11 +77,21 @@ module.exports = function(grunt) {
 		},
 
 		/**
+		 * Resolve templates within swagger
+		 */
+		resolveTemplates: {
+			core: {
+				src: 'build/swagger-flat.json',
+				dest: 'build/swagger-int.json'
+			}
+		},
+
+		/**
 		 * Resolve schema links in the swagger documentation
 		 */
 		resolveSchemaLinks: {
 			core: {
-				src: 'build/swagger-flat.json',
+				src: 'build/swagger-int.json',
 				dest: 'build/swagger-ui.json'
 			}
 		},
@@ -126,6 +136,7 @@ module.exports = function(grunt) {
 	grunt.registerTask('build-schema', [
 		'copy:schema', 
 		'flattenSwagger',
+		'resolveTemplates',
 		'resolveSchemaLinks'
 	]);
 

@@ -1,0 +1,54 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+    parameters:
+      - required: true
+        type: string
+        in: path
+        name: '{{parameter}}'
+      - required: true
+        description: The tag to interact with
+        type: string
+        in: path
+        name: TagValue
+    get:
+      summary: Get the value of a tag, by name.
+      operationId: get_{{resource}}_tag
+      tags:
+      - '{{tag}}'
+      responses:
+        '200':
+          description: Returns a single tag by name
+          schema:
+            $ref: schemas/output/tag.json
+          examples:
+            response:
+              $ref: examples/output/tag.json
+    put:
+      summary: Rename a tag.
+      operationId: rename_{{resource}}_tag
+      tags:
+      - '{{tag}}'
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: schemas/input/tag.json
+      responses:
+        '200':
+          $ref: '#/responses/200:modified-with-count'
+        '400':
+          $ref: '#/responses/400:invalid-body-json'
+    delete:
+      summary: Delete a tag
+      operationId: delete_{{resource}}_tag
+      tags:
+      - '{{tag}}'
+      responses:
+        '200':
+          $ref: '#/responses/200:modified-with-count'

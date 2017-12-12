@@ -2,5 +2,8 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "allOf":[{"$ref":"../definitions/note.json#/definitions/note-input"}],
-  "required": ["text"]
+  "required": ["text"],
+  "example": {
+  	"$ref": "../../examples/input/note.json"
+  }
 }

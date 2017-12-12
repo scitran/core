@@ -17,6 +17,8 @@
     "js-yaml": "^3.10.0",
     "json-refs": "^3.0.2",
     "load-grunt-tasks": "^3.5.2",
+    "lodash": "^4.17.4",
+    "mustache": "^2.3.0",
     "swagger-ui-dist": "^3.6.0"
   }
 }

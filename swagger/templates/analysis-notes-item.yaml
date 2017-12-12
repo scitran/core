@@ -1,0 +1,29 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: AnalysisId
+    - required: true
+      type: string
+      in: path
+      name: NoteId
+  delete:
+    summary: Remove a note from {{resource}} analysis.
+    operationId: delete_{{resource}}_analysis_note
+    tags: 
+    - '{{tag}}'
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'

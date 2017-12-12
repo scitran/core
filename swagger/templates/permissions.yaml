@@ -1,0 +1,28 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Add a permission
+    operationId: add_{{resource}}_permission
+    tags:
+    - '{{tag}}'
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/permission.json
+    responses:
+      '200':
+        $ref: "#/responses/200:modified-with-count"
+      '400':
+        $ref: '#/responses/400:invalid-body-json'

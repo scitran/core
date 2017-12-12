@@ -2,5 +2,8 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Collection",
     "type": "object",
-    "allOf": [{"$ref": "../definitions/collection.json#/definitions/collection-input-with-contents"}]
+    "allOf": [{"$ref": "../definitions/collection.json#/definitions/collection-input-with-contents"}],
+    "example": {
+    	"$ref": "../../examples/input/collection-update.json"
+    }
 }

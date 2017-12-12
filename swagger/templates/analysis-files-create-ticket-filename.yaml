@@ -1,0 +1,50 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: AnalysisId
+    - required: true
+      type: string
+      in: path
+      description: regex to select files for download
+      name: Filename
+  get:
+    summary: Download anaylsis files with filter.
+    description: >
+      If "ticket" query param is included and not empty, download files.
+
+      If "ticket" query param is included and empty, create a ticket for matching
+      files in the anlaysis.
+
+      If no "ticket" query param is included, files will be downloaded directly.
+    operationId: download_{{resource}}_analysis_files_by_filename
+    tags:
+    - '{{tag}}'
+    produces:
+      - application/json
+      - application/octet-stream
+    parameters:
+      - description: ticket id of the files to download
+        type: string
+        in: query
+        name: ticket
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/analysis-files-create-ticket.json
+        examples:
+          response:
+            $ref: examples/output/analysis-files-create-ticket.json

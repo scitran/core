@@ -1,0 +1,27 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Create an analysis and upload files.
+    operationId: add_{{resource}}_analysis
+    tags:
+    - '{{tag}}'
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: formData
+        type: string
+    responses:
+      '200':
+        description: ''
