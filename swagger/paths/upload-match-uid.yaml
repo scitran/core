@@ -1,0 +1,28 @@
+upload-match-uid:
+  post:
+    summary: Multipart form upload with N file fields, each with their desired filename.
+    description: >
+      Accepts uploads to an existing data hierarchy, matched via Session
+
+      and Acquisition UID
+
+      See api/schemas/input/uidmatchupload.json for the format of this metadata.
+    operationId: upload_match_uid
+    tags:
+    - files
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            $ref: examples/file_info_list.json
+      '402':
+        description: Uploads must be from an authorized drone
+      '404':
+        description: Session or Acquisition with uid does not exist
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: formData
+        type: string

@@ -1,0 +1,27 @@
+'200:deleted-with-count':
+  description: The given number of records were deleted.
+  schema:
+    type: object
+    properties:
+      deleted:
+        type: integer
+    required:
+      - deleted
+    example:
+      deleted: 1
+
+'200:modified-with-count':
+  description: The given number of records were updated.
+  schema:
+    type: object
+    properties:
+      modified:
+        type: integer
+    required:
+      - modified
+    example:
+      modified: 1
+
+'400:invalid-body-json':
+  description: |
+    JSON did not validate against schema for this endpoint

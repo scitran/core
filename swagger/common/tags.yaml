@@ -1,0 +1,31 @@
+add-tag-parameters:
+  - name: body
+    in: body
+    schema:
+      $ref: schemas/input/tag.json
+
+modify-tag-parameters:
+  - name: body
+    in: body
+    schema:
+      $ref: schemas/input/tag.json
+
+modify-tag-responses:
+  '200':
+    $ref: '#/responses/200:modified-with-count'
+  '400':
+    $ref: '#/responses/400:invalid-body-json'
+
+delete-tag-responses:
+  '200':
+    $ref: '#/responses/200:modified-with-count'
+
+get-tag-responses:
+  '200':
+    description: Returns a single tag by name
+    schema:
+      $ref: schemas/output/tag.json
+    examples:
+      response:
+        $ref: examples/output/tag.json
+

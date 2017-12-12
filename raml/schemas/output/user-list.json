@@ -9,5 +9,8 @@
        "_id", "firstname", "lastname",
        "root", "email", "created", "modified"
     ]
+  },
+  "example": {
+    "$ref": "../../examples/user-list.json"
   }
 }

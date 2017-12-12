@@ -1,0 +1,53 @@
+gears:
+  get:
+    summary: List all gears
+    operationId: get_all_gears
+    tags:
+    - gears
+    responses:
+      default:
+        description: ''
+gears-gear-by-name:
+  parameters:
+    - required: true
+      description: Name of the gear to interact with
+      type: string
+      in: path
+      name: GearName
+  post:
+    summary: Create or update a gear.
+    description: |
+      If no existing gear is found, one will be created
+      Otherwise, the specified gear will be updated
+    operationId: add_gear
+    tags:
+    - gears
+    responses:
+      default:
+        description: ''
+gears-gear:
+  parameters:
+    - required: true
+      description: Id of the gear to interact with
+      type: string
+      in: path
+      name: GearId
+  get:
+    summary: Retrieve details about a specific gear
+    operationId: get_gear
+    tags:
+    - gears
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            $ref: examples/gear_full.json
+  delete:
+    summary: Delete a gear (not recommended)
+    operationId: delete_gear
+    tags:
+    - gears
+    responses:
+      '200':
+        description: Gear was deleted

@@ -1,0 +1,12 @@
+config:
+  get:
+    summary: Return public Scitran configuration information
+    operationId: get_config
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/config.json
+        examples:
+          response:
+            $ref: examples/scitran_config.json

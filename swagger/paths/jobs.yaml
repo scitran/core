@@ -1,0 +1,139 @@
+jobs-add:
+  post:
+    summary: Add a job
+    operationId: add_job
+    tags:
+    - jobs
+    parameters:
+      - name: body
+        in: body
+        schema:
+          example:
+            $ref: examples/input/job-new.json
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/job-new.json
+        examples:
+          response:
+            _id: 573cb66b135d87002660597c
+jobs-next:
+  get:
+    summary: Get the next job in the queue
+    description: Used by the engine.
+    operationId: get_next_job
+    tags:
+    - jobs
+    responses:
+      default:
+        description: ''
+jobs-stats:
+  get:
+    summary: Get stats about all current jobs
+    operationId: get_jobs_stats
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            $ref: examples/job_stats.json
+jobs-reap:
+  post:
+    summary: Reap stale jobs
+    operationId: reap_jobs
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            orphaned: 3
+jobs-job:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: JobId
+  get:
+    summary: Get job details
+    operationId: get_job
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/job.json
+        examples:
+          response:
+            $ref: examples/output/job.json
+      '404':
+        description: JobId not found
+  put:
+    summary: Update a job.
+    description: >
+      Updates timestamp.
+
+      Enforces a valid state machine transition, if any.
+
+      Rejects any change to a job that is not currently in 'pending' or
+      'running' state.
+
+      Accepts the same body as /api/jobs/add , except all fields are optional.
+    operationId: update_job
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: Job was updated.  No value is returned
+    parameters:
+      - name: body
+        in: body
+        schema:
+          example:
+            $ref: examples/input/job-update.json
+jobs-job-retry:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: JobId
+  post:
+    summary: Retry a job.
+    description: >
+      The job must have a state of 'failed', and must not have already been
+      retried.
+
+      The failed jobs config is copied to a new job.
+
+      The ID of the new job is returned
+    operationId: retry_job
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            _id: 57a35c118120be0e8d1f3f5f
+jobs-job-config-json:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: JobId
+  get:
+    summary: Get a job's config
+    operationId: get_job_config
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            $ref: examples/output/job-config.json

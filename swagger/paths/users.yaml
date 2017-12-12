@@ -1,0 +1,221 @@
+users:
+  get:
+    summary: Return a list of all users
+    operationId: get_all_users
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/user-list.json
+  post:
+    summary: Add a new user
+    operationId: add_user
+    tags:
+    - users
+    parameters:
+      - name: body
+        in: body
+        schema:
+          $ref: schemas/input/user-new.json
+    responses:
+      '200':
+        description: 'The user was created sucessfully'
+        schema:
+          $ref: schemas/output/user-new.json
+      '400':
+        $ref: '#/responses/400:invalid-body-json'
+users-self:
+  get:
+    summary: Get information about the current user
+    operationId: get_current_user
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/user-self.json
+          type: object
+        examples:
+          response:
+            $ref: examples/user_jane_doe.json
+users-self-avatar:
+  get:
+    summary: Get the avatar of the current user
+    operationId: get_current_user_avatar
+    tags:
+    - users
+    responses:
+      '307':
+        description: |
+          Redirects to the image file of the current user's avatar
+users-user:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: Get information about the specified user
+    operationId: get_user
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/user.json
+          type: object
+        examples:
+          response:
+            $ref: examples/user_jane_doe.json
+  put:
+    summary: Update the specified user
+    operationId: modify_user
+    tags:
+    - users
+    parameters:
+      - name: body
+        in: body
+        schema: 
+          $ref: schemas/input/user-update.json
+        description: >
+          Accepts an object matching the User type except all fields are
+          optional
+    responses:
+      '200':
+        description: 'Returns the number of users modified'
+        schema:
+          $ref: schemas/output/user-update.json
+        examples:
+          response: 
+            $ref: examples/output/user-update.json
+      '400':
+        $ref: '#/responses/400:invalid-body-json'
+  delete:
+    summary: Delete a user
+    operationId: delete_user
+    tags:
+    - users
+    responses:
+      '200':
+        description: User was deleted
+        schema:
+          $ref: schemas/output/user-delete.json
+        examples:
+          response:
+            $ref: examples/output/user-delete.json
+      '404':
+        description: User not found
+users-user-groups:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: List all groups the specified user is a member of
+    operationId: get_user_groups
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/groups-list.json
+        examples:
+          response:
+            $ref: examples/output/groups-list.json
+users-user-avatar:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: Get the avatar of the specified user
+    operationId: get_user_avatar
+    tags:
+    - users
+    responses:
+      '307':
+        description: |
+          Redirects to the image file of the specified user's avatar
+users-user-acquisitions:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: Get all acquisitions that belong to the given user.
+    operationId: get_user_acquisitions
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/acquisition-list.json
+        examples:
+          response:
+            $ref: examples/output/acquisition-list.json
+users-user-collections:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: Get all collections that belong to the given user.
+    operationId: get_user_collections
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/collection-list.json
+        examples:
+          response:
+            $ref: examples/output/collection-list.json
+users-user-projects:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: Get all projects that belong to the given user.
+    operationId: get_user_projects
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/project-list.json
+        examples:
+          response:
+            $ref: examples/output/project-list.json
+users-user-sessions:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: Get all sessions that belong to the given user.
+    operationId: get_user_sessions
+    tags:
+    - users
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/session-list.json
+        examples:
+          response:
+            $ref: examples/output/session-list.json

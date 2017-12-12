@@ -1,0 +1,85 @@
+devices:
+  get:
+    summary: List all devices.
+    description: Requires login.
+    operationId: get_all_devices
+    tags:
+    - devices
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/device-list.json
+        examples:
+          response:
+            $ref: examples/output/device-list.json
+  post:
+    summary: Modify a device's interval, info or set errors.
+    description: |
+      Will modify the device record of device making the request.
+      Request must be drone request.
+    operationId: update_device
+    tags:
+    - devices
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            modified: '1'
+    parameters:
+      - name: body
+        in: body
+        schema:
+          $ref: schemas/input/device.json
+devices-self:
+  get:
+    summary: Get device document for device making the request.
+    description: Request must be a drone request.
+    operationId: get_current_device
+    tags:
+    - devices
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/device.json
+        examples:
+          response:
+              $ref: examples/output/device.json
+devices-status:
+  get:
+    summary: Get status for all known devices.
+    description: ok - missing - error - unknown
+    operationId: get_all_devices_status
+    tags:
+    - devices
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/device-status.json
+        examples:
+          response:
+            $ref: examples/output/device-status.json
+devices-device:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: DeviceId
+  get:
+    summary: Get device details
+    operationId: get_device
+    tags:
+    - devices
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/device.json
+        examples:
+          response:
+            $ref: examples/output/device.json
+      '404':
+        description: DeviceId not found
