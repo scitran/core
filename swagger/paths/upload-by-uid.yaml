@@ -1,0 +1,24 @@
+upload-by-uid:
+  post:
+    summary: Multipart form upload with N file fields, each with their desired filename.
+    description: >
+      Same behavior as /api/upload/label,
+       except the metadata field must be uid format
+       See api/schemas/input/uidupload.json for the format of this metadata.
+    operationId: upload_by_uid
+    tags:
+    - files
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            $ref: examples/file_info_list.json
+      '402':
+        description: Uploads must be from an authorized drone
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: formData
+        type: string

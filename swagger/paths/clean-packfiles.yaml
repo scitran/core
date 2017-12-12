@@ -1,0 +1,11 @@
+clean-packfiles:
+  post:
+    summary: Clean up expired upload tokens and invalid token directories.
+    operationId: clean_packfiles
+    responses:
+      '200':
+        description: 'Expired and invalid tokens have been cleaned'
+        schema:
+          example:
+            tokens: 5
+            directories: 3

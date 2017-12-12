@@ -8,5 +8,8 @@
   },
   "required": [
     "_id"
-  ]
+  ],
+  "example": {
+    "$ref": "../../examples/output/user-new.json"
+  }
 }

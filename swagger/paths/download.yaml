@@ -1,0 +1,55 @@
+download:
+  post:
+    summary: Create a download ticket
+    description: |
+      Use filters in the payload to exclude/include files.
+      To pass a single filter, each of its conditions should be satisfied.
+      If a file pass at least one filter, it is included in the targets.
+    operationId: create_download_ticket
+    tags:
+    - files
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            ticket: 579e97738120be2ada087feb
+            file_cnt: 3
+            size: 64523904
+    parameters:
+      - name: prefix
+        in: query
+        description: |
+          A string to customize the name of the download
+          in the format <prefix>_<timestamp>.tar.gz.
+          Defaults to "scitran".
+        type: string                
+      - name: body
+        in: body
+        schema:
+          $ref: schemas/input/download.json
+        description: Download files with tag 'incomplete' OR type 'dicom'
+  get:
+    summary: Download files listed in the given ticket.
+    description: |
+      You can use POST to create a download ticket
+      The files listed in the ticket are put into a tar archive,
+      which is then compressed with gzip (.tar.gz)
+    operationId: download_ticket
+    tags:
+    - files
+    parameters:
+      - required: true
+        description: ID of the download ticket
+        type: string
+        in: query
+        name: ticket
+    produces:
+      - application/octet-stream
+    responses:
+      '200':
+        description: The requested tarball download as a binary stream
+      '400':
+        description: Ticket not for this source IP
+      '404':
+        description: No such ticket

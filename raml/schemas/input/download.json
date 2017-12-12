@@ -19,6 +19,9 @@
     },
     "title": "Download",
     "type": "object",
+    "example": {
+        "$ref": "../../examples/create_download_incomplete_and_dicom.json"
+    },
     "properties": {
         "optional": {
             "type": "boolean"

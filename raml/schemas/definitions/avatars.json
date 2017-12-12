@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "Group",
+  "title": "Avatar",
   "type": "object",
   "properties": {
     "gravatar":         {"type": ["string", "null"], "format": "uri" },

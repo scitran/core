@@ -1,0 +1,28 @@
+upload-by-label:
+  post:
+    summary: Multipart form upload with N file fields, each with their desired filename.
+    description: >
+      For technical reasons, no form field names can be repeated. Instead, use
+      (file1, file2) and so forth.
+
+      A non-file form field called "metadata" is also required, which must be
+      a string containing JSON.
+
+      See api/schemas/input/labelupload.json for the format of this metadata.
+    operationId: upload_by_label
+    tags:
+    - files
+    responses:
+      '200':
+        description: ''
+        schema:
+          example: 
+            $ref: examples/file_info_list.json
+      '402':
+        description: Uploads must be from an authorized drone
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: formData
+        type: string

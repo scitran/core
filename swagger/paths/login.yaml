@@ -1,0 +1,22 @@
+login:
+  post:
+    summary: Login
+    description: Scitran Authentication
+    operationId: login
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            success: true
+logout:
+  post:
+    summary: Log Out
+    description: Remove authtokens for user
+    operationId: logout
+    responses:
+      '200':
+        description: ''
+        schema:
+          example:
+            auth_tokens_removed: 2

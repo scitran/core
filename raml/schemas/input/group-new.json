@@ -3,5 +3,8 @@
   "allOf":[
     {"$ref":"../definitions/group.json#/definitions/group-input"}
   ],
-  "required": ["_id"]
+  "required": ["_id"],
+  "example": {
+  	"$ref": "../../examples/input/group-new.json"
+  }
 }

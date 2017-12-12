@@ -23,6 +23,12 @@ module.exports = function(grunt) {
 						cwd: '../raml/schemas', 
 						src: ['**'], 
 						dest: 'build/schemas' 
+					},
+					{
+						expand: true,
+						cwd: '../raml/examples',
+						src: ['**'],
+						dest: 'build/examples'
 					}
 				]
 			},
@@ -125,6 +131,7 @@ module.exports = function(grunt) {
 
 	/**
 	 * Build swagger-ui
+	 * TODO: Put the distributed version of swagger-ui in the ../docs folder
 	 */
 	grunt.registerTask('build-ui', [
 		'build-schema',
