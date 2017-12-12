@@ -1,0 +1,53 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: UserId
+  get:
+    summary: List a user's permissions for this {{resource}}.
+    operationId: get_{{resource}}_user_permission
+    tags:
+    - '{{tag}}'
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/permission.json
+        examples:
+          response:
+            $ref: examples/output/permission.json
+  put:
+    summary: Update a user's permission for this {{resource}}.
+    operationId: modify_{{resource}}_user_permission
+    tags:
+    - '{{tag}}'
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/permission.json
+    responses:
+      '200':
+        $ref: "#/responses/200:modified-with-count"
+      '400':
+        $ref: '#/responses/400:invalid-body-json'
+  delete:
+    summary: Delete a permission
+    operationId: delete_{{resource}}_user_permission
+    tags:
+    - '{{tag}}'
+    responses:
+      '200':
+        $ref: "#/responses/200:modified-with-count"

@@ -24,6 +24,8 @@ tags:
     description: Group operations
   - name: jobs
     description: Job operations
+  - name: collections
+    description: Collection operations
 
 paths:
   $ref: ./paths/index.yaml

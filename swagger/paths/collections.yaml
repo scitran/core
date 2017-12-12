@@ -1,0 +1,214 @@
+# Global template arguments for collection
+collection_tmpl_args:
+  resource: collection
+  tag: collections
+  parameter: CollectionId
+
+collections:
+  get:
+    summary: List all collections.
+    operationId: get_all_collections
+    tags: 
+    - collections
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/collection-list.json
+        examples:
+          response:
+            $ref: examples/output/collection-list.json
+  post:
+    summary: Create a collection
+    operationId: create_collection
+    tags: 
+    - collections
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/collection.json
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/collection-new.json
+        examples:
+          response:
+            $ref: examples/output/collection-new.json
+      '400':
+        $ref: '#/responses/400:invalid-body-json'
+
+collections-curators:
+  get:
+    summary: List all curators of collections
+    operationId: get_all_collections_curators
+    tags: 
+    - collections
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/collection-curators-list.json
+        examples:
+          response:
+            $ref: examples/output/collection-curators-list.json
+collections-collection:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: CollectionId
+  get:
+    summary: Retrieve a single collection
+    operationId: get_collection
+    tags: 
+    - collections
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/collection.json
+        examples:
+          response:
+            $ref: examples/output/collection.json
+  put:
+    summary: Update a collection and its contents
+    operationId: modify_collection
+    tags: 
+    - collections
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/collection-update.json
+    responses:
+      '200':
+        description: Collection updated
+      '400':
+        $ref: '#/responses/400:invalid-body-json'
+  delete:
+    summary: Delete a collection
+    operationId: delete_collection
+    tags: 
+    - collections
+    responses:
+      '200':
+        description: Collection was deleted
+
+collections-collection-sessions:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: CollectionId
+  get:
+    summary: List sessions in a collection
+    operationId: get_collection_sessions
+    tags: 
+    - collections
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/session-list.json
+        examples:
+          response:
+            $ref: examples/output/session-list.json
+
+collections-collection-acquisitions:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: CollectionId
+  get:
+    summary: List acquisitions in a collection
+    operationId: get_collection_acquisitions
+    tags: 
+    - collections
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/acquisition-list.json
+        examples:
+          response:
+            $ref: examples/output/acquisition-list.json
+
+# ===== Tags =====
+collections-collection-tags:
+  $template: templates/tags.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-tags-tag:
+  $template: templates/tags-tag.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+
+# ===== Packfile =====
+collections-collection-packfile-start:
+  $template: templates/packfile-start.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-packfile:
+  $template: templates/packfile.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-packfile-end:
+  $template: templates/packfile-end.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+
+# ===== Files =====
+collections-collection-files:
+  $template: templates/file-list-upload.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-files-file:
+  $template: templates/file-item.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+
+# ===== Permissions =====
+collections-collection-permissions:
+  $template: templates/permissions.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-permissions-user:
+  $template: templates/permissions-user.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+
+# ===== Notes =====
+collections-collection-notes:
+  $template: templates/notes.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-notes-note:
+  $template: templates/notes-note.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+
+# ===== Analyses =====
+collections-collection-analyses:
+  $template: templates/analyses-list.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-analyses-analysis:
+  $template: templates/analysis-item.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-analyses-analysis-files:
+  $template: templates/analysis-files.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-analyses-analysis-files-filename:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-analyses-analysis-notes:
+  $template: templates/analysis-notes.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+collections-collection-analyses-analysis-notes-note:
+  $template: templates/analysis-notes-item.yaml
+  arguments:
+    $ref: '#/collection_tmpl_args'
+    

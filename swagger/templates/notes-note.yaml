@@ -1,0 +1,52 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: NoteId
+  get:
+    summary: Get a note on {{resource}}.
+    operationId: get_{{resource}}_note
+    tags: 
+    - '{{tag}}'
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/note.json
+        examples:
+          response:
+            $ref: examples/output/note.json
+  put:
+    summary: Update a note on {{resource}}.
+    operationId: modify_{{resource}}_note
+    tags: 
+    - '{{tag}}'
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/note.json
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'
+      '400':
+        $ref: '#/responses/400:invalid-body-json'
+  delete:
+    summary: Remove a note from {{resource}}
+    operationId: delete_{{resource}}_note
+    tags: 
+    - '{{tag}}'
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'

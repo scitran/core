@@ -1,3 +1,8 @@
+group_tmpl_args:
+  resource: group
+  tag: groups
+  parameter: GroupId
+
 groups:
   get:
     summary: List all groups
@@ -69,127 +74,27 @@ groups-group:
     responses:
       '200':
         $ref: '#/responses/200:deleted-with-count'
+
+# ===== Permissions =====
 groups-group-permissions:
-  parameters:
-    - required: true
-      type: string
-      in: path
-      name: GroupId
-  post:
-    summary: Add a permission
-    operationId: add_group_permission
-    tags:
-    - groups
-    parameters:
-      - in: body
-        name: body
-        schema:
-          $ref: schemas/input/permission.json
-    responses:
-      '200':
-        $ref: "#/responses/200:modified-with-count"
-      '400':
-        $ref: '#/responses/400:invalid-body-json'
+  $template: templates/permissions.yaml
+  arguments:
+    $ref: '#/group_tmpl_args'
 groups-group-permissions-user:
-  parameters:
-    - required: true
-      description: User which is granted the permission
-      type: string
-      in: path
-      name: UserId
-    - required: true
-      type: string
-      in: path
-      name: GroupId
-  get:
-    summary: List a user's permissions for this group.
-    operationId: get_group_user_permission
-    tags:
-    - groups
-    responses:
-      '200':
-        description: ''
-        schema:
-          $ref: schemas/output/permission.json
-        examples:
-          response:
-            $ref: examples/output/permission.json
-  put:
-    summary: Update a user's permission for this group.
-    operationId: modify_group_user_permission
-    tags:
-    - groups
-    parameters:
-      - in: body
-        name: body
-        schema:
-          $ref: schemas/input/permission.json
-    responses:
-      '200':
-        $ref: "#/responses/200:modified-with-count"
-      '400':
-        $ref: '#/responses/400:invalid-body-json'
-  delete:
-    summary: Delete a permission
-    operationId: delete_group_user_permission
-    tags:
-    - groups
-    responses:
-      '200':
-        $ref: "#/responses/200:modified-with-count"
+  $template: templates/permissions-user.yaml
+  arguments:
+    $ref: '#/group_tmpl_args'
+
+# ===== Tags =====
 groups-group-tags:
-  parameters:
-    - required: true
-      type: string
-      in: path
-      name: GroupId
-  post:
-    summary: Add a tag to a group.
-    description: Progates changes to projects, sessions and acquisitions
-    operationId: add_group_tag
-    tags:
-    - groups
-    responses:
-      '200':
-        $ref: "#/responses/200:modified-with-count"
-      '400':
-        $ref: '#/responses/400:invalid-body-json'
-    parameters:
-      $ref: ../common/tags.yaml#/add-tag-parameters
+  $template: templates/tags.yaml
+  arguments:
+    $ref: '#/group_tmpl_args'
 groups-group-tags-tag:
-  parameters:
-    - required: true
-      description: The tag to interact with
-      type: string
-      in: path
-      name: TagValue
-    - required: true
-      type: string
-      in: path
-      name: GroupId
-  get:
-    summary: Get the value of a group tag, by name.
-    operationId: get_group_tag
-    tags:
-    - groups
-    responses:
-        $ref: '../common/tags.yaml#/get-tag-responses'
-  put:
-    summary: Rename a tag on a group.
-    operationId: rename_group_tag
-    tags:
-    - groups
-    parameters:
-      $ref: ../common/tags.yaml#/modify-tag-parameters
-    responses:
-      $ref: ../common/tags.yaml#/modify-tag-responses
-  delete:
-    summary: Delete a tag on a group
-    operationId: delete_group_tag
-    tags:
-    - groups
-    responses:
-      $ref: ../common/tags.yaml#/delete-tag-responses
+  $template: templates/tags-tag.yaml
+  arguments:
+    $ref: '#/group_tmpl_args'
+
 groups-group-projects:
   parameters:
     - required: true

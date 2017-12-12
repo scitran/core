@@ -1,0 +1,27 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Upload a file to {{resource}}.
+    operationId: upload_{{resource}}_file
+    tags: 
+    - '{{tag}}'
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: formData
+        type: string
+    responses:
+      '200':
+        description: ''

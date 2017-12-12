@@ -1,0 +1,26 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Start a packfile upload to {{resource}}
+    operationId: start_{{resource}}_packfile_upload
+    tags: 
+    - '{{tag}}'
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/packfile-start.json
+        examples:
+          response:
+            $ref: examples/output/packfile-start.json

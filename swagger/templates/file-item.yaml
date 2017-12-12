@@ -1,0 +1,54 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: FileName
+  get:
+    summary: Download a file.
+    description: |
+      If "ticket" is specified by empty, a download ticket will be created
+      If "ticket" is not specified, the file will be download
+      If "ticket" is specified and not empty, the file will be downloaded
+    operationId: download_{{resource}}_file
+    tags: 
+    - '{{tag}}'
+    produces:
+      - application/json
+      - application/octet-stream
+    parameters:
+      - in: formData
+        name: formData
+        type: string
+      - description: ticket id of the file to download
+        type: string
+        in: query
+        name: ticket
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/file-download.json
+        examples:
+          response:
+            $ref: examples/output/file-download.json
+  post:
+    summary: Replace a file
+    operationId: replace_{{resource}}_file
+    tags: 
+    - '{{tag}}'
+    responses:
+      default:
+        description: ''
+

@@ -1,0 +1,37 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+    parameters:
+      - required: true
+        type: string
+        in: path
+        name: '{{parameter}}'
+      - required: true
+        type: string
+        in: path
+        name: AnalysisId
+    get:
+      summary: Get an analysis.
+      operationId: get_{{resource}}_analysis
+      tags:
+      - '{{tag}}'
+      responses:
+        '200':
+          schema:
+            $ref: schemas/output/analysis.json
+          examples:
+            response:
+              $ref: examples/output/analysis.json
+    delete:
+      summary: Delete an anaylsis
+      operationId: delete_{{resource}}_analysis
+      tags:
+      - '{{tag}}'
+      responses:
+        '200':
+          $ref: '#/responses/200:deleted-with-count'

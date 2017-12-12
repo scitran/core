@@ -1,0 +1,45 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: AnalysisId
+  get:
+    summary: Download analysis files.
+    description: >
+      If "ticket" query param is included and not empty, download files.
+
+      If "ticket" query param is included and empty, create a ticket for all
+      files in the anlaysis
+
+      If no "ticket" query param is included, server error 500
+    operationId: download_{{resource}}_analysis_files
+    tags: 
+    - '{{tag}}'
+    produces:
+      - application/json
+      - application/octet-stream
+    parameters:
+      - description: ticket id of the files to download
+        type: string
+        in: query
+        name: ticket
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/analysis-files-create-ticket.json
+        examples:
+          response:
+            $ref: examples/output/analysis-files-create-ticket.json

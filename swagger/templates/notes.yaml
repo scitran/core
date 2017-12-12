@@ -1,0 +1,28 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Add a note to {{resource}}.
+    operationId: add_{{resource}}_note
+    tags:
+    - '{{tag}}'
+    parameters:
+      - name: body
+        in: body
+        schema:
+          $ref: schemas/input/note.json
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'
+      '400':
+        $ref: '#/responses/400:invalid-body-json'

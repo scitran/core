@@ -1,0 +1,27 @@
+parameters:
+  - name: resource
+    type: string
+  - name: parameter
+    type: string
+  - name: tag
+    type: string
+template:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: End a packfile upload
+    operationId: end_{{resource}}_packfile_upload
+    tags: 
+    - '{{tag}}'
+    produces:
+      - text/event-stream
+    parameters:
+      - in: formData
+        name: formData
+        type: string
+    responses:
+      '200':
+        description: ''

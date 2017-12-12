@@ -86,5 +86,49 @@
 '/groups/{GroupId}/projects':
   $ref: groups.yaml#/groups-group-projects
 
+/collections:
+  $ref: collections.yaml#/collections
+/collections/curators:
+  $ref: collections.yaml#/collections-curators
+'/collections/{CollectionId}':
+  $ref: collections.yaml#/collections-collection
+'/collections/{CollectionId}/sessions':
+  $ref: collections.yaml#/collections-collection-sessions
+'/collections/{CollectionId}/acquisitions':
+  $ref: collections.yaml#/collections-collection-acquisitions
+'/collections/{CollectionId}/tags':
+  $ref: collections.yaml#/collections-collection-tags
+'/collections/{CollectionId}/tags/{TagValue}':
+  $ref: collections.yaml#/collections-collection-tags-tag
+'/collections/{CollectionId}/packfile-start':
+  $ref: collections.yaml#/collections-collection-packfile-start
+'/collections/{CollectionId}/packfile':
+  $ref: collections.yaml#/collections-collection-packfile
+'/collections/{CollectionId}/packfile-end':
+  $ref: collections.yaml#/collections-collection-packfile-end
+'/collections/{CollectionId}/files':
+  $ref: collections.yaml#/collections-collection-files
+'/collections/{CollectionId}/files/{FileName}':
+  $ref: collections.yaml#/collections-collection-files-file
+'/collections/{CollectionId}/permissions':
+  $ref: collections.yaml#/collections-collection-permissions
+'/collections/{CollectionId}/permissions/{UserId}':
+  $ref: collections.yaml#/collections-collection-permissions-user
+'/collections/{CollectionId}/notes':
+  $ref: collections.yaml#/collections-collection-notes
+'/collections/{CollectionId}/notes/{NoteId}':
+  $ref: collections.yaml#/collections-collection-notes-note
+'/collections/{CollectionId}/analyses':
+  $ref: collections.yaml#/collections-collection-analyses
+'/collections/{CollectionId}/analyses/{AnalysisId}':
+  $ref: collections.yaml#/collections-collection-analyses-analysis
+'/collections/{CollectionId}/analyses/{AnalysisId}/files':
+  $ref: collections.yaml#/collections-collection-analyses-analysis-files
+'/collections/{CollectionId}/analyses/{AnalysisId}/files/{Filename}':
+  $ref: collections.yaml#/collections-collection-analyses-analysis-files-filename
+'/collections/{CollectionId}/analyses/{AnalysisId}/notes':
+  $ref: collections.yaml#/collections-collection-analyses-analysis-notes
+'/collections/{CollectionId}/analyses/{AnalysisId}/notes/{NoteId}':
+  $ref: collections.yaml#/collections-collection-analyses-analysis-notes-note
 
 
