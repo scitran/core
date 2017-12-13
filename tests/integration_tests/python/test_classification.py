@@ -232,6 +232,36 @@ def test_edit_file_classification(data_builder, as_admin, as_user, file_form):
     assert r.ok
     assert r.json()['classification'] == {}
 
+    # Add Custom field for unknown modality
+    r = as_admin.put('/projects/' + project + '/files/' + file_name, json={
+        'modality': 'new unknown'
+    })
+
+    file_cls = {
+        'Custom':   ['Custom Value']
+    }
+
+    # allows custom fields
+    r = as_admin.post('/projects/' + project + '/files/' + file_name + '/classification', json={
+        'replace': file_cls
+    })
+    assert r.ok
+
+    r = as_admin.get('/projects/' + project + '/files/' + file_name + '/info')
+    assert r.ok
+    assert r.json()['classification'] == file_cls
+
+    # does not allow non-custom fields
+    file_cls = {
+        'Intent':   ['Structural']
+    }
+
+    r = as_admin.post('/projects/' + project + '/files/' + file_name + '/classification', json={
+        'replace': file_cls
+    })
+    assert r.status_code == 422
+
+
     # Attempt to add to nonexistent file
     r = as_admin.post('/projects/' + project + '/files/' + 'madeup.txt' + '/classification', json={
         'add': {'Intent': ['Localizer']}

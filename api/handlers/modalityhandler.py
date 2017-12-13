@@ -53,7 +53,10 @@ class ModalityHandler(base.RequestHandler):
 class APIClassificationException(APIValidationException):
     def __init__(self, modality, errors):
 
-        error_msg = 'Classification does not match format for modality {}. Unallowable key-value pairs: {}'.format(modality, errors)
+        if not modality:
+            error_msg = 'Unknown modality. Classification must be set under "custom" key'
+        else:
+            error_msg = 'Classification does not match format for modality {}. Unallowable key-value pairs: {}'.format(modality, errors)
 
         super(APIClassificationException, self).__init__(error_msg)
         self.errors = {'unaccepted_keys': errors}
@@ -125,11 +128,12 @@ def check_and_format_classification(modality_name, classification_map):
     try:
         modality = containerstorage.ContainerStorage('modalities', use_object_id=False).get_container(modality_name)
     except APINotFoundException as e:
-        if classification_map.keys() == ['Custom']:
+        keys = classification_map.keys()
+        if len(keys) == 1 and keys[0].lower() == 'custom':
             # for unknown modalities allow only list of custom values
             return classification_map
         else:
-            raise e
+            raise APIClassificationException(None, [])
 
     classifications = modality.get('classification', {})
 
