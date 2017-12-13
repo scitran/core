@@ -5,7 +5,7 @@ parameters:
     type: string
   - name: tag
     type: string
-template:
+template: |
   parameters:
     - required: true
       type: string

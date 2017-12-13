@@ -77,21 +77,11 @@ module.exports = function(grunt) {
 		},
 
 		/**
-		 * Resolve templates within swagger
-		 */
-		resolveTemplates: {
-			core: {
-				src: 'build/swagger-flat.json',
-				dest: 'build/swagger-int.json'
-			}
-		},
-
-		/**
 		 * Resolve schema links in the swagger documentation
 		 */
 		resolveSchemaLinks: {
 			core: {
-				src: 'build/swagger-int.json',
+				src: 'build/swagger-flat.json',
 				dest: 'build/swagger-ui.json'
 			}
 		},
@@ -136,7 +126,6 @@ module.exports = function(grunt) {
 	grunt.registerTask('build-schema', [
 		'copy:schema', 
 		'flattenSwagger',
-		'resolveTemplates',
 		'resolveSchemaLinks'
 	]);
 

@@ -1,3 +1,8 @@
+$template_arguments:
+  resource: group
+  tag: groups
+  parameter: GroupId
+
 /groups:
   get:
     summary: List all groups
@@ -70,34 +75,6 @@
       '200':
         $ref: '#/responses/200:deleted-with-count'
 
-# ===== Permissions =====
-/groups/{GroupId}/permissions:
-  $template: templates/permissions.yaml
-  arguments:
-    resource: group
-    tag: groups
-    parameter: GroupId
-/groups/{GroupId}/permissions/{UserId}:
-  $template: templates/permissions-user.yaml
-  arguments:
-    resource: group
-    tag: groups
-    parameter: GroupId
-
-# ===== Tags =====
-/groups/{GroupId}/tags:
-  $template: templates/tags.yaml
-  arguments:
-    resource: group
-    tag: groups
-    parameter: GroupId
-/groups/{GroupId}/tags/{TagValue}:
-  $template: templates/tags-tag.yaml
-  arguments:
-    resource: group
-    tag: groups
-    parameter: GroupId
-
 /groups/{GroupId}/projects:
   parameters:
     - required: true
@@ -117,3 +94,15 @@
         examples:
           response:
             $ref: examples/output/project-list.json
+
+# ===== Permissions =====
+/groups/{GroupId}/permissions:
+  $template: templates/permissions.yaml
+/groups/{GroupId}/permissions/{UserId}:
+  $template: templates/permissions-user.yaml
+
+# ===== Tags =====
+/groups/{GroupId}/tags:
+  $template: templates/tags.yaml
+/groups/{GroupId}/tags/{TagValue}:
+  $template: templates/tags-tag.yaml
