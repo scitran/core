@@ -6,6 +6,7 @@ and are stored in their own collection instead of an embedded list on the
 container (eg. ListHandler)
 """
 
+import bson
 import os
 import zipfile
 import datetime
@@ -17,6 +18,8 @@ from .. import util
 from .. import validators
 from ..auth import containerauth, always_ok
 from ..dao import containerstorage, noop
+from ..dao.basecontainerstorage import ContainerStorage
+from ..dao.containerutil import singularize
 from ..web import base
 from ..web.errors import APIStorageException
 from ..web.request import log_access, AccessType
@@ -135,6 +138,47 @@ class AnalysesHandler(RefererHandler):
 
         self.log_user_access(AccessType.view_container, cont_name=analysis['parent']['type'], cont_id=analysis['parent']['id'])
         return analysis
+
+    def get_all(self, cont_name, cid, **kwargs):
+        """
+        The possible endpoints for this method are:
+        /{cont_name}/{id}/analyses
+        /{cont_name}/{id}/{sub_cont_name}/analyses
+        /{cont_name}/{id}/all/analyses
+        """
+        if not cont_name == 'groups':
+            cid = bson.ObjectId(cid)
+        # Check that user has permission to container
+        container = ContainerStorage.factory(cont_name).get_container(cid)
+        if not container:
+            self.abort(404, 'Element not found in container {} {}'.format(cont_name, cid))
+        permchecker = self.get_permchecker(container)
+        permchecker(noop)('GET')
+        # cont_level is the sub_container name for which the analysis.parent.type should be
+        cont_level = kwargs.get('sub_cont_name')
+        cont_names = {'groups':0, 'projects':1, 'sessions':2, 'acquisitions':3}
+        sub_cont_names = {'projects':0, 'sessions':1, 'acquisitions':2, 'all':3}
+
+        # Check that the url is valid
+        if cont_name not in cont_names.keys():
+            self.abort(400, "Analysis lists not supported for {}.".format(cont_name))
+        elif cont_level:
+            if cont_names[cont_name] > sub_cont_names.get(cont_level, -1):
+                self.abort(400, "{} not a child of {} or 'all'.".format(cont_level, cont_name))
+
+        if cont_level:
+            parent_tree = ContainerStorage.get_top_down_hierarchy(cont_name, cid)
+            # We only need a list of all the ids, no need for the tree anymore
+            if cont_level == 'all':
+                parents = [pid for parent in parent_tree.keys() for pid in parent_tree[parent]]
+            else:
+                parents = [pid for pid in parent_tree[cont_level]]
+            # We set User to None because we check for permission when finding the parents
+            analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':{'$in':parents}},None,{'info': 0, 'files.info': 0})
+        else:
+            analyses = containerstorage.AnalysisStorage().get_all_el({'parent.id':cid, 'parent.type':singularize(cont_name)},None,{'info': 0, 'files.info': 0})
+        return analyses
+
 
 
     @log_access(AccessType.delete_analysis)

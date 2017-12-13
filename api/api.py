@@ -192,6 +192,7 @@ endpoints = [
 
             route('/<cid:{gid}>/<list_name:tags>',                           TagsListHandler, m=['POST']),
             route('/<cid:{gid}>/<list_name:tags>/<value:{tag}>',             TagsListHandler, m=['GET', 'PUT', 'DELETE']),
+            route('/<cid:{gid}>/<sub_cont_name:{cname}|all>/analyses',       AnalysesHandler, h='get_all',       m=['GET']),
         ]),
 
 
@@ -270,6 +271,8 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='modify_info',    m=['POST']),
 
+                route( '/<sub_cont_name:{cname}|all>/analyses',         AnalysesHandler, h='get_all',       m=['GET']),
+                route( '/analyses',                                     AnalysesHandler, h='get_all',       m=['GET']),
                 route( '/analyses',                                     AnalysesHandler,                    m=['POST']),
                 prefix('/analyses', [
                     route('/<_id:{cid}>',                               AnalysesHandler,                    m=['GET', 'PUT', 'DELETE']),
