@@ -10,11 +10,11 @@
         "tags": [],
         "measurements": [],
         "modified": "2016-10-18T15:26:35.701000+00:00",
-        "instrument": null,
+        "modality": null,
         "input": true,
         "size": 21804112,
         "type": "None",
-        "metadata": {}
+        "info": {}
     }],
 	"outputs": [{
         "origin": {
@@ -27,9 +27,9 @@
         "tags": [],
         "measurements": [],
         "modified": "2016-10-18T17:45:17.776000+00:00",
-        "instrument": null,
+        "modality": null,
         "output": true,
-        "metadata": {},
+        "info": {},
         "type": "None",
         "size": 21804112
     }],

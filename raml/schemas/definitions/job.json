@@ -1,9 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
   "definitions": {
     "_id": {"$ref":"../definitions/objectid.json#"},
-    "id": {"$ref":"../definitions/objectid.json#"},
     "gear_id": {"type":"string"},
     "previous_job_id": {"type":"string"},
     "inputs-property-type":{"type":"string"},
@@ -72,7 +70,7 @@
     },
     "saved_files": {
       "type": "array",
-      "items": {"$ref": "../mongo/file.json"}
+      "items": {"$ref": "file.json#/definitions/name"}
     },
     "produced_metadata": {
       "type": "object"

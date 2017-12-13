@@ -6,7 +6,7 @@
         "created":      {},
         "modified":     {},
         "notes":        {"type": "array",  "items": {"$ref": "note.json"}},
-        "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json"}},
+        "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json#/definitions/permission"}},
         "files":        {"type": "array",  "items": {"$ref": "file.json"}},
         "public":       {"type": "boolean"},
         "label":        {"type": "string"},
