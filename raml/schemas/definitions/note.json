@@ -9,6 +9,10 @@
       },
       "additionalProperties": false
     },
+    "notes-list-input": {
+      "type": "array",
+      "items":{"allOf":[{"$ref":"#/definitions/note-input"}]}
+    },
     "note-output":{
       "type":"object",
       "properties":{

@@ -60,6 +60,27 @@ def test_payload():
     with pytest.raises(jsonschema.exceptions.ValidationError):
         validators._validate_json(payload, schema, resolver)
 
+def test_file_output_valid():
+    payload = [{
+        'modified': 'yesterday',
+        'size': 10
+    }]
+    schema_uri = validators.schema_uri("output", "file-list.json")
+    schema, resolver = validators._resolve_schema(schema_uri)
+    validators._validate_json(payload, schema, resolver)
+
+def test_file_output_invalid():
+    payload = [{
+        'modified': 'yesterday'
+    }]
+    schema_uri = validators.schema_uri("output", "file-list.json")
+    schema, resolver = validators._resolve_schema(schema_uri)
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        validators._validate_json(payload, schema, resolver)
+    
+
+# ===== Automated Tests =====
+
 # Parametrized test that example payloads are valid
 def test_example_payload_valid(schema_type, schema_name):
     example_data = load_example_data(schema_type, schema_name)

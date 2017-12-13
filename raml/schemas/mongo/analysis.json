@@ -27,7 +27,7 @@
         "job":			{"type": "string"},
         "label":    	{"type": "string", "minLength": 1, "maxLength": 256},
         "user":     	{"type": "string"},
-        "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json"}},
+        "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json#/definitions/permission"}},
         "public":       {"type": "boolean"}
     }
 }

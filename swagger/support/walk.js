@@ -2,6 +2,15 @@
 
 var _ = require('lodash');
 
+/**
+ * Deep-walk an object, invoking callback for each property.
+ * Properties will be replaced with any value returned by callback.
+ * @param obj The object to walk
+ * @param {function} callback The callback function, that will be invoked with:
+ *   `propertyValue, path, state`
+ * @param {path} The current path array (default is empty array)
+ * @param {state} An optional state parameter
+ */
 module.exports = function objWalk(obj, callback, path, state) {
 	var i, idx;
 	state = state || {};

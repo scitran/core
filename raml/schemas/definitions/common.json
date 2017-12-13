@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+    	"label": {
+    		"type": "string",
+    		"minLength": 1,
+    		"maxLength": 256
+    	},
+    	"objectid": {
+		    "type": "string",
+		    "pattern": "^[a-fA-F0-9]{24}$"
+		},
+		"string-id": {
+			"type": "string",
+			"maxLength": 64,
+			"minLength": 2,
+			"pattern": "^[0-9a-z][0-9a-z.@_-]{0,30}[0-9a-z]$"			
+		},
+		"user-id": {
+			"type": "string",
+			"format": "email"
+		}
+    }
+}

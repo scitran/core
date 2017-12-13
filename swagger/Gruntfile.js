@@ -77,6 +77,27 @@ module.exports = function(grunt) {
 		},
 
 		/**
+		 * Convert schema files to swagger definitions
+		 */
+		schemasToDefs: {
+			core: {
+				srcFile: 'build/swagger-flat.json',
+				dstFile: 'build/swagger-ui.json',
+				files: [
+					{
+						expand: true,
+						cwd: '../raml/schemas', 
+						src: [
+							'definitions/*.json',
+							'input/*.json',
+							'output/*.json'
+						]
+					}
+				]
+			}
+		},
+
+		/**
 		 * Resolve schema links in the swagger documentation
 		 */
 		resolveSchemaLinks: {
@@ -126,7 +147,7 @@ module.exports = function(grunt) {
 	grunt.registerTask('build-schema', [
 		'copy:schema', 
 		'flattenSwagger',
-		'resolveSchemaLinks'
+		'schemasToDefs'
 	]);
 
 	/**

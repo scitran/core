@@ -7,7 +7,7 @@
       "items":{
         "type":"object",
         "properties":{
-          "id":{"$ref":"../definitions/job.json#/definitions/id"},
+          "id":{"$ref":"../definitions/job.json#/definitions/_id"},
           "origin":{"$ref":"../definitions/job.json#/definitions/origin"},
           "gear_id":{"$ref":"../definitions/job.json#/definitions/gear_id"},
           "inputs":{"$ref":"../definitions/job.json#/definitions/inputs-object"},

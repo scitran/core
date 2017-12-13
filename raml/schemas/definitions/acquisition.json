@@ -2,52 +2,51 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
         "acquisition-input":{
+            "x-gen-name": "acquisition",
             "type": "object",
             "properties": {
-                "public":       {"$ref": "../definitions/container.json#/definitions/public"},
-                "label":        {"$ref": "../definitions/container.json#/definitions/label"},
-                "info":         {"$ref": "../definitions/container.json#/definitions/info"},
-                "session":      {"$ref":"../definitions/objectid.json#"},
-                "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
-                "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
-                "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"}
+                "public":       {"$ref":"container.json#/definitions/public"},
+                "label":        {"$ref":"container.json#/definitions/label"},
+                "info":         {"$ref":"container.json#/definitions/info"},
+                "session":      {"$ref":"common.json#/definitions/objectid"},
+                "uid":          {"$ref":"container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"container.json#/definitions/timezone"}
             },
             "additionalProperties":false
         },
         "acquisition-output":{
+            "x-gen-name": "acquisition",
             "type":"object",
             "properties": {
-              "_id":          {"$ref":"../definitions/objectid.json#"},
-              "public":       {"$ref": "../definitions/container.json#/definitions/public"},
-              "label":        {"$ref": "../definitions/container.json#/definitions/label"},
-              "info":         {"$ref": "../definitions/container.json#/definitions/info"},
-              "session":      {"$ref":"../definitions/objectid.json#"},
-              "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
+              "_id":          {"$ref":"common.json#/definitions/objectid"},
+              "public":       {"$ref":"container.json#/definitions/public"},
+              "label":        {"$ref":"container.json#/definitions/label"},
+              "info":         {"$ref":"container.json#/definitions/info"},
+              "session":      {"$ref":"common.json#/definitions/objectid"},
+              "uid":          {"$ref":"container.json#/definitions/uid"},
               "collections":{
                   "type":"array",
-                  "items":{"$ref":"../definitions/objectid.json#"}
+                  "items":{"$ref":"common.json#/definitions/objectid"}
               },
               "files":{
                   "type":"array",
-                  "items":{"$ref":"../definitions/file.json#/definitions/file-output"}
+                  "items":{"$ref":"file.json#/definitions/file-output"}
               },
-              "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
-              "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
-              "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-              "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
-              "info_exists": {"type": "boolean"},
+              "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
+              "timezone":     {"$ref":"container.json#/definitions/timezone"},
+              "created":      {"$ref":"created-modified.json#/definitions/created"},
+              "modified":     {"$ref":"created-modified.json#/definitions/modified"},
+              "info_exists":  {"type": "boolean"},
               "permissions":{
                   "type":"array",
-                  "items":{"$ref":"../definitions/permission.json#/definitions/permission-output-default-required"}
+                  "items":{"$ref":"permission.json#/definitions/permission-output-default-required"}
               },
-              "notes":{"allOf":[{"$ref":"../definitions/note.json#/definitions/notes-list-output"}]},
-              "tags":{"allOf":[{"$ref":"../definitions/tag.json#/definitions/tag-output-list"}]},
+              "notes":{"allOf":[{"$ref":"note.json#/definitions/notes-list-output"}]},
+              "tags":{"allOf":[{"$ref":"tag.json#/definitions/tag-output-list"}]},
               "analyses":{
                   "type":"array",
-                  "items":{
-                      "type":"object",
-                      "allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-output"}]
-                  }
+                  "items":{"$ref":"analysis.json#/definitions/analysis-output"}
               }
           },
           "additionalProperties":false

@@ -58,9 +58,6 @@
                             "Native Hawaiian or Other Pacific Islander":{
                                 "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
                             },
-                            "Native Hawaiian or Other Pacific Islander":{
-                                "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
-                            },
                             "More Than One Race":{
                                 "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
                             },
