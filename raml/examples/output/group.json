@@ -1,5 +1,5 @@
 {
-  "name": "Test Group",
+  "label": "Test Group",
   "permissions": [
     {
       "access": "admin",
