@@ -6,10 +6,7 @@ module.exports = function(grunt) {
 	var yaml = require('js-yaml');
 	var resolve = require('json-refs').resolveRefs;
 
-	// Use YAML to load nested content
-	function resolveContent(res, callback) {
-		callback(undefined, yaml.safeLoad(res.text));
-	}
+	var SwaggerResolver = require('../swagger-resolver');
 
 	/**
 	 * This task flattens the nested swagger yaml into a single flat file.
@@ -23,6 +20,15 @@ module.exports = function(grunt) {
 	grunt.registerMultiTask('flattenSwagger', 'Resolve references in swagger YAML files', function() {
 		var apiFile = this.data.apiFile||'swagger.yml';
 		var destFile = this.data.dest||'swagger.json';
+		var resolver = new SwaggerResolver({
+			log: function() {
+				grunt.log.writeln.apply(grunt.log, arguments);
+			}
+		});
+
+		function resolveContent(res, callback) {
+			callback(undefined, resolver.resolveContent(res));
+		}
 
 		// See: http://azimi.me/2015/07/16/split-swagger-into-smaller-files.html
 		// and the corresponding repo: https://github.com/mohsen1/multi-file-swagger-example
@@ -36,6 +42,15 @@ module.exports = function(grunt) {
 		});
 
 		var root = yaml.safeLoad(fs.readFileSync(apiFile).toString());
+
+		// Resolve any top-level includes or templates
+		try {
+			root = resolver.resolveObject(root);
+		} catch (e) {
+			grunt.log.writeln("Could not resolve root:", e);
+			return false;
+		}
+
 		var resolveOpts = {
 			filter: ['relative'],
 			loaderOptions: {

@@ -1,4 +1,9 @@
 # Global template arguments for collection
+$template_arguments:
+  resource: collection
+  tag: collections
+  parameter: CollectionId
+
 /collections:
   get:
     summary: List all collections.
@@ -130,114 +135,45 @@
 # ===== Tags =====
 /collections/{CollectionId}/tags:
   $template: templates/tags.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 
 # ===== Packfile =====
 /collections/{CollectionId}/packfile-start:
   $template: templates/packfile-start.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/packfile:
   $template: templates/packfile.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/packfile-end:
   $template: templates/packfile-end.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 
 # ===== Files =====
 /collections/{CollectionId}/files:
   $template: templates/file-list-upload.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/files/{FileName}:
   $template: templates/file-item.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 
 # ===== Permissions =====
 /collections/{CollectionId}/permissions:
   $template: templates/permissions.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/permissions/{UserId}:
   $template: templates/permissions-user.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 
 # ===== Notes =====
 /collections/{CollectionId}/notes:
   $template: templates/notes.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/notes/{NoteId}:
   $template: templates/notes-note.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 
 # ===== Analyses =====
 /collections/{CollectionId}/analyses:
   $template: templates/analyses-list.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/analyses/{AnalysisId}/files/{Filename}:
   $template: templates/analysis-files-create-ticket-filename.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/analyses/{AnalysisId}/notes:
   $template: templates/analysis-notes.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
 /collections/{CollectionId}/analyses/{AnalysisId}/notes/{NoteId}:
   $template: templates/analysis-notes-item.yaml
-  arguments:
-    resource: collection
-    tag: collections
-    parameter: CollectionId
-    
