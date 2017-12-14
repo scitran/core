@@ -24,7 +24,7 @@ install: true
 script:
     - test -f "$DOCKER_DIR/image.tar" && docker load -i "$DOCKER_DIR/image.tar" || true
     - docker build -t core:build --target build .
-    - docker build -t core:dist --target dist .
+    - docker build -t core:dist --target dist --build-arg VCS_BRANCH="$TRAVIS_BRANCH" --build-arg VCS_COMMIT="$TRAVIS_COMMIT" .
     - docker build -t core:testing --target testing .
     - docker save -o "$DOCKER_DIR/image.tar" $(docker history -q core:build | grep -v '<missing>') $(docker history -q core:dist | grep -v '<missing>')
     - ./tests/bin/run-tests-docker.sh --image core:testing
