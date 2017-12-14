@@ -9,7 +9,8 @@ USAGE="
 Usage:
     $0 [OPTION...] [-- TEST_ARGS...]
 
-Build scitran-core image and run tests in a Docker container.
+Build scitran/core image and run tests in a Docker container.
+Also displays coverage report and saves HTML in htmlcov dir.
 
 Options:
     -h, --help          Print this help and exit
@@ -20,10 +21,10 @@ Options:
 
 "
 
+
 main() {
     local DOCKER_IMAGE=
     local TEST_ARGS=
-    local MONGO_VERSION=3.2
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -83,10 +84,10 @@ main() {
         --network core-test \
         --volume $(pwd)/api:/src/core/api \
         --volume $(pwd)/tests:/src/core/tests \
+        --env SCITRAN_SITE_API_URL=http://core-test-service/api \
         --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
         --env SCITRAN_PERSISTENT_DB_URI=mongodb://core-test-service:27017/scitran \
         --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://core-test-service:27017/logs \
-        --env SCITRAN_SITE_API_URL=http://core-test-service/api \
         scitran/core:testing \
         tests/bin/run-tests-ubuntu.sh $TEST_ARGS
 }
@@ -98,6 +99,8 @@ clean_up() {
 
     log "INFO: Test return code = $TEST_RESULT_CODE"
     if [ "${TEST_RESULT_CODE}" = "0" ]; then
+        log "INFO: Collecting coverage..."
+
         # Copy unit test coverage
         docker cp core-test-runner:/src/core/.coverage .coverage.unit-tests 2>/dev/null
 

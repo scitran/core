@@ -36,9 +36,6 @@ CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
 FROM dist as testing
 
 RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community mongodb=3.4.4-r0
-RUN apk add --no-cache nodejs-npm=6.10.3-r1 \
- && npm install tests/integration_tests/abao
-ENV PATH=/src/core/node_modules/.bin:$PATH
 
 RUN pip install -r tests/requirements.txt
 
