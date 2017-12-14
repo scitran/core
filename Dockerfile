@@ -12,15 +12,13 @@ RUN ./configure --prefix=/usr/local --modules=lib --state=/var/local/unit --pid=
 
 FROM python:2.7-alpine3.6 as dist
 
-RUN apk add --no-cache git
+RUN apk add --no-cache build-base git py-openssl
 
 COPY --from=build /usr/local/sbin/unitd /usr/local/sbin/unitd
 COPY --from=build /usr/local/lib/python.unit.so /usr/local/lib/python.unit.so
 
 EXPOSE 80 8080 27017
-
 VOLUME /data/db
-
 WORKDIR /src/core
 
 COPY docker/unit.json /var/local/unit/conf.json
@@ -31,6 +29,10 @@ COPY . .
 RUN pip install -e .
 
 CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
+
+ARG BRANCH_LABEL=NULL
+ARG COMMIT_HASH=0
+RUN docker/inject_build_info.sh $BRANCH_LABEL $COMMIT_HASH
 
 
 FROM dist as testing
