@@ -157,7 +157,6 @@ expected_input_schemas = set([
     'avatars.json',
     'collection.json',
     'collection-update.json',
-    'container.json',
     'device.json',
     'file.json',
     'file-update.json',
@@ -182,8 +181,7 @@ expected_input_schemas = set([
     'enginemetadata.json',
     'labelupload.json',
     'uidupload.json',
-    'uidmatchupload.json',
-    'search.json'
+    'uidmatchupload.json'
 ])
 mongo_schemas = set()
 input_schemas = set()

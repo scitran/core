@@ -1,0 +1,35 @@
+parameters:
+  - name: resource
+    type: string
+  - name: tag
+    type: string
+  - name: list-output-schema
+    type: string
+  - name: create-input-schema
+    type: string
+template: |
+  get:
+    summary: Get a list of {{#pluralize}}{{resource}}{{/pluralize}}
+    operationId: get_all_{{#pluralize}}{{resource}}{{/pluralize}}
+    tags:
+      - '{{tag}}'
+    responses:
+      '200':
+        schema:
+          $ref: {{{list-output-schema}}}
+  post:
+    summary: Create a new {{resource}}
+    operationId: create_{{resource}}
+    tags:
+      - '{{tag}}'
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: {{{create-input-schema}}}
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/container-new.json
+      '400':
+        $ref: '#/responses/400:invalid-body-json'

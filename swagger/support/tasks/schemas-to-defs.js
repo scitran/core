@@ -59,7 +59,7 @@ module.exports = function(grunt) {
 		if( !root.definitions ) {
 			root.definitions = {};
 		}
-		_.extend(root.definitions, schemas.getComplexDefinitions());
+		// _.extend(root.definitions, schemas.getComplexDefinitions());
 
 		// Write destination file
 		var data = JSON.stringify(root, null, 2);

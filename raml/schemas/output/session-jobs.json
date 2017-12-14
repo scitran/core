@@ -1,41 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "properties":{
-    "jobs":{
-      "type":"array",
-      "items":{
-        "type":"object",
-        "properties":{
-          "id":{"$ref":"../definitions/job.json#/definitions/_id"},
-          "origin":{"$ref":"../definitions/job.json#/definitions/origin"},
-          "gear_id":{"$ref":"../definitions/job.json#/definitions/gear_id"},
-          "inputs":{"$ref":"../definitions/job.json#/definitions/inputs-object"},
-          "destination":{"$ref":"../definitions/job.json#/definitions/destination"},
-          "tags":{"$ref":"../definitions/job.json#/definitions/tags"},
-          "state":{"$ref":"../definitions/job.json#/definitions/state"},
-          "attempt":{"$ref":"../definitions/job.json#/definitions/attempt"},
-          "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-          "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
-          "config":{"$ref":"../definitions/job.json#/definitions/config"},
-          "request":{"$ref":"../definitions/job.json#/definitions/request"},
-          "saved_files":{"$ref":"../definitions/job.json#/definitions/saved_files"},
-          "produced_metadata":{"$ref":"../definitions/job.json#/definitions/produced_metadata"}
-        },
-        "additionalProperties":false,
-        "required":[
-           "id", "gear_id", "inputs", "config",
-           "destination", "tags", "state", "attempt"
-        ]
-      }
-    },
-    "containers":{
-       "patternProperties": {
-        "^[a-fA-F0-9]{24}$":{
-          "type": "object"
-        }
-      }
-    }
-  },
-  "additionalProperties":false
+  "$ref": "../definitions/session.json#/definitions/session-jobs-output"
 }

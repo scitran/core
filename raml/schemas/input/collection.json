@@ -5,6 +5,7 @@
     "allOf": [{"$ref": "../definitions/collection.json#/definitions/collection-input"}],
     "required": ["label"],
     "example": {
-    	"$ref": "../../examples/input/collection.json"
+    	"label":"control-group",
+    	"description":"Control group collection"
     }
 }

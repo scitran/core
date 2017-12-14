@@ -1,0 +1,103 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+        "upload-acquisition-metadata-input": {
+            "type": "object",
+            "properties": {
+                "public":       {"type": ["boolean", "null"]},
+                "label":        {"type": ["string", "null"]},
+                "info":         {"type": ["object", "null"]},
+                "uid":          {"type": ["string", "null"]},
+                "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
+                "timezone":     {"type": ["string", "null"]},
+                "files":        {
+                    "type": ["array", "null"],
+                    "items": {"$ref": "file.json#/definitions/file-input"}
+                }
+            },
+            "additionalProperties": false
+        },
+
+        "engine-upload-input": {
+            "type": "object",
+            "properties": {
+                "project":     {"$ref": "project.json#/definitions/project-metadata-input"},
+                "session":     {"$ref": "session.json#/definitions/session-metadata-input"},
+                "acquisition": {"$ref": "acquisition.json#/definitions/acquisition-metadata-input"}
+            },
+            "additionalProperties": false           
+        },
+        "label-upload-input": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "object",
+                    "allOf": [{"$ref":"group.json#/definitions/group-metadata-input"}],
+                    "required": ["_id"]
+                },
+                "project": {
+                    "type": "object",
+                    "allOf": [{"$ref":"project.json#/definitions/project-metadata-input"}],
+                    "required": ["label"]
+                },
+                "session": {
+                    "type": "object",
+                    "allOf": [{"$ref":"session.json#/definitions/session-metadata-input"}],
+                    "required": ["label"]
+                },
+                "acquisition": {
+                    "type": "object",
+                    "allOf": [{"$ref":"#/definitions/upload-acquisition-metadata-input"}],
+                    "required": ["label"]
+                }
+            },
+            "required": ["group", "project"],
+            "additionalProperties": false
+        },
+        "uid-upload-input": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "object",
+                    "allOf": [{"$ref":"group.json#/definitions/group-metadata-input"}],
+                    "required": ["_id"]
+                },
+                "project": {
+                    "type": "object",
+                    "allOf": [{"$ref":"project.json#/definitions/project-metadata-input"}],
+                    "required": ["label"]
+                },
+                "session": {
+                    "type": "object",
+                    "allOf": [{"$ref":"session.json#/definitions/session-metadata-input"}],
+                    "required": ["uid"]
+                },
+                "acquisition": {
+                    "type": "object",
+                    "allOf": [{"$ref":"#/definitions/upload-acquisition-metadata-input"}],
+                    "required": ["uid"]
+                }
+            },
+            "required": ["acquisition", "group", "project", "session"],
+            "additionalProperties": false
+        },
+        "uid-match-upload-input": {
+            "type": "object",
+            "properties": {
+                "project": {"$ref": "project.json#/definitions/project-metadata-input"},
+                "session": {
+                    "type": "object",
+                    "allOf": [{"$ref":"session.json#/definitions/session-metadata-input"}],
+                    "required": ["uid"]
+                },
+                "acquisition": {
+                    "type": "object",
+                    "allOf": [{"$ref":"#/definitions/upload-acquisition-metadata-input"}],
+                    "required": ["uid"]
+                }
+            },
+            "required": ["acquisition", "session"],
+            "additionalProperties": false            
+        }
+    }
+}

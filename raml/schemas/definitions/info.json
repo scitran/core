@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+        "info-add-remove": {
+            "properties": {
+                "set":      {"type": "object", "minProperties": 1},
+                "delete":   {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }, 
+            "additionalProperties": false            
+        },
+        "info-replace": {
+            "properties": {
+                "replace": {"type": "object"}
+            },
+            "additionalProperties": false
+        },
+        "info-update-input": {
+            "description": "Helper endpoint for editing an object's info key",
+            "type": "object",
+            "oneOf": [
+                {"$ref":"#/definitions/info-add-remove"},
+                {"$ref":"#/definitions/info-replace"}
+            ]
+        }
+    }
+}

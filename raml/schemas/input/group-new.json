@@ -5,6 +5,7 @@
   ],
   "required": ["_id"],
   "example": {
-  	"$ref": "../../examples/input/group-new.json"
-  }
+	  "label": "Example Group",
+	  "_id": "example_group"
+	}
 }

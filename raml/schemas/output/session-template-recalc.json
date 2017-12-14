@@ -1,14 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "properties":{
-      "sessions_changed":{
-          "type":"array",
-          "items":{
-              "allOf":[{"$ref":"../definitions/objectid.json#"}]
-          }
-      }
-  },
-  "additionalProperties":false,
-  "required":["sessions_changed"]
+  "$ref": "../definitions/session.json#/definitions/session-template-recalc-output"
 }

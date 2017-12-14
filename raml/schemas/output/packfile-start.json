@@ -1,7 +1,4 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type":"object",
-    "properties":{
-        "token":{"$ref":"../definitions/objectid.json#"}
-    }
+    "$ref": "../definitions/packfile.json#/definitions/packfile-start"
 }

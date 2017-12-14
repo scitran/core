@@ -26,8 +26,13 @@
     tags:
     - jobs
     responses:
-      default:
+      '200':
         description: ''
+        schema:
+          $ref: schemas/output/job.json
+        examples:
+          response:
+            $ref: examples/output/job.json        
 /jobs/stats:
   get:
     summary: Get stats about all current jobs

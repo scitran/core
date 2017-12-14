@@ -52,16 +52,16 @@
                 ]
             },
             "measurements": {"$ref":"#/definitions/measurements"},
-            "tags": {"$ref":"#/definitions/tags"},
-            "info": {"$ref":"#/definitions/info"},
-            "origin":{"$ref":"#/definitions/origin"},
-            "hash":{"$ref":"#/definitions/hash"},
-            "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-            "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
-            "size":{"$ref":"#/definitions/size"},
+            "tags":        {"$ref":"#/definitions/tags"},
+            "info":        {"$ref":"#/definitions/info"},
+            "origin":      {"$ref":"#/definitions/origin"},
+            "hash":        {"$ref":"#/definitions/hash"},
+            "created":     {"$ref":"created-modified.json#/definitions/created"},
+            "modified":    {"$ref":"created-modified.json#/definitions/modified"},
+            "size":        {"$ref":"#/definitions/size"},
             "info_exists": {"type": "boolean"},
-            "input":        {"type":"boolean"},
-            "output":       {"type":"boolean"}
+            "input":       {"type":"boolean"},
+            "output":      {"type":"boolean"}
           },
           "additionalProperties": false
         },
@@ -73,8 +73,8 @@
               "mimetype":       {"$ref":"#/definitions/mimetype"},
               "modality":       {"$ref":"#/definitions/modality"},
               "measurements":   {"$ref":"#/definitions/measurements"},
-              "tags": {"$ref":"#/definitions/tags"},
-              "info": {"$ref":"#/definitions/info"}
+              "tags":           {"$ref":"#/definitions/tags"},
+              "info":           {"$ref":"#/definitions/info"}
           },
           "additionalProperties": false
         },

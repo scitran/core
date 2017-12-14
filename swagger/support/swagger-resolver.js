@@ -5,9 +5,23 @@ var path = require('path');
 var fs = require('fs');
 var process = require('process');
 var yaml = require('js-yaml');
+var pluralize = require('pluralize');
 var Mustache = require('mustache');
 
 var walk = require('./walk');
+
+var TEMPLATE_FUNCS = {
+	'pluralize': function() {
+		return function(text, render) {
+			return pluralize.plural(render(text));
+		};
+	},
+	'singularize': function() {
+		return function(text, render) {
+			return pluralize.singular(render(text));
+		};
+	}
+};
 
 // Throws if args are missing
 function validateTemplateArgs(tmplpath, template, args) {
@@ -73,18 +87,20 @@ SwaggerResolver.prototype.loadFile = function(relpath) {
 };
 
 SwaggerResolver.prototype.visit = function(obj) {
+	if( !obj ) {
+		return obj;
+	}
+
 	// obj will have $template or $include, not both
 	if( obj.hasOwnProperty('$include') ) {
 		obj = this.resolveIncludes(obj);
-
-		// Recursively resolve content
-		obj = this.resolveObject(obj);
 	} else if( obj.hasOwnProperty('$template') ) {
 		obj = this.resolveTemplate(obj);
 
 		// Recursively resolve content
 		obj = this.resolveObject(obj);
 	} else if( obj.hasOwnProperty('$template_arguments') ) {
+		// Save off template arguments for later
 		this.templateArguments = obj['$template_arguments'];
 		delete obj['$template_arguments'];
 	}
@@ -102,8 +118,10 @@ SwaggerResolver.prototype.resolveIncludes = function(obj) {
 
 	delete obj['$include'];
 	for( i = 0; i < includes.length; i++ ) {
-		// Load the include file
+		// Load and resolve the include file
 		inc = this.loadFile(includes[i]);
+		inc = this.resolveObject(inc);
+
 		// And merge its contents into obj
 		_.extend(obj, inc);
 	}
@@ -124,7 +142,7 @@ SwaggerResolver.prototype.resolveTemplate = function(obj) {
 	}
 
 	// Validate arguments?
-	args = obj['arguments']||this.templateArguments||{};
+	args = _.extend({}, TEMPLATE_FUNCS, this.templateArguments, obj['arguments']);
 	validateTemplateArgs(tmplpath, tmpl, args);
 
 	// Render the template, and parse

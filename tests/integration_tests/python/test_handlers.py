@@ -14,7 +14,7 @@ def test_schemahandler(as_public):
     r = as_public.get('/schemas/definitions/user.json')
     assert r.ok
     schema = r.json()
-    assert all(attr in schema['definitions'] for attr in ('_id', 'firstname', 'lastname'))
+    assert all(attr in schema['definitions'] for attr in ('email', 'firstname', 'lastname'))
 
 
 def test_devicehandler(as_user, as_root, as_drone, api_db):

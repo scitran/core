@@ -2,6 +2,12 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "allOf":[{"$ref":"../definitions/device.json#/definitions/device-input"}],
   "example": {
-  	"$ref": "../../examples/input/device.json"
-  }
+	  "info": {
+	    "basic": "info"
+	  },
+	  "errors": [
+	    "An Error"
+	  ],
+	  "interval": 400
+	}
 }

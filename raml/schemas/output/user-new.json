@@ -1,14 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "properties": {
-    "_id": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "_id"
-  ],
+  "$ref": "../definitions/common.json#/definitions/object-created",
   "example": {
     "$ref": "../../examples/output/user-new.json"
   }

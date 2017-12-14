@@ -53,10 +53,10 @@
           Redirects to the image file of the current user's avatar
 /users/{UserId}:
   parameters:
-    - required: true
+    - in: path
       type: string
-      in: path
       name: UserId
+      required: true
   get:
     summary: Get information about the specified user
     operationId: get_user

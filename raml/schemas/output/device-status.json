@@ -1,17 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type":"object",
-  "patternProperties": {
-    "^[0-9a-z.@_-]*$":{
-      "properties":{
-        "errors":{"$ref":"../definitions/device.json#/definitions/errors"},
-        "last_seen":{"$ref":"../definitions/device.json#/definitions/last_seen"},
-        "status": { "enum": ["ok", "missing", "error", "unknown"] }
-      },
-      "additionalProperties":false,
-      "required":[
-         "last_seen", "status"
-      ]
-    }
-  }
+  "allOf": [{"$ref":"../definitions/device.json#/definitions/device-status"}]
 }

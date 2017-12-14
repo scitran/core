@@ -1,14 +1,21 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",
-    "properties":{
-        "analysis":{
-            "type":"object",
-            "allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-input"}],
-            "required":["label"]
+    "allOf": [{"$ref":"../definitions/analysis.json#/definitions/analysis-job"}],
+    "example": {
+        "analysis": {
+            "label": "Test Analysis 1"
         },
-        "job":{
-            "type":"object"
+        "job" : {
+            "gear_id": "dcm_convert",
+            "inputs": {
+                "dicom": {
+                    "type": "acquisition",
+                    "id": "57081d06b386a6dc79ca386b",
+                    "name" : "test_acquisition_dicom.zip"
+                }
+            },
+            "tags": ["example"]
         }
     }
 }

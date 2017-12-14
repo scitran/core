@@ -7,8 +7,8 @@
     responses:
       '200':
         description: ''
-        schema:
-          example: |
+        examples:
+          'application/javascript': |
             config = {
                   "auth": {
                       "auth_endpoint": "https://accounts.google.com/o/oauth2/auth",

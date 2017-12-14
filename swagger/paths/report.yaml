@@ -1,0 +1,34 @@
+/report/site:
+  get:
+    operationId: get_site_report
+    tags:
+    - 'reports'
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/report-site.json
+
+/report/project:
+  get:
+    operationId: get_project_report
+    tags:
+    - 'reports'
+    parameters:
+      - in: query
+        type: string
+        name: projects
+        description: Specify multiple times to include projects in the report
+      - in: query
+        type: string
+        name: start_date
+        description: Report start date
+      - in: query
+        type: string
+        name: end_date
+        description: Report end date
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/report-project.json
