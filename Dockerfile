@@ -30,14 +30,14 @@ RUN pip install -e .
 
 CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
 
-ARG BRANCH_LABEL=NULL
-ARG COMMIT_HASH=0
-RUN docker/inject_build_info.sh $BRANCH_LABEL $COMMIT_HASH
+ARG VCS_BRANCH=NULL
+ARG VCS_COMMIT=NULL
+RUN docker/build_info.sh $VCS_BRANCH $VCS_COMMIT | tee /version.json
 
 
 FROM dist as testing
 
-RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community mongodb=3.4.4-r0
+RUN apk add --no-cache mongodb
 
 RUN pip install -r tests/requirements.txt
 
