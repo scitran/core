@@ -144,14 +144,22 @@ def sanitize_info(info):
     return sanitized_info
 
 
-def get_analyses(acquisition_id, filename=None):
-    query = {'destination.type': 'analysis', 'inputs.type': 'acquisition', 'inputs.id': acquisition_id}
+def get_referring_analyses(cont_name, cont_id, filename=None):
+    """
+    Get all (non-deleted) analyses that reference any file from the container as their input.
+    If filename is given, only return analyses that have that specific file as their input.
+    """
+    query = {
+        'destination.type': 'analysis',
+        'inputs.type': singularize(cont_name),
+        'inputs.id': str(cont_id),
+    }
     if filename:
         query['inputs.name'] = filename
     jobs = config.db.jobs.find(query, {'destination.id': True})
     analysis_ids = [bson.ObjectId(job['destination']['id']) for job in jobs]
     analyses = config.db.analyses.find({'_id': {'$in': analysis_ids}, 'deleted': {'$exists': False}})
-    return [str(analysis['_id']) for analysis in analyses]
+    return list(analyses)
 
 
 class ContainerReference(object):

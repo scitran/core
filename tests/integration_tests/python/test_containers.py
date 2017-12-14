@@ -1199,6 +1199,10 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     r = as_admin.delete('/acquisitions/' + acquisition + '/files/test.csv')
     assert r.status_code == 400
 
+    # verify that a non-referenced file _can_ be deleted from the same acquisition
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('unrelated.csv')).ok
+    assert as_admin.delete('/acquisitions/' + acquisition + '/files/unrelated.csv').ok
+
     # delete analysis
     r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis)
     assert r.ok
@@ -1206,14 +1210,12 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     assert as_admin.get('/sessions/' + session + '/analyses/' + analysis).status_code == 404
     assert as_admin.get('/analyses/' + analysis).status_code == 404
 
-    # try to delete acquisition without rw perms
+    # try to delete acquisition without admin perms
     r = as_user.delete('/acquisitions/' + acquisition)
     assert r.status_code == 403
 
     # delete acquisition
-    assert as_admin.post('/projects/' + project + '/permissions', json={'_id': 'user@user.com', 'access': 'rw'}).ok
-
-    assert as_user.delete('/acquisitions/' + acquisition).ok
+    assert as_admin.delete('/acquisitions/' + acquisition).ok
     assert 'deleted' in api_db.acquisitions.find_one({'_id': bson.ObjectId(acquisition)})
     assert as_admin.get('/acquisitions/' + acquisition).status_code == 404
 

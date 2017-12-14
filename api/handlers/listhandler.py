@@ -549,9 +549,11 @@ class FileListHandler(ListHandler):
         permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
 
         if cont_name == 'acquisitions':
-            analysis_ids = containerutil.get_analyses(_id, kwargs['name'])
-            if analysis_ids:
-                self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(kwargs['name'], analysis_ids))
+            filename = kwargs['name']
+            analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
+            if analyses:
+                analysis_ids = [str(a['_id']) for a in analyses]
+                self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids))
 
         self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
         try:

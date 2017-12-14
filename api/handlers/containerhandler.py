@@ -542,8 +542,9 @@ class ContainerHandler(base.RequestHandler):
             container['has_children'] = True
 
         if cont_name == 'acquisitions':
-            analysis_ids = containerutil.get_analyses(_id)
-            if analysis_ids:
+            analyses = containerutil.get_referring_analyses(cont_name, _id)
+            if analyses:
+                analysis_ids = [str(a['_id']) for a in analyses]
                 self.abort(400, 'Cannot delete acquisition {} referenced by analyses {}'.format(_id, analysis_ids))
 
         target_parent_container, _ = self._get_parent_container(container)
