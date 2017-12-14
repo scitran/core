@@ -24,4 +24,8 @@
 
 '400:invalid-body-json':
   description: |
-    JSON did not validate against schema for this endpoint
+    JSON did not validate against schema for this endpoint.
+    
+'404:resource-not-found':
+  description: |
+    The specified resource could not be found.

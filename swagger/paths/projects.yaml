@@ -1,0 +1,227 @@
+$template_arguments:
+  resource: project
+  tag: projects
+  parameter: ProjectId
+
+/projects:
+  $template: templates/container.yaml
+  arguments:
+    list-output-schema: schemas/output/project-list.json
+    create-input-schema: schemas/input/project.json
+
+/projects/{ProjectId}:
+  $template: templates/container-item.yaml
+  arguments:
+    update-input-schema: schemas/input/project-update.json
+    get-output-schema: schemas/output/project.json
+
+/projects/groups:
+  get:
+    summary: List all groups which have a project in them
+    operationId: get_all_projects_groups
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/groups-list.json
+
+'/projects/{ProjectId}/sessions':
+  parameters:
+    - in: path
+      type: string
+      name: ProjectId
+      required: true
+  get:
+    summary: List all sessions for the given project.
+    operationId: get_project_sessions
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/session-list.json
+
+'/projects/{ProjectId}/acquisitions':
+  get:
+    summary: List all acquisitions for the given project.
+    operationId: get_project_acquisitions
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/acquisition-list.json
+
+'/projects/{ProjectId}/rules':
+  parameters:
+    - in: path
+      type: string
+      name: ProjectId
+      required: true
+  get:
+    operationId: get_project_rules
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/rule-list.json
+  post:
+    summary: Create a new rule for a project.
+    operationId: add_project_rule
+    tags:
+    - 'projects'
+    responses:
+      default:
+        description: ''
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/rule-new.json
+
+'/projects/{ProjectId}/rules/{RuleId}':
+  parameters:
+    - in: path
+      type: string
+      name: ProjectId
+      required: true
+    - in: path
+      type: string
+      name: RuleId
+      required: true
+  put:
+    summary: Update a rule on a project.
+    operationId: modify_project_rule
+    tags:
+    - 'projects'
+    responses:
+      default:
+        description: ''
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: schemas/input/rule-update.json        
+        
+
+'/projects/{ProjectId}/template':
+  parameters:
+    - in: path
+      type: string
+      name: ProjectId
+      required: true
+  post:
+    summary: Set the session template for a project.
+    operationId: set_project_template
+    tags:
+    - 'projects'
+    parameters:
+      - in: body
+        name: body
+        schema:
+        $ref: schemas/input/project-template.json
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'
+      '404':
+        $ref: '#/responses/404:resource-not-found'
+  delete:
+    summary: Remove the session template for a project.
+    operationId: remove_project_template
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        $ref: '#/responses/200:deleted-with-count'
+      '404':
+        $ref: '#/responses/404:resource-not-found'
+
+'/projects/{ProjectId}/recalc':
+  parameters:
+    - in: path
+      type: string
+      name: ProjectId
+      required: true
+  post:
+    summary: Recalculate if sessions in the project satisfy the template.
+    description: Returns list of modified session ids.
+    operationId: recalc_project
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        description: |
+          Project's sessions' compliance was recalculated.
+          Returns list of session that were modified.
+        schema:
+          $ref: schemas/output/session-template-recalc.json
+      '404':
+        $ref: '#/responses/404:resource-not-found'
+
+/projects/recalc:
+  post:
+    summary: Recalculate all sessions against their project templates.
+    description: |
+      Iterates all projects that have a session template.
+      Recalculate if projects' sessions satisfy the template.
+      Returns list of modified session ids.
+    operationId: recalc_all_projects
+    tags:
+    - 'projects'
+    responses:
+      '200':
+        description: |
+          Projects' sessions' compliance was recalculated.
+          Returns list of session that were modified.
+        schema:
+          $ref: schemas/output/session-template-recalc.json
+
+
+# ===== Tags =====
+/projects/{ProjectId}/tags:
+  $template: templates/tags.yaml
+/projects/{ProjectId}/tags/{TagValue}:
+  $template: templates/tags-tag.yaml
+
+# ===== Packfile =====
+/projects/{ProjectId}/packfile-start:
+  $template: templates/packfile-start.yaml
+/projects/{ProjectId}/packfile:
+  $template: templates/packfile.yaml
+/projects/{ProjectId}/packfile-end:
+  $template: templates/packfile-end.yaml
+
+# ===== Files =====
+/projects/{ProjectId}/files:
+  $template: templates/file-list-upload.yaml
+/projects/{ProjectId}/files/{FileName}:
+  $template: templates/file-item.yaml
+
+# ===== Permissions =====
+/projects/{ProjectId}/permissions:
+  $template: templates/permissions.yaml
+/projects/{ProjectId}/permissions/{UserId}:
+  $template: templates/permissions-user.yaml
+
+# ===== Notes =====
+/projects/{ProjectId}/notes:
+  $template: templates/notes.yaml
+/projects/{ProjectId}/notes/{NoteId}:
+  $template: templates/notes-note.yaml
+
+# ===== Analyses =====
+/projects/{ProjectId}/analyses:
+  $template: templates/analyses-list.yaml
+/projects/{ProjectId}/analyses/{AnalysisId}:
+  $template: templates/analysis-item.yaml
+/projects/{ProjectId}/analyses/{AnalysisId}/files:
+  $template: templates/analysis-files.yaml
+/projects/{ProjectId}/analyses/{AnalysisId}/files/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+/projects/{ProjectId}/analyses/{AnalysisId}/notes:
+  $template: templates/analysis-notes.yaml
+/projects/{ProjectId}/analyses/{AnalysisId}/notes/{NoteId}:
+  $template: templates/analysis-notes-item.yaml

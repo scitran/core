@@ -26,6 +26,16 @@ tags:
     description: Job operations
   - name: collections
     description: Collection operations
+  - name: sessions
+    description: Session operations
+  - name: acquisitions
+    description: Acquisition operations
+  - name: projects
+    description: Project operations
+  - name: reports
+    description: Site-wide reports
+  - name: batch
+    description: Batch job operations
 
 paths:
   $include: 
@@ -45,6 +55,12 @@ paths:
     - paths/devices.yaml
     - paths/groups.yaml
     - paths/collections.yaml
+    - paths/sessions.yaml
+    - paths/acquisitions.yaml
+    - paths/projects.yaml
+    - paths/report.yaml
+    - paths/batch.yaml
+
 
 securityDefinitions:
   ApiKey:

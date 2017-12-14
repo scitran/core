@@ -1,0 +1,99 @@
+$template_arguments:
+  resource: session
+  tag: sessions
+  parameter: SessionId
+
+/sessions:
+  $template: templates/container.yaml
+  arguments:
+    list-output-schema: schemas/output/session-list.json
+    create-input-schema: schemas/input/session.json
+
+/sessions/{SessionId}:
+  $template: templates/container-item.yaml
+  arguments:
+    update-input-schema: schemas/input/session.json
+    get-output-schema: schemas/output/session.json
+
+'/sessions/{SessionId}/jobs':
+  parameters:
+    - in: path
+      type: string
+      name: SessionId
+      required: true
+  get:
+    summary: Return any jobs that use inputs from this session
+    operationId: get_session_jobs
+    tags:
+    - 'sessions'
+    parameters:
+      - in: query
+        type: string
+        name: states
+        description: filter results by job state
+      - in: query
+        type: string
+        name: tags
+        description: filter results by job tags
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/session-jobs.json
+
+# ===== Tags =====
+/sessions/{SessionId}/tags:
+  $template: templates/tags.yaml
+/sessions/{SessionId}/tags/{TagValue}:
+  $template: templates/tags-tag.yaml
+
+# ===== Packfile =====
+/sessions/{SessionId}/packfile-start:
+  $template: templates/packfile-start.yaml
+/sessions/{SessionId}/packfile:
+  $template: templates/packfile.yaml
+/sessions/{SessionId}/packfile-end:
+  $template: templates/packfile-end.yaml
+
+# ===== Files =====
+/sessions/{SessionId}/files:
+  $template: templates/file-list-upload.yaml
+/sessions/{SessionId}/files/{FileName}:
+  $template: templates/file-item.yaml
+
+# ===== Notes =====
+/sessions/{SessionId}/notes:
+  $template: templates/notes.yaml
+/sessions/{SessionId}/notes/{NoteId}:
+  $template: templates/notes-note.yaml
+
+'/sessions/{SessionId}/acquisitions':
+  parameters:
+    - in: path
+      type: string
+      name: SessionId
+      required: true
+  get:
+    summary: List acquisitions in a session
+    operationId: get_session_acquisitions
+    tags:
+    - 'sessions'
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/acquisition-list.json
+
+# ===== Analyses =====
+/sessions/{SessionId}/analyses:
+  $template: templates/analyses-list.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}:
+  $template: templates/analysis-item.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/files:
+  $template: templates/analysis-files.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/files/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/notes:
+  $template: templates/analysis-notes.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/notes/{NoteId}:
+  $template: templates/analysis-notes-item.yaml
+

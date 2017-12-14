@@ -1,0 +1,87 @@
+/batch:
+  get:
+    summary: Get a list of batch jobs the user has created.
+    description: Requires login.
+    operationId: get_all_batch_jobs
+    tags:
+    - batch
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/batch-list.json
+  post:
+    summary: Create a batch job proposal and insert it as 'pending'.
+    operationId: create_batch_job
+    tags:
+    - batch
+    parameters:
+      - name: body
+        in: body
+        schema:
+          $ref: schemas/input/batch-insert.json
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/batch-insert.json
+
+/batch/{BatchId}:
+  parameters:
+    - in: path
+      type: string
+      name: BatchId
+      required: true
+  get:
+    summary: Get batch job details.
+    parameters:
+      - in: query
+        type: boolean
+        name: jobs
+        description: If true, return job objects instead of job ids
+    operationId: get_batch_job
+    tags:
+    - batch
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/batch.json
+      '404':
+        $ref: '#/responses/404:resource-not-found'
+
+/batch/{BatchId}/run:
+  parameters:
+    - in: path
+      type: string
+      name: BatchId
+      required: true
+  post:
+    summary: Launch a job.
+    description: |
+      Creates jobs from proposed inputs, returns jobs enqueued.
+      Moves 'pending' batch job to 'running'.
+    operationId: run_batch_job
+    tags:
+    - batch
+    responses:
+      '200':
+        schema:
+          $ref: schemas/output/job-list.json
+
+/batch/{BatchId}/cancel:
+  parameters:
+    - in: path
+      type: string
+      name: BatchId
+      required: true
+  post:
+    summary: Cancel a Job
+    description: |
+      Cancels jobs that are still pending, returns number of jobs cancelled.
+      Moves a 'running' batch job to 'cancelled'.
+    operationId: cancel_batch_job
+    tags:
+    - batch
+    responses:
+      '200':
+        schema:
+          example: 
+            canceled_jobs: 4
