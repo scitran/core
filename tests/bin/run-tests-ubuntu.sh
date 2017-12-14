@@ -11,12 +11,9 @@ Usage:
 
 Runs linting and all tests if no options are provided.
 Runs subset of tests when using the filtering options.
-Displays coverage report if all tests ran and passed.
 
-Assumes running in scitran-core container or that core and all of its
-dependencies are installed the same way as in the Dockerfile, and that
-    * TODO scitran-core instance is running at...
-    * TODO mongodb is runnin at...
+Assumes running in a scitran/core:testing container or that core and all
+of its dependencies are installed the same way as in the Dockerfile.
 
 Options:
     -h, --help           Print this help and exit
@@ -24,17 +21,22 @@ Options:
     -l, --lint           Run linting
     -u, --unit           Run unit tests
     -i, --integ          Run integration tests
-    -a, --abao           Run abao tests
     -- PYTEST_ARGS       Arguments passed to py.test
 
+Envvars (required for integration tests):
+    SCITRAN_SITE_API_URL            URI to a running core instance (including /api)
+    SCITRAN_CORE_DRONE_SECRET       API shared secret
+    SCITRAN_PERSISTENT_DB_URI       Mongo URI to the scitran DB
+    SCITRAN_PERSISTENT_DB_LOG_URI   Mongo URI to the scitran log DB
+
 "
+
 
 main() {
     export RUN_ALL=true
     local RUN_LINT=false
     local RUN_UNIT=false
     local RUN_INTEG=false
-    local RUN_ABAO=false
     local PYTEST_ARGS=
 
     while [ $# -gt 0 ]; do
@@ -50,10 +52,6 @@ main() {
             -i|--integ)
                 RUN_ALL=false
                 RUN_INTEG=true
-                ;;
-            -a|--abao)
-                RUN_ALL=false
-                RUN_ABAO=true
                 ;;
             --)
                 shift
@@ -78,8 +76,7 @@ main() {
         RUN_LINT=true
         RUN_UNIT=true
         RUN_INTEG=true
-        RUN_ABAO=true
-    elif ${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG} && ${RUN_ABAO}; then
+    elif ${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG}; then
         # All filtering options were used, the same as none
         RUN_ALL=true
     fi
@@ -103,17 +100,6 @@ main() {
     if ${RUN_INTEG}; then
         log "Running integration tests ..."
         PYTHONDONTWRITEBYTECODE=1 py.test tests/integration_tests/python $PYTEST_ARGS
-    fi
-
-    if ${RUN_ABAO}; then
-        log "Running abao tests ..."
-        # Create resources that Abao relies on
-        python tests/integration_tests/abao/load_fixture.py
-
-        local BASEDIR=$(pwd)
-        cd raml/schemas/definitions
-        abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
-        cd $BASEDIR
     fi
 }
 
