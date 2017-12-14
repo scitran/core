@@ -1383,7 +1383,7 @@ def upgrade_to_41():
         { "_id": "PDF",             "regex": "\\.pdf$" },
         { "_id": "Presentation",    "regex": "\\.(ppt|pptx)$" },
         { "_id": "Spreadsheet",     "regex": "\\.(xls|xlsx)$" },
-        { "_id": "Tabular data",    "regex": "\\.([ct]sv\\.gz|[ct]sv)$" },
+        { "_id": "Tabular Data",    "regex": "\\.([ct]sv\\.gz|[ct]sv)$" },
         { "_id": "Video",           "regex": "\\.(mpeg|mpg|mov|mp4|m4v|mts)$" }
     ]
 
