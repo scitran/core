@@ -23,6 +23,7 @@ EOF
 function main() {
     local DOCKER_BUILD=true
     local TEST_ARGS=
+    local MONGO_VERSION=3.2
 
     while [[ "$#" > 0 ]]; do
         case "$1" in
@@ -47,7 +48,7 @@ function main() {
     docker run -d \
         --name scitran-core-test-mongo \
         --network scitran-core-test-network \
-        mongo
+        mongo:${MONGO_VERSION}
 
     # Execute tests
     docker run -it \
