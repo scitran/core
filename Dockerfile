@@ -87,7 +87,6 @@ COPY . /var/scitran/code/api/
 
 COPY docker/uwsgi-entrypoint.sh /var/scitran/
 COPY docker/uwsgi-config.ini /var/scitran/config/
-COPY docker/newrelic.ini /var/scitran/config/
 
 
 

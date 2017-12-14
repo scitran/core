@@ -1,7 +1,6 @@
 import atexit
 import json
 import os
-import sys
 import traceback
 import webapp2
 
@@ -66,18 +65,4 @@ def app_factory(*_, **__):
     application = webapp2.WSGIApplication(endpoints, debug=config.__config['core']['debug'])
     application.router.set_dispatcher(dispatcher)
     application.request_class = SciTranRequest
-    # configure new relic
-    if config.__config['core']['newrelic']:
-        try:
-            import newrelic.agent, newrelic.api.exceptions
-            newrelic.agent.initialize(config.__config['core']['newrelic'])
-            application = newrelic.agent.WSGIApplicationWrapper(application)
-            log.info('New Relic detected and loaded. Monitoring enabled.')
-        except ImportError:
-            log.critical('New Relic libraries not found.')
-            sys.exit(1)
-        except newrelic.api.exceptions.ConfigurationError:
-            log.critical('New Relic detected, but configuration invalid.')
-            sys.exit(1)
-
     return application

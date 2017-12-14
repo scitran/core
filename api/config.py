@@ -29,7 +29,6 @@ DEFAULT_CONFIG = {
         'debug': False,
         'log_level': 'info',
         'access_log_enabled': False,
-        'newrelic': None,
         'drone_secret': None,
     },
     'site': {
