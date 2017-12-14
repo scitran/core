@@ -2,6 +2,7 @@
 API request handlers for the jobs module
 """
 import bson
+import copy
 import os
 import StringIO
 from jsonschema import ValidationError
@@ -26,7 +27,7 @@ from .gears import validate_gear_config, get_gears, get_gear, get_invocation_sch
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
-from .rules import validate_regexes
+from .rules import create_jobs, validate_regexes
 
 
 class GearsHandler(base.RequestHandler):
@@ -505,19 +506,24 @@ class JobHandler(base.RequestHandler):
 
         # Remove flag from files
         container = j.destination.get()
+        container_before = copy.deepcopy(container)
         for f in container.get('files'):
             if f['origin'] == {'type': 'job', 'id': _id}:
                 del f['from_failed_job']
-        collection = pluralize(j.destination.type)
+        cont_name = pluralize(j.destination.type)
         query = {'_id': container['_id']}
         updates = {'$set': {'files': container['files']}}
-        config.db[collection].update_one(query, updates)
+        config.db[cont_name].update_one(query, updates)
 
         # Apply metadata
         hierarchy.update_container_hierarchy(j.produced_metadata, container['_id'], j.destination.type)
 
+        # Mark and save job
         j.failed_output_accepted = True
         j.save()
+
+        # Create any automatic jobs for the accepted files
+        create_jobs(config.db, container_before, container, cont_name)
 
 
 class BatchHandler(base.RequestHandler):
