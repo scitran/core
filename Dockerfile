@@ -12,7 +12,7 @@ RUN ./configure --prefix=/usr/local --modules=lib --state=/var/local/unit --pid=
 
 FROM python:2.7-alpine3.6 as dist
 
-RUN apk add --no-cache build-base git py-openssl
+RUN apk add --no-cache git
 
 COPY --from=build /usr/local/sbin/unitd /usr/local/sbin/unitd
 COPY --from=build /usr/local/lib/python.unit.so /usr/local/lib/python.unit.so
