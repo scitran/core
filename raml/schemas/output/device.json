@@ -1,17 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type":"object",
-  "properties":{
-      "_id":{"$ref":"../definitions/device.json#/definitions/id"},
-      "method":{"$ref":"../definitions/device.json#/definitions/method"},
-      "name":{"$ref":"../definitions/device.json#/definitions/name"},
-      "errors":{"$ref":"../definitions/device.json#/definitions/errors"},
-      "info":{"$ref":"../definitions/device.json#/definitions/info"},
-      "interval":{"$ref":"../definitions/device.json#/definitions/interval"},
-      "last_seen":{"$ref":"../definitions/device.json#/definitions/last_seen"}
-    },
-    "additionalProperties":false,
-    "required":[
-       "_id", "name", "method", "last_seen"
-    ]
+  "allOf":[{"$ref":"../definitions/device.json#/definitions/device-output"}]
 }

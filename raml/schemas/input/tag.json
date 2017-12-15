@@ -2,6 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "allOf":[{"$ref":"../definitions/tag.json#/definitions/tag"}],
   "example": {
-  	"$ref": "../../examples/input/tag.json"
-  }
+	    "value":"example-tag"
+	}
 }

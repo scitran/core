@@ -9,17 +9,16 @@
 							"type": ["array", "null"],
 						 	"items": {"$ref":"file.json#/definitions/file"}
 						},
-        "user":     	{"type": "string"},
 		"analysis-input":{
 			"type":"object",
 			"properties":{
 				"inputs":      {"$ref":"#/definitions/inputs"},
 				"outputs":     {"$ref":"#/definitions/outputs"},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
-				"description": {"type":"string"},
+				"description": {"$ref":"common.json#/definitions/description"},
 				"job":         {"$ref":"common.json#/definitions/objectid"},
 				"label":       {"$ref":"common.json#/definitions/label"},
-				"user":        {"$ref":"#/definitions/user"}
+				"user":        {"$ref":"common.json#/definitions/user-id"}
 			},
 		    "additionalProperties": false
 		},
@@ -45,13 +44,27 @@
 					]
 				},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
-				"description": {"type":"string"},
+				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"},
 				"user":        {"$ref":"common.json#/definitions/user-id"},
 				"created":     {"$ref":"created-modified.json#/definitions/created"},
 				"modified":    {"$ref":"created-modified.json#/definitions/modified"}
 			},
 			"required":["_id", "files", "label", "user", "created", "modified"]
+		},
+		"analysis-job": {
+			"type": "object",
+				"properties":{
+					"analysis":{
+					"type":"object",
+					"allOf":[{"$ref":"#/definitions/analysis-input"}],
+					"required":["label"]
+				}
+			},
+			"job":{
+				"type":"object",
+				"allOf":[{"$ref":"job.json#/definitions/job-input"}]
+			}
 		}
     }
 }

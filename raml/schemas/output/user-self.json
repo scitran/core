@@ -1,26 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type":"object",
-  "properties":{
-    "_id":{"$ref":"../definitions/user.json#/definitions/_id"},
-    "firstname":{"$ref":"../definitions/user.json#/definitions/firstname"},
-    "lastname":{"$ref":"../definitions/user.json#/definitions/lastname"},
-    "email":{"$ref":"../definitions/user.json#/definitions/email"},
-    "avatar":{"$ref":"../definitions/user.json#/definitions/avatar"},
-    "avatars":{"$ref":"../definitions/user.json#/definitions/avatars"},
-    "root":{"$ref":"../definitions/user.json#/definitions/root"},
-    "disabled":{"$ref":"../definitions/user.json#/definitions/disabled"},
-    "preferences":{"$ref":"../definitions/user.json#/definitions/preferences"},
-    "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-    "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
-    "api_key":{"$ref":"../definitions/user.json#/definitions/api_key"},
-    "wechat":{"$ref":"../definitions/user.json#/definitions/wechat"},
-    "firstlogin":{"$ref":"../definitions/user.json#/definitions/firstlogin"},
-    "lastlogin":{"$ref":"../definitions/user.json#/definitions/lastlogin"}
-  },
-  "additionalProperties":false,
-  "required":[
-     "_id", "firstname", "lastname",
-     "root", "email", "created", "modified"
-  ]
+  "allOf": [{"$ref":"../definitions/user.json#/definitions/user-output-api-key"}]
 }

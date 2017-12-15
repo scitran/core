@@ -85,7 +85,34 @@ $template_arguments:
 
 # ===== Analyses =====
 /sessions/{SessionId}/analyses:
-  $template: templates/analyses-list.yaml
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: 'SessionId'
+  post:
+    summary: Create an analysis and upload files.
+    description: |
+      When query param "job" is "true", send JSON to create
+      an analysis and job.  Otherwise, multipart/form-data
+      to upload files and create an analysis.
+    operationId: add_session_analysis
+    tags:
+    - 'sessions'
+    parameters:
+      - in: body
+        name: body
+        schema: 
+            $ref: schemas/input/analysis-job.json
+      - in: query
+        type: boolean
+        name: job
+    responses:
+      '200':
+        description: ''
+
+
+
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
 /sessions/{SessionId}/analyses/{AnalysisId}/files:

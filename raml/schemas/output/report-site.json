@@ -1,27 +1,4 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type":"object",
-    "properties":{
-        "group_count":{"type":"integer"},
-        "groups":{
-            "type":"array",
-            "items":{
-                "type":"object",
-                "properties":{
-                    "project_count":{"type":"integer"},
-                    "label":{
-                        "oneOf":[
-                            {"$ref":"../definitions/group.json#/definitions/label"},
-                            {"type":"null"}
-                        ]
-                    },
-                    "session_count":{"type":"integer"}
-                },
-                "additionalProperties":false,
-                "required":["project_count", "label", "session_count"]
-            }
-        }
-    },
-    "additionalProperties":false,
-    "required":["group_count", "groups"]
+    "$ref": "../definitions/report.json#/definitions/report-site"
 }

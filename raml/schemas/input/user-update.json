@@ -6,6 +6,8 @@
     {"$ref":"../definitions/user.json#/definitions/user-input"}
   ],
   "example": {
-  	"$ref": "../../examples/input/user-update.json"
-  }
+		"firstname": "Jane",
+		"lastname": "Smith",
+		"email": "jane.smith@gmail.com"
+	}
 }

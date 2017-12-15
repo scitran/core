@@ -5,6 +5,7 @@
   "key_fields": ["_id"],
   "required": ["_id", "access"],
   "example": {
-  	"$ref": "../../examples/input/permission.json"
-  }
+	    "_id":"coltonlw@flywheel.io",
+	    "access":"admin"
+	}
 }

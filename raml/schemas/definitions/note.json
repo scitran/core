@@ -16,11 +16,11 @@
     "note-output":{
       "type":"object",
       "properties":{
-        "_id":{"$ref":"../definitions/objectid.json"},
+        "_id":{"$ref":"common.json#/definitions/objectid"},
         "text":{"$ref":"#/definitions/text"},
-        "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-        "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
-        "user":{"$ref":"../definitions/user.json#/definitions/_id"}
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"},
+        "user":{"$ref":"common.json#/definitions/user-id"}
       },
       "additionalProperties": false,
       "required":["_id", "text", "created", "modified", "user"]

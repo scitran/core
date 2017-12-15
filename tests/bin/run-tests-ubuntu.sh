@@ -19,7 +19,6 @@ Options:
     -l, --lint           Run linting
     -u, --unit           Run unit tests
     -i, --integ          Run integration tests
-    -a, --abao           Run abao tests
     -h, --help           Print this help and exit
     -- PYTEST_ARGS       Arguments passed to py.test
 
@@ -40,7 +39,6 @@ function main() {
     local RUN_LINT=false
     local RUN_UNIT=false
     local RUN_INTEG=false
-    local RUN_ABAO=false
     local PYTEST_ARGS=
 
     while [[ "$#" > 0 ]]; do
@@ -48,7 +46,6 @@ function main() {
             -l|--lint)      RUN_ALL=false; RUN_LINT=true      ;;
             -u|--unit)      RUN_ALL=false; RUN_UNIT=true      ;;
             -i|--integ)     RUN_ALL=false; RUN_INTEG=true     ;;
-            -a|--abao)      RUN_ALL=false; RUN_ABAO=true      ;;
             -h|--help)      usage;                     exit 0 ;;
             --)             PYTEST_ARGS="${@:2}";      break  ;;
             *) echo "Invalid argument: $1" >&2; usage; exit 1 ;;
@@ -61,8 +58,7 @@ function main() {
         RUN_LINT=true
         RUN_UNIT=true
         RUN_INTEG=true
-        RUN_ABAO=true
-    elif ${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG} && ${RUN_ABAO}; then
+    elif ${RUN_LINT} && ${RUN_UNIT} && ${RUN_INTEG}; then
         # All filtering options were used, the same as none
         RUN_ALL=true
     fi
@@ -100,7 +96,7 @@ function main() {
         py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
     fi
 
-    if ${RUN_INTEG} || ${RUN_ABAO}; then
+    if ${RUN_INTEG}; then
         echo "Spinning up dependencies ..."
         uwsgi --http "localhost:8081" --master --http-keepalive \
             --so-keepalive --add-header "Connection: Keep-Alive" \
@@ -123,37 +119,9 @@ function main() {
             printf '.'
             sleep 1
         done
-    fi
 
-    if ${RUN_INTEG}; then
         echo "Running integration tests ..."
         py.test tests/integration_tests/python $PYTEST_ARGS
-    fi
-
-    if ${RUN_ABAO}; then
-        echo "Running abao tests ..."
-        # Create resources that Abao relies on
-        python tests/integration_tests/abao/load_fixture.py
-
-        # If no VIRTUAL_ENV, make sure /usr/local/bin is in the path
-        if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-            PATH="/usr/local/bin:$PATH"
-            npm install tests/integration_tests
-        else
-            npm install --global tests/integration_tests
-        fi
-
-        PATH="$(npm bin):$PATH"
-
-        # Allow us to require modules from package.json,
-        # since abao_test_hooks.js is not being called from the package directory
-        integration_test_node_modules="$(pwd)/node_modules/scitran-core-integration-tests/node_modules"
-
-        # Have to change into definitions directory to resolve
-        # relative $ref's in the jsonschema's
-        pushd raml/schemas/definitions
-        NODE_PATH="$integration_test_node_modules" abao ../../api.raml "--server=$SCITRAN_SITE_API_URL" "--hookfiles=../../../tests/integration_tests/abao/abao_test_hooks.js"
-        popd
     fi
 }
 

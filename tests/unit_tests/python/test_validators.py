@@ -121,13 +121,30 @@ def pytest_generate_tests(metafunc):
 
 # Helper to load the example data from a file
 def load_example_data(schema_type, schema_name):
+    example_path = None
     example_data = None
-    relpath = os.path.join(schema_type, '{0}.json'.format(schema_name))
+    # First check if there is example data in the schema file
+    relpath = os.path.join(SCHEMAS_PATH, schema_type, '{0}.json'.format(schema_name))
+    if os.path.exists(relpath):
+        with open(relpath) as f:
+            schema_data = json.load(f)
+        if schema_data and 'example' in schema_data:
+            example_data = schema_data['example']
+            if '$ref' in example_data:
+                # Resolve ref
+                example_path = os.path.join(relpath, example_data['$ref'])
+                example_data = None
+            else:
+                return schema_data['example']
 
-    if relpath in EXAMPLES_MAP:
-        example_path = os.path.join(EXAMPLES_PATH, EXAMPLES_MAP[relpath])
-    else:
-        example_path = os.path.join(EXAMPLES_PATH, relpath)
+    # Then check in the examples folder
+    if example_path is None or not os.path.exists(example_path):
+        relpath = os.path.join(schema_type, '{0}.json'.format(schema_name))
+
+        if relpath in EXAMPLES_MAP:
+            example_path = os.path.join(EXAMPLES_PATH, EXAMPLES_MAP[relpath])
+        else:
+            example_path = os.path.join(EXAMPLES_PATH, relpath)
 
     if os.path.exists(example_path):
         with open(example_path) as f:

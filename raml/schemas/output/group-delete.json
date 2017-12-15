@@ -1,9 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type":"object",
-  "properties":{
-      "deleted":{
-          "type":"number"
-      }
-  }
+  "$ref": "../definitions/common.json#/definitions/deleted-count"
 }

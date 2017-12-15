@@ -1,59 +1,52 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
-        "curator":{"$ref":"../definitions/user.json#/definitions/_id"},
-        "description":  {"type": "string"},
         "collection-input":{
             "type": "object",
             "properties": {
-                "public": {"$ref": "../definitions/container.json#/definitions/public"},
-                "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "info": {"$ref": "../definitions/container.json#/definitions/info"},
-                "description":  {"$ref": "../definitions/project.json#/definitions/description"}
+                "public":       {"$ref": "container.json#/definitions/public"},
+                "label":        {"$ref": "common.json#/definitions/label"},
+                "info":         {"$ref": "container.json#/definitions/info"},
+                "description":  {"$ref": "common.json#/definitions/description"}
             },
             "additionalProperties": false
         },
         "collection-input-with-contents":{
             "type": "object",
             "properties": {
-                "public": {"$ref": "../definitions/container.json#/definitions/public"},
-                "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "info": {"$ref": "../definitions/container.json#/definitions/info"},
-                "description":  {"$ref": "../definitions/project.json#/definitions/description"},
-                "contents": { "type": "object" }
+                "public":       {"$ref": "container.json#/definitions/public"},
+                "label":        {"$ref": "common.json#/definitions/label"},
+                "info":         {"$ref": "container.json#/definitions/info"},
+                "description":  {"$ref": "common.json#/definitions/description"},
+                "contents":     { "type": "object" }
             },
             "additionalProperties": false
         },
         "collection-output":{
             "type": "object",
             "properties": {
-                "_id":{"$ref":"../definitions/objectid.json#"},
-                "public": {"$ref": "../definitions/container.json#/definitions/public"},
-                "label": {"$ref": "../definitions/container.json#/definitions/label"},
-                "description": {"$ref": "../definitions/collection.json#/definitions/description"},
-                "info": {"$ref": "../definitions/container.json#/definitions/info"},
-                "info_exists":  {"$ref": "../definitions/container.json#/definitions/info_exists"},
-                "curator": {"$ref":"#/definitions/curator"},
-                "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-                "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
+                "_id":         {"$ref":"common.json#/definitions/objectid"},
+                "public":      {"$ref": "container.json#/definitions/public"},
+                "label":       {"$ref": "common.json#/definitions/label"},
+                "description": {"$ref": "common.json#/definitions/description"},
+                "info":        {"$ref": "container.json#/definitions/info"},
+                "info_exists": {"$ref": "container.json#/definitions/info_exists"},
+                "curator":     {"$ref": "common.json#/definitions/user-id"},
+                "created":     {"$ref": "created-modified.json#/definitions/created"},
+                "modified":    {"$ref": "created-modified.json#/definitions/modified"},
                 "permissions":{
                     "type":"array",
-                    "items":{"$ref":"../definitions/permission.json#/definitions/permission-output-default-required"}
+                    "items":{"$ref":"permission.json#/definitions/permission-output-default-required"}
                 },
                 "files":{
                     "type":"array",
-                    "items":{
-                        "allOf":[{"$ref":"../definitions/file.json#/definitions/file-output"}]
-                    }
+                    "items":{"$ref":"file.json#/definitions/file-output"}
                 },
-                "notes":{"allOf":[{"$ref":"../definitions/note.json#/definitions/notes-list-output"}]},
-                "tags":{"allOf":[{"$ref":"../definitions/tag.json#/definitions/tag-output-list"}]},
+                "notes": {"$ref":"note.json#/definitions/notes-list-output"},
+                "tags":  {"$ref":"tag.json#/definitions/tag-output-list"},
                 "analyses":{
                     "type":"array",
-                    "items":{
-                        "type":"object",
-                        "allOf":[{"$ref":"../definitions/analysis.json#/definitions/analysis-output"}]
-                    }
+                    "items":{"$ref":"analysis.json#/definitions/analysis-output"}
                 }
             },
             "additionalProperties":false

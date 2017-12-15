@@ -1,12 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "_id":            { "type": "string" },
     "access":         { "enum": ["ro", "rw", "admin"] },
     "permission":{
       "type":"object",
       "properties":{
-        "_id":{"$ref":"#/definitions/_id"},
+        "_id":{"$ref":"common.json#/definitions/user-id"},
         "access":{"$ref":"#/definitions/access"}
       },
       "additionalProperties": false
@@ -14,6 +13,11 @@
     "permission-output-default-required":{
       "allOf":[{"$ref":"#/definitions/permission"}],
       "required":["_id", "access"]
+    },
+    "permission-output-list": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/permission-output-default-required"},
+      "uniqueItems": true
     }
   }
 }

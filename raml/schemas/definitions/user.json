@@ -1,11 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "_id":              {
-                          "format": "email",
-                          "title": "ID",
-                          "type": "string"
-                        },
     "firstname":        {
                           "maxLength": 64,
                           "minLength": 1,
@@ -42,7 +37,7 @@
       "type":"object",
       "properties":{
         "key":            {"type": "string"},
-        "created":        {"$ref":"../definitions/created-modified.json#/definitions/created"},
+        "created":        {"$ref":"created-modified.json#/definitions/created"},
         "last_used":      {}
       },
       "additionalProperties":false
@@ -50,7 +45,7 @@
     "user-input":{
       "type":"object",
       "properties":{
-        "_id":{"$ref":"#/definitions/_id"},
+        "_id":{"$ref":"common.json#/definitions/user-id"},
         "firstname":{"$ref":"#/definitions/firstname"},
         "lastname":{"$ref":"#/definitions/lastname"},
         "email":{"$ref":"#/definitions/email"},
@@ -68,7 +63,7 @@
     "user-output":{
       "type":"object",
       "properties":{
-        "_id":{"$ref":"#/definitions/_id"},
+        "_id":{"$ref":"common.json#/definitions/user-id"},
         "firstname":{"$ref":"#/definitions/firstname"},
         "lastname":{"$ref":"#/definitions/lastname"},
         "email":{"$ref":"#/definitions/email"},
@@ -80,10 +75,35 @@
         "wechat":{"$ref":"#/definitions/wechat"},
         "firstlogin":{"$ref":"#/definitions/firstlogin"},
         "lastlogin":{"$ref":"#/definitions/lastlogin"},
-        "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
-        "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"}
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"}
       },
       "additionalProperties":false
+    },
+    "user-output-api-key": {
+      "type":"object",
+      "properties":{
+        "_id":{"$ref":"common.json#/definitions/user-id"},
+        "api_key":{"$ref":"#/definitions/api_key"},
+        "firstname":{"$ref":"#/definitions/firstname"},
+        "lastname":{"$ref":"#/definitions/lastname"},
+        "email":{"$ref":"#/definitions/email"},
+        "avatar":{"$ref":"#/definitions/avatar"},
+        "avatars":{"$ref":"#/definitions/avatars"},
+        "root":{"$ref":"#/definitions/root"},
+        "disabled":{"$ref":"#/definitions/disabled"},
+        "preferences":{"$ref":"#/definitions/preferences"},
+        "wechat":{"$ref":"#/definitions/wechat"},
+        "firstlogin":{"$ref":"#/definitions/firstlogin"},
+        "lastlogin":{"$ref":"#/definitions/lastlogin"},
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"}
+      },
+      "additionalProperties":false,
+      "required":[
+         "_id", "firstname", "lastname",
+         "root", "email", "created", "modified"
+      ]      
     }
   }
 }

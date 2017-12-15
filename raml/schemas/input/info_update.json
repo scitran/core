@@ -1,25 +1,4 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "Helper endpoint for editing an object's info key",
-    "type": "object",
-    "oneOf": [
-        {
-            "properties": {
-                "set":      {"type": "object", "minProperties": 1},
-                "delete":   {
-                    "type": "array",
-                    "uniqueItems": true,
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }, "additionalProperties": false
-        },
-        {
-            "properties": {
-                "replace":      {"type": "object"}
-            }, "additionalProperties": false
-        }
-    ]
+    "$ref": "../definitions/info.json#/definitions/info-update-input"
 }

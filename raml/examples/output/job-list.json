@@ -1,13 +1,12 @@
 [
     {
-        "inputs": [
-          {
-            "input": "dicom",
-            "type": "acquisition",
-            "id": "57d75ec38e4eb9699b3c245e",
-            "name": "1_1_dicom.zip"
-          }
-        ],
+        "inputs": {
+            "dicom": {
+                "type": "acquisition",
+                "id": "57d75ec38e4eb9699b3c245e",
+                "name": "1_1_dicom.zip"
+            }
+        },
         "attempt": 1,
         "gear_id": "dcm-convert",
         "tags": [
@@ -20,20 +19,19 @@
         "modified": "2016-08-11T12:46:12.593000+00:00",
         "created": "2016-08-11T12:46:12.593000+00:00",
         "state": "pending",
-        "_id": "57ac7394c700190017123fb8",
+        "id": "57ac7394c700190017123fb8",
         "config":{
             "speed":3
         }
     },
     {
-        "inputs": [
-            {
-                "input":"dicom",
+        "inputs": {
+            "dicom": {
                 "type": "acquisition",
                 "id": "57ac7394c700190017123fb7",
                 "name": "8403_4_1_t1_dicom.zip"
             }
-        ],
+        },
         "attempt": 1,
         "gear_id": "dcm_convert",
         "tags": [
@@ -47,7 +45,7 @@
         "modified": "2016-08-11T13:02:09.055000+00:00",
         "created": "2016-08-11T13:02:09.055000+00:00",
         "state": "pending",
-        "_id": "57ac77515e325c0018cd17cf",
+        "id": "57ac77515e325c0018cd17cf",
         "config":{
             "speed":3
         }

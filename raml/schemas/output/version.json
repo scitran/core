@@ -1,16 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "properties": {
-    "_id": {
-      "type": "string"
-    },
-    "database": {
-      "type": "integer"
-    }
-  },
-  "required": [
-    "_id",
-    "database"
-  ]
+  "$ref": "../definitions/version.json#/definitions/version-output"
 }

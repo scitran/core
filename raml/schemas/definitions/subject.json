@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
-        "_id":              {"$ref":"../definitions/objectid.json#"},
+        "_id":              {"$ref":"common.json#/definitions/objectid"},
         "firstname":        { "type": "string", "maxLength": 64 },
         "lastname":         { "type": "string", "maxLength": 64 },
         "age":              { "type": ["integer", "null"] },
@@ -29,9 +29,7 @@
               "info":             {"$ref":"#/definitions/info"},
               "files":{
                   "type":"array",
-                  "items":{
-                      "allOf":[{"$ref":"../definitions/file.json#/definitions/file-input"}]
-                  }
+                  "items":{"$ref":"file.json#/definitions/file-input"}
               }
             },
             "additionalProperties": false
@@ -54,9 +52,7 @@
               "info_exists":      {"$ref": "../definitions/container.json#/definitions/info_exists"},
               "files":{
                   "type":"array",
-                  "items":{
-                      "allOf":[{"$ref":"../definitions/file.json#/definitions/file-output"}]
-                  }
+                  "items":{"$ref":"file.json#/definitions/file-output"}
               }
             },
             "additionalProperties": false
