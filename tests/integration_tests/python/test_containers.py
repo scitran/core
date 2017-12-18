@@ -883,9 +883,120 @@ def test_edit_file_info(data_builder, as_admin, file_form):
     assert r.json()['info'] == {}
 
 
+def test_edit_subject_info(data_builder, as_admin, as_user):
+    """
+    These tests can be removed when subject becomes it's own container
+    """
+
+    project = data_builder.create_project()
+    session = data_builder.create_session()
 
 
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert not r.json().get('info')
+
+    # Attempt to set subject info at project level
+    r = as_admin.post('/projects/' + project + '/subject/info', json={
+        'replace': {'not_going': 'to_happen'}
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'delete': ['map'],
+        'replace': {'not_going': 'to_happen'}
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'delete': {'a': 'map'},
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'set': 'cannot do this',
+    })
+    assert r.status_code == 400
+
+    # Attempt full replace of info
+    subject_info = {
+        'a': 'b',
+        'test': 123,
+        'map': {
+            'a': 'b'
+        },
+        'list': [1,2,3]
+    }
 
 
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'replace': subject_info
+    })
+    assert r.ok
 
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert r.json()['info'] == subject_info
+
+
+    # Use 'set' to add new key
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'set': {'new': False}
+    })
+    assert r.ok
+
+    subject_info['new'] = False
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert r.json()['info'] == subject_info
+
+
+    # Use 'set' to do full replace of "map" key
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'set': {'map': 'no longer a map'}
+    })
+    assert r.ok
+
+    subject_info['map'] = 'no longer a map'
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert r.json()['info'] == subject_info
+
+
+    # Use 'delete' to unset "map" key
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'delete': ['map', 'a']
+    })
+    assert r.ok
+
+    subject_info.pop('map')
+    subject_info.pop('a')
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert r.json()['info'] == subject_info
+
+
+    # Use 'delete' on keys that do not exist
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'delete': ['madeup', 'keys']
+    })
+    assert r.ok
+
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert r.json()['info'] == subject_info
+
+
+    # Use 'replace' to set file info to {}
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'replace': {}
+    })
+    assert r.ok
+
+    r = as_admin.get('/sessions/' + session + '/subject')
+    assert r.ok
+    assert r.json()['info'] == {}
 
