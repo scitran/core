@@ -230,7 +230,12 @@ class ContainerStorage(object):
                     f['info_exists'] = bool(f.pop('info', False))
         return results
 
-    def modify_info(self, _id, payload):
+    def modify_info(self, _id, payload, modify_subject=False):
+
+        # Support modification of subject info
+        # Can be removed when subject becomes a standalone container
+        info_key = 'subject.info' if modify_subject else 'info'
+
         update = {}
         set_payload = payload.get('set')
         delete_payload = payload.get('delete')
@@ -242,7 +247,7 @@ class ContainerStorage(object):
         if replace_payload is not None:
             update = {
                 '$set': {
-                    'info': util.mongo_sanitize_fields(replace_payload)
+                    info_key: util.mongo_sanitize_fields(replace_payload)
                 }
             }
 
@@ -250,11 +255,11 @@ class ContainerStorage(object):
             if set_payload:
                 update['$set'] = {}
                 for k,v in set_payload.items():
-                    update['$set']['info.' + k] = util.mongo_sanitize_fields(v)
+                    update['$set'][info_key + '.' + k] = util.mongo_sanitize_fields(v)
             if delete_payload:
                 update['$unset'] = {}
                 for k in delete_payload:
-                    update['$unset']['info.' + k] = ''
+                    update['$unset'][info_key + '.' + k] = ''
 
         if self.use_object_id:
             _id = bson.objectid.ObjectId(_id)

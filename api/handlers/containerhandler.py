@@ -510,6 +510,13 @@ class ContainerHandler(base.RequestHandler):
 
     def modify_info(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
+
+        # Support subject info modification in new style
+        # Will be removed when subject becomes stand-alone container
+        modify_subject = True if 'subject' in kwargs else False
+        if modify_subject and cont_name != 'sessions':
+            self.abort(400, 'Subject info modification only allowed via session.')
+
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
         container = self._get_container(_id)
@@ -519,7 +526,7 @@ class ContainerHandler(base.RequestHandler):
         validators.validate_data(payload, 'info_update.json', 'input', 'POST')
 
         permchecker(noop)('PUT', _id=_id)
-        self.storage.modify_info(_id, payload)
+        self.storage.modify_info(_id, payload, modify_subject=modify_subject)
 
         return
 
