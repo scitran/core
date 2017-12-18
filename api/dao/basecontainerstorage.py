@@ -220,9 +220,6 @@ class ContainerStorage(object):
             replace_info_with_bool = True
             projection.pop('files.info', None)
             projection.pop('info', None)
-            if not projection:
-                # if we've removed everything, set it as None otherwise only the _id is returned
-                project = None
         else:
             replace_info_with_bool = False
 
