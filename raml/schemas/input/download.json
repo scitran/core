@@ -3,6 +3,11 @@
     "$ref": "../definitions/download.json#/definitions/download-input",
 
     "example": {
-        "$ref": "../../examples/create_download_incomplete_and_dicom.json"
+		"optional": true,
+		"nodes": [{"level":"project", "_id":"57abe1589e512c513d42cb83"}],
+		"filters":[{
+			"tags":{"+":["incomplete"]},
+			"types":{"+":["dicom"]}
+		}]    	
     }
 }

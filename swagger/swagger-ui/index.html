@@ -30,11 +30,6 @@
     .topbar .download-url-wrapper {
         display: none !important;
     }
-
-    /* Temporarily disable errors until I can fix $refs */
-    .swagger-ui .errors-wrapper {
-      display: none !important;
-    }
   </style>
 </head>
 
@@ -87,6 +82,9 @@ window.onload = function() {
     dom_id: '#swagger-ui',
     deepLinking: true,
     validatorUrl: null,
+    defaultModelExpandDepth: 2,
+    defaultModelsExpandDepth: 0,
+    filter: true,
     presets: [
       SwaggerUIBundle.presets.apis,
       SwaggerUIStandalonePreset
