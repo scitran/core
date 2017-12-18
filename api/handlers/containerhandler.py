@@ -57,7 +57,7 @@ class ContainerHandler(base.RequestHandler):
             'parent_storage': containerstorage.GroupStorage(),
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
-            'list_projection': {'info': 0},
+            'list_projection': {'info': 0, 'files.info': 0},
             'propagated_properties': ['archived', 'public'],
             'children_cont': 'sessions'
         },
@@ -313,8 +313,7 @@ class ContainerHandler(base.RequestHandler):
         self.storage = self.config['storage']
 
         projection = self.config['list_projection'].copy()
-        if self.is_true('info'):
-            projection.pop('info')
+
         if self.is_true('permissions'):
             if not projection:
                 projection = None
