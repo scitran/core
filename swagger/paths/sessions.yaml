@@ -66,7 +66,7 @@ $template_arguments:
 /sessions/{SessionId}/notes/{NoteId}:
   $template: templates/notes-note.yaml
 
-'/sessions/{SessionId}/acquisitions':
+/sessions/{SessionId}/acquisitions:
   parameters:
     - in: path
       type: string
@@ -83,13 +83,14 @@ $template_arguments:
         schema:
           $ref: schemas/output/acquisition-list.json
 
+
 # ===== Analyses =====
 /sessions/{SessionId}/analyses:
   parameters:
-    - required: true
+    - in: path
       type: string
-      in: path
-      name: 'SessionId'
+      required: true
+      name: SessionId
   post:
     summary: Create an analysis and upload files.
     description: |
@@ -103,15 +104,13 @@ $template_arguments:
       - in: body
         name: body
         schema: 
-            $ref: schemas/input/analysis-job.json
+          $ref: schemas/input/analysis-job.json
       - in: query
         type: boolean
         name: job
     responses:
       '200':
         description: ''
-
-
 
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml

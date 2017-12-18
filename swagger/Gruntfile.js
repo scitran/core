@@ -71,7 +71,7 @@ module.exports = function(grunt) {
 		 */
 		flattenSwagger: {
 			core: {
-				apiFile: 'index.yaml',
+				src: 'index.yaml',
 				dest: 'build/swagger-flat.json'
 			}
 		},
@@ -81,19 +81,9 @@ module.exports = function(grunt) {
 		 */
 		schemasToDefs: {
 			core: {
-				srcFile: 'build/swagger-flat.json',
-				dstFile: 'build/swagger-ui.json',
-				files: [
-					{
-						expand: true,
-						cwd: '../raml/schemas', 
-						src: [
-							'definitions/*.json',
-							'input/*.json',
-							'output/*.json'
-						]
-					}
-				]
+				src: 'build/swagger-flat.json',
+				dest: 'build/swagger-ui.json',
+				schemasDir: '../raml/schemas'
 			}
 		},
 

@@ -51,13 +51,21 @@ function makeDefinitionName(relpath) {
 
 var Schemas = function(options) {
 	options = options||{};
-	this.cwd = options.cwd||process.cwd();
+	this.cwd = path.resolve(options.cwd||process.cwd());
 	this.log = options.log||function() {
 		console.log.apply(console, arguments);
 	};
 
 	this.definitions = {};
 	this.definitions_by_path = {};
+};
+
+Schemas.prototype.loadDefs = function() {
+	var defsDir = path.join(this.cwd, 'definitions');
+	fs.readdirSync(defsDir).forEach(function(filename) {
+		this.load(path.join(defsDir, filename));
+	}.bind(this));
+	this.resolveDefs();
 };
 
 // Here's the plan
@@ -75,6 +83,7 @@ Schemas.prototype.load = function(file) {
 		delete schema['definitions'];
 	}
 	if( schema.hasOwnProperty('type') ) {
+		this.log('Warning - schema at ' + relpath + ' has a top-level definition');
 		this.addSchema(relpath, schema);
 	}
 };
@@ -119,7 +128,7 @@ Schemas.prototype.addDefinition = function(schema, name, relpath) {
 };
 
 // Resolve all $ref/ref fields
-Schemas.prototype.resolve = function() {
+Schemas.prototype.resolveDefs = function() {
 	var relpath, name, idx;
 	for( relpath in this.definitions_by_path ) {
 		name = this.definitions_by_path[relpath];
@@ -130,17 +139,19 @@ Schemas.prototype.resolve = function() {
 	}
 };
 
+Schemas.prototype.resolve = function(obj, relpath) {
+	relpath = relpath||this.cwd;
+	return walk(obj, this.resolveRefs.bind(this, relpath));
+};
+
 Schemas.prototype.resolveRefs = function(relpath, obj, jsonpath) {
-	var $ref, parts, curpath, actualpath;
+	var $ref, parts, curpath, actualpath, pathpart;
 	// Ignore examples
 	if( jsonpath && jsonpath[jsonpath.length-1] === 'example' ) {
 		return obj;
 	}
 	if( obj && typeof obj === 'object' ) {
-		if( obj.hasOwnProperty('ref') ) {
-			obj['$ref'] = obj['ref'];
-			delete obj['ref'];
-		} else if( !obj.hasOwnProperty('$ref') ) {
+		if( !obj.hasOwnProperty('$ref') ) {
 			return obj;
 		}
 
@@ -152,8 +163,17 @@ Schemas.prototype.resolveRefs = function(relpath, obj, jsonpath) {
 		} else {
 			curpath = path.dirname(path.resolve(this.cwd, relpath));
 			parts = obj['$ref'].split('#');
-			parts[0] = path.resolve(curpath, parts[0]);
-			parts[0] = path.relative(this.cwd, parts[0]);
+
+			if( typeof this.pathResolver === 'function' ) {
+				pathpart = this.pathResolver(this.cwd, parts[0]);
+			}
+
+			if( !pathpart ) {
+				pathpart = path.resolve(curpath, parts[0]);
+				pathpart = path.relative(this.cwd, pathpart);
+			}
+
+			parts[0] = pathpart;
 			if( parts.length > 1 && parts[1] === '' ) {
 				parts.splice(1, 1);
 			}

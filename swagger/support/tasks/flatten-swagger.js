@@ -8,17 +8,28 @@ module.exports = function(grunt) {
 
 	var SwaggerResolver = require('../swagger-resolver');
 
+	// Filter out non-relative paths, and any schema $refs
+	function refFilter(ref, path) {
+		if( ref.type !== 'relative' ) {
+			return false;
+		}
+		if( path && path.length > 0 && path[path.length-1] === 'schema' ) {
+			return false;
+		}
+		return true;
+	}
+
 	/**
 	 * This task flattens the nested swagger yaml into a single flat file.
 	 * It does not resolve the JSON schema links.
 	 * @param {object} options
 	 * @param {string} options.format The output format, either 'yaml' or 'json' (default)
 	 * @param {object} data Task data
-	 * @param {string} data.apiFile The input file (root level swagger file)
+	 * @param {string} data.src The input file (root level swagger file)
 	 * @param {string} data.dest The destination file (the flattened output file)
 	 */
 	grunt.registerMultiTask('flattenSwagger', 'Resolve references in swagger YAML files', function() {
-		var apiFile = this.data.apiFile||'swagger.yml';
+		var srcFile = this.data.src||'swagger.yml';
 		var destFile = this.data.dest||'swagger.json';
 		var resolver = new SwaggerResolver({
 			log: function() {
@@ -32,8 +43,8 @@ module.exports = function(grunt) {
 
 		// See: http://azimi.me/2015/07/16/split-swagger-into-smaller-files.html
 		// and the corresponding repo: https://github.com/mohsen1/multi-file-swagger-example
-		if(!fs.existsSync(apiFile)) {
-			grunt.log.writeln('Could not find:', apiFile);
+		if(!fs.existsSync(srcFile)) {
+			grunt.log.writeln('Could not find:', srcFile);
 			return false;
 		}
 
@@ -41,7 +52,7 @@ module.exports = function(grunt) {
 			format: 'json'
 		});
 
-		var root = yaml.safeLoad(fs.readFileSync(apiFile).toString());
+		var root = yaml.safeLoad(fs.readFileSync(srcFile).toString());
 
 		// Resolve any top-level includes or templates
 		try {
@@ -52,7 +63,7 @@ module.exports = function(grunt) {
 		}
 
 		var resolveOpts = {
-			filter: ['relative'],
+			filter: refFilter,
 			loaderOptions: {
 				processContent: resolveContent
 			}

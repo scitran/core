@@ -77,19 +77,5 @@ security:
   - ApiKey: []
 
 responses:
-  $ref: ./responses/index.yaml
+  $ref: responses/index.yaml
 
-definitions:
-  filterDefinition:
-    type: object
-    additionalProperties: false
-    properties:
-      +:
-        $ref: '#/definitions/filterItems'
-      '-':
-        $ref: '#/definitions/filterItems'
-  filterItems:
-    minItems: 1
-    type: array
-    items:
-      type: string

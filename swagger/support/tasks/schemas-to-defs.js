@@ -5,6 +5,8 @@ module.exports = function(grunt) {
 	var path = require('path');
 	var yaml = require('js-yaml');
 	var _ = require('lodash');
+	var resolve = require('json-refs').resolveRefs;
+	var walk = require('../walk');
 	var Schemas = require('../schemas');	
 
 	/**
@@ -13,21 +15,20 @@ module.exports = function(grunt) {
 	 * @param {object} options
 	 * @param {string} options.format The output format, either 'yaml' or 'json' (default)
 	 * @param {object} data Task data
-	 * @param {string} data.srcFile The input file (root level swagger file)
+	 * @param {string} data.src The input file (root level swagger file)
 	 * @param {string} data.dest The destination file (the flattened output file)
+	 * @param {string} data.schemasDir The root schema directory
 	 */
 	grunt.registerMultiTask('schemasToDefs', 'Convert schemas to definitions', function() {
-		var srcFile = this.data.srcFile;
-		var dstFile = this.data.dstFile;
+		var srcFile = this.data.src;
+		var dstFile = this.data.dest;
 
 		var opts = {
 			log: function() {
 				grunt.log.writeln.apply(grunt.log, arguments);
 			}
 		};
-		if( this.files.length ) {
-			opts.cwd = this.files[0].orig.cwd;
-		}
+		opts.cwd = this.data.schemasDir;
 
 		if(!fs.existsSync(srcFile)) {
 			grunt.log.writeln('Could not find:', srcFile);
@@ -35,35 +36,47 @@ module.exports = function(grunt) {
 		}
 		var root = yaml.safeLoad(fs.readFileSync(srcFile).toString());
 
-
 		var schemas = new Schemas(opts);
 		try {
-			// Parse each of the input files
-			this.files.forEach(function(file) {
-				file.src.forEach(schemas.load.bind(schemas));
-			});
+			schemas.loadDefs();
 		} catch(e) {
 			grunt.log.writeln('Could not load files:', e);
 			return false;
 		}
 
-		// Resolve all references
-		try {
-			schemas.resolve();
-		} catch(e) {
-			grunt.log.writeln('Could not resolve references:', e);
-			return false;
-		}
-
 		// Add all definitions to root
-		if( !root.definitions ) {
-			root.definitions = {};
-		}
-		// _.extend(root.definitions, schemas.getComplexDefinitions());
+	 	root.definitions = _.extend(root.definitions||{}, schemas.getComplexDefinitions());
 
-		// Write destination file
-		var data = JSON.stringify(root, null, 2);
-		fs.writeFileSync(dstFile, data);
+		schemas.pathResolver = function(cwd, relpath) {
+			if( _.startsWith(relpath, '../definitions') ) {
+				return relpath.substr(3);
+			}
+			return false;
+		};
+
+		// Resolve all references in the root yaml
+		var resolveOpts = {
+			filter: ['relative'],
+			location: srcFile,
+			loaderOptions: {
+				processContent: function(res, callback) {
+					var obj = JSON.parse(res.text);
+					if( obj ) {
+						delete obj['$schema'];
+					}
+					obj = schemas.resolve(obj);
+					callback(undefined, obj);
+				}
+			}
+		};
+
+		var done = this.async();
+		resolve(root, resolveOpts).then(function(results) {
+			var data = JSON.stringify(results.resolved, null, 2);
+
+			fs.writeFileSync(dstFile, data);
+			done();
+		});
 	});
 };
 

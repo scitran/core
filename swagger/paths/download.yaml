@@ -17,15 +17,15 @@
             file_cnt: 3
             size: 64523904
     parameters:
-      - name: prefix
-        in: query
+      - in: query
+        type: string                
+        name: prefix
         description: |
           A string to customize the name of the download
           in the format <prefix>_<timestamp>.tar.gz.
           Defaults to "scitran".
-        type: string                
-      - name: body
-        in: body
+      - in: body
+        name: body
         schema:
           $ref: schemas/input/download.json
         description: Download files with tag 'incomplete' OR type 'dicom'

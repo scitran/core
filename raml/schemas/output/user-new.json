@@ -1,7 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "$ref": "../definitions/common.json#/definitions/object-created",
-  "example": {
-    "$ref": "../../examples/output/user-new.json"
-  }
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"$ref": "../definitions/common.json#/definitions/object-created",
+	"example": {
+		"_id": "jane.doe@gmail.com"
+	}
 }

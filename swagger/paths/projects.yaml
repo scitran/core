@@ -122,7 +122,7 @@ $template_arguments:
       - in: body
         name: body
         schema:
-        $ref: schemas/input/project-template.json
+          $ref: schemas/input/project-template.json
     responses:
       '200':
         $ref: '#/responses/200:modified-with-count'
