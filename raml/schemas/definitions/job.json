@@ -118,7 +118,10 @@
           "items":{"$ref":"#/definitions/inputs-item"}
         },
         "target":{"type":"object"},
-        "outputs":{"type":"array"}
+        "outputs":{
+          "type":"array",
+          "items": {"type": "object"}
+        }
       }
     },
     "job": {

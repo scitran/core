@@ -19,16 +19,8 @@ function isPrimitiveType(type) {
 	return !!PRIMITIVE_TYPES[type];
 }
 
-function snakeToCamelCase(name) {
-	var i, result = '',
-		parts = name.replace('_', '-').split('-');
-
-	for( i = 0; i < parts.length; i++ ) {	
-		if( parts[i] ) {
-			result = result + parts[i][0].toUpperCase() + parts[i].substr(1);
-		}
-	}
-	return result;
+function normalizeName(name) {
+	return name.replace('_', '-');
 }
 
 // Returns a definition name in snake case
@@ -112,7 +104,7 @@ Schemas.prototype.addDefinitions = function(relpath, definitions) {
 };
 
 Schemas.prototype.addDefinition = function(schema, name, relpath) {
-	var properName = snakeToCamelCase(name);
+	var properName = normalizeName(name);
 	
 	// Add the definition under proper name
 	if( this.definitions.hasOwnProperty(properName) ) {
@@ -155,24 +147,28 @@ Schemas.prototype.resolveRefs = function(relpath, obj, jsonpath) {
 			return obj;
 		}
 
-		// Need to replace the $ref with our definition
+		// Need to replace the $ref with a local reference
 		$ref = obj['$ref'];
 		if( $ref[0] === '#' ) {
 			// references this file:
 			actualpath = relpath + $ref;
 		} else {
+			// Determine the current path, relative to root
 			curpath = path.dirname(path.resolve(this.cwd, relpath));
 			parts = obj['$ref'].split('#');
 
+			// If the user provided a path resolver, use that.
 			if( typeof this.pathResolver === 'function' ) {
 				pathpart = this.pathResolver(this.cwd, parts[0]);
 			}
 
+			// Otherwise, resolve the path relative to root
 			if( !pathpart ) {
 				pathpart = path.resolve(curpath, parts[0]);
 				pathpart = path.relative(this.cwd, pathpart);
 			}
 
+			// If there is no hash value (e.g. 'xyz.json#') remove it
 			parts[0] = pathpart;
 			if( parts.length > 1 && parts[1] === '' ) {
 				parts.splice(1, 1);
