@@ -21,7 +21,7 @@
                           "title": "Email",
                           "type": "string"
                         },
-    "avatars":          { "$ref": "../definitions/avatars.json"},
+    "avatars":          { "$ref": "../definitions/avatars.json#/definitions/avatars"},
     "avatar":           {
                           "title": "Avatar",
                           "type": "string"

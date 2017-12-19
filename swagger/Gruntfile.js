@@ -13,7 +13,6 @@ module.exports = function(grunt) {
 		
 		lintSchemas: {
 			core: {
-				failOnError: false,
 				defDirs: [
 					'../raml/schemas/definitions'
 				],

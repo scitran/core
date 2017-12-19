@@ -18,7 +18,6 @@
                           "title": "Email",
                           "type": "string"
                         },
-    "avatars":          { "$ref": "avatars.json"},
     "avatar":           {
                           "format": "uri",
                           "title": "Avatar",
@@ -33,7 +32,7 @@
     "wechat": {},
     "firstlogin":       {"type": "string"},
     "lastlogin":        {"type": "string"},
-    "api_key":{
+    "api-key":{
       "type":"object",
       "properties":{
         "key":            {"type": "string"},
@@ -50,7 +49,7 @@
         "lastname":{"$ref":"#/definitions/lastname"},
         "email":{"$ref":"#/definitions/email"},
         "avatar":{"$ref":"#/definitions/avatar"},
-        "avatars":{"$ref":"#/definitions/avatars"},
+        "avatars":{"$ref":"avatars.json#/definitions/avatars"},
         "root":{"$ref":"#/definitions/root"},
         "disabled":{"$ref":"#/definitions/disabled"},
         "preferences":{"$ref":"#/definitions/preferences"},
@@ -68,7 +67,7 @@
         "lastname":{"$ref":"#/definitions/lastname"},
         "email":{"$ref":"#/definitions/email"},
         "avatar":{"$ref":"#/definitions/avatar"},
-        "avatars":{"$ref":"#/definitions/avatars"},
+        "avatars":{"$ref":"avatars.json#/definitions/avatars"},
         "root":{"$ref":"#/definitions/root"},
         "disabled":{"$ref":"#/definitions/disabled"},
         "preferences":{"$ref":"#/definitions/preferences"},
@@ -84,12 +83,12 @@
       "type":"object",
       "properties":{
         "_id":{"$ref":"common.json#/definitions/user-id"},
-        "api_key":{"$ref":"#/definitions/api_key"},
+        "api_key":{"$ref":"#/definitions/api-key"},
         "firstname":{"$ref":"#/definitions/firstname"},
         "lastname":{"$ref":"#/definitions/lastname"},
         "email":{"$ref":"#/definitions/email"},
         "avatar":{"$ref":"#/definitions/avatar"},
-        "avatars":{"$ref":"#/definitions/avatars"},
+        "avatars":{"$ref":"avatars.json#/definitions/avatars"},
         "root":{"$ref":"#/definitions/root"},
         "disabled":{"$ref":"#/definitions/disabled"},
         "preferences":{"$ref":"#/definitions/preferences"},

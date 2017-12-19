@@ -22,6 +22,13 @@
             },
             "additionalProperties": false
         },
+        "collection-new-output": {
+          "type": "object",
+          "properties": {
+            "_id": {"$ref":"common.json#/definitions/objectid"}
+          },
+          "required": ["_id"]
+        },
         "collection-output":{
             "type": "object",
             "properties": {

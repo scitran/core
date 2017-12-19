@@ -1,7 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "info": {"type": "object"},
     "errors": {
       "type": ["array", "null"],
       "items": {
@@ -20,7 +19,7 @@
         "method":    {"type":"string"},
         "name":      {"type":"string"},
         "errors":    {"$ref":"#/definitions/errors"},
-        "info":      {"$ref":"#/definitions/info"},
+        "info":      {"$ref":"common.json#/definitions/info"},
         "interval":  {"$ref":"#/definitions/interval"},
         "last_seen": {"$ref":"common.json#/definitions/timestamp"}
       },
@@ -31,7 +30,7 @@
         "properties": {
           "interval":       {"$ref":"#/definitions/interval"},
           "errors":         {"$ref":"#/definitions/errors"},
-          "info":           {"$ref":"#/definitions/info"}
+          "info":           {"$ref":"common.json#/definitions/info"}
         },
         "additionalProperties": false
     },

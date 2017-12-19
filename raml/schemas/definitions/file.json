@@ -15,25 +15,23 @@
           "type": "array",
           "uniqueItems": true
         },
-        "info": {
-          "type": "object"
+        "via": {
+          "type":"object",
+          "properties":{
+              "id":{"type":"string"},
+              "method":{"type":"string"},
+              "type":{"type":"string"},
+              "name":{"type":"string"}
+          }
         },
-        "origin":{
+        "file-origin":{
             "type":"object",
             "properties":{
-                "id":{"type":"string"},
-                "method":{"type":"string"},
-                "type":{"type":"string"},
-                "name":{"type":"string"},
-                "via": {
-                  "type":"object",
-                  "properties":{
-                      "id":{"type":"string"},
-                      "method":{"type":"string"},
-                      "type":{"type":"string"},
-                      "name":{"type":"string"}
-                  }
-                }
+                "id":     {"type":"string"},
+                "method": {"type":"string"},
+                "type":   {"type":"string"},
+                "name":   {"type":"string"},
+                "via":    {"$ref":"#/definitions/via"}
             },
             "additionalProperties":false
         },
@@ -53,8 +51,8 @@
             },
             "measurements": {"$ref":"#/definitions/measurements"},
             "tags":        {"$ref":"#/definitions/tags"},
-            "info":        {"$ref":"#/definitions/info"},
-            "origin":      {"$ref":"#/definitions/origin"},
+            "info":        {"$ref":"common.json#/definitions/info"},
+            "origin":      {"$ref":"#/definitions/file-origin"},
             "hash":        {"$ref":"#/definitions/hash"},
             "created":     {"$ref":"created-modified.json#/definitions/created"},
             "modified":    {"$ref":"created-modified.json#/definitions/modified"},
@@ -74,7 +72,7 @@
               "modality":       {"$ref":"#/definitions/modality"},
               "measurements":   {"$ref":"#/definitions/measurements"},
               "tags":           {"$ref":"#/definitions/tags"},
-              "info":           {"$ref":"#/definitions/info"}
+              "info":           {"$ref":"common.json#/definitions/info"}
           },
           "additionalProperties": false
         },
