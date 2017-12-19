@@ -38,6 +38,10 @@ LintError.prototype.toString = function() {
 	return this.message;
 };
 
+function isObjectSchema(schema) {
+	return( schema.type === 'object' );
+}
+
 /**
  * @class SchemaLinter
  *
@@ -58,7 +62,7 @@ LintError.prototype.toString = function() {
 function SchemaLinter(options) {
 	this.options = _.extend(DEFAULT_OPTS, options);
 
-	this.log = options.log||function() {};
+	this.log = this.options.log||function() {};
 
 	if( this.options.definitionNameStyle !== false ) {
 		this.validateName = NAME_VALIDATORS[this.options.definitionNameStyle];
@@ -84,29 +88,35 @@ SchemaLinter.prototype.lint = function() {
 
 	this.options.defDirs.forEach(function(dirpath) {
 		var errors = this.lintDirectory(this.defLinters, dirpath);
-		results = results.concat(errors);
+		results.push(errors);
 	}.bind(this));
 
 	this.options.refDirs.forEach(function(dirpath) {
 		var errors = this.lintDirectory(this.refLinters, dirpath);
-		results = results.concat(errors);
+		results.push(errors);
 	}.bind(this));
 
-	return results;
+	return _.flatten(results);
 };
 
 SchemaLinter.prototype.lintDirectory = function(linters, dirpath) {
 	var results = [];
 
+	this.log('lintDirectory:', dirpath);
+
 	fs.readdirSync(dirpath).forEach(function(name) {
 		var filepath = path.join(dirpath, name);
 		var errors = this.lintFile(linters, filepath);
-		results = results.concat(errors);
+		results.push(errors);
 	}.bind(this));
+
+	return _.flatten(results);
 };
 
 SchemaLinter.prototype.lintFile = function(linters, filename) {
 	var schema;	
+
+	this.log('lintFile:', filename);
 
 	try {
 		schema = JSON.parse(fs.readFileSync(filename).toString());
@@ -173,9 +183,9 @@ SchemaLinter.prototype._lintAnonymousObjects = function(schema, filename) {
 	var errors = [];
 
 	walk(schema, function(obj, path) {
-		var maxDepth = 2;
+		var maxDepth = 1;
 
-		if( obj && obj.type === 'object' ) {
+		if( obj && obj.type === 'object' && obj.properties ) {
 			// Object definition deeper than first level properties
 			if( path[0] === 'definitions' ) {
 				maxDepth = 4;
@@ -208,10 +218,12 @@ SchemaLinter.prototype._lintDuplicateNames = function(schema, filename) {
 	if( schema.definitions ) {
 		for( k in schema.definitions ) {
 			if( schema.definitions.hasOwnProperty(k) ) {
-				if( this.defNames[k] ) {
-					errors.push(new LintError('Duplicate definition found: "' + k + '"', filename)); 
+				if( isObjectSchema(schema.definitions[k]) ) {
+					if( this.defNames[k] ) {
+						errors.push(new LintError('Duplicate definition found: "' + k + '"', filename)); 
+					}
+					this.defNames[k] = true;
 				}
-				this.defNames[k] = true;
 			}
 		}
 	}
@@ -225,8 +237,10 @@ SchemaLinter.prototype._lintDefinitionNameStyle = function(schema, filename) {
 	if( schema.definitions ) {
 		for( k in schema.definitions ) {
 			if( schema.definitions.hasOwnProperty(k) ) {
-				if( !this.validateName(k) ) {
-					errors.push(new LintError('Invalid definition name: "' + k + '"', filename));
+				if( isObjectSchema(schema.definitions[k]) ) {
+					if( !this.validateName(k) ) {
+						errors.push(new LintError('Invalid definition name: "' + k + '"', filename));
+					}
 				}
 			}
 		}
@@ -238,7 +252,7 @@ SchemaLinter.prototype._lintDefinitionNameStyle = function(schema, filename) {
 SchemaLinter.prototype._lintDefsInRefs = function(schema, filename) {
 	var errors = [];
 
-	if( schema.definitions ) {
+	if( schema.definitions || (schema.type === 'object' && schema.properties) ) {
 		errors.push(new LintError('Definitions not allowed in references', filename));
 	}
 

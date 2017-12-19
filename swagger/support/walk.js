@@ -26,7 +26,7 @@ module.exports = function objWalk(obj, callback, path, state) {
 
 	if( _.isArray(obj) ) {
 		for( i = 0; i < obj.length; i++ ) {
-			path[idx] = '[' + i + ']';
+			path[idx] = '' + i;
 			obj[i] = objWalk(obj[i], callback, path, _.cloneDeep(state));
 		}
 	} else if( _.isObjectLike(obj) ) {
