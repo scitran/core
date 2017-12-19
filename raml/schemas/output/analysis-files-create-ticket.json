@@ -1,12 +1,4 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type":"object",
-    "properties":{
-        "ticket":{"type":"string"},
-        "filename":{"type":"string"},
-        "file_cnt":{"type":"integer"},
-        "size":{"type":"integer"}
-    },
-    "additionalProperties":false,
-    "required":["ticket", "filename", "file_cnt", "size"]
+    "$ref": "../definitions/analysis.json#/definitions/analysis-files-create-ticket-output"
 }

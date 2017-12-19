@@ -1,8 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type":"object",
     "definitions":{
-        "gender_count":{
+        "gender-count":{
             "type":"object",
             "properties":{
                 "Male": {"type":"integer"},
@@ -12,47 +11,47 @@
             "additionalProperties":false,
             "required":["Male", "Female", "Unknown or Not Reported"]
         },
-        "ethnicity_grid":{
+        "ethnicity-grid":{
             "type":"object",
             "properties":{
                 "Not Hispanic or Latino":{
-                    "allOf":[{"$ref":"#/definitions/gender_count"}]
+                    "allOf":[{"$ref":"#/definitions/gender-count"}]
                 },
                 "Hispanic or Latino":{
-                    "allOf":[{"$ref":"#/definitions/gender_count"}]
+                    "allOf":[{"$ref":"#/definitions/gender-count"}]
                 },
                 "Unknown or Not Reported":{
-                    "allOf":[{"$ref":"#/definitions/gender_count"}]
+                    "allOf":[{"$ref":"#/definitions/gender-count"}]
                 },
                 "Total":{"type":"integer"}
             }
         },
-        "demographics_grid": {
+        "demographics-grid": {
             "type":"object",
             "properties":{
                 "Black or African American":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "Unknown or Not Reported":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "American Indian or Alaska Native":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "Asian":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "White":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "Total":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "Native Hawaiian or Other Pacific Islander":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "More Than One Race":{
-                    "allOf":[{"$ref":"#/definitions/ethnicity_grid"}]
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
                 },
                 "male_count": {"type":"integer"},
                 "group_label": {"$ref":"common.json#/definitions/label"},
@@ -93,7 +92,7 @@
             "properties":{
                 "projects":{
                     "type":"array",
-                    "items":{"$ref":"#/definitions/demographics_grid"}
+                    "items":{"$ref":"#/definitions/demographics-grid"}
                 }
             }            
         },

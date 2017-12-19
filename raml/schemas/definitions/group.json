@@ -39,6 +39,13 @@
           "allOf": [{"$ref":"#/definitions/group"}],
           "required": ["permissions", "created","modified","_id"]
         },
+        "group-new-output": {
+          "type": "object",
+          "properties": {
+            "_id": {"$ref":"common.json#/definitions/string-id"}
+          },
+          "required": ["_id"]
+        },
         "group-output-list":{
             "type":"array",
             "items":{"$ref":"#/definitions/group-output"}

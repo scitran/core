@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
   "definitions":{
     "created": {
       "type": "string"
@@ -8,9 +7,5 @@
     "modified": {
       "type": "string"
     }
-  },
-  "properties": {
-    "created": {"$ref":"#/definitions/created"},
-    "modified": {"$ref":"#/definitions/modified"}
   }
 }

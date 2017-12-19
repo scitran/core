@@ -9,6 +9,16 @@
     "inputs-property-id":{"type":"string"},
     "inputs-property-name":{"type":"string"},
 
+    "inputs-item": {
+      "type":"object",
+      "properties":{
+        "type":{"enum":["http", "scitran"]},
+        "uri":{"type":"string"},
+        "location":{"type":"string"},
+        "vu":{"type":"string"}
+      },
+      "required":["type", "uri", "location"]      
+    },
     "inputs-object": {
       "type": "object",
       "properties": {
@@ -54,7 +64,7 @@
       ],
       "additionalProperties":false
     },
-    "origin": {
+    "job-origin": {
       "type": "object",
       "properties": {
         "type": {
@@ -74,7 +84,7 @@
       "type": "array",
       "items": {"$ref": "file.json#/definitions/name"}
     },
-    "produced_metadata": {
+    "produced-metadata": {
       "type": "object"
     },
     "tags": {
@@ -105,16 +115,7 @@
       "properties":{
         "inputs":{
           "type":"array",
-          "items":{
-            "type":"object",
-            "properties":{
-              "type":{"enum":["http", "scitran"]},
-              "uri":{"type":"string"},
-              "location":{"type":"string"},
-              "vu":{"type":"string"}
-            },
-            "required":["type", "uri", "location"]
-          }
+          "items":{"$ref":"#/definitions/inputs-item"}
         },
         "target":{"type":"object"},
         "outputs":{"type":"array"}
@@ -124,7 +125,7 @@
       "type":"object",
       "properties":{
         "id":{"$ref":"common.json#/definitions/objectid"},
-        "origin":{"$ref":"#/definitions/origin"},
+        "origin":{"$ref":"#/definitions/job-origin"},
         "gear_id":{"$ref":"#/definitions/gear_id"},
         "previous_job_id":{"type":"string"},
         "inputs":{"$ref":"#/definitions/inputs-object"},
@@ -137,7 +138,7 @@
         "config":{"$ref":"#/definitions/config"},
         "request":{"$ref":"#/definitions/request"},
         "saved_files":{"$ref":"#/definitions/saved_files"},
-        "produced_metadata":{"$ref":"#/definitions/produced_metadata"}
+        "produced_metadata":{"$ref":"#/definitions/produced-metadata"}
       },
       "additionalProperties":false
     },

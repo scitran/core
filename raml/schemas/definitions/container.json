@@ -3,11 +3,18 @@
     "definitions": {
         "_id":          {"type": "string"},
         "public":       {"type": "boolean"},
-        "label":        {"type": "string", "minLength": 1, "maxLength": 256},
-        "info":         {"type": "object"},
+        "info":         {"$ref": "common.json#/definitions/info"},
         "info_exists":  {"type": "boolean"},
-        "uid":          {"type":"string"},
+        "uid":          {"type": "string"},
         "timestamp":    {"type": ["string", "null"], "format": "date-time"},
-        "timezone":     {"type": "string"}
+        "timezone":     {"type": "string"},
+
+        "container-new-output": {
+          "type": "object",
+          "properties": {
+            "_id": {"$ref":"#/definitions/_id"}
+          },
+          "required": ["_id"]
+        }        
     }
 }

@@ -1,4 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "$ref":"../definitions/project-template.json#"
+  "$ref":"../definitions/project-template.json#/definitions/project-template"
 }

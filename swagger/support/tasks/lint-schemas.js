@@ -20,7 +20,7 @@ module.exports = function(grunt) {
 		}
 
 		for( i = 0; i < errors.length; i++ ) {
-			grunt.log.writeln(errors[i].toString());
+			grunt.log.error(errors[i].toString());
 		}
 
 		if( errors.length && this.data.failOnError !== false ) {

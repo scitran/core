@@ -11,7 +11,6 @@
 
         "code":             { "type": "string", "maxLength": 64 },
         "tags":             { "type": "array", "items": {"type": "string"} },
-        "info":             { "type": "object" },
         "subject-input":{
             "type": "object",
             "properties": {
@@ -26,7 +25,7 @@
 
               "code":             {"$ref":"#/definitions/code"},
               "tags":             {"$ref":"#/definitions/tags"},
-              "info":             {"$ref":"#/definitions/info"},
+              "info":             {"$ref":"common.json#/definitions/info"},
               "files":{
                   "type":"array",
                   "items":{"$ref":"file.json#/definitions/file-input"}
@@ -48,8 +47,8 @@
 
               "code":             {"$ref":"#/definitions/code"},
               "tags":             {"$ref":"#/definitions/tags"},
-              "info":             {"$ref":"#/definitions/info"},
-              "info_exists":      {"$ref": "../definitions/container.json#/definitions/info_exists"},
+              "info":             {"$ref":"common.json#/definitions/info"},
+              "info_exists":      {"$ref":"container.json#/definitions/info_exists"},
               "files":{
                   "type":"array",
                   "items":{"$ref":"file.json#/definitions/file-output"}

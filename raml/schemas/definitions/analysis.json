@@ -65,6 +65,17 @@
 				"type":"object",
 				"allOf":[{"$ref":"job.json#/definitions/job-input"}]
 			}
+		},
+		"analysis-files-create-ticket-output": {
+			"type":"object",
+			"properties":{
+				"ticket":{"type":"string"},
+				"filename":{"type":"string"},
+				"file_cnt":{"type":"integer"},
+				"size":{"type":"integer"}
+			},
+			"additionalProperties":false,
+			"required":["ticket", "filename", "file_cnt", "size"]			
 		}
     }
 }

@@ -1,10 +1,4 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type":"object",
-  "properties":{
-    "_id":{"$ref":"../definitions/string-id.json#"}
-  },
-  "required":[
-    "_id"
-  ]
+  "$ref": "../definitions/group.json#/definitions/group-new-output"
 }
