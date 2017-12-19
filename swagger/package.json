@@ -4,7 +4,10 @@
   "description": "REST API Documentation and Code Generation for the SciTran core SDK",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/.bin/jasmine --config=support/jasmine.json"
+    "build": "node_modules/.bin/grunt",
+    "lint": "node_modules/.bin/grunt lintSchemas",
+    "test": "node_modules/.bin/jasmine --config=support/jasmine.json",
+    "watch": "node_modules/.bin/grunt live"
   },
   "author": "Justin Ehlert <justinehlert@flywheel.io>",
   "license": "MIT",

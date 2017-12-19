@@ -11,6 +11,19 @@ module.exports = function(grunt) {
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
 		
+		lintSchemas: {
+			core: {
+				failOnError: false,
+				defDirs: [
+					'../raml/schemas/definitions'
+				],
+				refDirs: [
+					'../raml/schemas/input',
+					'../raml/schemas/output'
+				]
+			}
+		},
+
 		copy: {
 			/**
 			 * Copy schema files into build. Once we fully transition to swagger,
@@ -135,6 +148,7 @@ module.exports = function(grunt) {
 	 * Build the swagger schemas
 	 */
 	grunt.registerTask('build-schema', [
+		'lintSchemas',
 		'copy:schema', 
 		'flattenSwagger',
 		'schemasToDefs'

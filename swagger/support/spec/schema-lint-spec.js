@@ -62,14 +62,12 @@ describe('SchemaLinter anonymousObjects linter', function() {
 
 	it('should warn on anonymous objects in top level schemas', function() {
 		var schema = {
-			type: 'object',
-			properties: {
-				foo: {
-					type: 'object',
-					properties: {
-						x: {type: 'integer'},
-						y: {type: 'integer'}
-					}
+			type: 'array',
+			items: {
+				type: 'object',
+				properties: {
+					x: {type: 'integer'},
+					y: {type: 'integer'}
 				}
 			}
 		};
@@ -77,7 +75,7 @@ describe('SchemaLinter anonymousObjects linter', function() {
 		var errors = linter.lintSchema('references', schema);
 		expect(errors).toBeDefined();
 		expect(errors.length).toEqual(1);
-		expect(errors[0].message).toBe('Anonymous object defined at properties/foo');
+		expect(errors[0].message).toBe('Anonymous object defined at items');
 	});
 });
 
@@ -140,7 +138,7 @@ describe('SchemaLinter duplicateName linter', function() {
 			},
 			schema2 = {
 				definitions: {
-					foo: { type: 'string' },
+					foo: { type: 'object' },
 					bar: { type: 'string' }
 				}
 			};
@@ -162,11 +160,11 @@ describe('SchemaLinter definitionNameStyle linter', function() {
 	it('should allow valid names', function() {
 		var schema = {
 			definitions: {
-				foo: {type: 'string'},
-				'foo-bar': {type: 'string'},
-				'foo-bar13': {type: 'string'},
-				'a': {type: 'number'},
-				'a-b': {type: 'boolean'}
+				foo: {type: 'object'},
+				'foo-bar': {type: 'object'},
+				'foo-bar13': {type: 'object'},
+				'a': {type: 'object'},
+				'a-b': {type: 'object'}
 			}
 		};
 		
@@ -178,12 +176,12 @@ describe('SchemaLinter definitionNameStyle linter', function() {
 	it('should not allow invalid names', function() {
 		var schema = {
 			definitions: {
-				'-abc': {type: 'string'},
-				'fooBar': {type: 'string'},
-				'FooBar': {type: 'string'},
-				'foo-BAR': {type: 'string'},
-				'foo-': {type: 'string'},
-				'foo-1': {type: 'string'}
+				'-abc': {type: 'object'},
+				'fooBar': {type: 'object'},
+				'FooBar': {type: 'object'},
+				'foo-BAR': {type: 'object'},
+				'foo-': {type: 'object'},
+				'foo-1': {type: 'object'}
 			}
 		};
 		
@@ -223,6 +221,20 @@ describe('SchemaLinter definintionsInReferences linter', function() {
 			}
 		};
 		
+		var errors = linter.lintSchema('references', schema);
+		expect(errors).toBeDefined();
+		expect(errors.length).toEqual(1);
+		expect(errors[0].message).toEqual('Definitions not allowed in references');
+	});
+
+	it('should not allow object declarations', function() {
+		var schema = {
+			type: 'object',
+			properties: {
+				foo: { type: 'string' }
+			}
+		};
+
 		var errors = linter.lintSchema('references', schema);
 		expect(errors).toBeDefined();
 		expect(errors.length).toEqual(1);
