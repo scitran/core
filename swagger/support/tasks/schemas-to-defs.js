@@ -8,6 +8,7 @@ module.exports = function(grunt) {
 	var resolve = require('json-refs').resolveRefs;
 	var walk = require('../walk');
 	var Schemas = require('../schemas');	
+	var SchemaTranspiler = require('../schema-transpiler');
 
 	/**
 	 * This task flattens the nested swagger yaml into a single flat file.
@@ -37,6 +38,7 @@ module.exports = function(grunt) {
 		var root = yaml.safeLoad(fs.readFileSync(srcFile).toString());
 
 		var schemas = new Schemas(opts);
+		var transpiler = new SchemaTranspiler(opts);
 		try {
 			schemas.loadDefs();
 		} catch(e) {
@@ -46,6 +48,13 @@ module.exports = function(grunt) {
 
 		// Add all definitions to root
 	 	root.definitions = _.extend(root.definitions||{}, schemas.getComplexDefinitions());
+		// Transpile all definitions
+		for( var k in root.definitions ) {
+			if( root.definitions.hasOwnProperty(k) ) {
+				var schema = root.definitions[k];
+				root.definitions[k] = transpiler.toOpenApi2(schema, root.definitions, k);
+			}
+		}
 
 		schemas.pathResolver = function(cwd, relpath) {
 			if( _.startsWith(relpath, '../definitions') ) {
@@ -65,6 +74,8 @@ module.exports = function(grunt) {
 						delete obj['$schema'];
 					}
 					obj = schemas.resolve(obj);
+					// Transpile schema
+					obj = transpiler.toOpenApi2(obj, root.definitions);
 					callback(undefined, obj);
 				}
 			}

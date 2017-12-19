@@ -19,12 +19,26 @@ var SchemaTranspiler = function(options) {
 };
 
 /**
+ * Log a warning to the log function.
+ * @param {string|null} The optional id
+ * @param {string} message The warning message
+ */
+SchemaTranspiler.prototype.warn = function(id, message) {
+	message = 'Warning - ' + message;
+	if( id ) {
+		message = id + ': ' + message;
+	}
+	this.log(message);
+};
+
+/**
  * Convert the given schema to Open API 2.0 object definition.
  * @param {object} schema The schema object
  * @param {object} defs The definitions object that contains local references
+ * @param {string} id Optional id for warning/error messages
  * @return {object} The converted schema
  */
-SchemaTranspiler.prototype.toOpenApi2 = function(schema, defs) {
+SchemaTranspiler.prototype.toOpenApi2 = function(schema, defs, id) {
 	// Determine schema version
 	var version = null;
 	if( schema.$schema ) {
@@ -34,7 +48,7 @@ SchemaTranspiler.prototype.toOpenApi2 = function(schema, defs) {
 		}
 	}
 	if( !version || version === 'draft-04' ) {
-		return this.draft4ToOpenApi2(schema, defs);
+		return this.draft4ToOpenApi2(schema, defs, id);
 	}
 	throw 'Unsupported schema version: ' + version;
 }
@@ -46,7 +60,7 @@ SchemaTranspiler.prototype.toOpenApi2 = function(schema, defs) {
 // 2. If type is an array, convert it to a single type
 // 3. allOf, with one element: Replace inline
 // 4. anyOf, oneOf, combine fields
-SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs) {
+SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs, id) {
 	var ref, defname;
 
 	// Drop the $schema property, and make a copy
@@ -55,44 +69,42 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs) {
 
 	// Replace type array with type
 	if( _.isArray(schema.type) ) {
-		schema.type = this._selectTypeFromArray(schema.type);
+		schema.type = this._selectTypeFromArray(schema.type, id);
 	}
 
 	if( schema.allOf && schema.allOf.length === 1 && !schema.required ) {
 		// Merge all of object with top-level object
-		schema = this._flattenAllOf(schema);
+		schema = this._flattenAllOf(schema, id);
 	}
 
 	// Check for top-level $ref, allOf, anyOf, oneOf
 	if( schema.$ref && schema.example ) {
 		// Special case, if object has $ref and example, then
 		// resolve the ref, replacing all contents except example
-		schema = this._mergeExampleWithRef(schema, defs);
+		schema = this._mergeExampleWithRef(schema, defs, id);
 	}
 
 	if( schema.anyOf ) {
-		this.log('Warning - "anyOf" not supported in OpenApi 2');
 		// Merge anyOf properties (if object)
-		schema = this._mergeAnyOrOneOf(schema, defs, 'anyOf');
+		schema = this._mergeAnyOrOneOf(schema, defs, 'anyOf', id);
 	}
 
 	if( schema.oneOf ) {
-		this.log('Warning - "oneOf" not supported in OpenApi 2');
 		// Merge oneOf properties (if object)
-		schema = this._mergeAnyOrOneOf(schema, defs, 'oneOf');
+		schema = this._mergeAnyOrOneOf(schema, defs, 'oneOf', id);
 	}
 
 	if( schema.not ) {
-		this.log('Warning - "not" is not supported in OpenApi 2');
+		this.warn(id, '"not" is not supported in OpenApi 2');
 		delete schema.not;
 	}
 
 	if( schema.type === 'array' ) {
 		// Check items
 		if( schema.items ) {
-			schema.items = this.draft4ToOpenApi2(schema.items, defs);
+			schema.items = this.draft4ToOpenApi2(schema.items, defs, id);
 		} else {
-			this.log('Warning - No items property on array!');
+			this.warn(id, 'items property on array!');
 		}
 	}
 
@@ -101,7 +113,7 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs) {
 		if( schema.properties ) {
 			for( var k in schema.properties ) {
 				if( schema.properties.hasOwnProperty(k) ) {
-					schema.properties[k] = this.draft4ToOpenApi2(schema.properties[k], defs);
+					schema.properties[k] = this.draft4ToOpenApi2(schema.properties[k], defs, id);
 				}
 			}
 		}
@@ -110,7 +122,7 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs) {
 	return schema;
 };
 
-SchemaTranspiler.prototype._mergeExampleWithRef = function(schema, defs) {
+SchemaTranspiler.prototype._mergeExampleWithRef = function(schema, defs, id) {
 	var ref, m;
 	if( defs ) {
 		m = RE_LOCAL_REF.exec(schema.$ref);
@@ -120,13 +132,13 @@ SchemaTranspiler.prototype._mergeExampleWithRef = function(schema, defs) {
 				schema = _.pickBy(schema, isKeyExample);
 				_.extend(schema, ref);
 			} else {
-				this.log('Warning - could not find reference: ' + schema.$ref);
+				this.warn(id, 'Could not find reference: ' + schema.$ref);
 			}
 		} else {
-			this.log('Warning - non-local reference: ' + schema.$ref);
+			this.warn(id, 'Non-local reference: ' + schema.$ref);
 		}
 	} else {
-		this.log('Warning - no definitions provided');
+		this.warn(id, 'No definitions provided');
 	}
 	return schema;
 };
@@ -138,7 +150,7 @@ SchemaTranspiler.prototype._flattenAllOf = function(schema) {
 	return _.extend(schema, allOf[0]);
 };
 
-SchemaTranspiler.prototype._mergeAnyOrOneOf = function(schema, defs, key) {
+SchemaTranspiler.prototype._mergeAnyOrOneOf = function(schema, defs, key, id) {
 	var items = schema[key];
 	delete schema[key];
 
@@ -146,12 +158,22 @@ SchemaTranspiler.prototype._mergeAnyOrOneOf = function(schema, defs, key) {
 		return this._resolveRef(item, defs);
 	}.bind(this));
 
+	// Filter any null items
+	items = _.filter(items, function(item) {
+		return item.type !== 'null';
+	});
+
+	// If there's only one item left, use that
+	if( items.length === 1 ) {
+		return _.extend(schema, items[0]);
+	}
+
 	var canMerge = _.every(items, function(value) {
-		return value.type === 'object';
+		return value.type === 'object' || value.type === undefined;
 	});
 
 	if( !canMerge ) {
-		this.log('Error - cannot merge "' + key + '" properties (they are not all objects)');
+		this.warn(id, 'Cannot merge "' + key + '" properties (they are not all objects)');
 		// Just take the first type
 		return _.extend(schema, items[0]);		
 	}
@@ -166,7 +188,7 @@ SchemaTranspiler.prototype._mergeAnyOrOneOf = function(schema, defs, key) {
 	return schema;
 };
 
-SchemaTranspiler.prototype._selectTypeFromArray = function(types) {
+SchemaTranspiler.prototype._selectTypeFromArray = function(types, id) {
 	// If null is in the array, remove it then return the first type.
 	types = _.filter(types, isTypeNotNull);
 
@@ -174,7 +196,7 @@ SchemaTranspiler.prototype._selectTypeFromArray = function(types) {
 		return 'null';
 	}
 	if( types.length > 1 ) {
-		this.log('Warning - more than one non-null type in type array, returning the first one!');
+		this.warn(id, 'More than one non-null type in type array, returning the first one!');
 	}
 	return types[0];
 };
@@ -184,7 +206,7 @@ SchemaTranspiler.prototype._resolveRef = function(schema, defs) {
 	
 	if( !defs ) {
 		if( schema.$ref ) {
-			this.log('Warning - no definitions provided, cannot resolve: ' + schema.$ref);
+			this.warn(id, 'No definitions provided, cannot resolve: ' + schema.$ref);
 		}
 		return schema;
 	}
@@ -192,7 +214,7 @@ SchemaTranspiler.prototype._resolveRef = function(schema, defs) {
 	while( schema.$ref ) {
 		m = RE_LOCAL_REF.exec(schema.$ref);
 		if( !m ) {
-			this.log('Warning - non-local reference: ' + schema.$ref);
+			this.warn(id, 'Non-local reference: ' + schema.$ref);
 			break;
 		}
 		ref = defs[m[1]];
