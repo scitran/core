@@ -48,8 +48,8 @@ def main():
             if f['name'] == args.filename:
                 del f['deleted']
                 break
-            else:
-                raise RuntimeError('Cannot find {}/{}/{}'.format(args.cont_name, args.cont_id, args.filename))
+        else:
+            raise RuntimeError('Cannot find {}/{}/{}'.format(args.cont_name, args.cont_id, args.filename))
         collection.update_one(query, {'$set': {'files': container['files']}})
     log.info('Done.')
 
