@@ -450,7 +450,7 @@ class FileListHandler(ListHandler):
 
         # Request for download ticket
         if self.get_param('ticket') == '':
-            ticket = util.download_ticket(self.request.client_addr, 'file', _id, filename, fileinfo['size'], origin=self.origin)
+            ticket = util.download_ticket(self.request.client_addr, self.origin, 'file', _id, filename, fileinfo['size'])
             return {'ticket': config.db.downloads.insert_one(ticket).inserted_id}
 
         # Request for info about zipfile
