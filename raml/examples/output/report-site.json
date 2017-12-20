@@ -3,22 +3,22 @@
   "groups": [
     {
       "project_count": 0,
-      "name": "Unknown",
+      "label": "Unknown",
       "session_count": 0
     },
     {
       "project_count": 0,
-      "name": "Scientific Transparency",
+      "label": "Scientific Transparency",
       "session_count": 0
     },
     {
       "project_count": 0,
-      "name": "Test Group",
+      "label": "Test Group",
       "session_count": 0
     },
     {
       "project_count": 1,
-      "name": null,
+      "label": null,
       "session_count": 1
     }
   ]

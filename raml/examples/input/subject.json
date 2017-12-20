@@ -1,0 +1,10 @@
+{
+	"code": "12/11/17",
+	"firstname": "Anonymous",
+	"lastname": "",
+	"sex": "male",
+	"age": 31,
+	"info": {
+		"some-key": 37
+	}
+}

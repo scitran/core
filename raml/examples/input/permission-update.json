@@ -1,1 +1,4 @@
-{"access":"ro", "_id": "coltonlw@flywheel.io", "site":"local"}
+{
+	"access": "ro", 
+	"_id": "coltonlw@flywheel.io"
+}

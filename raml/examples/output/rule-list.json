@@ -1,0 +1,53 @@
+[
+  {
+    "alg": "dcm2niix",
+    "all": [
+      {
+        "regex": true,
+        "type": "file.measurements",
+        "value": "^(?!non-image).+$"
+      },
+      {
+        "type": "file.type",
+        "value": "nifti"
+      }
+    ],
+    "_id": "5a12f2923306be0016179f47",
+    "name": "dcm2niix",
+    "any": []
+  },
+  {
+    "alg": "dicom-mr-classifier",
+    "all": [
+      {
+        "type": "file.type",
+        "value": "dicom"
+      },
+      {
+        "regex": true,
+        "type": "file.measurements",
+        "value": "^(?!non-image).+$"
+      }
+    ],
+    "_id": "5a21be60a75c04001b7a268b",
+    "name": "dicom classifier (all dicoms)",
+    "any": []
+  },
+  {
+    "alg": "mriqc",
+    "all": [
+      {
+        "type": "file.type",
+        "value": "nifti"
+      },
+      {
+        "regex": true,
+        "type": "file.measurements",
+        "value": "(functional|anatomy_t1w|anatomy_t2w)"
+      }
+    ],
+    "_id": "5a21be60a75c04001b7a268c",
+    "name": "mriqc (nifti classified as functional or anatomical)",
+    "any": []
+  }
+]

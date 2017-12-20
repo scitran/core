@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "allOf":[{"ref":"../definitions/group.json#/definitions/group-output"}],
+  "allOf":[{"$ref":"../definitions/group.json#/definitions/group-output"}],
   "required": [
          "permissions",
          "created",

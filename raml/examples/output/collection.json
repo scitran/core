@@ -7,7 +7,6 @@
 	"_id": "57c5c0bd9e512c606dd3df09",
 	"permissions": [{
 		"access": "admin",
-		"_id": "user@test.com",
-		"site": "local"
+		"_id": "user@test.com"
 	}]
 }

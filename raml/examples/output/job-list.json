@@ -9,7 +9,7 @@
           }
         ],
         "attempt": 1,
-        "name": "dcm-convert",
+        "gear_id": "dcm-convert",
         "tags": [
             "dcm-convert"
         ],
@@ -35,7 +35,7 @@
             }
         ],
         "attempt": 1,
-        "name": "dcm_convert",
+        "gear_id": "dcm_convert",
         "tags": [
           "ad-hoc",
           "dcm_convert"

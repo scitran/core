@@ -13,7 +13,7 @@
         }
       },
       "attempt": 1,
-      "name": "dcm2niix",
+      "gear_id": "dcm2niix",
       "tags": [
         "dcm2niix"
       ],
@@ -41,7 +41,7 @@
         }
       },
       "attempt": 1,
-      "name": "dicom-mr-classifier",
+      "gear_id": "dicom-mr-classifier",
       "tags": [
         "dicom-mr-classifier"
       ],
@@ -69,7 +69,7 @@
         }
       },
       "attempt": 1,
-      "name": "dcm2niix",
+      "gear_id": "dcm2niix",
       "tags": [
         "dcm2niix"
       ],

@@ -38,6 +38,28 @@
             "items":{
                 "allOf":[{"$ref":"#/definitions/group-output"}]
             }
+        },
+        "project-group-output":{
+          "type": "object",
+          "properties": {
+            "_id":{"$ref":"#/definitions/_id"},
+            "label": {"$ref": "../definitions/container.json#/definitions/label"},
+            "permissions": {
+              "type": "array",
+              "items": {"$ref": "../definitions/permission.json#/definitions/permission-output-default-required"},
+              "uniqueItems": true
+            },
+            "created": {"$ref":"../definitions/created-modified.json#/definitions/created"},
+            "modified": {"$ref":"../definitions/created-modified.json#/definitions/modified"}
+          },
+          "additionalProperties":false,
+          "required": ["_id"]
+        },
+        "project-group-output-list":{
+            "type":"array",
+            "items":{
+                "allOf":[{"$ref":"#/definitions/project-group-output"}]
+            }
         }
     }
 }

@@ -15,8 +15,8 @@
         "tags": [],
         "created": "2016-09-21T14:56:09.943000+00:00",
         "modified": "2016-09-21T14:56:09.943000+00:00",
-        "instrument": null,
-        "metadata": {},
+        "modality": null,
+        "info": {},
         "type": "dicom",
         "size": 989933
       }
@@ -34,8 +34,7 @@
     "permissions": [
       {
         "access": "admin",
-        "_id": "coltonlw@flywheel.io",
-        "site": "local"
+        "_id": "coltonlw@flywheel.io"
       }
     ]
   },
@@ -55,8 +54,8 @@
         "tags": [],
         "created": "2016-09-21T14:56:11.224000+00:00",
         "modified": "2016-09-21T14:56:11.224000+00:00",
-        "instrument": null,
-        "metadata": {},
+        "modality": null,
+        "info": {},
         "type": "dicom",
         "size": 2921881
       }
@@ -74,8 +73,7 @@
     "permissions": [
       {
         "access": "admin",
-        "_id": "coltonlw@flywheel.io",
-        "site": "local"
+        "_id": "coltonlw@flywheel.io"
       }
     ]
   },
@@ -95,8 +93,8 @@
         "tags": [],
         "created": "2016-09-21T14:56:13.580000+00:00",
         "modified": "2016-09-21T14:56:13.580000+00:00",
-        "instrument": null,
-        "metadata": {},
+        "modality": null,
+        "info": {},
         "type": "dicom",
         "size": 4525137
       }
@@ -114,8 +112,7 @@
     "permissions": [
       {
         "access": "admin",
-        "_id": "coltonlw@flywheel.io",
-        "site": "local"
+        "_id": "coltonlw@flywheel.io"
       }
     ]
   }

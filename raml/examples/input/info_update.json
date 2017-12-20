@@ -1,0 +1,6 @@
+{
+	"set": {
+		"BodyPartExamined": "BRAIN"
+	},
+	"delete": [ "PatientName" ]
+}

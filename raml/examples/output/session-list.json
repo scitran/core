@@ -12,8 +12,7 @@
 	"public": false,
 	"permissions": [{
 		"access": "admin",
-		"_id": "coltonlw@flywheel.io",
-		"site": "local"
+		"_id": "coltonlw@flywheel.io"
 	}]
 }, {
 	"group": "scitran",
@@ -29,8 +28,7 @@
 	"public": false,
 	"permissions": [{
 		"access": "admin",
-		"_id": "coltonlw@flywheel.io",
-		"site": "local"
+		"_id": "coltonlw@flywheel.io"
 	}]
 }, {
 	"group": "scitran",
@@ -46,7 +44,6 @@
 	"public": false,
 	"permissions": [{
 		"access": "admin",
-		"_id": "coltonlw@flywheel.io",
-		"site": "local"
+		"_id": "coltonlw@flywheel.io"
 	}]
 }]

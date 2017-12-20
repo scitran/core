@@ -1,0 +1,14 @@
+{
+	"project": {
+		"_id": "57e452791cff88b85f9f9c97"
+	},
+	"session": {
+		"label": "control_1"
+	},
+	"acquisition": {
+		"label": "4784_1_1_localizer"
+	},
+	"packfile": {
+		"type": "dicom"
+	}
+}

@@ -6,7 +6,7 @@
 		"name": "4784_1_1_localizer_dicom.zip"
 	}],
 	"attempt": 1,
-	"name": "dicom-mr-classifier",
+	"gear_id": "dicom-mr-classifier",
 	"tags": ["dicom-mr-classifier"],
 	"destination": {
 		"type": "acquisition",

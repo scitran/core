@@ -49,6 +49,7 @@ Ensure that `./tests/bin/run-tests-docker.sh -- -l` exits without errors.
 1. In your resource file, define your resource. Begin by adding a `description` property with the description you wrote in step 1.
 1. Add example properties for both request and response. Examples should be stored in the `examples/` directory, e.g., `raml/examples/request/files.json`.
 1. Use [JSONSchema.net](http://jsonschema.net/) to generate a JSON schema for both request and response body. Edit the schema as necessary. Before generating your schema, scroll down and uncheck "allow additional properties".  Schemas are stored in the `schemas/` directory, e.g., `raml/schemas/input/files.json`.
+1. Verify that the example properties pass schema validation by running the unit tests. New schemas and examples will be tested automatically. (See testing instructions below)
 
 ### Testing
 Follow the procedures outlined in our [testing instructions](https://github.com/scitran/core/blob/master/TESTING.md).
