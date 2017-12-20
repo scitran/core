@@ -35,7 +35,11 @@
             },
             "additionalProperties":false
         },
-        "hash":{"type":"string", "length":106},
+        "hash":{
+          "type":"string", 
+          "minLength":106,
+          "maxLength":106
+        },
         "size":{"type":"integer"},
         "file": {
           "type": "object",

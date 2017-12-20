@@ -7,36 +7,38 @@
     responses:
       default:
         description: ''
-/gears/{GearName}:
-  parameters:
-    - required: true
-      description: Name of the gear to interact with
-      type: string
-      in: path
-      name: GearName
+        
+# TODO: Can we make the parameter here consistent, or split
+# this into two separate APIs?
+/gears/{GearIdOrName}:
   post:
     summary: Create or update a gear.
     description: |
       If no existing gear is found, one will be created
       Otherwise, the specified gear will be updated
     operationId: add_gear
+    parameters:
+      - required: true
+        description: Name of the gear to interact with
+        type: string
+        in: path
+        name: GearIdOrName
     tags:
     - gears
     responses:
       default:
         description: ''
-gears/{GearId}:
-  parameters:
-    - required: true
-      description: Id of the gear to interact with
-      type: string
-      in: path
-      name: GearId
   get:
     summary: Retrieve details about a specific gear
     operationId: get_gear
     tags:
     - gears
+    parameters:
+      - required: true
+        description: Id of the gear to interact with
+        type: string
+        in: path
+        name: GearIdOrName
     responses:
       '200':
         description: ''
@@ -48,6 +50,12 @@ gears/{GearId}:
     operationId: delete_gear
     tags:
     - gears
+    parameters:
+      - required: true
+        description: Id of the gear to interact with
+        type: string
+        in: path
+        name: GearIdOrName
     responses:
       '200':
         description: Gear was deleted

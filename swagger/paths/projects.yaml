@@ -40,10 +40,16 @@ $template_arguments:
     - 'projects'
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/session-list.json
 
 '/projects/{ProjectId}/acquisitions':
+  parameters:
+    - in: path
+      type: string
+      name: ProjectId
+      required: true
   get:
     summary: List all acquisitions for the given project.
     operationId: get_project_acquisitions
@@ -51,6 +57,7 @@ $template_arguments:
     - 'projects'
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/acquisition-list.json
 
@@ -66,6 +73,7 @@ $template_arguments:
     - 'projects'
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/rule-list.json
   post:

@@ -5,6 +5,9 @@ var _ = require('lodash');
 var RE_SCHEMA_URL_VERSION = /^http:\/\/json-schema.org\/(draft-\d+)\/schema/;
 var RE_LOCAL_REF = /^#\/definitions\/([^\/]+)$/
 
+// Properties that will be stripped from top-level schemas
+var OMITTED_PROPERTIES = ['$schema', 'key_fields'];
+
 /**
  * @class SchemaTranspiler
  * Converts from JSON Schema Specifications to OpenAPI
@@ -64,8 +67,7 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs, id) {
 	var ref, defname;
 
 	// Drop the $schema property, and make a copy
-	schema = _.cloneDeep(schema);
-	delete schema.$schema;
+	schema = _.omit(schema, OMITTED_PROPERTIES);
 
 	// Replace type array with type
 	if( _.isArray(schema.type) ) {
@@ -97,6 +99,11 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs, id) {
 	if( schema.not ) {
 		this.warn(id, '"not" is not supported in OpenApi 2');
 		delete schema.not;
+	}
+
+	if( schema.patternProperties ) {
+		this.warn(id, '"patternProperties" is not supported in OpenApi 2');
+		delete schema.patternProperties;
 	}
 
 	if( schema.type === 'array' ) {

@@ -100,6 +100,16 @@ module.exports = function(grunt) {
 		},
 
 		/**
+		 * Validate swagger
+		 */
+		validateSwagger: {
+			core: {
+				ignoreWarnings: ['UNUSED_DEFINITION'],
+				src: 'build/swagger-ui.json'
+			}
+		},
+
+		/**
 		 * Resolve schema links in the swagger documentation
 		 */
 		resolveSchemaLinks: {
@@ -150,7 +160,8 @@ module.exports = function(grunt) {
 		'lintSchemas',
 		'copy:schema', 
 		'flattenSwagger',
-		'schemasToDefs'
+		'schemasToDefs',
+		'validateSwagger'
 	]);
 
 	/**

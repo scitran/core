@@ -12,6 +12,7 @@ $template_arguments:
     - collections
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/collection-list.json
         examples:
@@ -29,6 +30,7 @@ $template_arguments:
           $ref: schemas/input/collection.json
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/collection-new.json
         examples:
@@ -45,6 +47,7 @@ $template_arguments:
     - collections
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/collection-curators-list.json
         examples:
@@ -63,6 +66,7 @@ $template_arguments:
     - collections
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/collection.json
         examples:
