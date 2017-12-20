@@ -175,8 +175,14 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
     file_count = r.json()['file_cnt']
     r = as_admin.get('/download', params={'ticket':ticket_id})
     assert r.ok
+
     log_records_count_after = log_db.access_log.count({})
     assert log_records_count_before + file_count == log_records_count_after
+
+    most_recent_logs = log_db.access_log.find({}).sort([('_id', -1)]).limit(file_count)
+    for l in most_recent_logs:
+        assert l['access_type'] == AccessType.download_file.value
+        assert l['origin']['id'] == 'admin@user.com'
 
     ###
     # Test search bulk download
@@ -191,8 +197,14 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
     file_count = r.json()['file_cnt']
     r = as_admin.get('/download', params={'ticket':ticket_id})
     assert r.ok
+
     log_records_count_after = log_db.access_log.count({})
     assert log_records_count_before + file_count == log_records_count_after
+
+    most_recent_logs = log_db.access_log.find({}).sort([('_id', -1)]).limit(file_count)
+    for l in most_recent_logs:
+        assert l['access_type'] == AccessType.download_file.value
+        assert l['origin']['id'] == 'admin@user.com'
 
 
     ###
