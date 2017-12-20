@@ -17,6 +17,7 @@ from ..dao.containerutil import ContainerReference, pluralize
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
+from ..web.request import AccessType
 from .. import config
 from . import batch
 from ..validators import validate_data, verify_payload_exists
@@ -524,6 +525,8 @@ class JobHandler(base.RequestHandler):
 
         # Create any automatic jobs for the accepted files
         create_jobs(config.db, container_before, container, cont_name)
+
+        self.log_user_access(AccessType.accept_failed_output, cont_name=j.destination.type, cont_id=j.destination.id, multifile=True)
 
 
 class BatchHandler(base.RequestHandler):
