@@ -54,16 +54,16 @@
 		},
 		"analysis-job": {
 			"type": "object",
-				"properties":{
-					"analysis":{
+			"properties":{
+				"analysis":{
 					"type":"object",
 					"allOf":[{"$ref":"#/definitions/analysis-input"}],
 					"required":["label"]
+				},
+				"job":{
+					"type":"object",
+					"allOf":[{"$ref":"job.json#/definitions/job-input"}]
 				}
-			},
-			"job":{
-				"type":"object",
-				"allOf":[{"$ref":"job.json#/definitions/job-input"}]
 			}
 		},
 		"analysis-files-create-ticket-output": {

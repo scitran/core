@@ -25,6 +25,7 @@
     "lodash": "^4.17.4",
     "mustache": "^2.3.0",
     "pluralize": "^7.0.0",
+    "swagger-tools": "^0.10.3",
     "swagger-ui-dist": "^3.7.0"
   }
 }

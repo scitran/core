@@ -7,8 +7,9 @@
     - batch
     responses:
       '200':
-        schema:
-          # Schema file does not exist
+        description: ''
+        # Schema file does not exist
+        # schema:
           # $ref: schemas/output/batch-list.json
   post:
     summary: Create a batch job proposal and insert it as 'pending'.
@@ -18,13 +19,16 @@
     parameters:
       - name: body
         in: body
+        description: ''
         schema:
+          type: object
           # Schema file does not exist
           # $ref: schemas/input/batch-insert.json
     responses:
       '200':
-        schema:
-          # Schema file does not exist
+        description: ''
+        # Schema file does not exist
+        # schema:
           # $ref: schemas/output/batch-insert.json
 
 /batch/{BatchId}:
@@ -45,8 +49,9 @@
     - batch
     responses:
       '200':
-        schema:
-          # Schema file does not exist
+        description: ''
+        # Schema file does not exist
+        # schema:
           # $ref: schemas/output/batch.json
       '404':
         $ref: '#/responses/404:resource-not-found'
@@ -67,6 +72,7 @@
     - batch
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/job-list.json
 
@@ -86,6 +92,7 @@
     - batch
     responses:
       '200':
-        schema:
-          example: 
+        description: ''
+        examples:
+          response: 
             canceled_jobs: 4

@@ -19,21 +19,20 @@
       },
       "required":["type", "uri", "location"]      
     },
-    "inputs-object": {
+    "inputs-entry": {
       "type": "object",
       "properties": {
-        "type": "object",
-          "properties": {
-            "type": {"$ref":"#/definitions/inputs-property-type"},
-            "id": {"$ref":"#/definitions/inputs-property-id"},
-            "name": {"$ref":"#/definitions/inputs-property-name"}
-          },
-          "required": [
-            "type",
-            "id",
-            "name"
-          ],
-          "additionalProperties":false
+        "type": {"$ref":"#/definitions/inputs-property-type"},
+        "id": {"$ref":"#/definitions/inputs-property-id"},
+        "name": {"$ref":"#/definitions/inputs-property-name"}
+      },
+      "required": [ "type", "id", "name" ],
+      "additionalProperties":false
+    },
+    "inputs-object": {
+      "type": "object",
+      "patternProperties": {
+        "[-_ a-zA-Z0-9]+": {"$ref":"#/definitions/inputs-entry"}
       }
     },
     "inputs-array":{

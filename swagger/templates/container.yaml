@@ -15,6 +15,7 @@ template: |
       - '{{tag}}'
     responses:
       '200':
+        description: ''
         schema:
           $ref: {{{list-output-schema}}}
   post:
@@ -29,6 +30,7 @@ template: |
           $ref: {{{create-input-schema}}}
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/container-new.json
       '400':

@@ -37,6 +37,7 @@ $template_arguments:
         description: filter results by job tags
     responses:
       '200':
+        description: ''
         schema:
           $ref: schemas/output/session-jobs.json
 
