@@ -441,10 +441,8 @@ class SearchStorage(ContainerStorage):
         super(SearchStorage, self).__init__('savesearches', use_object_id=True)
 
     def create_el(self, payload):
-        log.debug(payload)
-        payload = self._to_mongo(payload)
         try:
-            result = self.dbc.insert_one(payload, bypass_document_validation=True)
+            result = self.dbc.insert_one(payload)
         except pymongo.errors.DuplicateKeyError:
             raise APIConflictException('Object with id {} already exists.'.format(payload['_id']))
         return result
