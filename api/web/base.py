@@ -379,7 +379,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         util.send_json_http_exception(self.response, message, code, request_id, custom=custom_errors)
 
-    def log_user_access(self, access_type, cont_name=None, cont_id=None, multifile=False):
+    def log_user_access(self, access_type, cont_name=None, cont_id=None, multifile=False, origin_override=None):
 
         if not config.get_item('core', 'access_log_enabled'):
             return
@@ -391,7 +391,7 @@ class RequestHandler(webapp2.RequestHandler):
             'access_type':      access_type.value,
             'request_method':   self.request.method,
             'request_path':     self.request.path,
-            'origin':           self.origin,
+            'origin':           origin_override if origin_override is not None else self.origin,
             'timestamp':        datetime.datetime.utcnow()
         }
 

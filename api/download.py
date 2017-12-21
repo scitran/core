@@ -103,7 +103,7 @@ class Download(base.RequestHandler):
 
         if len(targets) > 0:
             filename = arc_prefix + '_ '+datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
-            ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
+            ticket = util.download_ticket(self.request.client_addr, self.origin, 'batch', targets, filename, total_size)
             config.db.downloads.insert_one(ticket)
             return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size}
         else:
@@ -225,7 +225,7 @@ class Download(base.RequestHandler):
         if len(targets) > 0:
             if not filename:
                 filename = arc_prefix + '_' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.tar'
-            ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size)
+            ticket = util.download_ticket(self.request.client_addr, self.origin, 'batch', targets, filename, total_size)
             config.db.downloads.insert_one(ticket)
             return {'ticket': ticket['_id'], 'file_cnt': file_cnt, 'size': total_size, 'filename': filename}
         else:
@@ -285,7 +285,7 @@ class Download(base.RequestHandler):
                         yield chunk
                     if len(chunk) % BLOCKSIZE != 0:
                         yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True) # log download
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True, origin_override=ticket['origin']) # log download
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
@@ -295,7 +295,7 @@ class Download(base.RequestHandler):
             t.type = tarfile.SYMTYPE
             t.linkname = os.path.relpath(filepath, data_path)
             yield t.tobuf()
-            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True) # log download
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True, origin_override=ticket['origin']) # log download
         stream = cStringIO.StringIO()
         with tarfile.open(mode='w|', fileobj=stream) as _:
             pass
@@ -317,9 +317,8 @@ class Download(base.RequestHandler):
                 self.response.app_iter = self.archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
-            for project_id in ticket['projects']:
-                config.db.projects.update_one({'_id': project_id}, {'$inc': {'counter': 1}})
         else:
+
             req_spec = self.request.json_body
 
             if self.is_true('bulk'):

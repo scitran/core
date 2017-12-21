@@ -144,7 +144,7 @@ def container_fileinfo(container, filename): # pragma: no cover
     return None
 
 
-def download_ticket(ip, type_, target, filename, size, projects = None, origin=None):
+def download_ticket(ip, origin, type_, target, filename, size, projects = None):
     return {
         '_id': str(uuid.uuid4()),
         'timestamp': datetime.datetime.utcnow(),

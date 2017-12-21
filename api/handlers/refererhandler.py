@@ -327,12 +327,12 @@ class AnalysesHandler(RefererHandler):
             if filename:
                 total_size = fileinfo[0]['size']
                 file_cnt = 1
-                ticket = util.download_ticket(self.request.client_addr, 'file', cid, filename, total_size, origin=self.origin)
+                ticket = util.download_ticket(self.request.client_addr, self.origin, 'file', cid, filename, total_size)
             else:
                 targets, total_size, file_cnt = self._prepare_batch(fileinfo, analysis)
                 label = util.sanitize_string_to_filename(self.storage.get_container(_id).get('label', 'No Label'))
                 filename = 'analysis_' + label + '.tar'
-                ticket = util.download_ticket(self.request.client_addr, 'batch', targets, filename, total_size, origin=self.origin)
+                ticket = util.download_ticket(self.request.client_addr, self.origin, 'batch', targets, filename, total_size)
             return {
                 'ticket': config.db.downloads.insert_one(ticket).inserted_id,
                 'size': total_size,
