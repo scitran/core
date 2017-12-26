@@ -1031,6 +1031,29 @@ def test_edit_subject_info(data_builder, as_admin, as_user):
     assert r.json()['info'] == subject_info
 
 
+    # Test info is not returned on list endpoints
+    r = as_admin.get('/sessions')
+    assert r.ok
+    sessions = r.json()
+    assert len(sessions) == 1
+    assert not sessions[0]['subject'].get('info')
+    assert sessions[0]['subject']['info_exists']
+
+    # Add reserved key and ensure it is returned
+    BIDS_map = {'BIDS':{'subject_label': 'TEST'}}
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'set': BIDS_map
+    })
+    assert r.ok
+
+    r = as_admin.get('/sessions')
+    assert r.ok
+    sessions = r.json()
+    assert len(sessions) == 1
+    assert sessions[0]['subject']['info'] == BIDS_map
+    assert sessions[0]['subject']['info_exists']
+
+
     # Use 'replace' to set file info to {}
     r = as_admin.post('/sessions/' + session + '/subject/info', json={
         'replace': {}
