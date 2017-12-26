@@ -182,7 +182,7 @@ def create_potential_jobs(db, container, container_type, file_):
 
     for rule in rules:
 
-        if eval_rule(rule, file_, container):
+        if 'from_failed_job' not in file_ and eval_rule(rule, file_, container):
 
             alg_name = rule['alg']
 

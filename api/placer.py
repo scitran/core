@@ -287,6 +287,12 @@ class EnginePlacer(Placer):
                     file_attrs.update(file_md)
                     break
 
+        if self.context.get('job_ticket_id'):
+            job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
+            job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
+            if not job_ticket.get('success'):
+                file_attrs['from_failed_job'] = True
+
         self.save_file(field, file_attrs)
         self.saved.append(file_attrs)
 
@@ -304,7 +310,14 @@ class EnginePlacer(Placer):
             # Remove file metadata as it was already updated in process_file_field
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
-            hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+
+            if self.context.get('job_ticket_id'):
+                job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
+                job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
+                if job_ticket.get('success'):
+                    hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+            else:
+                hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
 
         if self.context.get('job_id'):
             job = Job.get(self.context.get('job_id'))

@@ -4,7 +4,7 @@ import copy
 from .. import config
 from ..auth import has_access
 
-from ..web.errors import APIPermissionException
+from ..web.errors import APINotFoundException, APIPermissionException
 
 CONT_TYPES = ['acquisition', 'analysis', 'collection', 'group', 'project', 'session']
 SINGULAR_TO_PLURAL = {
@@ -189,12 +189,12 @@ class ContainerReference(object):
         collection = pluralize(self.type)
         result = config.db[collection].find_one({'_id': bson.ObjectId(self.id)})
         if result is None:
-            raise Exception('No such {} {} in database'.format(self.type, self.id))
+            raise APINotFoundException('No such {} {} in database'.format(self.type, self.id))
         if 'parent' in result:
             parent_collection = pluralize(result['parent']['type'])
             parent = config.db[parent_collection].find_one({'_id': bson.ObjectId(result['parent']['id'])})
             if parent is None:
-                raise Exception('Cannot find parent {} {} of {} {}'.format(
+                raise APINotFoundException('Cannot find parent {} {} of {} {}'.format(
                     result['parent']['type'], result['parent']['id'], self.type, self.id))
             result['permissions'] = parent['permissions']
         return result
@@ -251,7 +251,7 @@ class FileReference(ContainerReference):
             if file['name'] == self.name:
                 return file
 
-        raise Exception('No such file {} on {} {} in database'.format(self.name, self.type, self.id))
+        raise APINotFoundException('No such file {} on {} {} in database'.format(self.name, self.type, self.id))
 
 
 def create_filereference_from_dictionary(d):

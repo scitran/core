@@ -7,14 +7,15 @@ from .. import config
 from .. import util
 
 AccessType = util.Enum('AccessType', {
-    'view_container':   'view_container',
-    'view_subject':     'view_subject',
-    'view_file':        'view_file',
-    'download_file':    'download_file',
-    'delete_file':      'delete_file',
-    'delete_analysis':  'delete_analysis',
-    'user_login':       'user_login',
-    'user_logout':      'user_logout'
+    'accept_failed_output':     'accept_failed_output',
+    'view_container':           'view_container',
+    'view_subject':             'view_subject',
+    'view_file':                'view_file',
+    'download_file':            'download_file',
+    'delete_file':              'delete_file',
+    'delete_analysis':          'delete_analysis',
+    'user_login':               'user_login',
+    'user_logout':              'user_logout'
 })
 AccessTypeList = [type_name for type_name, member in AccessType.__members__.items()]
 

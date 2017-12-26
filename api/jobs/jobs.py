@@ -12,6 +12,7 @@ from ..dao.containerutil import create_filereference_from_dictionary, create_con
 
 from .. import config
 from ..util import render_template
+from ..web.errors import APINotFoundException
 
 
 class Job(object):
@@ -19,7 +20,8 @@ class Job(object):
                  attempt=1, previous_job_id=None, created=None,
                  modified=None, state='pending', request=None,
                  id_=None, config_=None, now=False, origin=None,
-                 saved_files=None, produced_metadata=None, batch=None):
+                 saved_files=None, produced_metadata=None, batch=None,
+                 failed_output_accepted=False):
         """
         Creates a job.
 
@@ -48,6 +50,8 @@ class Job(object):
             The database identifier for this job.
         config: map (optional)
             The gear configuration for this job.
+        failed_output_accepted: bool (optional)
+            Flag indicating whether output was accepted for a failed job.
         """
 
         # TODO: validate inputs against the manifest
@@ -101,6 +105,7 @@ class Job(object):
         self.saved_files        = saved_files
         self.produced_metadata  = produced_metadata
         self.batch              = batch
+        self.failed_output_accepted = failed_output_accepted
 
 
     def intention_equals(self, other_job):
@@ -159,13 +164,14 @@ class Job(object):
             origin=d.get('origin'),
             saved_files=d.get('saved_files'),
             produced_metadata=d.get('produced_metadata'),
-            batch=d.get('batch'))
+            batch=d.get('batch'),
+            failed_output_accepted=d.get('failed_output_accepted', False))
 
     @classmethod
     def get(cls, _id):
         doc = config.db.jobs.find_one({'_id': bson.ObjectId(_id)})
         if doc is None:
-            raise Exception('Job not found')
+            raise APINotFoundException('Job not found')
 
         return cls.load(doc)
 
@@ -198,6 +204,8 @@ class Job(object):
             d.pop('request')
         if d['now'] is False:
             d.pop('now')
+        if d['failed_output_accepted'] is False:
+            d.pop('failed_output_accepted')
 
         return d
 

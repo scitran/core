@@ -329,6 +329,135 @@ def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_ro
     api_db.jobs.delete_one({"_id": bson.ObjectId("5a007cdb0f352600d94c845f")})
 
 
+def test_failed_job_output(data_builder, default_payload, as_user, as_admin, as_drone, api_db, file_form):
+    # create gear
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {
+        'dicom': {
+            'base': 'file'
+        }
+    }
+    gear = data_builder.create_gear(gear=gear_doc)
+    gear2 = data_builder.create_gear()
+    gear2_name = as_admin.get('/gears/' + gear2).json()['gear']['name']
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('test.zip')).ok
+
+    # create rule for text files
+    r = as_admin.post('/projects/' + project + '/rules', json={
+        'alg': gear2_name,
+        'name': 'text-trigger',
+        'any': [],
+        'all': [{'type': 'file.type', 'value': 'text'}]
+    })
+    assert r.ok
+
+    # create job
+    r = as_admin.post('/jobs/add', json={
+        'gear_id': gear,
+        'inputs': {
+            'dicom': {
+                'type': 'acquisition',
+                'id': acquisition,
+                'name': 'test.zip'
+            }
+        },
+        'config': {},
+        'destination': {
+            'type': 'acquisition',
+            'id': acquisition
+        }
+    })
+    assert r.ok
+    job = r.json()['_id']
+
+    # prepare completion (send success status before engine upload)
+    r = as_drone.post('/jobs/' + job + '/prepare-complete', json={'success': False})
+    assert r.ok
+
+    # verify that job ticket has been created
+    job_ticket = api_db.job_tickets.find_one({'job': job})
+    assert job_ticket['success'] == False
+
+    # engine upload
+    metadata = {
+        'project':{
+            'label': 'engine project',
+            'info': {'test': 'p'}
+        },
+        'session':{
+            'label': 'engine session',
+            'subject': {'code': 'engine subject'},
+            'info': {'test': 's'}
+        },
+        'acquisition':{
+            'label': 'engine acquisition',
+            'timestamp': '2016-06-20T21:57:36+00:00',
+            'info': {'test': 'a'},
+            'files': [{
+                'name': 'result.txt',
+                'type': 'text',
+                'info': {'test': 'f0'}
+            }]
+        }
+    }
+
+    r = as_drone.post('/engine',
+        params={'level': 'acquisition', 'id': acquisition, 'job': job, 'job_ticket': job_ticket['_id']},
+        files=file_form('result.txt', meta=metadata)
+    )
+    assert r.ok
+
+    # verify metadata wasn't applied
+    acq = as_admin.get('/acquisitions/' + acquisition).json()
+    assert 'test' not in acq.get('info', {})
+
+    # verify uploaded file got marked w/ 'from_failed_job'
+    result_file = acq['files'][-1]
+    assert 'from_failed_job' in result_file
+    assert result_file['from_failed_job'] == True
+
+    # verify that no jobs were spawned for failed files
+    jobs = [j for j in api_db.jobs.find({'gear_id': gear2})]
+    assert len(jobs) == 0
+
+    # try to accept failed output - user has no access to destination
+    r = as_user.post('/jobs/' + job + '/accept-failed-output')
+    assert r.status_code == 403
+
+    # try to accept failed output - job is not in failed state yet
+    r = as_admin.post('/jobs/' + job + '/accept-failed-output')
+    assert r.status_code == 400
+
+    # set job state to failed
+    r = as_drone.put('/jobs/' + job, json={'state': 'running'})
+    assert r.ok
+    r = as_drone.put('/jobs/' + job, json={'state': 'failed'})
+    assert r.ok
+
+    # accept failed output
+    r = as_admin.post('/jobs/' + job + '/accept-failed-output')
+    assert r.ok
+
+    # verify job is marked w/ 'failed_output_accepted'
+    job_doc = as_admin.get('/jobs/' + job).json()
+    assert 'failed_output_accepted' in job_doc
+    assert job_doc['failed_output_accepted'] == True
+
+    # verify metadata was applied on hierarchy
+    acq = as_admin.get('/acquisitions/' + acquisition).json()
+    assert 'test' in acq.get('info', {})
+
+    # verify uploaded file isn't marked anymore
+    result_file = acq['files'][-1]
+    assert 'from_failed_job' not in result_file
+
+    # verify that a job was spawned for accepted files
+    jobs = [j for j in api_db.jobs.find({'gear_id': gear2})]
+    assert len(jobs) == 1
+
 def test_analysis_job_creation_errors(data_builder, default_payload, as_admin, file_form):
     project = data_builder.create_project()
     session = data_builder.create_session()

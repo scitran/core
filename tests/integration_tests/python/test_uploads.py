@@ -699,7 +699,7 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
         params={'level': 'acquisition', 'id': acquisition, 'job': '000000000000000000000000'},
         files=file_form('one.csv', 'two.csv', meta=metadata)
     )
-    assert r.status_code == 500
+    assert r.status_code == 404
 
     # engine upload
     r = as_root.post('/engine',

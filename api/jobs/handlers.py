@@ -2,6 +2,7 @@
 API request handlers for the jobs module
 """
 import bson
+import copy
 import os
 import StringIO
 from jsonschema import ValidationError
@@ -9,12 +10,14 @@ from urlparse import urlparse
 
 from .. import upload
 from .. import util
-from ..auth import require_login, has_access
+from ..auth import require_drone, require_login, has_access
+from ..dao import hierarchy
 from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
-from ..dao.containerutil import ContainerReference
+from ..dao.containerutil import ContainerReference, pluralize
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
+from ..web.request import AccessType
 from .. import config
 from . import batch
 from ..validators import validate_data, verify_payload_exists
@@ -25,7 +28,7 @@ from .gears import validate_gear_config, get_gears, get_gear, get_invocation_sch
 from .jobs import Job, Logs
 from .batch import check_state, update
 from .queue import Queue
-from .rules import validate_regexes
+from .rules import create_jobs, validate_regexes
 
 
 class GearsHandler(base.RequestHandler):
@@ -458,7 +461,7 @@ class JobHandler(base.RequestHandler):
         try:
             Job.get(_id)
         except Exception: # pylint: disable=broad-except
-            self.abort(404, 'Job not found')
+            raise APINotFoundException('Job not found')
 
         return Logs.add(_id, doc)
 
@@ -478,6 +481,53 @@ class JobHandler(base.RequestHandler):
 
         new_id = Queue.retry(j, force=True)
         return { "_id": new_id }
+
+
+    @require_drone
+    def prepare_complete(self, _id):
+        j = Job.get(_id)
+        payload = self.request.json
+        ticket = {
+            'job': j.id_,
+            'success': payload.get('success', False),
+        }
+        return {'ticket': config.db.job_tickets.insert_one(ticket).inserted_id}
+
+
+    @require_login
+    def accept_failed_output(self, _id):
+        j = Job.get(_id)
+
+        # Permission check
+        if not self.superuser_request:
+            j.destination.check_access(self.uid, 'rw')
+
+        if j.state != 'failed':
+            self.abort(400, 'Can only accept failed output of a job that failed')
+
+        # Remove flag from files
+        container = j.destination.get()
+        container_before = copy.deepcopy(container)
+        for f in container.get('files'):
+            if f['origin'] == {'type': 'job', 'id': _id}:
+                del f['from_failed_job']
+        cont_name = pluralize(j.destination.type)
+        query = {'_id': container['_id']}
+        updates = {'$set': {'files': container['files']}}
+        config.db[cont_name].update_one(query, updates)
+
+        # Apply metadata
+        hierarchy.update_container_hierarchy(j.produced_metadata, container['_id'], j.destination.type)
+
+        # Mark and save job
+        j.failed_output_accepted = True
+        j.save()
+
+        # Create any automatic jobs for the accepted files
+        create_jobs(config.db, container_before, container, cont_name)
+
+        self.log_user_access(AccessType.accept_failed_output, cont_name=j.destination.type, cont_id=j.destination.id, multifile=True)
+
 
 class BatchHandler(base.RequestHandler):
 
