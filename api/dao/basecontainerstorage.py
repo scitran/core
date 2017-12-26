@@ -216,8 +216,9 @@ class ContainerStorage(object):
                 query['permissions'] = {'$elemMatch': user}
 
         # if projection includes files.info, add new key `info_exists` and allow reserved info keys through
-        if projection and ('info' in projection or 'files.info' in projection):
+        if projection and ('info' in projection or 'files.info' in projection or 'subject.info' in projection):
             replace_info_with_bool = True
+            projection.pop('subject.info', None)
             projection.pop('files.info', None)
             projection.pop('info', None)
         else:
@@ -233,6 +234,11 @@ class ContainerStorage(object):
                 info = cont.pop('info', {})
                 cont['info_exists'] = bool(info)
                 cont['info'] = containerutil.sanitize_info(info)
+
+                if cont.get('subject'):
+                    s_info = cont['subject'].pop('info')
+                    cont['subject']['info_exists'] = bool(s_info)
+                    cont['subject']['info'] = containerutil.sanitize_info(s_info)
 
                 for f in cont.get('files', []):
                     f_info = f.pop('info', {})
