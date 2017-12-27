@@ -120,6 +120,21 @@ module.exports = function(grunt) {
 		},
 
 		/**
+		 * Print API Doc Coverage
+		 */
+		printDocCoverage: {
+			core: {
+				ignoredPaths: [
+					/\/api$/,
+					/\/api\/schemas\/.*$/
+				],
+				failOnErrors: false,
+				src: 'build/swagger-ui.json',
+				endpoints: '../endpoints.json'
+			}
+		},
+
+		/**
 		 * Static hosting for swagger-ui docs
 		 */
 		connect: {
@@ -180,6 +195,11 @@ module.exports = function(grunt) {
 	 * Run a live server with swagger-ui
 	 */
 	grunt.registerTask('live', ['build-ui', 'connect', 'watch']);
+
+	/**
+	 * Generate docs and print coverage
+	 */
+	grunt.registerTask('coverage', ['build-ui', 'printDocCoverage']);
 };
 
 

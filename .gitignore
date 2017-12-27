@@ -8,6 +8,7 @@ bootstrap.json
 .cache
 /.coverage*
 coverage.xml
+endpoints.json
 /htmlcov
 node_modules/
 /bin/accesslog.csv
