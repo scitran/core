@@ -111,6 +111,7 @@ function main() {
             --env "SCITRAN_PERSISTENT_DATA_PATH=$SCITRAN_PERSISTENT_DATA_PATH" \
             --env "SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET" \
             --env "SCITRAN_RUNTIME_COVERAGE=true" \
+            --env "SCITRAN_COLLECT_ENDPOINTS=true" \
             --env "SCITRAN_CORE_ACCESS_LOG_ENABLED=true" &
         export API_PID=$!
 

@@ -70,6 +70,7 @@ function clean_up() {
 
     # Copy coverage file to host for possible further reporting
     docker cp scitran-core-test-uwsgi:/var/scitran/code/api/.coverage .coverage
+    docker cp scitran-core-test-uwsgi:/var/scitran/code/api/endpoints.json endpoints.json
 
     # Spin down dependencies
     docker rm -f -v scitran-core-test-uwsgi

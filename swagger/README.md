@@ -63,7 +63,7 @@ $template_arguments:
   $template: templates/tags.yaml
   arguments:
     tag: tags
-	parameter: GroupId
+    parameter: GroupId
 ``` 
 
 Then the template arguments for the `templates/tags.yaml` template invocation will be:

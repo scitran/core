@@ -22,6 +22,33 @@ if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true": # pragma: no cover - oh
 
     start_coverage()
 
+# Enable collecting endpoints for checking documentation coverage
+if os.environ.get("SCITRAN_COLLECT_ENDPOINTS") == "true": #pragma no cover
+    ENDPOINTS = set()
+
+    def save_endpoints():
+        print('Saving endpoints')
+        try:
+            results = list(sorted(ENDPOINTS))
+            with open('endpoints.json', 'w') as f:
+                json.dump(results, f)
+
+        except: #pylint: disable=bare-except
+            print('Could not save endpoints.json: {0}'.format(traceback.format_exc()))
+
+    def start_collecting_endpoints():
+        print('Collecting endpoints...')
+        atexit.register(save_endpoints)
+
+    def collect_endpoint(request):
+        ENDPOINTS.add('{0} {1}'.format(request.method, request.path))
+
+    start_collecting_endpoints()
+
+else:
+    def collect_endpoint(request):
+        #pylint: disable=unused-argument
+        pass
 
 from ..api import endpoints
 from .. import config
@@ -42,6 +69,8 @@ def dispatcher(router, request, response):
             uwsgi.set_logvar('request_id', request.id)
     except: # pylint: disable=bare-except
         request.logger.error("Error setting request_id log var", exc_info=True)
+
+    collect_endpoint(request)
 
     try:
         rv = router.default_dispatcher(request, response)
