@@ -51,6 +51,7 @@
               "code":             {"$ref":"#/definitions/code"},
               "tags":             {"$ref":"#/definitions/tags"},
               "info":             {"$ref":"#/definitions/info"},
+              "info_exists":      {"$ref": "../definitions/container.json#/definitions/info_exists"},
               "files":{
                   "type":"array",
                   "items":{

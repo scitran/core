@@ -30,6 +30,7 @@
                 "public":       {"$ref": "../definitions/container.json#/definitions/public"},
                 "label":        {"$ref": "../definitions/container.json#/definitions/label"},
                 "info":         {"$ref": "../definitions/container.json#/definitions/info"},
+                "info_exists":  {"$ref": "../definitions/container.json#/definitions/info_exists"},
                 "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "operator":     {"$ref": "#/definitions/operator"},
                 "project":      {"$ref":"#/definitions/project"},

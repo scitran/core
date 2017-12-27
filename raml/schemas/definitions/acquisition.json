@@ -37,6 +37,7 @@
               "timezone":     {"$ref":"../definitions/container.json#/definitions/timezone"},
               "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
               "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},
+              "info_exists": {"type": "boolean"},
               "permissions":{
                   "type":"array",
                   "items":{"$ref":"../definitions/permission.json#/definitions/permission-output-default-required"}
