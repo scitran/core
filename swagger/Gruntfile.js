@@ -5,8 +5,12 @@ var SWAGGER_UI_PORT = 9009;
 var SWAGGER_UI_LIVE_RELOAD_PORT = 19009;
 
 module.exports = function(grunt) {
-	require('load-grunt-tasks')(grunt);
+	loadTasks(grunt);
 	grunt.task.loadTasks('support/tasks/');
+
+	grunt.task.registerTask('createBuildDir', function() {
+		grunt.file.mkdir('build');
+	});
 
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
@@ -14,36 +18,16 @@ module.exports = function(grunt) {
 		lintSchemas: {
 			core: {
 				defDirs: [
-					'../raml/schemas/definitions'
+					'schemas/definitions'
 				],
 				refDirs: [
-					'../raml/schemas/input',
-					'../raml/schemas/output'
+					'schemas/input',
+					'schemas/output'
 				]
 			}
 		},
 
 		copy: {
-			/**
-			 * Copy schema files into build. Once we fully transition to swagger,
-			 * the schema files should live in this subdirectory permanently.
-			 */
-			schema: {
-				files: [
-					{ 
-						expand: true, 
-						cwd: '../raml/schemas', 
-						src: ['**'], 
-						dest: 'build/schemas' 
-					},
-					{
-						expand: true,
-						cwd: '../raml/examples',
-						src: ['**'],
-						dest: 'build/examples'
-					}
-				]
-			},
 			/**
 			 * Copy swagger ui dist and config files
 			 */
@@ -95,7 +79,8 @@ module.exports = function(grunt) {
 			core: {
 				src: 'build/swagger-flat.json',
 				dest: 'build/swagger-ui.json',
-				schemasDir: '../raml/schemas'
+				schemasDir: './schemas',
+				location: 'index.yaml'
 			}
 		},
 
@@ -106,16 +91,6 @@ module.exports = function(grunt) {
 			core: {
 				ignoreWarnings: ['UNUSED_DEFINITION'],
 				src: 'build/swagger-ui.json'
-			}
-		},
-
-		/**
-		 * Resolve schema links in the swagger documentation
-		 */
-		resolveSchemaLinks: {
-			core: {
-				src: 'build/swagger-flat.json',
-				dest: 'build/swagger-ui.json'
 			}
 		},
 
@@ -158,7 +133,7 @@ module.exports = function(grunt) {
 				},
 				files: [
 					'**/*.yaml',
-					'../raml/schemas/**/*.json'
+					'schemas/**/*.json'
 				],
 				tasks: [
 					'build-schema',
@@ -173,7 +148,7 @@ module.exports = function(grunt) {
 	 */
 	grunt.registerTask('build-schema', [
 		'lintSchemas',
-		'copy:schema', 
+		'createBuildDir',
 		'flattenSwagger',
 		'schemasToDefs',
 		'validateSwagger'

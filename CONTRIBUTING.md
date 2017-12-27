@@ -43,12 +43,12 @@ Ensure that `./tests/bin/run-tests-docker.sh -- -l` exits without errors.
 1. All API resources must have input validation
 1. New API resources should follow the error handling convention and raise webapp2.HTTPException
 
-### Add RAML for API Endpoints
-1. Create a new resource file, called `<resource_name>.raml`, e.g., `files.raml`. Create this file in the `raml/resources` directory.
-1. In `api.raml`, add a line with the URL of your resource and an include directive for your resource raml file, e.g., `/files: !include resources/files.raml`.
+### Add Swagger for API Endpoints
+1. Create a new resource file, called `<resource_name>.yaml`, e.g., `files.yaml`. Create this file in the `swagger/paths` directory.
+1. In `index.yaml`, add an `$include` line for your resource file, e.g., `- paths/files.yaml`.
 1. In your resource file, define your resource. Begin by adding a `description` property with the description you wrote in step 1.
-1. Add example properties for both request and response. Examples should be stored in the `examples/` directory, e.g., `raml/examples/request/files.json`.
-1. Use [JSONSchema.net](http://jsonschema.net/) to generate a JSON schema for both request and response body. Edit the schema as necessary. Before generating your schema, scroll down and uncheck "allow additional properties".  Schemas are stored in the `schemas/` directory, e.g., `raml/schemas/input/files.json`.
+1. Add example properties for both request and response. Examples should be stored in the `examples/` directory, e.g., `swagger/examples/request/files.json`.
+1. Use [JSONSchema.net](http://jsonschema.net/) to generate a JSON schema for both request and response body. Edit the schema as necessary. Before generating your schema, scroll down and uncheck "allow additional properties".  Schemas are stored in the `schemas/` directory, e.g., `swagger/schemas/input/files.json`.
 1. Verify that the example properties pass schema validation by running the unit tests. New schemas and examples will be tested automatically. (See testing instructions below)
 
 ### Testing

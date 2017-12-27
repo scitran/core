@@ -19,10 +19,12 @@ module.exports = function(grunt) {
 	 * @param {string} data.src The input file (root level swagger file)
 	 * @param {string} data.dest The destination file (the flattened output file)
 	 * @param {string} data.schemasDir The root schema directory
+	 * @param {string} data.location The optional root location of the original swagger file
 	 */
 	grunt.registerMultiTask('schemasToDefs', 'Convert schemas to definitions', function() {
 		var srcFile = this.data.src;
 		var dstFile = this.data.dest;
+		var location = this.data.location||this.data.src;
 
 		var opts = {
 			log: function() {
@@ -66,13 +68,10 @@ module.exports = function(grunt) {
 		// Resolve all references in the root yaml
 		var resolveOpts = {
 			filter: ['relative'],
-			location: srcFile,
+			location: location,
 			loaderOptions: {
 				processContent: function(res, callback) {
 					var obj = JSON.parse(res.text);
-					if( obj ) {
-						delete obj['$schema'];
-					}
 					obj = schemas.resolve(obj);
 					// Transpile schema
 					obj = transpiler.toOpenApi2(obj, root.definitions);

@@ -130,7 +130,7 @@ log.debug(str(log_db))
 es = elasticsearch.Elasticsearch([__config['persistent']['elasticsearch_host']])
 
 # validate the lists of json schemas
-schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../raml/schemas')
+schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../swagger/schemas')
 
 expected_mongo_schemas = set([
     'acquisition.json',
