@@ -1,3 +1,4 @@
+import copy
 import bson
 import datetime
 import pymongo.errors
@@ -217,6 +218,7 @@ class ContainerStorage(object):
 
         # if projection includes files.info, add new key `info_exists` and allow reserved info keys through
         if projection and ('info' in projection or 'files.info' in projection or 'subject.info' in projection):
+            projection = copy.deepcopy(projection)
             replace_info_with_bool = True
             projection.pop('subject.info', None)
             projection.pop('files.info', None)
@@ -236,7 +238,7 @@ class ContainerStorage(object):
                 cont['info'] = containerutil.sanitize_info(info)
 
                 if cont.get('subject'):
-                    s_info = cont['subject'].pop('info')
+                    s_info = cont['subject'].pop('info', {})
                     cont['subject']['info_exists'] = bool(s_info)
                     cont['subject']['info'] = containerutil.sanitize_info(s_info)
 
