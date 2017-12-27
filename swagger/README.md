@@ -1,7 +1,5 @@
 # API Documentation
 
-**NOTE**: The `schemas/` folder referenced in this README is currently located at `raml/schemas`.
-
 API Documentation is written in [Swagger 2.0](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md), using
 separate JSON schemas in the `schemas/` folder for the object definitions.
 Currently we're using 2.0 version of the spec due to a lack of support for OpenAPI 3.0 in code-generation tools.
