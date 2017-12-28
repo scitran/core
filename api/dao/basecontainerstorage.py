@@ -1,3 +1,4 @@
+import copy
 import bson
 import datetime
 import pymongo.errors
@@ -29,13 +30,14 @@ BASE_DEFAULTS = {
 }
 
 # All containers that inherit from 'container' in the DM
-CONTAINER_DEFAULTS = {
+CONTAINER_DEFAULTS = BASE_DEFAULTS.copy()
+CONTAINER_DEFAULTS.update({
     'permissions':  [],
     'files':        [],
     'notes':        [],
     'tags':         [],
     'info':         {}
-}
+})
 
 
 class ContainerStorage(object):
@@ -91,10 +93,10 @@ class ContainerStorage(object):
         if cont:
             defaults = BASE_DEFAULTS.copy()
             if self.cont_name not in ['groups', 'users']:
-                defaults.update(CONTAINER_DEFAULTS)
-            defaults.update(cont)
-            cont = defaults
-        return cont
+                defaults = CONTAINER_DEFAULTS.copy()
+            for k,v in defaults.iteritems():
+                cont.setdefault(k, v)
+
 
     def get_container(self, _id, projection=None, get_children=False):
         cont = self.get_el(_id, projection=projection)
@@ -122,10 +124,10 @@ class ContainerStorage(object):
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
 
     def _from_mongo(self, cont):
-        return cont
+        pass
 
     def _to_mongo(self, payload):
-        return payload
+        pass
 
     def exec_op(self, action, _id=None, payload=None, query=None, user=None,
                 public=False, projection=None, recursive=False, r_payload=None,  # pylint: disable=unused-argument
@@ -150,7 +152,7 @@ class ContainerStorage(object):
         raise ValueError('action should be one of GET, POST, PUT, DELETE')
 
     def create_el(self, payload):
-        payload = self._to_mongo(payload)
+        self._to_mongo(payload)
         try:
             result = self.dbc.insert_one(payload)
         except pymongo.errors.DuplicateKeyError:
@@ -169,7 +171,7 @@ class ContainerStorage(object):
         update = {}
 
         if payload is not None:
-            payload = self._to_mongo(payload)
+            self._to_mongo(payload)
             update['$set'] = util.mongo_dict(payload)
 
         if unset_payload is not None:
@@ -201,9 +203,10 @@ class ContainerStorage(object):
                 _id = bson.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
-        cont = self._from_mongo(self.dbc.find_one(_id, projection))
+        cont = self.dbc.find_one(_id, projection)
+        self._from_mongo(cont)
         if fill_defaults:
-            cont =  self._fill_default_values(cont)
+            self._fill_default_values(cont)
         return cont
 
     def get_all_el(self, query, user, projection, fill_defaults=False):
@@ -213,21 +216,37 @@ class ContainerStorage(object):
             else:
                 query['permissions'] = {'$elemMatch': user}
 
-        # if projection includes files.info, add new key `info_exists`
-        if projection and 'files.info' in projection:
+        # if projection includes files.info, add new key `info_exists` and allow reserved info keys through
+        if projection and ('info' in projection or 'files.info' in projection or 'subject.info' in projection):
+            projection = copy.deepcopy(projection)
             replace_info_with_bool = True
-            projection.pop('files.info')
+            projection.pop('subject.info', None)
+            projection.pop('files.info', None)
+            projection.pop('info', None)
         else:
             replace_info_with_bool = False
 
-        results = list(self.dbc.find(query, projection))
+        results = list(self.dbc.find(query))
         for cont in results:
-            cont = self._from_mongo(cont)
+            self._from_mongo(cont)
             if fill_defaults:
-                cont =  self._fill_default_values(cont)
+                self._fill_default_values(cont)
+
             if replace_info_with_bool:
+                info = cont.pop('info', {})
+                cont['info_exists'] = bool(info)
+                cont['info'] = containerutil.sanitize_info(info)
+
+                if cont.get('subject'):
+                    s_info = cont['subject'].pop('info', {})
+                    cont['subject']['info_exists'] = bool(s_info)
+                    cont['subject']['info'] = containerutil.sanitize_info(s_info)
+
                 for f in cont.get('files', []):
-                    f['info_exists'] = bool(f.pop('info', False))
+                    f_info = f.pop('info', {})
+                    f['info_exists'] = bool(f_info)
+                    f['info'] = containerutil.sanitize_info(f_info)
+
         return results
 
     def modify_info(self, _id, payload, modify_subject=False):

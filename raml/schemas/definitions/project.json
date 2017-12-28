@@ -21,6 +21,7 @@
                 "public": {"$ref": "../definitions/container.json#/definitions/public"},
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
                 "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "info_exists":  {"$ref": "../definitions/container.json#/definitions/info_exists"},
                 "description": {"$ref": "../definitions/project.json#/definitions/description"},
                 "group":{"$ref":"../definitions/group.json#/definitions/_id"},
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},

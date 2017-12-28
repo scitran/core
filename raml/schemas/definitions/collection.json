@@ -32,6 +32,7 @@
                 "label": {"$ref": "../definitions/container.json#/definitions/label"},
                 "description": {"$ref": "../definitions/collection.json#/definitions/description"},
                 "info": {"$ref": "../definitions/container.json#/definitions/info"},
+                "info_exists":  {"$ref": "../definitions/container.json#/definitions/info_exists"},
                 "curator": {"$ref":"#/definitions/curator"},
                 "created":{"$ref":"../definitions/created-modified.json#/definitions/created"},
                 "modified":{"$ref":"../definitions/created-modified.json#/definitions/modified"},

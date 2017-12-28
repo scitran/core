@@ -146,6 +146,17 @@ def get_stats(cont, cont_type):
 
     return cont
 
+def sanitize_info(info):
+    """
+    Modifies an info key to only include known top-level keys
+    """
+    formalized_keys = ['BIDS']
+    sanitized_info = {}
+    for k in formalized_keys:
+        if k in info:
+            sanitized_info[k] = info[k]
+    return sanitized_info
+
 
 class ContainerReference(object):
     # pylint: disable=redefined-builtin

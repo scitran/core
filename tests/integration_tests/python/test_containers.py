@@ -180,10 +180,6 @@ def test_get_all_containers(data_builder, as_admin, as_user, as_public, file_for
     project_2 = data_builder.create_project()
     session = data_builder.create_session(project=project_1)
 
-    # get all projects w/ info=true
-    r = as_public.get('/projects', params={'info': 'true'})
-    assert r.ok
-
     # get all projects w/ counts=true
     r = as_public.get('/projects', params={'counts': 'true'})
     assert r.ok
@@ -762,6 +758,28 @@ def test_edit_container_info(data_builder, as_admin, as_user):
     assert r.ok
     assert r.json()['info'] == project_info
 
+    # Test info is not returned on list endpoints
+    r = as_admin.get('/projects')
+    assert r.ok
+    projects = r.json()
+    assert len(projects) == 1
+    assert not projects[0].get('info')
+    assert projects[0]['info_exists']
+
+    # Add reserved key and ensure it is returned
+    BIDS_map = {'BIDS':{'project_label': 'TEST'}}
+    r = as_admin.post('/projects/' + project + '/info', json={
+        'set': BIDS_map
+    })
+    assert r.ok
+
+    r = as_admin.get('/projects')
+    assert r.ok
+    projects = r.json()
+    assert len(projects) == 1
+    assert projects[0]['info'] == BIDS_map
+    assert projects[0]['info_exists']
+
 
     # Use 'replace' to set file info to {}
     r = as_admin.post('/projects/' + project + '/info', json={
@@ -772,6 +790,7 @@ def test_edit_container_info(data_builder, as_admin, as_user):
     r = as_admin.get('/projects/' + project)
     assert r.ok
     assert r.json()['info'] == {}
+
 
 def test_edit_file_info(data_builder, as_admin, file_form):
     project = data_builder.create_project()
@@ -870,6 +889,28 @@ def test_edit_file_info(data_builder, as_admin, file_form):
     r = as_admin.get('/projects/' + project + '/files/' + file_name + '/info')
     assert r.ok
     assert r.json()['info'] == file_info
+
+    # Test file info is not returned on list endpoints
+    r = as_admin.get('/projects')
+    assert r.ok
+    projects = r.json()
+    assert len(projects) == 1 and projects[0]['_id'] == project
+    assert not projects[0]['files'][0].get('info')
+    assert projects[0]['files'][0]['info_exists']
+
+    # Add reserved key and ensure it is returned
+    BIDS_map = {'BIDS':{'project_label': 'TEST'}}
+    r = as_admin.post('/projects/' + project + '/files/' + file_name + '/info', json={
+        'set': BIDS_map
+    })
+    assert r.ok
+
+    r = as_admin.get('/projects')
+    assert r.ok
+    projects = r.json()
+    assert len(projects) == 1 and projects[0]['_id'] == project
+    assert projects[0]['files'][0]['info'] == BIDS_map
+    assert projects[0]['files'][0]['info_exists']
 
 
     # Use 'replace' to set file info to {}
@@ -988,6 +1029,29 @@ def test_edit_subject_info(data_builder, as_admin, as_user):
     r = as_admin.get('/sessions/' + session + '/subject')
     assert r.ok
     assert r.json()['info'] == subject_info
+
+
+    # Test info is not returned on list endpoints
+    r = as_admin.get('/sessions')
+    assert r.ok
+    sessions = r.json()
+    assert len(sessions) == 1
+    assert not sessions[0]['subject'].get('info')
+    assert sessions[0]['subject']['info_exists']
+
+    # Add reserved key and ensure it is returned
+    BIDS_map = {'BIDS':{'subject_label': 'TEST'}}
+    r = as_admin.post('/sessions/' + session + '/subject/info', json={
+        'set': BIDS_map
+    })
+    assert r.ok
+
+    r = as_admin.get('/sessions')
+    assert r.ok
+    sessions = r.json()
+    assert len(sessions) == 1
+    assert sessions[0]['subject']['info'] == BIDS_map
+    assert sessions[0]['subject']['info_exists']
 
 
     # Use 'replace' to set file info to {}
