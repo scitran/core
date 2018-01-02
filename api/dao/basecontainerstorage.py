@@ -223,10 +223,14 @@ class ContainerStorage(object):
             projection.pop('subject.info', None)
             projection.pop('files.info', None)
             projection.pop('info', None)
+
+            # Replace with None if empty (empty projections only return ids)
+            if not projection:
+                projection = None
         else:
             replace_info_with_bool = False
 
-        results = list(self.dbc.find(query))
+        results = list(self.dbc.find(query, projection))
         for cont in results:
             self._from_mongo(cont)
             if fill_defaults:

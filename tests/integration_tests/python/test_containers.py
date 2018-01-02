@@ -1064,3 +1064,105 @@ def test_edit_subject_info(data_builder, as_admin, as_user):
     assert r.ok
     assert r.json()['info'] == {}
 
+def test_fields_list_requests(data_builder, file_form, as_admin):
+    # Ensure sensitive keys are not returned on list endpoints
+    # Project: info and files.info
+    # Session: info, tags, files.info
+    # Subject: firstname, lastname, sex, age, race, ethnicity, info
+    # Acquisition: info, tags, files.info
+
+    project     = data_builder.create_project()
+    session     = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+
+    # Add sensitive keys and files with sensitive keys
+
+    sensitive_keys = {
+        'info': {
+            'should_not_see': True
+        }
+    }
+
+    r = as_admin.put('/projects/' + project, json=sensitive_keys)
+    assert r.ok
+    r = as_admin.post('/projects/' + project + '/files', files=file_form(
+        'test.txt', meta=sensitive_keys))
+    assert r.ok
+    r = as_admin.post('/projects/' + project + '/tags', json={'value': 'should_not_see'})
+    assert r.ok
+
+    r = as_admin.put('/acquisitions/' + acquisition, json=sensitive_keys)
+    assert r.ok
+    r = as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
+        'test.txt', meta=sensitive_keys))
+    assert r.ok
+    r = as_admin.post('/acquisitions/' + acquisition + '/tags', json={'value': 'should_not_see'})
+    assert r.ok
+
+    s_sensitive_keys = {
+        'info': {'should_not_see': True},
+        'subject': {
+            'firstname': 'test',
+            'lastname': 'test',
+            'sex': 'female',
+            'age': 123213213123,
+            'race': 'Asian',
+            'ethnicity': None,
+            'info': {'should_not_see': True}
+        }
+    }
+
+    r = as_admin.put('/sessions/' + session, json=s_sensitive_keys)
+    assert r.ok
+    r = as_admin.post('/sessions/' + session + '/files', files=file_form(
+        'test.txt', meta=sensitive_keys))
+    assert r.ok
+    r = as_admin.post('/sessions/' + session + '/tags', json={'value': 'should_not_see'})
+    assert r.ok
+
+    # Assert noted keys are not returned on list endpoints
+
+    # Get list and ensure object and file are expected object/file
+    r = as_admin.get('/projects')
+    assert r.ok
+    projects = r.json()
+    assert len(projects) == 1
+    p = projects[0]
+    assert len(p['files']) == 1
+
+    # Test for abscence of keys
+    assert not p.get('info')
+    assert not p['files'][0].get('info')
+
+    # Get list and ensure object and file are expected object/file
+    r = as_admin.get('/sessions')
+    assert r.ok
+    sessions = r.json()
+    assert len(sessions) == 1
+    s = sessions[0]
+    assert len(s['files']) == 1
+
+    # Test for abscence of keys
+    assert not s.get('info')
+    assert not s.get('tags')
+    assert not s['subject'].get('firstname')
+    assert not s['subject'].get('lastname')
+    assert not s['subject'].get('sex')
+    assert not s['subject'].get('age')
+    assert not s['subject'].get('ethnicity')
+    assert not s['subject'].get('race')
+    assert not s['subject'].get('info')
+    assert not s['files'][0].get('info')
+
+    # Get list and ensure object and file are expected object/file
+    r = as_admin.get('/acquisitions')
+    assert r.ok
+    acquisitions = r.json()
+    assert len(acquisitions) == 1
+    a = acquisitions[0]
+    assert len(a['files']) == 1
+
+    # Test for abscence of keys
+    assert not a.get('info')
+    assert not a.get('tags')
+    assert not a['files'][0].get('info')
