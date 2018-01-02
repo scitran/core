@@ -1,7 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "access":         { "enum": ["ro", "rw", "admin"] },
+    "access": { 
+      "type": "string",
+      "enum": ["ro", "rw", "admin"] 
+    },
     "permission":{
       "type":"object",
       "properties":{

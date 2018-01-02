@@ -37,7 +37,7 @@
       "properties":{
         "key":            {"type": "string"},
         "created":        {"$ref":"created-modified.json#/definitions/created"},
-        "last_used":      {}
+        "last_used":      {"$ref":"common.json#/definitions/timestamp"}
       },
       "additionalProperties":false
     },

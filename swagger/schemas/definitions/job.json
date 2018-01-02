@@ -8,7 +8,10 @@
     "inputs-item": {
       "type":"object",
       "properties":{
-        "type":{"enum":["http", "scitran"]},
+        "type":{
+          "type": "string",
+          "enum":["http", "scitran"]
+        },
         "uri":{"type":"string"},
         "location":{"type":"string"},
         "vu":{"type":"string"}

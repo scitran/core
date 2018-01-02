@@ -72,13 +72,15 @@ describe('SchemaTranspiler draft4ToOpenApi2', function() {
 		});
 	});
 
-	it('should flatten allOf with one element', function() {
+	it('should not flatten allOf with one element', function() {
 		var schema = {
 			allOf: [{$ref:'#/definitions/Foo'}]
 		};
 
 		var result = transpiler.toOpenApi2(schema);
-		expect(result).toEqual({$ref:'#/definitions/Foo'});
+		expect(result).toEqual({
+			allOf: [{$ref:'#/definitions/Foo'}]
+		});
 	});
 
 	it('should merge properties for anyOf', function() {
@@ -122,28 +124,16 @@ describe('SchemaTranspiler draft4ToOpenApi2', function() {
 		expect(result).toEqual({});
 	});
 
-	it('should flatten array elements', function() {
-		var defs = {
-				Foo: {
-					type: 'object',
-					properties: {
-						updated: {type: 'boolean'}
-					},
-					required: ['updated']
-				}
-			},
-			schema = {
+	it('should not flatten array elements', function() {
+		var schema = {
 				type: 'array',
 				items: {
 					allOf: [{$ref:'#/definitions/Foo'}]
 				}
 			};
 		
-		var result = transpiler.toOpenApi2(schema, defs);
-		expect(result).toEqual({
-			type: 'array',
-			items: {$ref:'#/definitions/Foo'}
-		});
+		var result = transpiler.toOpenApi2(schema);
+		expect(result).toEqual(schema);
 	});
 
 	it('should recurse into properties', function() {
@@ -160,7 +150,7 @@ describe('SchemaTranspiler draft4ToOpenApi2', function() {
 			type: 'object',
 			properties: {
 				bar: {type: 'string'},
-				foo: {$ref: '#/definitions/Foo'}
+				foo: {allOf: [{$ref: '#/definitions/Foo'}]}
 			}
 		});
 	});
