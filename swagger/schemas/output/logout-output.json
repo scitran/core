@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "allOf":[{"$ref":"../definitions/auth.json#/definitions/logout-output"}],
+  "example": {
+  	"tokens_removed": 1
+  }
+}

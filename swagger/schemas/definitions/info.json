@@ -2,6 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions": {
         "info-add-remove": {
+            "type": "object",
             "properties": {
                 "set":      {"type": "object", "minProperties": 1},
                 "delete":   {
@@ -16,6 +17,7 @@
             "additionalProperties": false            
         },
         "info-replace": {
+            "type": "object",
             "properties": {
                 "replace": {"type": "object"}
             },

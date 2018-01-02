@@ -199,6 +199,7 @@ Schemas.prototype.isPrimitiveDef = function(name) {
 	return false;
 };
 
+Schemas.isPrimitiveType = isPrimitiveType;
 
 Schemas.prototype.getComplexDefinitions = function() {
 	return _.pickBy(this.definitions, function(value) {

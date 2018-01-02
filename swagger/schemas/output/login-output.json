@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "allOf":[{"$ref":"../definitions/auth.json#/definitions/login-output"}],
+  "example": {
+  	"token": "MjeuawZcctfRdCOmx_C6oYXK4sLHd2Dhc_oZpkXPPkxHizhNgwFWcrrKGA49BEnK"
+  }
+}
