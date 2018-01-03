@@ -555,8 +555,11 @@ class ContainerHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
-            update = {'$set': {'deleted': datetime.datetime.utcnow()}}
-            containerutil.propagate_changes(cont_name, bson.ObjectId(_id), {}, update, include_refs=True)
+            deleted_at = config.db[cont_name].find_one({'_id': bson.ObjectId(_id)})['deleted']
+            # Don't overwrite deleted timestamp for already deleted children
+            query = {'deleted': {'$exists': False}}
+            update = {'$set': {'deleted': deleted_at}}
+            containerutil.propagate_changes(cont_name, bson.ObjectId(_id), query, update, include_refs=True)
             return {'deleted': 1}
         else:
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
