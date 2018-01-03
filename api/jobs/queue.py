@@ -232,7 +232,7 @@ class Queue(object):
 
                 # Whitelist file fields passed to gear to those that are scientific-relevant
                 whitelisted_keys = ['info', 'tags', 'measurements', 'mimetype', 'type', 'modality', 'size']
-                obj_projection = { key: obj[key] for key in whitelisted_keys }
+                obj_projection = { key: obj.get(key) for key in whitelisted_keys }
 
                 config_['inputs'][x] = {
                     'base': 'file',
