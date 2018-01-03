@@ -19,7 +19,7 @@ class CollectionsHandler(ContainerHandler):
 
     container_handler_configurations['collections'] = {
         'permchecker': containerauth.collection_permissions,
-        'storage': containerstorage.ContainerStorage('collections', use_object_id=True),
+        'storage': containerstorage.ContainerStorage('collections', use_object_id=True, use_delete_tag=True),
         'storage_schema_file': 'collection.json',
         'payload_schema_file': 'collection.json',
         'list_projection': {'info': 0}
@@ -109,8 +109,8 @@ class CollectionsHandler(ContainerHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
 
-        if result.deleted_count == 1:
-            return {'deleted': result.deleted_count}
+        if result.modified_count == 1:
+            return {'deleted': 1}
         else:
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 

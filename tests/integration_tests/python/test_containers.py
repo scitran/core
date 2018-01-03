@@ -1176,6 +1176,7 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     project = data_builder.create_project()
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
+    collection = data_builder.create_collection()
     assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('test.csv')).ok
     r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
         'analysis': {'label': 'with-job'},
@@ -1186,6 +1187,10 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     })
     assert r.ok
     analysis = r.json()['_id']
+    r = as_admin.put('/collections/' + collection, json={
+        'contents': {'operation': 'add', 'nodes': [{'level': 'session', '_id': session}]}
+    })
+    assert r.ok
 
     # try to delete project without admin perms
     r = as_user.delete('/projects/' + project)
@@ -1202,6 +1207,13 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     # verify that a non-referenced file _can_ be deleted from the same acquisition
     assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('unrelated.csv')).ok
     assert as_admin.delete('/acquisitions/' + acquisition + '/files/unrelated.csv').ok
+
+    # delete collection
+    assert collection in as_admin.get('/acquisitions/' + acquisition).json()['collections']
+    assert as_admin.delete('/collections/' + collection).ok
+    assert 'deleted' in api_db.collections.find_one({'_id': bson.ObjectId(collection)})
+    assert as_admin.get('/collections/' + collection).status_code == 404
+    assert collection not in as_admin.get('/acquisitions/' + acquisition).json()['collections']
 
     # delete analysis
     r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis)
@@ -1243,3 +1255,4 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     assert as_admin.get('/projects').json() == []
     assert as_admin.get('/sessions').json() == []
     assert as_admin.get('/acquisitions').json() == []
+    assert as_admin.get('/collections').json() == []
