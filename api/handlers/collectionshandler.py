@@ -95,6 +95,7 @@ class CollectionsHandler(ContainerHandler):
             self.abort(400, 'not a valid object id')
         config.db.acquisitions.update_many({'_id': {'$in': acq_ids}}, {operator: {'collections': bson.ObjectId(_id)}})
 
+
     def delete(self, **kwargs):
         _id = bson.ObjectId(kwargs.pop('cid'))
         self.config = self.container_handler_configurations['collections']

@@ -529,6 +529,7 @@ class ContainerHandler(base.RequestHandler):
 
         return
 
+    @log_access(AccessType.delete_container)
     def delete(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
