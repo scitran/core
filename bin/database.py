@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 40 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 41 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1290,6 +1290,7 @@ def upgrade_to_39():
     cursor = config.db.jobs.find({'config': {'$exists': True }, 'config.config': {'$exists': False }})
     process_cursor(cursor, upgrade_to_39_closure)
 
+
 def upgrade_to_40_closure(acquisition):
     config.db.acquisitions.update_one({'_id':acquisition['_id']},{'$set':{'timestamp':dateutil.parser.parse(acquisition['timestamp'])}})
     return True
@@ -1300,6 +1301,47 @@ def upgrade_to_40():
     """
     cursor = config.db.acquisitions.find({'timestamp':{'$type':'string'}})
     process_cursor(cursor, upgrade_to_40_closure)
+
+
+def upgrade_to_41_closure(cont, cont_name):
+
+    files = cont.get('files', [])
+    for f in files:
+        if 'tags' not in f:
+            f['tags'] = []
+        if 'measurements' not in f:
+            f['measurements'] = []
+        if 'origin' not in f:
+            f['origin'] = {
+                'type': str(Origin.unknown),
+                'id': None
+            }
+        if 'mimetype' not in f:
+            f['mimetype'] = util.guess_mimetype(f.get('name'))
+        if 'modality' not in f:
+            f['modality'] = None
+    config.db[cont_name].update_one({'_id': cont_name['_id']}, {'$set': {'files': files}})
+    return True
+
+
+def upgrade_to_41():
+    """
+    scitran/core issue #1042 - some "expected" file default keys are not present
+
+    These are the fields that are created on every file object in upload.py
+    """
+
+    for cont_name in ['groups', 'projects', 'sessions', 'acquisitions', 'collections', 'analyses']:
+        cursor = config.db['cont_name'].find({'files': { '$elemMatch': { '$or': [
+            {'tags':          {'$exists': False }},
+            {'measurements':  {'$exists': False }},
+            {'origin':        {'$exists': False }},
+            {'mimetype':      {'$exists': False }},
+            {'modality':      {'$exists': False }}
+        ]}}})
+        process_cursor(cursor, upgrade_to_41_closure, context=cont_name)
+
+
 
 ###
 ### BEGIN RESERVED UPGRADE SECTION
