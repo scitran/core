@@ -5,6 +5,7 @@ import dateutil
 import os
 import pymongo
 import shutil
+import time
 import zipfile
 
 from . import config
@@ -491,6 +492,8 @@ class PackfilePlacer(Placer):
                 'event': 'progress',
                 'data': { 'done': complete, 'total': total, 'percent': (complete / float(total)) * 100 },
             })
+
+            time.sleep(1)
 
         self.zip_.close()
 
