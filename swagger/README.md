@@ -23,7 +23,8 @@ The documentation should open automatically. If not, it should be hosted at: [ht
 
 # Writing Documentation
 
-Please follow the [API Documentation Style Guide](STYLE_GUIDE.md) when updating documentation.
+Please follow the [API Documentation Style Guide](STYLE_GUIDE.md) when updating documentation. 
+In addition, it's worth reading [Best Practices in API Design](https://swaggerhub.com/blog/api-design/api-design-best-practices/).
 
 The following files and folders contain API documentation files:
 * `index.yaml` - This is the index file for the swagger documentation. Other files are included or referenced from this file.
