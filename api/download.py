@@ -285,7 +285,7 @@ class Download(base.RequestHandler):
                         yield chunk
                     if len(chunk) % BLOCKSIZE != 0:
                         yield (BLOCKSIZE - (len(chunk) % BLOCKSIZE)) * b'\0'
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True, origin_override=ticket['origin']) # log download
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, filename=os.path.basename(arcpath), multifile=True, origin_override=ticket['origin']) # log download
         yield stream.getvalue() # get tar stream trailer
         stream.close()
 
@@ -295,7 +295,7 @@ class Download(base.RequestHandler):
             t.type = tarfile.SYMTYPE
             t.linkname = os.path.relpath(filepath, data_path)
             yield t.tobuf()
-            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, multifile=True, origin_override=ticket['origin']) # log download
+            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cont_id, filename=os.path.basename(arcpath), multifile=True, origin_override=ticket['origin']) # log download
         stream = cStringIO.StringIO()
         with tarfile.open(mode='w|', fileobj=stream) as _:
             pass

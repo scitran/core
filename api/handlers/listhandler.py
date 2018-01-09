@@ -473,10 +473,10 @@ class FileListHandler(ListHandler):
             # log download if we haven't already for this ticket
             if ticket:
                 if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
                     config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
             else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
 
         # Authenticated or ticketed download request
         else:
@@ -493,14 +493,16 @@ class FileListHandler(ListHandler):
                 # recheck ticket for logged flag
                 ticket = config.db.downloads.find_one({'_id': ticket_id})
                 if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
                     config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
             else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
 
 
-    @log_access(AccessType.view_file)
     def get_info(self, cont_name, list_name, **kwargs):
+        _id = kwargs['cid']
+        filename = kwargs['name']
+        self.log_user_access(AccessType.view_file, cont_name=cont_name, cont_id=_id, filename=filename)
         return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
 
     def modify_info(self, cont_name, list_name, **kwargs):
@@ -544,18 +546,18 @@ class FileListHandler(ListHandler):
     def delete(self, cont_name, list_name, **kwargs):
         # Overriding base class delete to audit action before completion
         _id = kwargs.pop('cid')
+        filename = kwargs['name']
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
 
         if cont_name == 'acquisitions':
-            filename = kwargs['name']
             analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
             if analyses:
                 analysis_ids = [str(a['_id']) for a in analyses]
                 self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids))
 
-        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id, filename=filename)
         try:
             result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
         except APIStorageException as e:

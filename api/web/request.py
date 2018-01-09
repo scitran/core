@@ -46,7 +46,7 @@ def get_request_logger(request_id):
     return logger
 
 
-def log_access(access_type, cont_kwarg='cont_name', cont_id_kwarg='cid'):
+def log_access(access_type, cont_kwarg='cont_name', cont_id_kwarg='cid', filename_kwarg='filename'):
     """
     A decorator to log a user or drone's access to an endpoint
     """
@@ -56,17 +56,19 @@ def log_access(access_type, cont_kwarg='cont_name', cont_id_kwarg='cid'):
 
             cont_name = None
             cont_id = None
+            filename = None
 
             if access_type not in [AccessType.user_login, AccessType.user_logout]:
 
                 cont_name = kwargs.get(cont_kwarg)
                 cont_id = kwargs.get(cont_id_kwarg)
+                filename = kwargs.get(filename)
 
                 # Only log view_container events when the container is a project/session/acquisition
                 if access_type is AccessType.view_container and cont_name not in ['project', 'projects', 'sessions', 'session', 'acquisition', 'acquisitions']:
                     return result
 
-            self.log_user_access(access_type, cont_name, cont_id)
+            self.log_user_access(access_type, cont_name=cont_name, cont_id=cont_id, filename=filename)
 
             return result
         return log_user_access_from_request

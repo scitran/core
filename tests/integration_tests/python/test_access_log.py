@@ -164,6 +164,7 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['access_type'] == AccessType.download_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
 
@@ -190,7 +191,8 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['project']['id'] == str(project)
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['context']['ticket_id'] == ticket_id
     assert most_recent_log['access_type'] == AccessType.download_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
@@ -220,6 +222,7 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_logs = log_db.access_log.find({}).sort([('_id', -1)]).limit(file_count)
     for l in most_recent_logs:
+        assert l['context']['file']['name'] == file_name
         assert l['access_type'] == AccessType.download_file.value
         assert l['origin']['id'] == 'admin@user.com'
 
@@ -242,6 +245,7 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_logs = log_db.access_log.find({}).sort([('_id', -1)]).limit(file_count)
     for l in most_recent_logs:
+        assert l['context']['file']['name'] == file_name
         assert l['access_type'] == AccessType.download_file.value
         assert l['origin']['id'] == 'admin@user.com'
 
@@ -261,7 +265,8 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['project']['id'] == str(project)
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['access_type'] == AccessType.view_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
 
@@ -280,7 +285,8 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['project']['id'] == str(project)
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['access_type'] == AccessType.delete_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
 
