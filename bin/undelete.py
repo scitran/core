@@ -21,7 +21,7 @@ import sys
 import bson
 
 from api import config
-from api.dao.containerutil import propagate_changes
+from api.dao.containerutil import pluralize, propagate_changes
 
 
 log = logging.getLogger('scitran.undelete')
@@ -59,6 +59,11 @@ def undelete(cont_name, cont_id, filename=None, include_parents=False, always_pr
     container = get_container(cont_name, cont_id)
     if container is None:
         raise RuntimeError('Cannot find {}'.format(cont_str))
+
+    if cont_name == 'collections':
+        log.warning('Undeleting collections is limited such that any acquisitions or sessions'
+                    'will have to be re-added to the collection again. The files and notes of'
+                    'the collection are fully restored.')
 
     unset_deleted = {'$unset': {'deleted': True}}
     for parent_name, parent_id in get_parent_refs(cont_name, cont_id, filename=filename):
@@ -117,7 +122,7 @@ def get_parent_refs(cont_name, cont_id, filename=None):
     if filename is not None:
         parent_name, parent_id = cont_name, cont_id
     elif cont_name == 'analyses':
-        parent_name, parent_id = container['parent']['type'], container['parent']['id']
+        parent_name, parent_id = pluralize(container['parent']['type']), container['parent']['id']
     elif cont_name == 'acquisitions':
         parent_name, parent_id = 'sessions', container['session']
     elif cont_name == 'sessions':

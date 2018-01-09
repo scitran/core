@@ -35,7 +35,8 @@ def propagate_changes(cont_name, cont_ids, query, update, include_refs=False):
         query = {}
 
     if include_refs:
-        analysis_query = {'parent.type': singularize(cont_name), 'parent.id': {'$in': cont_ids}}
+        analysis_query = copy.deepcopy(query)
+        analysis_query.update({'parent.type': singularize(cont_name), 'parent.id': {'$in': cont_ids}})
         config.db.analyses.update_many(analysis_query, update)
 
     if cont_name in ('groups', 'projects', 'sessions'):
