@@ -42,7 +42,7 @@ class GroupStorage(ContainerStorage):
 class ProjectStorage(ContainerStorage):
 
     def __init__(self):
-        super(ProjectStorage,self).__init__('projects', use_object_id=True)
+        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True)
 
     def create_el(self, payload):
         result = super(ProjectStorage, self).create_el(payload)
@@ -100,7 +100,7 @@ class ProjectStorage(ContainerStorage):
 class SessionStorage(ContainerStorage):
 
     def __init__(self):
-        super(SessionStorage,self).__init__('sessions', use_object_id=True)
+        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True)
 
     def _fill_default_values(self, cont):
         cont = super(SessionStorage,self)._fill_default_values(cont)
@@ -230,7 +230,7 @@ class SessionStorage(ContainerStorage):
 class AcquisitionStorage(ContainerStorage):
 
     def __init__(self):
-        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True)
+        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True)
 
     def create_el(self, payload):
         result = super(AcquisitionStorage, self).create_el(payload)
@@ -301,13 +301,13 @@ class AcquisitionStorage(ContainerStorage):
 class CollectionStorage(ContainerStorage):
 
     def __init__(self):
-        super(CollectionStorage, self).__init__('collections', use_object_id=True)
+        super(CollectionStorage, self).__init__('collections', use_object_id=True, use_delete_tag=True)
 
 
 class AnalysisStorage(ContainerStorage):
 
     def __init__(self):
-        super(AnalysisStorage, self).__init__('analyses', use_object_id=True)
+        super(AnalysisStorage, self).__init__('analyses', use_object_id=True, use_delete_tag=True)
 
 
     def get_parent(self, parent_type, parent_id):

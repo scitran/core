@@ -134,48 +134,6 @@ def get_parent_tree(cont_name, _id):
     return tree
 
 
-def propagate_changes(cont_name, _id, query, update):
-    """
-    Propagates changes down the heirarchy tree.
-
-    cont_name and _id refer to top level container (which will not be modified here)
-    """
-
-
-    if cont_name == 'groups':
-        project_ids = [p['_id'] for p in config.db.projects.find({'group': _id}, [])]
-        session_ids = [s['_id'] for s in config.db.sessions.find({'project': {'$in': project_ids}}, [])]
-
-        project_q = copy.deepcopy(query)
-        project_q['_id'] = {'$in': project_ids}
-        session_q = copy.deepcopy(query)
-        session_q['_id'] = {'$in': session_ids}
-        acquisition_q = copy.deepcopy(query)
-        acquisition_q['session'] = {'$in': session_ids}
-
-        config.db.projects.update_many(project_q, update)
-        config.db.sessions.update_many(session_q, update)
-        config.db.acquisitions.update_many(acquisition_q, update)
-
-
-    # Apply change to projects
-    elif cont_name == 'projects':
-        session_ids = [s['_id'] for s in config.db.sessions.find({'project': _id}, [])]
-
-        session_q = copy.deepcopy(query)
-        session_q['project'] = _id
-        acquisition_q = copy.deepcopy(query)
-        acquisition_q['session'] = {'$in': session_ids}
-
-        config.db.sessions.update_many(session_q, update)
-        config.db.acquisitions.update_many(acquisition_q, update)
-
-    elif cont_name == 'sessions':
-        query['session'] = _id
-        config.db.acquisitions.update_many(query, update)
-    else:
-        raise ValueError('changes can only be propagated from group, project or session level')
-
 def is_session_compliant(session, template):
     """
     Given a project-level session template and a session,
@@ -221,7 +179,7 @@ def is_session_compliant(session, template):
                     min_count = fr_temp.pop('minimum')
                     count = 0
                     for f in cont.get('files', []):
-                        if not check_cont(f, fr_temp):
+                        if 'deleted' in f or not check_cont(f, fr_temp):
                             # Didn't find a match, on to the next one
                             continue
                         else:
@@ -248,7 +206,7 @@ def is_session_compliant(session, template):
         if not session.get('_id'):
             # New session, won't have any acquisitions. Compliance check fails
             return False
-        acquisitions = list(config.db.acquisitions.find({'session': session['_id'], 'archived':{'$ne':True}}))
+        acquisitions = list(config.db.acquisitions.find({'session': session['_id'], 'archived': {'$ne': True}, 'deleted': {'$exists': False}}))
         for req in a_requirements:
             req_temp = copy.deepcopy(req)
             min_count = req_temp.pop('minimum')
@@ -276,11 +234,19 @@ def upsert_fileinfo(cont_name, _id, fileinfo):
     for f in container_before.get('files',[]):
         # Fine file in result and set to file_after
         if f['name'] == fileinfo['name']:
-            file_before = f
+            if 'deleted' in f:
+                # Ugly hack: remove already existing file that has the 'deleted' tag
+                # This creates a gap in the delete functionality, ie. this file cannot be restored from this point on.
+                # Note that the previous file in storage will be unreferenced from the DB (unless CAS edge case...)
+                config.db[cont_name].find_one_and_update(
+                    {'_id': _id, 'files.name': fileinfo['name']},
+                    {'$pull': {'files': {'name': fileinfo['name']}}}
+                )
+            else:
+                file_before = f
             break
 
     if file_before is None:
-
         fileinfo['created'] = fileinfo['modified']
         container_after = add_fileinfo(cont_name, _id, fileinfo)
     else:
@@ -338,7 +304,7 @@ def _find_or_create_destination_project(group_id, project_label, timestamp, user
         project_label = 'Unknown'
 
     project_regex = '^'+re.escape(project_label)+'$'
-    project = config.db.projects.find_one({'group': group['_id'], 'label': {'$regex': project_regex, '$options': 'i'}})
+    project = config.db.projects.find_one({'group': group['_id'], 'label': {'$regex': project_regex, '$options': 'i'}, 'deleted': {'$exists': False}})
 
     if project:
         # If the project already exists, check the user's access
@@ -459,20 +425,20 @@ def find_existing_hierarchy(metadata, type_='uid', user=None):
         raise APIStorageException(str(e))
 
     # Confirm session and acquisition exist
-    session_obj = config.db.sessions.find_one({'uid': session_uid}, ['project', 'permissions'])
+    session_obj = config.db.sessions.find_one({'uid': session_uid, 'deleted': {'$exists': False}}, ['project', 'permissions'])
 
     if session_obj is None:
         raise APINotFoundException('Session with uid {} does not exist'.format(session_uid))
     if user and not has_access(user, session_obj, 'rw'):
         raise APIPermissionException('User {} does not have read-write access to session {}'.format(user, session_uid))
 
-    a = config.db.acquisitions.find_one({'uid': acquisition_uid}, ['_id'])
+    a = config.db.acquisitions.find_one({'uid': acquisition_uid, 'deleted': {'$exists': False}}, ['_id'])
     if a is None:
         raise APINotFoundException('Acquisition with uid {} does not exist'.format(acquisition_uid))
 
     now = datetime.datetime.utcnow()
     project_files = dict_fileinfos(project.pop('files', []))
-    project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
+    project_obj = config.db.projects.find_one({'_id': session_obj['project'], 'deleted': {'$exists': False}}, projection=PROJECTION_FIELDS + ['name'])
     target_containers = _get_targets(project_obj, session, acquisition, type_, now)
     target_containers.append(
         (TargetContainer(project_obj, 'project'), project_files)
@@ -496,7 +462,7 @@ def upsert_bottom_up_hierarchy(metadata, type_='uid', user=None):
         log.error(metadata)
         raise APIStorageException(str(e))
 
-    session_obj = config.db.sessions.find_one({'uid': session_uid})
+    session_obj = config.db.sessions.find_one({'uid': session_uid, 'deleted': {'$exists': False}})
     if session_obj: # skip project creation, if session exists
 
         if user and not has_access(user, session_obj, 'rw'):
@@ -504,7 +470,7 @@ def upsert_bottom_up_hierarchy(metadata, type_='uid', user=None):
 
         now = datetime.datetime.utcnow()
         project_files = dict_fileinfos(project.pop('files', []))
-        project_obj = config.db.projects.find_one({'_id': session_obj['project']}, projection=PROJECTION_FIELDS + ['name'])
+        project_obj = config.db.projects.find_one({'_id': session_obj['project'], 'deleted': {'$exists': False}}, projection=PROJECTION_FIELDS + ['name'])
         target_containers = _get_targets(project_obj, session, acquisition, type_, now)
         target_containers.append(
             (TargetContainer(project_obj, 'project'), project_files)

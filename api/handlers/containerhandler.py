@@ -529,6 +529,7 @@ class ContainerHandler(base.RequestHandler):
 
         return
 
+    @log_access(AccessType.delete_container)
     def delete(self, cont_name, **kwargs):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
@@ -540,6 +541,13 @@ class ContainerHandler(base.RequestHandler):
             container['has_children'] = False
         if container.get('files') or container.get('analyses'):
             container['has_children'] = True
+
+        if cont_name == 'acquisitions':
+            analyses = containerutil.get_referring_analyses(cont_name, _id)
+            if analyses:
+                analysis_ids = [str(a['_id']) for a in analyses]
+                self.abort(400, 'Cannot delete acquisition {} referenced by analyses {}'.format(_id, analysis_ids))
+
         target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         try:
@@ -547,9 +555,13 @@ class ContainerHandler(base.RequestHandler):
             result = permchecker(self.storage.exec_op)('DELETE', _id)
         except APIStorageException as e:
             self.abort(400, e.message)
-
-        if result.deleted_count == 1:
-            return {'deleted': result.deleted_count}
+        if result.modified_count == 1:
+            deleted_at = config.db[cont_name].find_one({'_id': bson.ObjectId(_id)})['deleted']
+            # Don't overwrite deleted timestamp for already deleted children
+            query = {'deleted': {'$exists': False}}
+            update = {'$set': {'deleted': deleted_at}}
+            containerutil.propagate_changes(cont_name, bson.ObjectId(_id), query, update, include_refs=True)
+            return {'deleted': 1}
         else:
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 
@@ -638,6 +650,9 @@ class ContainerHandler(base.RequestHandler):
         except APIStorageException as e:
             self.abort(400, e.message)
         if container is not None:
+            files = container.get('files', [])
+            if files:
+                container['files'] = [f for f in files if 'deleted' not in f]
             return container
         else:
             self.abort(404, 'Element {} not found in container {}'.format(_id, self.storage.cont_name))

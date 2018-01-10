@@ -186,14 +186,13 @@ class AnalysesHandler(RefererHandler):
         parent = self.storage.get_parent(cont_name, cid)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('DELETE')
-        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=cid)
 
         try:
             result = self.storage.delete_el(_id)
         except APIStorageException as e:
             self.abort(400, e.message)
-        if result.deleted_count == 1:
-            return {'deleted': result.deleted_count}
+        if result.modified_count == 1:
+            return {'deleted': result.modified_count}
         else:
             self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 
@@ -377,10 +376,10 @@ class AnalysesHandler(RefererHandler):
                     # log download if we haven't already for this ticket
                     if ticket:
                         if not ticket.get('logged', False):
-                            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
+                            self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid, filename=fileinfo['name'])
                             config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
                     else:
-                        self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
+                        self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid, filename=fileinfo['name'])
 
                 # Request to download the file itself
                 else:
@@ -396,10 +395,10 @@ class AnalysesHandler(RefererHandler):
             if ticket:
                 ticket = config.db.downloads.find_one({'_id': ticket_id})
                 if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid, filename=fileinfo['name'])
                     config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
             else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=cid, filename=fileinfo['name'])
 
 
     def _check_ticket(self, ticket_id, _id, filename):

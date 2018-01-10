@@ -20,10 +20,11 @@ class ListStorage(object):
     Examples: permissions in projects, permissions in groups, notes in projects, sessions, acquisitions, etc
     """
 
-    def __init__(self, cont_name, list_name, use_object_id = False):
+    def __init__(self, cont_name, list_name, use_object_id=False, use_delete_tag=False):
         self.cont_name = cont_name
         self.list_name = list_name
         self.use_object_id = use_object_id
+        self.use_delete_tag = use_delete_tag
         self.dbc = config.db[cont_name]
 
     def get_container(self, _id, query_params=None):
@@ -103,16 +104,9 @@ class ListStorage(object):
         query = {'_id': _id}
         update = {
             '$pull': {self.list_name: query_params},
-            '$set': { 'modified': datetime.datetime.utcnow()}
-            }
-        result =  self.dbc.update_one(query, update)
-        if self.list_name is 'files' and self.cont_name in ['sessions', 'acquisitions']:
-            if self.cont_name == 'sessions':
-                session_id = _id
-            else:
-                session_id = AcquisitionStorage().get_container(_id).get('session')
-            SessionStorage().recalc_session_compliance(session_id)
-        return result
+            '$set': {'modified': datetime.datetime.utcnow()}
+        }
+        return self.dbc.update_one(query, update)
 
     def _get_el(self, _id, query_params):
         query = {'_id': _id, self.list_name: {'$elemMatch': query_params}}
@@ -162,6 +156,28 @@ class FileStorage(ListStorage):
             'jobs_triggered': len(jobs_spawned)
         }
 
+    def _delete_el(self, _id, query_params):
+        files = self.get_container(_id).get('files', [])
+        for f in files:
+            if f['name'] == query_params['name']:
+                f['deleted'] = datetime.datetime.utcnow()
+        result = self.dbc.update_one({'_id': _id}, {'$set': {'files': files, 'modified': datetime.datetime.utcnow()}})
+        if self.cont_name in ['sessions', 'acquisitions']:
+            if self.cont_name == 'sessions':
+                session_id = _id
+            else:
+                session_id = AcquisitionStorage().get_container(_id).get('session')
+            SessionStorage().recalc_session_compliance(session_id)
+        return result
+
+    def _get_el(self, _id, query_params):
+        query_params_nondeleted = query_params.copy()
+        query_params_nondeleted['deleted'] = {'$exists': False}
+        query = {'_id': _id, 'files': {'$elemMatch': query_params_nondeleted}}
+        projection = {'files.$': 1}
+        result = self.dbc.find_one(query, projection)
+        if result and result.get(self.list_name):
+            return result.get(self.list_name)[0]
 
     def modify_info(self, _id, query_params, payload):
         update = {}

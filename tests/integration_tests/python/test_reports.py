@@ -30,6 +30,23 @@ def test_site_report(data_builder, randstr, as_admin, as_user):
     assert group_report['project_count'] == 1
     assert group_report['session_count'] == 1
 
+    # get site report with deleted session
+    assert as_admin.delete('/sessions/' + session).ok
+    site_report = as_admin.get('/report/site').json()
+    group_report = next((g for g in site_report['groups'] if g['label'] == group_label), None)
+    assert group_report is not None
+    assert group_report['project_count'] == 1
+    assert group_report['session_count'] == 0
+
+    # get site report with deleted project
+    session2 = data_builder.create_session()
+    assert as_admin.delete('/projects/' + project).ok
+    site_report = as_admin.get('/report/site').json()
+    group_report = next((g for g in site_report['groups'] if g['label'] == group_label), None)
+    assert group_report is not None
+    assert group_report['project_count'] == 0
+    assert group_report['session_count'] == 0
+
 
 def test_project_report(data_builder, as_admin, as_user):
     project_1 = data_builder.create_project()
@@ -295,6 +312,21 @@ def test_usage_report(data_builder, file_form, as_user, as_admin):
     # get project-aggregated usage report
     r = as_admin.get('/report/usage', params={'type': 'project'})
     assert r.ok
+
+    # Test that deleted files are not counted
+    assert as_admin.post('/projects/' + project + '/files', files=file_form('project.csv')).ok
+    assert as_admin.delete('/projects/' + project + '/files/' + 'project.csv').ok
+
+    r = as_admin.get('/report/usage', params={
+        'type': 'project', 'start_date': yesterday_ts, 'end_date': tomorrow_ts
+    })
+    assert r.ok
+    usage = r.json()
+    assert len(usage) == 2
+    assert usage[1]['project']['label'] == 'project2'
+    assert usage[1]['session_count'] == 0
+    assert usage[1]['file_mbs'] == 0
+    assert usage[1]['gear_execution_count'] == 0
 
     # delete project
     r= as_admin.delete('/projects/' + project)

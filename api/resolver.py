@@ -58,6 +58,8 @@ def _get_files(table, match):
     return files
 
 def _get_docs(table, label, match):
+    match_nondeleted = match.copy()
+    match_nondeleted['deleted'] = {'$exists': False}
     results = list(config.db[table].find(match, Node.projection, sort=Node.sorting))
     for y in results:
         y.update({'node_type': label})

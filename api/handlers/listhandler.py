@@ -17,7 +17,7 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import containerutil
 from ..web.errors import APIStorageException
-from ..web.request import log_access, AccessType
+from ..web.request import AccessType
 
 
 def initialize_list_configurations():
@@ -248,8 +248,6 @@ class PermissionsListHandler(ListHandler):
         """
         method to propagate permissions from a container/group to its sessions and acquisitions
         """
-        if query is None:
-            query = {}
         if cont_name == 'groups':
             try:
                 containerutil.propagate_changes(cont_name, _id, query, update)
@@ -259,7 +257,7 @@ class PermissionsListHandler(ListHandler):
             try:
                 oid = bson.ObjectId(_id)
                 update = {'$set': {
-                    'permissions': config.db[cont_name].find_one({'_id': oid},{'permissions': 1})['permissions']
+                    'permissions': config.db[cont_name].find_one({'_id': oid}, {'permissions': 1})['permissions']
                 }}
                 containerutil.propagate_changes(cont_name, oid, {}, update)
             except APIStorageException:
@@ -475,10 +473,10 @@ class FileListHandler(ListHandler):
             # log download if we haven't already for this ticket
             if ticket:
                 if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
                     config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
             else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
 
         # Authenticated or ticketed download request
         else:
@@ -495,14 +493,16 @@ class FileListHandler(ListHandler):
                 # recheck ticket for logged flag
                 ticket = config.db.downloads.find_one({'_id': ticket_id})
                 if not ticket.get('logged', False):
-                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                    self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
                     config.db.downloads.update_one({'_id': ticket_id}, {'$set': {'logged': True}})
             else:
-                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
+                self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id, filename=fileinfo['name'])
 
 
-    @log_access(AccessType.view_file)
     def get_info(self, cont_name, list_name, **kwargs):
+        _id = kwargs['cid']
+        filename = kwargs['name']
+        self.log_user_access(AccessType.view_file, cont_name=cont_name, cont_id=_id, filename=filename)
         return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
 
     def modify_info(self, cont_name, list_name, **kwargs):
@@ -526,19 +526,11 @@ class FileListHandler(ListHandler):
 
     def post(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')
-
-        # Ugly hack: ensure cont_name is singular. Pass singular or plural to code that expects it.
-        if cont_name.endswith('s'):
-            cont_name_plural = cont_name
-            cont_name = cont_name[:-1]
-        else:
-            cont_name_plural = cont_name + 's'
-
         # Authorize
-        permchecker, _, _, _, _ = self._initialize_request(cont_name_plural, list_name, _id)
+        permchecker, _, _, _, _ = self._initialize_request(containerutil.pluralize(cont_name), list_name, _id)
         permchecker(noop)('POST', _id=_id)
 
-        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=cont_name, id_=_id, origin=self.origin)
+        return upload.process_upload(self.request, upload.Strategy.targeted, container_type=containerutil.singularize(cont_name), id_=_id, origin=self.origin)
 
     @validators.verify_payload_exists
     def put(self, cont_name, list_name, **kwargs):
@@ -554,10 +546,18 @@ class FileListHandler(ListHandler):
     def delete(self, cont_name, list_name, **kwargs):
         # Overriding base class delete to audit action before completion
         _id = kwargs.pop('cid')
+        filename = kwargs['name']
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
         permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
-        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id)
+
+        if cont_name == 'acquisitions':
+            analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
+            if analyses:
+                analysis_ids = [str(a['_id']) for a in analyses]
+                self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids))
+
+        self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id, filename=filename)
         try:
             result = keycheck(storage.exec_op)('DELETE', _id, query_params=kwargs)
         except APIStorageException as e:
@@ -613,7 +613,7 @@ class FileListHandler(ListHandler):
             raise Exception('Packfiles can only be targeted at projects')
 
         # Authorize: confirm project exists
-        project = config.db['projects'].find_one({ '_id': bson.ObjectId(_id)})
+        project = config.db['projects'].find_one({'_id': bson.ObjectId(_id), 'deleted': {'$exists': False}})
 
         if project is None:
             raise Exception('Project ' + _id + ' does not exist')

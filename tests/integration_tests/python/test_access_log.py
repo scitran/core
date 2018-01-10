@@ -9,6 +9,7 @@ from api.web.request import AccessType
 def test_access_log_succeeds(data_builder, as_admin, log_db):
     project = data_builder.create_project()
     session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
     file_name = 'one.csv'
 
     ###
@@ -51,6 +52,25 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
 
     ###
+    # Test project access is logged
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+
+    r = as_admin.get('/projects/' + project)
+    assert r.ok
+
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before+1 == log_records_count_after
+
+    most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
+
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['access_type'] == AccessType.view_container.value
+    assert most_recent_log['origin']['id'] == 'admin@user.com'
+
+
+    ###
     # Test session access is logged
     ###
 
@@ -64,7 +84,26 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['session']['id'] == str(session)
+    assert most_recent_log['context']['session']['id'] == session
+    assert most_recent_log['access_type'] == AccessType.view_container.value
+    assert most_recent_log['origin']['id'] == 'admin@user.com'
+
+
+    ###
+    # Test acquisition access is logged
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+
+    r = as_admin.get('/acquisitions/' + acquisition)
+    assert r.ok
+
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before+1 == log_records_count_after
+
+    most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
+
+    assert most_recent_log['context']['acquisition']['id'] == acquisition
     assert most_recent_log['access_type'] == AccessType.view_container.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
 
@@ -125,6 +164,7 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
     assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['access_type'] == AccessType.download_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
 
@@ -151,7 +191,8 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['project']['id'] == str(project)
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['context']['ticket_id'] == ticket_id
     assert most_recent_log['access_type'] == AccessType.download_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
@@ -181,6 +222,7 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_logs = log_db.access_log.find({}).sort([('_id', -1)]).limit(file_count)
     for l in most_recent_logs:
+        assert l['context']['file']['name'] == file_name
         assert l['access_type'] == AccessType.download_file.value
         assert l['origin']['id'] == 'admin@user.com'
 
@@ -203,6 +245,7 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_logs = log_db.access_log.find({}).sort([('_id', -1)]).limit(file_count)
     for l in most_recent_logs:
+        assert l['context']['file']['name'] == file_name
         assert l['access_type'] == AccessType.download_file.value
         assert l['origin']['id'] == 'admin@user.com'
 
@@ -222,7 +265,8 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['project']['id'] == str(project)
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['access_type'] == AccessType.view_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
 
@@ -241,9 +285,68 @@ def test_access_log_succeeds(data_builder, as_admin, log_db):
 
     most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
 
-    assert most_recent_log['context']['project']['id'] == str(project)
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['context']['file']['name'] == file_name
     assert most_recent_log['access_type'] == AccessType.delete_file.value
     assert most_recent_log['origin']['id'] == 'admin@user.com'
+
+
+    ###
+    # Test acquisition delete is logged
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+
+    r = as_admin.delete('/acquisitions/' + acquisition)
+    assert r.ok
+
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before+1 == log_records_count_after
+
+    most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
+
+    assert most_recent_log['context']['acquisition']['id'] == acquisition
+    assert most_recent_log['access_type'] == AccessType.delete_container.value
+    assert most_recent_log['origin']['id'] == 'admin@user.com'
+
+
+    ###
+    # Test session delete is logged
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+
+    r = as_admin.delete('/sessions/' + session)
+    assert r.ok
+
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before+1 == log_records_count_after
+
+    most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
+
+    assert most_recent_log['context']['session']['id'] == session
+    assert most_recent_log['access_type'] == AccessType.delete_container.value
+    assert most_recent_log['origin']['id'] == 'admin@user.com'
+
+
+    ###
+    # Test project delete is logged
+    ###
+
+    log_records_count_before = log_db.access_log.count({})
+
+    r = as_admin.delete('/projects/' + project)
+    assert r.ok
+
+    log_records_count_after = log_db.access_log.count({})
+    assert log_records_count_before+1 == log_records_count_after
+
+    most_recent_log = log_db.access_log.find({}).sort([('_id', -1)]).limit(1)[0]
+
+    assert most_recent_log['context']['project']['id'] == project
+    assert most_recent_log['access_type'] == AccessType.delete_container.value
+    assert most_recent_log['origin']['id'] == 'admin@user.com'
+
 
 
 def test_access_log_fails(data_builder, as_admin, log_db):
@@ -265,8 +368,8 @@ def test_access_log_fails(data_builder, as_admin, log_db):
     r = as_admin.delete('/projects/' + project + '/files/' + file_name)
     assert r.status_code == 500
 
+    log_db.command('collMod', 'access_log', validator={}, validationLevel='strict')
+
     r = as_admin.get('/projects/' + project)
     assert r.ok
     assert r.json()['files']
-
-    log_db.command('collMod', 'access_log', validator={}, validationLevel='strict')

@@ -47,9 +47,10 @@ class ContainerStorage(object):
     Examples: projects, sessions, acquisitions and collections
     """
 
-    def __init__(self, cont_name, use_object_id=False):
+    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False):
         self.cont_name = cont_name
         self.use_object_id = use_object_id
+        self.use_delete_tag = use_delete_tag
         self.dbc = config.db[cont_name]
 
     @classmethod
@@ -195,6 +196,8 @@ class ContainerStorage(object):
                 _id = bson.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
+        if self.use_delete_tag:
+            return self.dbc.update_one({'_id': _id}, {'$set': {'deleted': datetime.datetime.utcnow()}})
         return self.dbc.delete_one({'_id':_id})
 
     def get_el(self, _id, projection=None, fill_defaults=False):
@@ -203,18 +206,23 @@ class ContainerStorage(object):
                 _id = bson.ObjectId(_id)
             except bson.errors.InvalidId as e:
                 raise APIStorageException(e.message)
-        cont = self.dbc.find_one(_id, projection)
+        cont = self.dbc.find_one({'_id': _id, 'deleted': {'$exists': False}}, projection)
         self._from_mongo(cont)
         if fill_defaults:
             self._fill_default_values(cont)
+        if cont is not None and cont.get('files', []):
+            cont['files'] = [f for f in cont['files'] if 'deleted' not in f]
         return cont
 
     def get_all_el(self, query, user, projection, fill_defaults=False):
+        if query is None:
+            query = {}
         if user:
             if query.get('permissions'):
                 query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
             else:
                 query['permissions'] = {'$elemMatch': user}
+        query['deleted'] = {'$exists': False}
 
         # if projection includes files.info, add new key `info_exists` and allow reserved info keys through
         if projection and ('info' in projection or 'files.info' in projection or 'subject.info' in projection):
@@ -232,6 +240,8 @@ class ContainerStorage(object):
 
         results = list(self.dbc.find(query, projection))
         for cont in results:
+            if cont.get('files', []):
+                cont['files'] = [f for f in cont['files'] if 'deleted' not in f]
             self._from_mongo(cont)
             if fill_defaults:
                 self._fill_default_values(cont)

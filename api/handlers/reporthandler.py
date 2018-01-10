@@ -42,6 +42,7 @@ ACCESS_LOG_FIELDS = [
     "context.analysis.label",
     "context.collection.id",
     "context.collection.label",
+    "context.file.name",
     "context.ticket_id",
     "request_method",
     "request_path"
@@ -178,10 +179,10 @@ class SiteReport(Report):
             group = {}
             group['label'] = g.get('label')
 
-            project_ids = [p['_id'] for p in config.db.projects.find({'group': g['_id']}, [])]
+            project_ids = [p['_id'] for p in config.db.projects.find({'group': g['_id'], 'deleted': {'$exists': False}}, [])]
             group['project_count'] = len(project_ids)
 
-            group['session_count'] = config.db.sessions.count({'project': {'$in': project_ids}})
+            group['session_count'] = config.db.sessions.count({'project': {'$in': project_ids}, 'deleted': {'$exists': False}})
             report['groups'].append(group)
 
         return report
@@ -250,7 +251,7 @@ class ProjectReport(Report):
         return False
 
     def _base_query(self, pid):
-        base_query = {'project': pid}
+        base_query = {'project': pid, 'deleted': {'$exists': False}}
 
         if self.start_date is not None or self.end_date is not None:
             base_query['created'] = {}
@@ -358,7 +359,7 @@ class ProjectReport(Report):
         report = {}
         report['projects'] = []
 
-        projects = config.db.projects.find({'_id': {'$in': self.projects}})
+        projects = config.db.projects.find({'_id': {'$in': self.projects}, 'deleted': {'$exists': False}})
         for p in projects:
             project = self._base_project_report()
             project['name'] = p.get('label')
@@ -751,7 +752,7 @@ class UsageReport(Report):
 
             report[key]['session_count'] = r['session_count']
 
-        file_q = {}
+        file_q = {'deleted': {'$exists': False}}
         analysis_q = {'analyses.files.output': True}
 
         if 'created' in base_query:
@@ -862,24 +863,24 @@ class UsageReport(Report):
             'file_mbs':                 0
         }
         """
-        projects = config.db.projects.find({})
+        projects = config.db.projects.find({'deleted': {'$exists': False}})
         final_report_list = []
 
         for p in projects:
             report_obj = self._create_default(project=p)
 
             # Grab sessions and their ids
-            sessions = config.db.sessions.find({'project': p['_id']}, {'_id': 1})
+            sessions = config.db.sessions.find({'project': p['_id'], 'deleted': {'$exists': False}}, {'_id': 1})
             session_ids = [s['_id'] for s in sessions]
 
             # Grab acquisitions and their ids
-            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}}, {'_id': 1})
+            acquisitions = config.db.acquisitions.find({'session': {'$in': session_ids}, 'deleted': {'$exists': False}}, {'_id': 1})
             acquisition_ids = [a['_id'] for a in acquisitions]
 
             # For the project and each session and acquisition, create a list of analysis ids
             parent_ids = session_ids + acquisition_ids + [p['_id']]
-            analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': parent_ids}})]
-            
+            analysis_ids = [an['_id'] for an in config.db.analyses.find({'parent.id': {'$in': parent_ids}, 'deleted': {'$exists': False}})]
+
             report_obj['session_count'] = len(session_ids)
 
             # for each type of container below it will have a slightly modified match query
@@ -891,7 +892,7 @@ class UsageReport(Report):
             }
 
             # Create queries for files and analyses based on created date if a range was provided
-            file_q = {}
+            file_q = {'deleted': {'$exists': False}}
             analysis_q = {'analyses.files.output': True}
 
             if 'created' in base_query:

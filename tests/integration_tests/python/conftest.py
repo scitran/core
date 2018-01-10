@@ -252,6 +252,8 @@ class DataBuilder(object):
             payload['_id'] = self.randstr()
         if resource == 'gear' and 'name' not in payload['gear']:
             payload['gear']['name'] = self.randstr()
+        if resource == 'collection' and 'label' not in payload:
+            payload['label'] = self.randstr()
 
         # add missing label fields using randstr
         # such fields are: [project.label, session.label, acquisition.label]

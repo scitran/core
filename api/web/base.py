@@ -379,7 +379,7 @@ class RequestHandler(webapp2.RequestHandler):
 
         util.send_json_http_exception(self.response, message, code, request_id, custom=custom_errors)
 
-    def log_user_access(self, access_type, cont_name=None, cont_id=None, multifile=False, origin_override=None):
+    def log_user_access(self, access_type, cont_name=None, cont_id=None, filename=None, multifile=False, origin_override=None):
 
         if not config.get_item('core', 'access_log_enabled'):
             return
@@ -412,6 +412,8 @@ class RequestHandler(webapp2.RequestHandler):
                     context[k] = {'id': str(v['_id']), 'label': v.get('label')}
                     if k == 'subject':
                         context[k]['label'] = v.get('code')
+            if filename:
+                context['file'] = {'name': filename}
             log_map['context'] = context
 
         if access_type is AccessType.download_file and self.get_param('ticket') and not multifile:

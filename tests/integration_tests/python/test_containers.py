@@ -1064,6 +1064,7 @@ def test_edit_subject_info(data_builder, as_admin, as_user):
     assert r.ok
     assert r.json()['info'] == {}
 
+
 def test_fields_list_requests(data_builder, file_form, as_admin):
     # Ensure sensitive keys are not returned on list endpoints
     # Project: info and files.info
@@ -1166,3 +1167,92 @@ def test_fields_list_requests(data_builder, file_form, as_admin):
     assert not a.get('info')
     assert not a.get('tags')
     assert not a['files'][0].get('info')
+
+
+def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, file_form, api_db):
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {'csv': {'base': 'file'}}
+    gear = data_builder.create_gear(gear=gear_doc)
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+    collection = data_builder.create_collection()
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('test.csv')).ok
+    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
+        'analysis': {'label': 'with-job'},
+        'job': {
+            'gear_id': gear,
+            'inputs': {'csv': {'type': 'acquisition', 'id': acquisition, 'name': 'test.csv'}}
+        }
+    })
+    assert r.ok
+    analysis = r.json()['_id']
+    r = as_admin.put('/collections/' + collection, json={
+        'contents': {'operation': 'add', 'nodes': [{'level': 'session', '_id': session}]}
+    })
+    assert r.ok
+
+    # try to delete project without admin perms
+    r = as_user.delete('/projects/' + project)
+    assert r.status_code == 403
+
+    # try to delete acquisition referenced by analysis
+    r = as_admin.delete('/acquisitions/' + acquisition)
+    assert r.status_code == 400
+
+    # try to delete acquisition file referenced by analysis
+    r = as_admin.delete('/acquisitions/' + acquisition + '/files/test.csv')
+    assert r.status_code == 400
+
+    # verify that a non-referenced file _can_ be deleted from the same acquisition
+    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('unrelated.csv')).ok
+    assert as_admin.delete('/acquisitions/' + acquisition + '/files/unrelated.csv').ok
+
+    # delete collection
+    assert collection in as_admin.get('/acquisitions/' + acquisition).json()['collections']
+    assert as_admin.delete('/collections/' + collection).ok
+    assert 'deleted' in api_db.collections.find_one({'_id': bson.ObjectId(collection)})
+    assert as_admin.get('/collections/' + collection).status_code == 404
+    assert collection not in as_admin.get('/acquisitions/' + acquisition).json()['collections']
+
+    # delete analysis
+    r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis)
+    assert r.ok
+    assert 'deleted' in api_db.analyses.find_one({'_id': bson.ObjectId(analysis)})
+    assert as_admin.get('/sessions/' + session + '/analyses/' + analysis).status_code == 404
+    assert as_admin.get('/analyses/' + analysis).status_code == 404
+
+    # try to delete acquisition without admin perms
+    r = as_user.delete('/acquisitions/' + acquisition)
+    assert r.status_code == 403
+
+    # delete acquisition
+    assert as_admin.delete('/acquisitions/' + acquisition).ok
+    assert 'deleted' in api_db.acquisitions.find_one({'_id': bson.ObjectId(acquisition)})
+    assert as_admin.get('/acquisitions/' + acquisition).status_code == 404
+
+    # delete project as admin
+    acquisition2 = data_builder.create_acquisition()
+    r = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
+        'analysis.csv', meta={'label': 'no-job', 'inputs': [{'name': 'analysis.csv'}]}))
+    analysis2 = r.json()['_id']
+
+    assert as_admin.delete('/projects/' + project).ok
+
+    # test that entries get tagged recursively
+    assert 'deleted' in api_db.projects.find_one({'_id': bson.ObjectId(project)})
+    assert 'deleted' in api_db.sessions.find_one({'_id': bson.ObjectId(session)})
+    assert 'deleted' in api_db.acquisitions.find_one({'_id': bson.ObjectId(acquisition2)})
+    assert 'deleted' in api_db.analyses.find_one({'_id': bson.ObjectId(analysis2)})
+
+    # test that tagged entries are filtered in endpoints
+    assert as_admin.get('/projects/' + project).status_code == 404
+    assert as_admin.get('/sessions/' + session).status_code == 404
+    assert as_admin.get('/acquisitions/' + acquisition2).status_code == 404
+    assert as_admin.get('/sessions/' + session + '/analyses/' + analysis2).status_code == 404
+    assert as_admin.get('/analyses/' + analysis2).status_code == 404
+
+    assert as_admin.get('/projects').json() == []
+    assert as_admin.get('/sessions').json() == []
+    assert as_admin.get('/acquisitions').json() == []
+    assert as_admin.get('/collections').json() == []
