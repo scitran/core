@@ -106,6 +106,10 @@ module.exports = function(grunt) {
 				} else {
 					grunt.log.writeln('ERROR '.red + 'Cannot find alias for: ' + path + ' (' + schema.allOf[0].$ref + ')');
 				}
+			} else if( Schemas.isPrimitiveType(schema.type) ) {
+				// For simple types in definitions, alias them
+				context.aliases[path] = schema;
+				delete defs[k];
 			}
 		});
 	}
