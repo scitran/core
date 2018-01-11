@@ -1,12 +1,16 @@
 parameters:
   - name: resource
     type: string
+    required: true
   - name: tag
     type: string
+    required: true
   - name: list-output-schema
     type: string
+    required: true
   - name: create-input-schema
     type: string
+    required: true
 template: |
   get:
     summary: Get a list of {{#pluralize}}{{resource}}{{/pluralize}}

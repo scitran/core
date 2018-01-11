@@ -1,0 +1,28 @@
+$template_arguments:
+  tag: 'analyses'
+
+/analyses/{AnalysisId}:
+  $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: false
+
+/analyses/{AnalysisId}/inputs:
+  $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: inputs
+
+/analyses/{AnalysisId}/inputs/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: inputs
+
+/analyses/{AnalysisId}/files:
+  $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: outputs
+
+/analyses/{AnalysisId}/files/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: outputs
+  

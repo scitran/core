@@ -48,6 +48,8 @@ $template_arguments:
   $template: templates/analyses-list.yaml
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: true
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/inputs:
   $template: templates/analysis-files.yaml
   arguments:

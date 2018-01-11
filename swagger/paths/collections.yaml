@@ -173,6 +173,8 @@ $template_arguments:
   $template: templates/analyses-list.yaml
 /collections/{CollectionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: true
 /collections/{CollectionId}/analyses/{AnalysisId}/inputs:
   $template: templates/analysis-files.yaml
   arguments:
