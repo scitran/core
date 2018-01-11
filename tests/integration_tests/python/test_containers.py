@@ -1169,10 +1169,11 @@ def test_fields_list_requests(data_builder, file_form, as_admin):
     assert not a['files'][0].get('info')
 
 
-def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, file_form, api_db):
+def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, as_user, file_form, api_db):
     gear_doc = default_payload['gear']['gear']
     gear_doc['inputs'] = {'csv': {'base': 'file'}}
     gear = data_builder.create_gear(gear=gear_doc)
+    group = data_builder.create_group()
     project = data_builder.create_project()
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
@@ -1191,6 +1192,10 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
         'contents': {'operation': 'add', 'nodes': [{'level': 'session', '_id': session}]}
     })
     assert r.ok
+
+    # try to delete group with project
+    r = as_root.delete('/groups/' + group)
+    assert r.status_code == 400
 
     # try to delete project without admin perms
     r = as_user.delete('/projects/' + project)
@@ -1256,3 +1261,7 @@ def test_container_delete_tag(data_builder, default_payload, as_admin, as_user, 
     assert as_admin.get('/sessions').json() == []
     assert as_admin.get('/acquisitions').json() == []
     assert as_admin.get('/collections').json() == []
+
+    # test that the (now) empty group can be deleted
+    assert as_root.delete('/groups/' + group).ok
+
