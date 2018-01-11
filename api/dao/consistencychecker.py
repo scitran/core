@@ -23,10 +23,6 @@ def get_container_storage_checker(action, cont_name):
         return field_on_container('acquisition', 'acquisitions')
     elif cont_name == 'groups' and action == 'DELETE':
         return check_children('group', 'projects')
-    elif cont_name == 'projects' and action == 'DELETE':
-        return check_children('project', 'sessions')
-    elif cont_name == 'sessions' and action == 'DELETE':
-        return check_children('session', 'acquisitions')
     return noop
 
 def user_on_permission(data_op, **kwargs): # pylint: disable=unused-argument
@@ -64,7 +60,7 @@ def check_children(foreign_key_field, container_name):
         APIConsistencyException: Child document found
     """
     def f(data_op, **kwargs): # pylint: disable=unused-argument
-        if config.db[container_name].find_one({foreign_key_field: data_op['_id']}):
+        if config.db[container_name].find_one({foreign_key_field: data_op['_id'], 'deleted' :{'$exists': False}}):
             raise APIConsistencyException(
                 'DELETE not allowed. Children {} found for {}'.format(container_name, data_op['_id'])
             )
