@@ -3,4 +3,6 @@
 mongod &
 MONGOD_PID=$!
 
-exec unitd --control "*:8888" --no-daemon --log /dev/stdout
+chown nobody:nobody -R $SCITRAN_PERSISTENT_DATA_PATH
+
+exec unitd --control "*:8080" --no-daemon --log /dev/stdout

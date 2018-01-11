@@ -17,9 +17,12 @@ RUN apk add --no-cache git
 COPY --from=build /usr/local/sbin/unitd /usr/local/sbin/unitd
 COPY --from=build /usr/local/lib/python.unit.so /usr/local/lib/python.unit.so
 
-EXPOSE 80 8080 27017
+EXPOSE 80 8080
 VOLUME /data/db
+VOLUME /data/persistent
+
 WORKDIR /src/core
+ENV SCITRAN_PERSISTENT_DATA_PATH=/data/persistent
 
 COPY docker/unit.json /var/local/unit/conf.json
 COPY requirements.txt requirements.txt
@@ -28,14 +31,17 @@ RUN pip install -r requirements.txt
 COPY . .
 RUN pip install -e .
 
-CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
-
 ARG VCS_BRANCH=NULL
 ARG VCS_COMMIT=NULL
 RUN docker/build_info.sh $VCS_BRANCH $VCS_COMMIT | tee /version.json
 
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
 
-FROM dist as testing
+
+FROM dist as dev
+
+EXPOSE 27017
 
 RUN apk add --no-cache mongodb
 

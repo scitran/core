@@ -9,8 +9,7 @@
         "scitran-core": {
             "type": "python",
             "workers": 2,
-            "user": "root",
-            "group": "root",
+            "user": "nobody",
             "path": "/src/core",
             "module": "api.app"
         }
