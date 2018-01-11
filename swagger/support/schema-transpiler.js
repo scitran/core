@@ -97,7 +97,11 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs, id) {
 	}
 
 	if( schema.patternProperties ) {
-		this.warn(id, '"patternProperties" is not supported in OpenApi 2');
+		var keys = _.keys(schema.patternProperties);
+		if( keys.length > 1 ) {
+			this.warn(id, 'Can only support one type in additionalProperties (from "patternProperties")');
+		}
+		schema.additionalProperties = this.draft4ToOpenApi2(schema.patternProperties[keys[0]], defs, id);
 		delete schema.patternProperties;
 	}
 

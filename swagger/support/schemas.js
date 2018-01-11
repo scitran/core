@@ -15,8 +15,23 @@ var PRIMITIVE_TYPES = {
 	'null': true
 };
 
+var OBJECT_PROPERTIES = [ 'allOf', 'anyOf', 'oneOf', 'multipleOf', 'not', 
+	'if', 'then', 'else', 'properties', 'additionalProperties' ];
+
 function isPrimitiveType(type) {
 	return !!PRIMITIVE_TYPES[type];
+}
+
+function isEmptyObject(schema) {
+	if( schema.type && schema.type !== 'object' ) {
+		return false;
+	}
+	if( schema.$ref ) {
+		return false;
+	}
+	return !_.some(OBJECT_PROPERTIES, function(key) {
+		return !!schema[key];
+	});
 }
 
 function normalizeName(name) {
@@ -200,6 +215,7 @@ Schemas.prototype.isPrimitiveDef = function(name) {
 };
 
 Schemas.isPrimitiveType = isPrimitiveType;
+Schemas.isEmptyObject = isEmptyObject;
 
 Schemas.prototype.getComplexDefinitions = function() {
 	return _.pickBy(this.definitions, function(value) {

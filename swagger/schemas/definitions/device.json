@@ -12,6 +12,16 @@
       "type": "string",
       "enum": ["ok", "missing", "error", "unknown"]
     },
+    "device-status-entry": {
+      "type": "object",
+      "properties":{
+        "errors":    {"$ref":"#/definitions/errors"},
+        "last_seen": {"$ref":"common.json#/definitions/timestamp"},
+        "status":    {"$ref":"#/definitions/status-value"}
+      },
+      "additionalProperties":false,
+      "required": ["last_seen", "status"]      
+    },
     "device": {
       "type": "object",
       "properties": {
@@ -43,13 +53,7 @@
       "type":"object",
       "patternProperties": {
         "^[0-9a-z.@_-]*$":{
-          "properties":{
-            "errors":    {"$ref":"#/definitions/errors"},
-            "last_seen": {"$ref":"common.json#/definitions/timestamp"},
-            "status":    {"$ref":"#/definitions/status-value"}
-          },
-          "additionalProperties":false,
-          "required": ["last_seen", "status"]
+          "$ref": "#/definitions/device-status-entry"
         }      
       }
     }
