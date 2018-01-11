@@ -17,7 +17,7 @@ Options:
 
     -B, --no-build      Skip rebuilding default Docker image
     --image IMAGE       Use custom Docker image
-    -- TEST_ARGS        Arguments passed to tests/bin/run-tests-ubuntu.sh
+    -- TEST_ARGS        Arguments passed to tests/bin/tests.sh
 
 "
 
@@ -89,7 +89,7 @@ main() {
         --env SCITRAN_PERSISTENT_DB_URI=mongodb://core-test-service:27017/scitran \
         --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://core-test-service:27017/logs \
         scitran/core:testing \
-        tests/bin/run-tests-ubuntu.sh $TEST_ARGS
+        tests/bin/tests.sh $TEST_ARGS
 }
 
 

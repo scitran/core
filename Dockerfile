@@ -24,7 +24,7 @@ VOLUME /data/persistent
 WORKDIR /src/core
 ENV SCITRAN_PERSISTENT_DATA_PATH=/data/persistent
 
-COPY docker/unit.json /var/local/unit/conf.json
+COPY nginx-unit.json /var/local/unit/conf.json
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
@@ -33,9 +33,9 @@ RUN pip install -e .
 
 ARG VCS_BRANCH=NULL
 ARG VCS_COMMIT=NULL
-RUN docker/build_info.sh $VCS_BRANCH $VCS_COMMIT | tee /version.json
+RUN ./bin/build_info.sh $VCS_BRANCH $VCS_COMMIT | tee /version.json
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./bin/entrypoint.sh"]
 CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
 
 
@@ -47,4 +47,4 @@ RUN apk add --no-cache mongodb
 
 RUN pip install -r tests/requirements.txt
 
-CMD ["./docker/dev+mongo.sh"]
+CMD ["./bin/dev+mongo.sh"]
