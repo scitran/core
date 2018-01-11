@@ -34,7 +34,7 @@ function validateTemplateArgs(tmplpath, template, args) {
 		if( !param.name ) {
 			throw 'Template "' + tmplpath + '" parameter does not have a name!';
 		}
-		if( _.isNil(args[param.name]) ) {
+		if( param.required && _.isNil(args[param.name]) ) {
 			throw 'Template "' + tmplpath + '" invocation is missing parameter: ' + param.name;
 		}
 	}

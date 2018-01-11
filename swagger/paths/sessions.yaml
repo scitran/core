@@ -115,6 +115,8 @@ $template_arguments:
 
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: true
 /sessions/{SessionId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
 /sessions/{SessionId}/analyses/{AnalysisId}/files/{Filename}:

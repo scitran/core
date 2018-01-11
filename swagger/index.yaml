@@ -36,6 +36,8 @@ tags:
     description: Site-wide reports
   - name: batch
     description: Batch job operations
+  - name: analyses
+    description: Analysis operations
 
 paths:
   $include: 
@@ -60,6 +62,7 @@ paths:
     - paths/projects.yaml
     - paths/report.yaml
     - paths/batch.yaml
+    - paths/analyses.yaml
 
 
 securityDefinitions:

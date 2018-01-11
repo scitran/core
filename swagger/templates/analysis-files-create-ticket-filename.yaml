@@ -5,12 +5,15 @@ parameters:
     type: string
   - name: tag
     type: string
+    required: true
 template: |
   parameters:
+    {{#parameter}}
     - required: true
       type: string
       in: path
-      name: '{{parameter}}'
+      name: '{{.}}'
+    {{/parameter}}
     - required: true
       type: string
       in: path
@@ -29,7 +32,12 @@ template: |
       files in the anlaysis.
 
       If no "ticket" query param is included, files will be downloaded directly.
-    operationId: download_{{resource}}_analysis_files_by_filename
+    {{#resource}}
+    operationId: download_{{.}}_analysis_files_by_filename
+    {{/resource}}
+    {{^resource}}
+    operationId: download_analysis_files_by_filename
+    {{/resource}}
     tags:
     - '{{tag}}'
     produces:

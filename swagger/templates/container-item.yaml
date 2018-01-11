@@ -1,14 +1,19 @@
 parameters:
   - name: resource
     type: string
+    required: true
   - name: tag
     type: string
+    required: true
   - name: parameter
     type: string
+    required: true
   - name: update-input-schema
     type: string
+    required: true
   - name: get-output-schema
     type: string
+    required: true
 template: |
   parameters:
     - in: path

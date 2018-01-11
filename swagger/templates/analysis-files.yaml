@@ -5,12 +5,15 @@ parameters:
     type: string
   - name: tag
     type: string
+    required: true
 template: |
   parameters:
+    {{#parameter}}
     - required: true
       type: string
       in: path
-      name: '{{parameter}}'
+      name: '{{.}}'
+    {{/parameter}}
     - required: true
       type: string
       in: path
@@ -24,7 +27,12 @@ template: |
       files in the anlaysis
 
       If no "ticket" query param is included, server error 500
-    operationId: download_{{resource}}_analysis_files
+    {{#resource}}
+    operationId: download_{{.}}_analysis_files
+    {{/resource}}
+    {{^resource}}
+    operationId: download_analysis_files
+    {{/resource}}
     tags: 
     - '{{tag}}'
     produces:
