@@ -1,0 +1,37 @@
+/upload/reaper:
+  post:
+    summary: Bottom-up UID matching of Multipart form upload with N file fields, each with their desired filename.
+    description: |
+      Upload data, allowing users to move sessions during scans without causing new data to be
+      created in referenced project/group.
+
+
+      ### Evaluation Order:
+      
+      * If a matching acquisition UID is found anywhere on the system, the related files will be placed under that acquisition.
+      * **OR** If a matching session UID is found, a new acquistion is created with the specified UID under that Session UID.
+      * **OR** If a matching group ID and project label are found, a new session and acquisition will be created within that project
+      * **OR** If a matching group ID is found, a new project and session and acquisition will be created within that group.
+      * **OR** A new session and acquisition will be created within a special "Unknown" group and project, which is only visible to system administrators.
+
+    operationId: upload_by_reaper
+    tags:
+    - files
+    responses:
+      '200':
+        description: 'Files uploaded successfully'
+        schema:
+          $ref: schemas/output/file-list.json
+        examples:
+          application/json:
+            $ref: examples/file_info_list.json
+      '402':
+        description: Uploads must be from an authorized drone
+    consumes:
+      - multipart/form-data
+    parameters:
+    # TODO: Need to add ref to json input schema. Proper way not yet defined for Multipart form uploads.
+    #       See api/schemas/input/uidupload.json for the format of this metadata.
+      - in: formData
+        name: formData
+        type: string
