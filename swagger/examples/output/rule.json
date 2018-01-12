@@ -1,0 +1,17 @@
+{
+  "_id": "5a12f2923306be0016179f47",
+  "name": "dcm2niix",
+  "alg": "dcm2niix",
+  "any": [],
+  "all": [
+    {
+      "regex": true,
+      "type": "file.measurements",
+      "value": "^(?!non-image).+$"
+    },
+    {
+      "type": "file.type",
+      "value": "nifti"
+    }
+  ]
+}

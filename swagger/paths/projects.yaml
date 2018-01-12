@@ -21,7 +21,7 @@ $template_arguments:
     summary: List all groups which have a project in them
     operationId: get_all_projects_groups
     tags:
-    - 'projects'
+    - projects
     responses:
       '200':
         description: ''
@@ -38,7 +38,7 @@ $template_arguments:
     summary: List all sessions for the given project.
     operationId: get_project_sessions
     tags:
-    - 'projects'
+    - projects
     responses:
       '200':
         description: ''
@@ -55,23 +55,25 @@ $template_arguments:
     summary: List all acquisitions for the given project.
     operationId: get_project_acquisitions
     tags:
-    - 'projects'
+    - projects
     responses:
       '200':
         description: ''
         schema:
           $ref: schemas/output/acquisition-list.json
 
-'/projects/{ProjectId}/rules':
+/projects/{ProjectId}/rules:
   parameters:
     - in: path
       type: string
       name: ProjectId
       required: true
   get:
+    summary: List all rules for a project.
     operationId: get_project_rules
     tags:
-    - 'projects'
+    - projects
+    - rules
     responses:
       '200':
         description: ''
@@ -81,7 +83,8 @@ $template_arguments:
     summary: Create a new rule for a project.
     operationId: add_project_rule
     tags:
-    - 'projects'
+    - projects
+    - rules
     responses:
       default:
         description: ''
@@ -91,7 +94,7 @@ $template_arguments:
         schema:
           $ref: schemas/input/rule-new.json
 
-'/projects/{ProjectId}/rules/{RuleId}':
+/projects/{ProjectId}/rules/{RuleId}:
   parameters:
     - in: path
       type: string
@@ -101,11 +104,23 @@ $template_arguments:
       type: string
       name: RuleId
       required: true
+  get:
+    summary: Get a project rule.
+    operationId: get_project_rule
+    tags:
+    - projects
+    - rules
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/rule.json
   put:
     summary: Update a rule on a project.
     operationId: modify_project_rule
     tags:
-    - 'projects'
+    - projects
+    - rules
     responses:
       default:
         description: ''
@@ -113,10 +128,18 @@ $template_arguments:
       - in: body
         name: body
         schema:
-          $ref: schemas/input/rule-update.json
+          $ref: schemas/input/rule-update.json        
+  delete:
+    summary: Remove a project rule.
+    operationId: remove_project_rule
+    tags:
+    - projects
+    - rules
+    responses:
+      '200':
+        $ref: '#/responses/200:deleted-with-count'
 
-
-'/projects/{ProjectId}/template':
+/projects/{ProjectId}/template:
   parameters:
     - in: path
       type: string
@@ -126,7 +149,7 @@ $template_arguments:
     summary: Set the session template for a project.
     operationId: set_project_template
     tags:
-    - 'projects'
+    - projects
     parameters:
       - in: body
         name: body
@@ -141,7 +164,7 @@ $template_arguments:
     summary: Remove the session template for a project.
     operationId: remove_project_template
     tags:
-    - 'projects'
+    - projects
     responses:
       '200':
         $ref: '#/responses/200:deleted-with-count'
@@ -159,7 +182,7 @@ $template_arguments:
     description: Returns list of modified session ids.
     operationId: recalc_project
     tags:
-    - 'projects'
+    - projects
     responses:
       '200':
         description: |
@@ -179,7 +202,7 @@ $template_arguments:
       Returns list of modified session ids.
     operationId: recalc_all_projects
     tags:
-    - 'projects'
+    - projects
     responses:
       '200':
         description: |
