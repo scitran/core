@@ -8,7 +8,7 @@
     "lint": "node_modules/.bin/grunt lintSchemas",
     "test": "node_modules/.bin/jasmine --config=support/jasmine.json",
     "watch": "node_modules/.bin/grunt live",
-	"coverage": "node_modules/.bin/grunt coverage"
+    "coverage": "node_modules/.bin/grunt coverage"
   },
   "author": "Justin Ehlert <justinehlert@flywheel.io>",
   "license": "MIT",

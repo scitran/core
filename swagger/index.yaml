@@ -64,6 +64,7 @@ paths:
     - paths/report.yaml
     - paths/batch.yaml
     - paths/analyses.yaml
+    - paths/site-rules.yaml
 
 
 securityDefinitions:
