@@ -44,6 +44,7 @@ paths:
     - paths/login.yaml
     - paths/download.yaml
     - paths/upload-by-label.yaml
+    - paths/upload-by-reaper.yaml
     - paths/upload-by-uid.yaml
     - paths/upload-match-uid.yaml
     - paths/clean-packfiles.yaml
