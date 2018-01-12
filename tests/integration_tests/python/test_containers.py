@@ -134,13 +134,6 @@ def test_project_template(data_builder, file_form, as_admin):
     assert 'satisfies_template' not in r.json()
     assert as_admin.put('/sessions/' + session, json={'project': project})
 
-    # archived acqusitions don't affect session compliance
-    assert satisfies_template()
-    # Hide Acq_2 so that no acquisition in the session are compliant
-    assert as_admin.put('/acquisitions/' + acquisition_2, json={'archived': True}).ok
-    assert not satisfies_template()
-    assert as_admin.put('/acquisitions/' + acquisition_2, json={'archived': False})
-
     # acquisitions.label
     assert satisfies_template()
     assert as_admin.put('/acquisitions/' + acquisition_2, json={'label': 'non-compliant'}).ok

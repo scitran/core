@@ -1,29 +1,4 @@
 # Test changing propagated properties
-def test_archived_propagation_from_project(data_builder, as_admin):
-    """
-    Tests:
-      - 'archived' is a propagated property
-      - propagation works from a project level
-      - setting a propagated property triggers propagation
-      - set logic for setting 1 of the propagated properties
-    """
-    project = data_builder.create_project()
-    session = data_builder.create_session()
-    acquisition = data_builder.create_acquisition()
-
-    payload = {'archived': True}
-    r = as_admin.put('/projects/' + project, json=payload)
-    assert r.ok
-
-    r = as_admin.get('/projects/' + project)
-    assert r.ok and r.json()['archived']
-
-    r = as_admin.get('/sessions/' + session)
-    assert r.ok and r.json()['archived']
-
-    r = as_admin.get('/acquisitions/' + acquisition)
-    assert r.ok and r.json()['archived']
-
 
 def test_public_propagation_from_project(data_builder, as_admin):
     """
@@ -48,32 +23,6 @@ def test_public_propagation_from_project(data_builder, as_admin):
     assert r.ok and not r.json()['public']
 
 
-def test_public_and_archived_propagation_from_project(data_builder, as_admin):
-    """
-    Tests:
-      - set logic for setting all of the propagated properties
-    """
-    project = data_builder.create_project()
-    session = data_builder.create_session()
-    acquisition = data_builder.create_acquisition()
-
-    payload = {'public': False, 'archived': False}
-    r = as_admin.put('/projects/' + project, json=payload)
-    assert r.ok
-
-    r = as_admin.get('/projects/' + project)
-    content = r.json()
-    assert r.ok and not content['public'] and not content['archived']
-
-    r = as_admin.get('/sessions/' + session)
-    content = r.json()
-    assert r.ok and not content['public'] and not content['archived']
-
-    r = as_admin.get('/acquisitions/' + acquisition)
-    content = r.json()
-    assert r.ok and not content['public'] and not content['archived']
-
-
 def test_public_propagation_from_session(data_builder, as_admin):
     """
     Tests:
@@ -82,15 +31,15 @@ def test_public_propagation_from_session(data_builder, as_admin):
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
 
-    payload = {'archived': True}
+    payload = {'public': True}
     r = as_admin.put('/sessions/' + session, json=payload)
     assert r.ok
 
     r = as_admin.get('/sessions/' + session)
-    assert r.ok and r.json()['archived']
+    assert r.ok and r.json()['public']
 
     r = as_admin.get('/acquisitions/' + acquisition)
-    assert r.ok and r.json()['archived']
+    assert r.ok and r.json()['public']
 
 
 def test_set_public_acquisition(data_builder, as_admin):
@@ -100,7 +49,7 @@ def test_set_public_acquisition(data_builder, as_admin):
     """
     acquisition = data_builder.create_acquisition()
 
-    payload = {'archived': True}
+    payload = {'public': True}
     r = as_admin.put('/acquisitions/' + acquisition, json=payload)
     assert r.ok
 

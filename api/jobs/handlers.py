@@ -607,12 +607,11 @@ class BatchHandler(base.RequestHandler):
 
         if not file_inputs:
             # Grab sessions rather than acquisitions
-            containers = SessionStorage().get_all_for_targets(container_type, objectIds, include_archived=False)
+            containers = SessionStorage().get_all_for_targets(container_type, objectIds)
 
         else:
             # Get acquisitions associated with targets
-            containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds,
-                collection_id=collection_id, include_archived=False)
+            containers = AcquisitionStorage().get_all_for_targets(container_type, objectIds, collection_id=collection_id)
 
         if not containers:
             self.abort(404, 'Could not find necessary containers from targets.')

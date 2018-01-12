@@ -58,7 +58,7 @@ class ContainerHandler(base.RequestHandler):
             'storage_schema_file': 'project.json',
             'payload_schema_file': 'project.json',
             'list_projection': {'info': 0, 'files.info': 0},
-            'propagated_properties': ['archived', 'public'],
+            'propagated_properties': ['public'],
             'children_cont': 'sessions'
         },
         'sessions': {
@@ -72,7 +72,6 @@ class ContainerHandler(base.RequestHandler):
                                 'subject.lastname': 0, 'subject.sex': 0, 'subject.age': 0,
                                 'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0,
                                 'files.info': 0, 'tags': 0},
-            'propagated_properties': ['archived'],
             'children_cont': 'acquisitions'
         },
         'acquisitions': {
@@ -337,8 +336,6 @@ class ContainerHandler(base.RequestHandler):
             query = {par_cont_name[:-1]: par_id}
         else:
             query = {}
-        if not self.is_true('archived'):
-            query['archived'] = {'$ne': True}
         # this request executes the actual reqeust filtering containers based on the user permissions
         results = permchecker(self.storage.exec_op)('GET', query=query, public=self.public_request, projection=projection)
         if results is None:

@@ -178,13 +178,6 @@ FACET_QUERY = {
                     "stats" : { "field" : "session.timestamp"}
 
                 },
-                "session.archived" : {
-                    "terms" : {
-                        "field" : "session.archived.raw",
-                        "size" : 2,
-                        "missing": "false"
-                    }
-                },
             }
         },
         "session_age": {
@@ -257,13 +250,11 @@ SOURCE_COLLECTION = [
 
 SOURCE_PROJECT = SOURCE_COMMON + [
     "project._id",
-    "project.archived",
     "project.label",
 ]
 
 SOURCE_SESSION = SOURCE_PROJECT + [
     "session._id",
-    "session.archived",
     "session.created",
     "session.label",
     "session.timestamp",
@@ -272,7 +263,6 @@ SOURCE_SESSION = SOURCE_PROJECT + [
 
 SOURCE_ACQUISITION = SOURCE_SESSION + [
     "acquisition._id",
-    "acquisition.archived",
     "acquisition.created",
     "acquisition.label",
     "acquisition.timestamp",

@@ -187,8 +187,7 @@ class SessionStorage(ContainerStorage):
                 return True
         return False
 
-    def get_all_for_targets(self, target_type, target_ids,
-            user=None, projection=None, include_archived=True):
+    def get_all_for_targets(self, target_type, target_ids, user=None, projection=None):
         """
         Given a container type and list of ids, get all sessions that are in those hierarchies.
 
@@ -199,13 +198,9 @@ class SessionStorage(ContainerStorage):
 
         If user is supplied, will only return sessions with user in its perms list.
         If projection is supplied, it will be applied to the session query.
-        If inlude_archived is false, it will ignore archived sessions.
         """
 
         query = {}
-        if not include_archived:
-            query['archived'] = {'$ne': True}
-
         target_type = containerutil.singularize(target_type)
 
         if target_type == 'project':
@@ -253,8 +248,7 @@ class AcquisitionStorage(ContainerStorage):
         SessionStorage().recalc_session_compliance(acquisition['session'])
         return result
 
-    def get_all_for_targets(self, target_type, target_ids,
-            user=None, projection=None, collection_id=None, include_archived=True):
+    def get_all_for_targets(self, target_type, target_ids, user=None, projection=None, collection_id=None):
         """
         Given a container type and list of ids, get all acquisitions that are in those hierarchies.
 
@@ -266,13 +260,9 @@ class AcquisitionStorage(ContainerStorage):
         If user is supplied, will only return acquisitions with user in its perms list.
         If projection is supplied, it will be applied to the acquisition query.
         If colllection is supplied, the collection context will be used to query acquisitions.
-        If inlude_archived is false, it will ignore archived acquisitions.
-          - if target_type is 'project', it will ignore sessions in the project that are archived
         """
 
         query = {}
-        if not include_archived:
-            query['archived'] = {'$ne': True}
 
         # If target_type is 'acquisitions', it just wraps self.get_all_el with a query containing
         # all acquisition ids.
@@ -340,9 +330,8 @@ class AnalysisStorage(ContainerStorage):
         }
         for key in defaults:
             analysis.setdefault(key, defaults[key])
-        for key in ('public', 'archived'):
-            if key in parent:
-                analysis.setdefault(key, parent[key])
+        if 'public' in parent:
+            analysis.setdefault('public', parent['public'])
 
 
     def create_job_and_analysis(self, cont_name, cid, analysis, job, origin, uid):
