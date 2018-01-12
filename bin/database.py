@@ -1320,7 +1320,7 @@ def upgrade_to_41_closure(cont, cont_name):
             f['mimetype'] = util.guess_mimetype(f.get('name'))
         if 'modality' not in f:
             f['modality'] = None
-    config.db[cont_name].update_one({'_id': cont_name['_id']}, {'$set': {'files': files}})
+    config.db[cont_name].update_one({'_id': cont['_id']}, {'$set': {'files': files}})
     return True
 
 
@@ -1332,7 +1332,7 @@ def upgrade_to_41():
     """
 
     for cont_name in ['groups', 'projects', 'sessions', 'acquisitions', 'collections', 'analyses']:
-        cursor = config.db['cont_name'].find({'files': { '$elemMatch': { '$or': [
+        cursor = config.db[cont_name].find({'files': { '$elemMatch': { '$or': [
             {'tags':          {'$exists': False }},
             {'measurements':  {'$exists': False }},
             {'origin':        {'$exists': False }},
