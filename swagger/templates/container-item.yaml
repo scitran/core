@@ -40,6 +40,7 @@ template: |
     parameters:
       - in: body
         name: body
+        required: true
         schema:
           $ref: {{{update-input-schema}}}
     responses:

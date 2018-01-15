@@ -19,7 +19,8 @@
           "properties": {
             "_id": {"$ref":"#/definitions/_id"}
           },
-          "required": ["_id"]
+          "required": ["_id"],
+          "x-sdk-return": "_id"
         },
         "container-reference": {
           "type": "object",

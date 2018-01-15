@@ -52,7 +52,8 @@
                 "_id": {
                     "type": "string"
                 }
-            }
+            },
+            "x-sdk-return": "_id"
         }
     }
 }

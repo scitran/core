@@ -1,7 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "text":             {"type": "string"},
+    "text": {
+      "type": "string",
+      "x-sdk-positional": true
+    },
     "note-input":{
       "type":"object",
       "properties":{

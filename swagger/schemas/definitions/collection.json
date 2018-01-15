@@ -27,7 +27,8 @@
           "properties": {
             "_id": {"$ref":"common.json#/definitions/objectid"}
           },
-          "required": ["_id"]
+          "required": ["_id"],
+          "x-sdk-return": "_id"
         },
         "collection-output":{
             "type": "object",

@@ -24,12 +24,13 @@ template: |
           $ref: {{{list-output-schema}}}
   post:
     summary: Create a new {{resource}}
-    operationId: create_{{resource}}
+    operationId: add_{{resource}}
     tags:
       - '{{tag}}'
     parameters:
       - in: body
         name: body
+        required: true
         schema:
           $ref: {{{create-input-schema}}}
     responses:
