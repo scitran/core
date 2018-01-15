@@ -114,7 +114,7 @@ clean_up() {
             --volume $(pwd):/src/core \
             scitran/core:testing \
             sh -c '
-                rm .coverage;
+                rm -rf .coverage htmlcov;
                 coverage combine;
                 coverage report --skip-covered --show-missing;
                 coverage html;
