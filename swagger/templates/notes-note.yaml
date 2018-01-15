@@ -39,6 +39,7 @@ template: |
     parameters:
       - in: body
         name: body
+        required: true
         schema:
           $ref: schemas/input/note.json
     responses:

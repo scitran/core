@@ -25,6 +25,7 @@ $template_arguments:
     parameters:
       - name: body
         in: body 
+        required: true
         schema:
           $ref: schemas/input/group-new.json
     responses:
@@ -34,6 +35,7 @@ $template_arguments:
           $ref: schemas/output/group-new.json
       '400':
         $ref: '#/responses/400:invalid-body-json'
+        
 /groups/{GroupId}:
   parameters:
     - required: true
@@ -61,6 +63,7 @@ $template_arguments:
     parameters:
       - in: body
         name: body
+        required: true
         schema:
           $ref: schemas/input/group-update.json
     responses:
