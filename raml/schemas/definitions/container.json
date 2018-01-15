@@ -4,7 +4,6 @@
     "definitions": {
         "_id":          {"type": "string"},
         "public":       {"type": "boolean"},
-        "archived":     {"type": "boolean"},
         "label":        {"type": "string", "minLength": 1, "maxLength": 256},
         "info":         {"type": "object"},
         "info_exists":  {"type": "boolean"},

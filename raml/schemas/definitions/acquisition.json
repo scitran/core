@@ -7,7 +7,6 @@
                 "public":       {"$ref": "../definitions/container.json#/definitions/public"},
                 "label":        {"$ref": "../definitions/container.json#/definitions/label"},
                 "info":         {"$ref": "../definitions/container.json#/definitions/info"},
-                "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
                 "session":      {"$ref":"../definitions/objectid.json#"},
                 "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
                 "timestamp":    {"$ref":"../definitions/container.json#/definitions/timestamp"},
@@ -22,7 +21,6 @@
               "public":       {"$ref": "../definitions/container.json#/definitions/public"},
               "label":        {"$ref": "../definitions/container.json#/definitions/label"},
               "info":         {"$ref": "../definitions/container.json#/definitions/info"},
-              "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
               "session":      {"$ref":"../definitions/objectid.json#"},
               "uid":          {"$ref":"../definitions/container.json#/definitions/uid"},
               "collections":{

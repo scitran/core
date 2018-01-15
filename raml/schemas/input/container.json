@@ -4,7 +4,6 @@
     "properties": {
         "_id":          {"$ref":"../definitions/container.json#/definitions/_id"},
         "public":       {"$ref":"../definitions/container.json#/definitions/public"},
-        "archived":     {"$ref":"../definitions/container.json#/definitions/archived"},
         "label":        {"$ref":"../definitions/container.json#/definitions/label"},
         "info":         {"$ref":"../definitions/container.json#/definitions/info"}
     }

@@ -28,7 +28,6 @@
         "label":    	{"type": "string", "minLength": 1, "maxLength": 256},
         "user":     	{"type": "string"},
         "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json"}},
-        "public":       {"type": "boolean"},
-        "archived":     {"type": "boolean"}
+        "public":       {"type": "boolean"}
     }
 }
