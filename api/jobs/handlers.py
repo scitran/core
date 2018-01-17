@@ -88,8 +88,10 @@ class GearHandler(base.RequestHandler):
         """Download gear tarball file"""
         dl_id = kwargs.pop('cid')
         gear = get_gear(dl_id)
-        file_id = gear['exchange']['rootfs-id']
-        file_path = files.get_file_abs_path(file_id)
+        file_path, file_system = files.get_valid_file({
+            '_id': gear['exchange'].get('rootfs-id', ''),
+            'hash': 'v0-' + gear['exchange']['rootfs-hash'].replace(':', '-')
+        })
 
         stream = open(file_path, 'rb')
         set_for_download(self.response, stream=stream, filename='gear.tar')

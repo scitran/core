@@ -4,15 +4,16 @@ import datetime
 import json
 import logging
 import os
-import shutil
 
 import attrdict
 import bson
+import fs.move
+import fs.path
 import pymongo
 import pytest
 import requests
 
-from api import files, util
+from api import config, files, util
 
 # load required envvars w/ the same name
 SCITRAN_CORE_DRONE_SECRET = os.environ['SCITRAN_CORE_DRONE_SECRET']
@@ -214,29 +215,31 @@ def legacy_cas_file(as_admin, api_db, data_builder, randstr, file_form):
     """Yield legacy CAS file"""
     project = data_builder.create_project()
     file_name = '%s.csv' % randstr()
-    as_admin.post('/projects/' + project + '/files', files=file_form(file_name))
+    file_content = randstr()
+    as_admin.post('/projects/' + project + '/files', files=file_form((file_name, file_content)))
 
-    file_id = api_db['projects'].find_one(
+    file_info = api_db['projects'].find_one(
         {'files.name': file_name}
-    )['files'][0]['_id']
+    )['files'][0]
+    file_id = file_info['_id']
+    file_hash = file_info['hash']
     # verify cas backward compatibility
     api_db['projects'].find_one_and_update(
         {'files.name': file_name},
         {'$unset': {'files.$._id': ''}}
     )
-    data_path = os.getenv('SCITRAN_PERSISTENT_DATA_PATH')
-    file_hash = 'v0-sha384-03a9df0a5e6e21f5d25aacbce76d8a5d9f8de14f6654c31ab2daed961cfbfb236b1708063350856f752a5a094fb64321'
-    file_path = os.path.join(data_path, util.path_from_hash(file_hash))
-    target_dir = os.path.dirname(file_path)
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
-    shutil.move(files.get_file_abs_path(file_id), file_path)
 
-    yield (project, file_name)
+    file_path = unicode(util.path_from_hash(file_hash))
+    target_dir = fs.path.dirname(file_path)
+    if not config.legacy_fs.exists(target_dir):
+        config.legacy_fs.makedirs(target_dir)
+    fs.move.move_file(src_fs=config.fs, src_path=util.path_from_uuid(file_id), dst_fs=config.legacy_fs, dst_path=file_path)
+
+    yield (project, file_name, file_content)
 
     # clean up
-    os.remove(file_path)
-    os.removedirs(target_dir)
+    config.legacy_fs.remove(file_path)
+    config.legacy_fs.removetree(target_dir)
     api_db['projects'].delete_one({'_id': project})
 
 class BaseUrlSession(requests.Session):

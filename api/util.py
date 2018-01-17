@@ -1,6 +1,5 @@
 import datetime
 import enum as baseEnum
-import errno
 import hashlib
 import json
 import mimetypes
@@ -10,6 +9,9 @@ import re
 import requests
 import string
 import uuid
+
+import fs.path
+import fs.errors
 
 import django
 from django.conf import settings
@@ -254,14 +256,11 @@ class Enum(baseEnum.Enum):
         else:
             return super.__eq__(other)
 
-def mkdir_p(path):
+def mkdir_p(path, file_system):
     try:
-        os.makedirs(path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
+        file_system.makedirs(path)
+    except fs.errors.DirectoryExists:
+        pass
 
 NONCE_CHARS  = string.ascii_letters + string.digits
 NONCE_LENGTH = 18
@@ -288,7 +287,7 @@ def path_from_uuid(uuid_):
     first_stanza = uuid_1[0:2]
     second_stanza = uuid_1[2:4]
     path = (first_stanza, second_stanza, uuid_)
-    return os.path.join(*path)
+    return fs.path.join(*path)
 
 
 def path_from_hash(hash_):
@@ -305,9 +304,6 @@ def path_from_hash(hash_):
     path = (hash_version, hash_alg, first_stanza, second_stanza, hash_)
     return os.path.join(*path)
 
-
-def file_exists(path):
-    return os.path.exists(path) and os.path.isfile(path)
 
 class RangeHeaderParseError(ValueError):
     """Exception class representing a string parsing error."""

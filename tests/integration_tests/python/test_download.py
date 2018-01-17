@@ -4,7 +4,7 @@ import tarfile
 import zipfile
 
 
-def test_download(data_builder, file_form, as_admin, api_db, legacy_cas_file):
+def test_download_k(data_builder, file_form, as_admin, api_db, legacy_cas_file):
     project = data_builder.create_project(label='project1')
     session = data_builder.create_session(label='session1', project=project)
     session2 = data_builder.create_session(label='session1', project=project)
@@ -152,7 +152,7 @@ def test_download(data_builder, file_form, as_admin, api_db, legacy_cas_file):
     assert r.ok
 
     # test legacy cas file handling
-    (project_legacy, file_name_legacy) = legacy_cas_file
+    (project_legacy, file_name_legacy, file_content) = legacy_cas_file
     r = as_admin.post('/download', json={
         'optional': False,
         'nodes': [
@@ -233,14 +233,15 @@ def test_filelist_download(data_builder, file_form, as_admin, legacy_cas_file):
     assert r.ok
 
     # test legacy cas file handling
-    (project, file_name) = legacy_cas_file
+    (project, file_name, file_content) = legacy_cas_file
     r = as_admin.get('/projects/' + project + '/files/' + file_name, params={'ticket': ''})
     assert r.ok
 
     ticket = r.json()['ticket']
 
     r = as_admin.get('/projects/' + project + '/files/' + file_name, params={'ticket': ticket})
-    assert r.content == 'test\ndata\n'
+    assert r.ok
+    assert r.content == file_content
 
 
 def test_filelist_range_download(data_builder, as_admin, file_form):
