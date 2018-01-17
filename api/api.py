@@ -245,6 +245,7 @@ endpoints = [
         prefix( '/analyses/<_id:{cid}>', [
             route('/files',                                     AnalysesHandler, h='download',      m=['GET']),
             route('/files/<filename:{fname}>',                  AnalysesHandler, h='download',      m=['GET']),
+            route( '/info',                                     AnalysesHandler, h='modify_info',   m=['POST']),
         ]),
         prefix('/<:{cname}>/<:{cid}>/<cont_name:analyses>/<cid:{cid}>', [
             route('/<list_name:notes>',                         NotesListHandler,               m=['POST']),

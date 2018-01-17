@@ -79,8 +79,6 @@ class AnalysesHandler(RefererHandler):
         permchecker(noop)('POST')
 
         if self.is_true('job'):
-            if cont_name != 'sessions':
-                self.abort(400, 'Analysis created via a job must be at the session level')
 
             payload = self.request.json_body
             analysis = payload.get('analysis')
@@ -125,6 +123,22 @@ class AnalysesHandler(RefererHandler):
             return {'modified': result.modified_count}
         else:
             self.abort(404, 'Element not updated in container {} {}'.format(self.storage.cont_name, _id))
+
+    @validators.verify_payload_exists
+    def modify_info(self, **kwargs):
+        _id = kwargs.get('_id')
+
+        analysis = self.storage.get_container(_id)
+        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
+        permchecker = self.get_permchecker(parent)
+        permchecker(noop)('PUT')
+
+        payload = self.request.json_body
+        validators.validate_data(payload, 'info_update.json', 'input', 'POST')
+
+        self.storage.modify_info(_id, payload)
+
+        return
 
     def get(self, **kwargs):
         _id = kwargs.get('_id')
