@@ -374,6 +374,9 @@ class DataExplorerHandler(base.RequestHandler):
         if not request.get('all_data', False) and not self.superuser_request:
             modified_filters.append({'term': {'permissions._id': self.uid}})
 
+        # Only return objects that have not been marked as deleted
+        modified_filters.append({'term': {'deleted': False}})
+
         # Parse and "validate" search_string, allowed to be non-existent
         search_string = str(request.get('search_string', ''))
 
@@ -412,9 +415,9 @@ class DataExplorerHandler(base.RequestHandler):
             field_name = self.request.json_body['field_name']
         except (KeyError, ValueError):
             self.abort(400, 'Field name is required')
-        filters = []
+        filters = [{'term': {'deleted': False}}]
         if not self.superuser_request:
-            filters = [{'term': {'permissions._id': self.uid}}]
+            filters.append({'term': {'permissions._id': self.uid}})
         try:
             field = config.es.get(index='data_explorer_fields', id=field_name, doc_type='flywheel_field')
         except TransportError as e:
