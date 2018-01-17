@@ -1065,6 +1065,72 @@ def test_edit_subject_info(data_builder, as_admin, as_user):
     assert r.json()['info'] == {}
 
 
+def test_edit_analysis_info(data_builder, default_payload, file_form, as_admin, as_user):
+    """
+    Abridged version since it uses same storage layer as container info
+    """
+
+    gear_doc = default_payload['gear']['gear']
+    gear_doc['inputs'] = {'csv': {'base': 'file'}}
+    gear = data_builder.create_gear(gear=gear_doc)
+    project = data_builder.create_project()
+
+    assert as_admin.post('/projects/' + project + '/files', files=file_form('test.csv')).ok
+    r = as_admin.post('/projects/' + project + '/analyses', params={'job': 'true'}, json={
+        'analysis': {'label': 'with-job'},
+        'job': {
+            'gear_id': gear,
+            'inputs': {'csv': {'type': 'project', 'id': project, 'name': 'test.csv'}}
+        }
+    })
+    assert r.ok
+    analysis = r.json()['_id']
+
+
+    r = as_admin.get('/analyses/' + analysis)
+    assert r.ok
+    assert not r.json()['info']
+
+    # Send improper payload
+    r = as_admin.post('/analyses/' + analysis + '/info', json={
+        'delete': ['map'],
+        'replace': {'not_going': 'to_happen'}
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/analyses/' + analysis + '/info', json={
+        'delete': {'a': 'map'},
+    })
+    assert r.status_code == 400
+
+    # Send improper payload
+    r = as_admin.post('/analyses/' + analysis + '/info', json={
+        'set': 'cannot do this',
+    })
+    assert r.status_code == 400
+
+    # Attempt full replace of info
+    analysis_info = {
+        'a': 'b',
+        'test': 123,
+        'map': {
+            'a': 'b'
+        },
+        'list': [1,2,3]
+    }
+
+
+    r = as_admin.post('/analyses/' + analysis + '/info', json={
+        'replace': analysis_info
+    })
+    assert r.ok
+
+    r = as_admin.get('/analyses/' + analysis)
+    assert r.ok
+    assert r.json()['info'] == analysis_info
+
+
 def test_fields_list_requests(data_builder, file_form, as_admin):
     # Ensure sensitive keys are not returned on list endpoints
     # Project: info and files.info
