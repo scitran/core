@@ -79,8 +79,6 @@ class AnalysesHandler(RefererHandler):
         permchecker(noop)('POST')
 
         if self.is_true('job'):
-            if cont_name != 'sessions':
-                self.abort(400, 'Analysis created via a job must be at the session level')
 
             payload = self.request.json_body
             analysis = payload.get('analysis')

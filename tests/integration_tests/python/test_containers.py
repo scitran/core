@@ -1089,7 +1089,7 @@ def test_edit_analysis_info(data_builder, default_payload, file_form, as_admin, 
 
     r = as_admin.get('/analyses/' + analysis)
     assert r.ok
-    assert not r.json()['info']
+    assert not r.json().get('info')
 
     # Send improper payload
     r = as_admin.post('/analyses/' + analysis + '/info', json={
