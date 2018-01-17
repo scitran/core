@@ -106,7 +106,7 @@ clean_up() {
 
         # Save integration test coverage
         docker exec core-test-service python -c 'import requests; requests.post("http://localhost/api/save-coverage")'
-        docker cp core-test-service:/src/core/.coverage.integration-tests ./ 2>/dev/null
+        docker cp core-test-service:/tmp/.coverage.integration-tests ./ 2>/dev/null
 
         # Combine unit/integ coverage and report/grenerate html
         docker run --rm \

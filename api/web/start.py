@@ -8,7 +8,7 @@ import webapp2
 #   http://coverage.readthedocs.io/en/coverage-4.2/faq.html
 if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true": # pragma: no cover - oh, the irony
     import coverage
-    cov = coverage.coverage(source=["api"], data_suffix="integration-tests")
+    cov = coverage.coverage(source=["api"], data_file="/tmp/.coverage.integration-tests")
 
     class CoverageSaveHandler(webapp2.RequestHandler):
         def save_coverage(self):
