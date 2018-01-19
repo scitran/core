@@ -147,10 +147,10 @@ def run(batch_job):
     tags.append('batch')
 
     if gear.get('category') == 'analysis':
-        analysis = proposal.get('analysis', {})
-        if not analysis.get('label'):
+        analysis_base = proposal.get('analysis', {})
+        if not analysis_base.get('label'):
             time_now = datetime.datetime.utcnow()
-            analysis['label'] = {'label': '{} {}'.format(gear_name, time_now)}
+            analysis_base['label'] = {'label': '{} {}'.format(gear_name, time_now)}
         an_storage = AnalysisStorage()
         acq_storage = AcquisitionStorage()
 
@@ -171,6 +171,8 @@ def run(batch_job):
         job_map['inputs'] = inputs
 
         if gear.get('category') == 'analysis':
+
+            analysis = copy.deepcopy(analysis_base)
 
             # Create analysis
             acquisition_id = inputs.values()[0].get('id')
@@ -194,6 +196,8 @@ def run(batch_job):
         job_map['destination'] = dest
 
         if gear.get('category') == 'analysis':
+
+            analysis = copy.deepcopy(analysis_base)
 
             # Create analysis
             result = an_storage.create_job_and_analysis('sessions', bson.ObjectId(dest['id']), analysis, job_map, origin, None)

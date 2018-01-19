@@ -251,7 +251,9 @@ def test_batch(data_builder, as_user, as_admin, as_root):
 def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_root, api_db):
     project = data_builder.create_project()
     session = data_builder.create_session(project=project)
+    session2 = data_builder.create_session(project=project)
     acquisition = data_builder.create_acquisition(session=session)
+    acquisition2 = data_builder.create_acquisition(session=session2)
 
     gear_name = randstr()
     gear_doc = default_payload['gear']
@@ -269,26 +271,28 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     gear = r.json()['_id']
 
 
-    # create a batch w/o inputs targeting session
+    # create a batch w/o inputs targeting sessions
     r = as_admin.post('/batch', json={
         'gear_id': gear,
-        'targets': [{'type': 'session', 'id': session}]
+        'targets': [{'type': 'session', 'id': session}, {'type': 'session', 'id': session2}]
     })
     assert r.ok
     batch1 = r.json()
 
-    assert len(batch1['matched']) == 1
+    assert len(batch1['matched']) == 2
     assert batch1['matched'][0]['id'] == session
+    assert batch1['matched'][1]['id'] == session2
 
-    # create a batch w/o inputs targeting acquisition
+    # create a batch w/o inputs targeting acquisitions
     r = as_admin.post('/batch', json={
         'gear_id': gear,
-        'targets': [{'type': 'acquisition', 'id': acquisition}]
+        'targets': [{'type': 'acquisition', 'id': acquisition}, {'type': 'acquisition', 'id': acquisition2}]
     })
     assert r.ok
     batch2 = r.json()
-    assert len(batch2['matched']) == 1
+    assert len(batch2['matched']) == 2
     assert batch2['matched'][0]['id'] == session
+    assert batch1['matched'][1]['id'] == session2
 
     # create a batch w/o inputs targeting project
     r = as_admin.post('/batch', json={
@@ -297,8 +301,9 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     })
     assert r.ok
     batch3 = r.json()
-    assert len(batch3['matched']) == 1
+    assert len(batch3['matched']) == 2
     assert batch3['matched'][0]['id'] == session
+    assert batch1['matched'][1]['id'] == session2
 
     batch_id = batch1['_id']
 
@@ -342,13 +347,14 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     # create a batch w/o inputs targeting session
     r = as_admin.post('/batch', json={
         'gear_id': gear2,
-        'targets': [{'type': 'session', 'id': session}]
+        'targets': [{'type': 'session', 'id': session}, {'type': 'session', 'id': session2}]
     })
     assert r.ok
     batch4 = r.json()
 
-    assert len(batch4['matched']) == 1
+    assert len(batch4['matched']) == 2
     assert batch4['matched'][0]['id'] == session
+    assert batch1['matched'][1]['id'] == session2
     batch_id = batch4['_id']
 
     # run batch
@@ -377,3 +383,5 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
 
     # must remove jobs manually because gears were added manually
     api_db.jobs.remove({'gear_id': {'$in': [gear, gear2]}})
+
+
