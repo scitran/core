@@ -15,8 +15,8 @@
           "items": {
             "type": "string"
           }
-        },
-      },
+        }
+      }
     },
     "modality":{
         "type": "object",

@@ -127,7 +127,7 @@ def check_and_format_classification(modality_name, classification_map):
     """
     try:
         modality = containerstorage.ContainerStorage('modalities', use_object_id=False).get_container(modality_name)
-    except APINotFoundException as e:
+    except APINotFoundException:
         keys = classification_map.keys()
         if len(keys) == 1 and keys[0].lower() == 'custom':
             # for unknown modalities allow only list of custom values

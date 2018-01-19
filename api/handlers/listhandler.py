@@ -546,7 +546,7 @@ class FileListHandler(ListHandler):
 
         payload = self.request.json_body
 
-        validators.validate_data(payload, 'classification_update.json', 'input', 'POST')
+        validators.validate_data(payload, 'classification-update.json', 'input', 'POST')
 
         permchecker(noop)('PUT', _id=_id, query_params=kwargs, payload=payload)
         storage.modify_classification(_id, kwargs, payload)
