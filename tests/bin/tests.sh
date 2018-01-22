@@ -33,6 +33,7 @@ Envvars (required for integration tests):
 
 
 main() {
+    export PYTHONDONTWRITEBYTECODE=1
     export RUN_ALL=true
     local RUN_LINT=false
     local RUN_UNIT=false
@@ -94,12 +95,12 @@ main() {
     if ${RUN_UNIT}; then
         log "Running unit tests ..."
         rm -f .coverage
-        PYTHONDONTWRITEBYTECODE=1 py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
+        py.test --cov=api --cov-report= tests/unit_tests/python $PYTEST_ARGS
     fi
 
     if ${RUN_INTEG}; then
         log "Running integration tests ..."
-        PYTHONDONTWRITEBYTECODE=1 py.test tests/integration_tests/python $PYTEST_ARGS
+        py.test tests/integration_tests/python $PYTEST_ARGS
     fi
 }
 

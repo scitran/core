@@ -67,6 +67,18 @@ main() {
 
     local SCITRAN_CORE_DRONE_SECRET="secret"
 
+    # Clean dev/test artifacts like pyc files and coverage reports
+    # Run within container to avoid permission problems
+    docker run --rm \
+        --name core-test-cleanup \
+        --volume $(pwd):/src/core \
+        scitran/core:testing \
+        sh -c '
+            find . -type d -name __pycache__ -exec rm -rf {}\;;
+            find . -type f -name "*.pyc" -delete;
+            rm -rf .coverage htmlcov;
+        '
+
     # Launch core + mongo
     docker run -d \
         --name core-test-service \
@@ -114,7 +126,6 @@ clean_up() {
             --volume $(pwd):/src/core \
             scitran/core:testing \
             sh -c '
-                rm -rf .coverage htmlcov;
                 coverage combine;
                 coverage report --skip-covered --show-missing;
                 coverage html;
