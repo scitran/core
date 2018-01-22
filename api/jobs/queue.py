@@ -360,30 +360,53 @@ class Queue(object):
         ])
 
     @staticmethod
-    def get_statistics():
+    def get_statistics(tags=None, last=None, unique=False, all_flag=False):
         """
         Return a variety of interesting information about the job queue.
         """
 
-        # Count jobs by state
-        result = config.db.jobs.aggregate([{"$group": {"_id": "$state", "count": {"$sum": 1}}}])
-        # Map mongo result to a useful object
+        if all_flag:
+            unique = True
+            if last is None:
+                last = 3
+
+        results = { }
+        match = { } # match all jobs
+
+        if tags is not None and len(tags) > 0:
+            match = { 'tags': {'$in': tags } } # match only jobs with given tags
+
+        # Count jobs by state, mapping the mongo result to a useful object
+        result = list(config.db.jobs.aggregate([{'$match': match }, {'$group': {'_id': '$state', 'count': {'$sum': 1}}}]))
         by_state = {s: 0 for s in JOB_STATES}
         by_state.update({r['_id']: r['count'] for r in result})
+        results['states'] = by_state
 
-        # Count jobs by tag grouping
-        result = list(config.db.jobs.aggregate([{"$group": {"_id": "$tags", "count": {"$sum": 1}}}]))
-        by_tag = []
-        for r in result:
-            by_tag.append({'tags': r['_id'], 'count': r['count']})
+        # List unique tags
+        if unique:
+            results['unique'] = sorted(config.db.jobs.distinct('tags'))
 
-        # Count jobs that will not be retried
-        permafailed = config.db.jobs.count({"attempt": {"$gte": max_attempts()}, "state":"failed"})
+        # List recently modified jobs for each state
+        if last is not None:
+            results['recent'] = {s: config.db.jobs.find({'$and': [match, {'state': s}]}, {'modified':1}).sort([('modified', pymongo.DESCENDING)]).limit(last) for s in JOB_STATES}
+
+        return results
+
+    @staticmethod
+    def get_pending(tags=None):
+        """
+        Returns the same format as get_statistics, but only the pending number.
+        Designed to be as efficient as possible for frequent polling :(
+        """
+
+        match = { } # match all jobs
+        if tags is not None and len(tags) > 0:
+            match = { 'tags': {'$in': tags } } # match only jobs with given tags
 
         return {
-            'by-state': by_state,
-            'by-tag': by_tag,
-            'permafailed': permafailed
+            'states': {
+                'pending': config.db.jobs.count({'$and': [match, {'state': 'pending'}]})
+            }
         }
 
     @staticmethod
