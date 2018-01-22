@@ -287,7 +287,29 @@ class JobsHandler(base.RequestHandler):
         if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires admin')
 
-        return Queue.get_statistics()
+        all_flag = self.is_true('all')
+        unique = self.is_true('unique')
+        tags = self.request.GET.getall('tags')
+        last = self.request.GET.get('last')
+
+        # Allow for tags to be specified multiple times, or just comma-deliminated
+        if len(tags) == 1:
+            tags = tags[0].split(',')
+
+        if last is not None:
+            last = int(last)
+
+        return Queue.get_statistics(tags=tags, last=last, unique=unique, all_flag=all_flag)
+
+    def pending(self):
+        if not self.superuser_request and not self.user_is_admin:
+            self.abort(403, 'Request requires admin')
+
+        tags = self.request.GET.getall('tags')
+        if len(tags) == 1:
+            tags = tags[0].split(',')
+
+        return Queue.get_pending(tags=tags)
 
     def next(self):
 
@@ -325,7 +347,7 @@ class JobHandler(base.RequestHandler):
 
     def get_config(self, _id):
         """Get a job's config"""
-        if not self.superuser_request:
+        if not self.superuser_request and not self.user_is_admin:
             self.abort(403, 'Request requires superuser')
 
         j = Job.get(_id)
@@ -373,10 +395,12 @@ class JobHandler(base.RequestHandler):
 
             encoded = pseudo_consistent_json_encode(c)
             self.response.app_iter = StringIO.StringIO(encoded)
+            self.response.headers['Content-Length'] = str(len(encoded.encode('utf-8'))) # must be set after app_iter
         else:
             # Legacy behavior
             encoded = pseudo_consistent_json_encode({"config": c})
             self.response.app_iter = StringIO.StringIO(encoded)
+            self.response.headers['Content-Length'] = str(len(encoded.encode('utf-8'))) # must be set after app_iter
 
     @require_login
     def put(self, _id):
