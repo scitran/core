@@ -160,9 +160,6 @@ class CollectionsHandler(ContainerHandler):
                 ])
         query = {'_id': {'$in': [ar['_id'] for ar in agg_res]}}
 
-
-        if not self.is_true('archived'):
-            query['archived'] = {'$ne': True}
         if not self.superuser_request:
             query['permissions._id'] = self.uid
 
@@ -192,9 +189,6 @@ class CollectionsHandler(ContainerHandler):
             query['session'] = bson.ObjectId(sid)
         elif sid != '':
             self.abort(400, sid + ' is not a valid ObjectId')
-
-        if not self.is_true('archived'):
-            query['archived'] = {'$ne': True}
 
         if not self.superuser_request:
             query['permissions._id'] = self.uid

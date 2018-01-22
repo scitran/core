@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 41 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 42 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1341,6 +1341,24 @@ def upgrade_to_41():
         ]}}})
         process_cursor(cursor, upgrade_to_41_closure, context=cont_name)
 
+
+def upgrade_to_42_closure(cont, cont_name):
+    archived = cont.pop('archived')
+    if archived:
+        cont['tags'] = cont.get('tags', []) + ['hidden']
+    config.db[cont_name].update_one({'_id': cont['_id']}, {
+                                        '$set': {'tags': cont['tags']},
+                                        '$unset': {'archived': True}
+                                    })
+    return True
+
+def upgrade_to_42():
+    """
+    Change container flag "archived" to container tag "hidden"
+    """
+    for cont_name in ['groups', 'projects', 'sessions', 'acquisitions']:
+        cursor = config.db[cont_name].find({'archived': {'$exists': True}})
+        process_cursor(cursor, upgrade_to_42_closure, context=cont_name)
 
 
 ###

@@ -92,9 +92,9 @@ def get_stats(cont, cont_type):
     # Get session and non-compliant session count
     match_q = {}
     if cont_type == 'projects':
-        match_q = {'project': cont['_id'], 'archived': {'$in': [None, False]}, 'deleted': {'$exists': False}}
+        match_q = {'project': cont['_id'], 'deleted': {'$exists': False}}
     elif cont_type == 'collections':
-        result = config.db.acquisitions.find({'collections': cont['_id'], 'archived': {'$in': [None, False]}, 'deleted': {'$exists': False}}, {'session': 1})
+        result = config.db.acquisitions.find({'collections': cont['_id'], 'deleted': {'$exists': False}}, {'session': 1})
         session_ids = list(set([s['session'] for s in result]))
         match_q = {'_id': {'$in': session_ids}}
 

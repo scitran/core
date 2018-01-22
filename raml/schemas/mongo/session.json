@@ -10,7 +10,6 @@
         "permissions": {},
         "files": {},
         "public": {},
-        "archived": {},
         "label": {},
         "satisfies_template": {"type": "boolean"},
         "project_has_template": {"type": "boolean"},

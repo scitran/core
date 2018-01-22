@@ -9,7 +9,6 @@
         "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json"}},
         "files":        {"type": "array",  "items": {"$ref": "file.json"}},
         "public":       {"type": "boolean"},
-        "archived":     {"type": "boolean"},
         "label":        {"type": "string"},
         "tags":         {"type": "array", "items": {"type": "string"}},
         "info":         {"type": "object"}
