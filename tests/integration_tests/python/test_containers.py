@@ -1331,3 +1331,29 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     # test that the (now) empty group can be deleted
     assert as_root.delete('/groups/' + group).ok
 
+def test_abstract_containers(data_builder, as_admin):
+    group = data_builder.create_group()
+    project = data_builder.create_project()
+    session = data_builder.create_session()
+    acquisition = data_builder.create_acquisition()
+
+    for cont in (acquisition, session, project, group):
+        r = as_admin.post('/containers/' + cont + '/tags', json={'value': 'abstract1'})
+        assert r.ok
+
+        r = as_admin.get('/containers/' + cont)
+        assert r.ok
+        assert r.json()['tags'] == ['abstract1']
+
+        r = as_admin.put('/containers/' + cont + '/tags/abstract1', json={'value': 'abstract2'})
+        assert r.ok
+
+        r = as_admin.get('/containers/' + cont + '/tags/abstract2')
+        assert r.ok
+        assert r.json() == 'abstract2'
+
+        r = as_admin.delete('/containers/' + cont)
+        assert r.ok
+
+        r = as_admin.get('/containers/' + cont)
+        assert r.status_code == 404
