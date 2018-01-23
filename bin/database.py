@@ -1344,12 +1344,11 @@ def upgrade_to_41():
 
 def upgrade_to_42_closure(cont, cont_name):
     archived = cont.pop('archived')
+    update = {'$unset': {'archived': True}}
     if archived:
         cont['tags'] = cont.get('tags', []) + ['hidden']
-    config.db[cont_name].update_one({'_id': cont['_id']}, {
-                                        '$set': {'tags': cont['tags']},
-                                        '$unset': {'archived': True}
-                                    })
+        update['$set'] = {'tags': cont['tags']}
+    config.db[cont_name].update_one({'_id': cont['_id']}, update)
     return True
 
 def upgrade_to_42():
