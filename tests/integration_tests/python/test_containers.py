@@ -63,6 +63,8 @@ def test_project_template(data_builder, file_form, as_admin):
     assert as_admin.post('/acquisitions/' + acquisition_2 + '/files', files=file_form('non-compliant.txt')).ok
     assert as_admin.post('/acquisitions/' + acquisition_2 + '/files', files=file_form('compliant1.csv')).ok
     assert as_admin.post('/acquisitions/' + acquisition_2 + '/files', files=file_form('compliant2.csv')).ok
+    assert as_admin.post('/acquisitions/' + acquisition_2 + '/files/compliant1.csv/classification', json={'add': {'custom': ['diffusion']}})
+    assert as_admin.post('/acquisitions/' + acquisition_2 + '/files/compliant2.csv/classification', json={'add': {'custom': ['diffusion']}})
 
     # test the session before setting the template
     r = as_admin.get('/sessions/' + session)
@@ -79,6 +81,7 @@ def test_project_template(data_builder, file_form, as_admin):
             'files': [{
                 'minimum': 2,
                 'mimetype': 'text/csv',
+                'classification': 'diffusion'
             }]
         }]
     })
@@ -95,6 +98,7 @@ def test_project_template(data_builder, file_form, as_admin):
             'files': [{
                 'minimum': 2,
                 'mimetype': 'text/csv',
+                'classification': 'diffusion'
             }]
         }]
     })
@@ -152,6 +156,8 @@ def test_project_template(data_builder, file_form, as_admin):
     assert as_admin.delete('/acquisitions/' + acquisition_2 + '/files/compliant2.csv').ok
     assert not satisfies_template()
     assert as_admin.post('/acquisitions/' + acquisition_2 + '/files', files=file_form('compliant2.csv')).ok
+    assert not satisfies_template()
+    assert as_admin.post('/acquisitions/' + acquisition_2 + '/files/compliant2.csv/classification', json={'add': {'custom': ['diffusion']}})
 
     # acquisitions.minimum
     assert satisfies_template()

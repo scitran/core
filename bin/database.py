@@ -1425,6 +1425,25 @@ def upgrade_rules_to_43(rule):
 
     config.db.project_rules.replace_one({'_id': rule['_id']}, rule)
 
+    return True
+
+def upgrade_templates_to_43(project):
+    """
+    Set any measurements keys to classification
+    """
+
+    template = project['template']
+
+    for a in template.get('acquisitions', []):
+        for f in a.get('files', []):
+            if 'measurements' in f:
+                cl = f.pop('measurements')
+                f['classification'] = cl
+
+    config.db.projects.update_one({'_id': project['_id']}, {'$set': {'template': template}})
+
+    return True
+
 def upgrade_to_43():
     """
     Update classification for all files with existing measurements field
@@ -1442,6 +1461,9 @@ def upgrade_to_43():
         {'any.type': {'$in': ['file.measurement', 'container.has-measurement']}}
     ]})
     process_cursor(cursor, upgrade_rules_to_43)
+
+    cursor = config.db.projects.find({'template': {'$exists': True }})
+    process_cursor(cursor, upgrade_templates_to_43)
 
 
 
