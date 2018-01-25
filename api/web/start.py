@@ -1,3 +1,4 @@
+import atexit
 import json
 import os
 import traceback
@@ -7,20 +8,17 @@ import webapp2
 # Start coverage before local module loading so their def and imports are counted
 #   http://coverage.readthedocs.io/en/coverage-4.2/faq.html
 if os.environ.get("SCITRAN_RUNTIME_COVERAGE") == "true": # pragma: no cover - oh, the irony
-    import coverage
-    cov = coverage.coverage(source=["api"], data_file="/tmp/.coverage.integration-tests")
-
-    class CoverageSaveHandler(webapp2.RequestHandler):
-        def save_coverage(self):
-            print("Saving coverage")
-            cov.stop()
-            cov.save()
+    def save_coverage(cov):
+        print("Saving coverage")
+        cov.stop()
+        cov.save()
 
     def start_coverage():
+        import coverage
         print("Enabling code coverage")
+        cov = coverage.coverage(source=["api"], data_file="/tmp/.coverage.integration-tests")
         cov.start()
-        from ..api import endpoints, route # pylint: disable=redefined-outer-name
-        endpoints.append(route('/api/save-coverage', CoverageSaveHandler, h='save_coverage', m=['POST']))
+        atexit.register(save_coverage, cov)
 
     start_coverage()
 
