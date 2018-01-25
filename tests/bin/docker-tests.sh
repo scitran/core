@@ -7,7 +7,7 @@ cd "$( dirname "$0" )/../.."
 
 USAGE="
 Usage:
-    $0 [OPTION...] [-- TEST_ARGS...]
+    $0 [OPTION...] [-- PYTEST_ARGS...]
 
 Build scitran/core image and run tests in a Docker container.
 Also displays coverage report and saves HTML in htmlcov dir.
@@ -17,17 +17,21 @@ Options:
 
     -B, --no-build      Skip rebuilding default Docker image
     --image IMAGE       Use custom Docker image
-    -- TEST_ARGS        Arguments passed to tests/bin/tests.sh
+    -- PYTEST_ARGS      Arguments passed to py.test
 
 "
 
 
 main() {
     local DOCKER_IMAGE=
-    local TEST_ARGS=
+    local PYTEST_ARGS=
 
     while [ $# -gt 0 ]; do
         case "$1" in
+            -h|--help)
+                log "$USAGE"
+                exit 0
+                ;;
             -B|--no-build)
                 DOCKER_IMAGE="scitran/core:testing"
                 ;;
@@ -37,16 +41,12 @@ main() {
                 ;;
             --)
                 shift
-                TEST_ARGS="$@"
+                PYTEST_ARGS="$@"
                 break
                 ;;
-            -h|--help)
-                printf "$USAGE" >&2
-                exit 0
-                ;;
             *)
-                printf "Invalid argument: $1\n" >&2
-                printf "$USAGE" >&2
+                log "Invalid argument: $1"
+                log "$USAGE"
                 exit 1
                 ;;
         esac
@@ -61,23 +61,20 @@ main() {
         docker tag "$DOCKER_IMAGE" "scitran/core:testing"
     fi
 
-    trap clean_up EXIT
-
-    docker network create core-test
-
-    local SCITRAN_CORE_DRONE_SECRET="secret"
-
-    # Clean dev/test artifacts like pyc files and coverage reports
+    log "Cleaning pyc and previous coverage results ..."
     # Run within container to avoid permission problems
     docker run --rm \
         --name core-test-cleanup \
         --volume $(pwd):/src/core \
         scitran/core:testing \
-        sh -c '
-            find . -type d -name __pycache__ -exec rm -rf {}\;;
-            find . -type f -name "*.pyc" -delete;
+        sh -c "
+            find . -type d -name __pycache__ -exec rm -rf {} \;;
+            find . -type f -name '*.pyc' -delete;
             rm -rf .coverage htmlcov;
-        '
+        "
+
+    trap clean_up EXIT
+    docker network create core-test
 
     # Launch core + mongo
     docker run -d \
@@ -85,7 +82,7 @@ main() {
         --network core-test \
         --volume $(pwd)/api:/src/core/api \
         --volume $(pwd)/tests:/src/core/tests \
-        --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
+        --env SCITRAN_CORE_DRONE_SECRET=secret \
         --env SCITRAN_RUNTIME_COVERAGE=true \
         --env SCITRAN_CORE_ACCESS_LOG_ENABLED=true \
         scitran/core:testing
@@ -97,11 +94,11 @@ main() {
         --volume $(pwd)/api:/src/core/api \
         --volume $(pwd)/tests:/src/core/tests \
         --env SCITRAN_SITE_API_URL=http://core-test-service/api \
-        --env SCITRAN_CORE_DRONE_SECRET=$SCITRAN_CORE_DRONE_SECRET \
+        --env SCITRAN_CORE_DRONE_SECRET=secret \
         --env SCITRAN_PERSISTENT_DB_URI=mongodb://core-test-service:27017/scitran \
         --env SCITRAN_PERSISTENT_DB_LOG_URI=mongodb://core-test-service:27017/logs \
         scitran/core:testing \
-        tests/bin/tests.sh $TEST_ARGS
+        tests/bin/tests.sh -- $PYTEST_ARGS
 }
 
 

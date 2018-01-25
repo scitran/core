@@ -1,33 +1,24 @@
-## Run the tests
-
-### Ubuntu
-Run automated tests:
+## Testing
+Build scitran-core and run automated tests in a docker container:
 ```
-# Follow installation instructions in README first
-. /runtime/bin/activate # Or wherever your scitran virtualenv is
-./test/bin/setup-integration-tests-ubuntu.sh
-./test/bin/run-tests-ubuntu.sh
+./tests/bin/docker-tests.sh
 ```
-All tests are executed by default. Subsets can be run using the filtering options:
 
-* To run linting, use `--lint` (`-l`)
-* To run unit tests, use `--unit` (`-u`)
-* To run integration tests, use `--integ` (`-i`)
+* To skip building the image, use `--no-build` (`-B`)
+* All tests (unit, integration and linting) are executed by default
 * To pass any arguments to `py.test`, use `-- PYTEST_ARGS`
+    * To run only a subset of test, use the [keyword expression filter](https://docs.pytest.org/en/latest/usage.html#specifying-tests-selecting-tests) `-k`
+    * To see `print` output during tests, increase verbosity with `-vvv`
+    * To get a debugger session on failures, use [`--pdb`](https://docs.pytest.org/en/latest/usage.html#dropping-to-pdb-python-debugger-on-failures)
 
 See [py.test usage](https://docs.pytest.org/en/latest/usage.html) for more.
 
-### Docker
-Build scitran-core image and run automated tests in a docker container:
-```
-./tests/bin/run-tests-docker.sh
-```
-* To skip building the image, use `--no-build` (`-B`)
-* To pass any arguments to `run-tests-ubuntu.sh`, use `-- TEST_ARGS`
+### Example
+The most common use case is adding a new (still failing) test, and wanting to
+* (re-)run it as fast as possible (`-B` and `-k foo`)
+* see output from quick and dirty `print`s in the test (`-vvv`)
+* get into an interactive pdb session to inspect what went wrong (`--pdb`)
 
-
-#### Example
-Without rebuilding the image, run only integration tests matching `foo`, use the highest verbosity level for test output and jump into a python debugger session in case an assertion fails:
 ```
-./tests/bin/run-tests-docker.sh -B -- -i -- -k foo -vvv --pdb
+./tests/bin/docker-tests.sh -B -- -k foo -vvv --pdb
 ```
