@@ -31,6 +31,7 @@
                 "project_id": { "type": "string" },
                 "gear_id":    { "type": "string" },
                 "name":       { "type": "string" },
+                "config":     { "type": "object" },
                 "any":        { "$ref": "#/definitions/rule-items" },
                 "all":        { "$ref": "#/definitions/rule-items" },
                 "disabled":   { "type": "boolean" }
@@ -45,6 +46,7 @@
                 "_id":      { "type": "string" },
                 "gear_id":  { "type": "string" },
                 "name":     { "type": "string" },
+                "config":   { "type": "object" },
                 "any":      { "$ref": "#/definitions/rule-items" },
                 "all":      { "$ref": "#/definitions/rule-items" },
                 "disabled": { "type": "boolean" }

@@ -222,9 +222,10 @@ def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_
     data_builder.delete_group(group, recursive=True)
 
 
-def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, api_db):
+def test_project_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, api_db):
     # create versioned gear to cover code selecting latest gear
-    gear = data_builder.create_gear(gear={'version': '0.0.1'})
+    gear_config = {'param': {'type': 'string', 'pattern': '^default|custom$', 'default': 'default'}}
+    gear = data_builder.create_gear(gear={'version': '0.0.1', 'config': gear_config})
     project = data_builder.create_project()
 
     bad_payload = {'test': 'rules'}
@@ -267,19 +268,42 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
         'gear_id': '000000000000000000000000',
         'name': 'csv-job-trigger-rule',
         'any': [],
-        'all': [
-            {'type': 'file.type', 'value': 'tabular data'},
-        ]
+        'all': [],
     }
+
+    # try to add project rule w/ invalid rule-item (invalid type)
+    # NOTE this is a legacy rule
+    rule_json['all'] = [{'type': 'invalid', 'value': 'test'}]
+    r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
+    assert r.status_code == 400
+    assert "'invalid' is not one of" in r.json()['message']
+
+    # try to add project rule w/ invalid rule-item (missing value)
+    # NOTE this is a legacy rule
+    rule_json['all'] = [{'type': 'file.name'}]
+    r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
+    assert r.status_code == 400
+    assert "'value' is a required property" in r.json()['message']
+
+    # set valid rule-item
+    rule_json['all'] = [{'type': 'file.type', 'value': 'tabular data'}]
 
     # try to add project rule w/ non-existent gear
     # NOTE this is a legacy rule
     r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
     assert r.status_code == 404
 
-    # add project rule w/ proper gear id
+    # try to add project rule w/ invalid config
     # NOTE this is a legacy rule
     rule_json['gear_id'] = gear
+    rule_json['config'] = {'param': 'invalid'}
+    r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
+    assert r.status_code == 422
+    assert r.json()['reason'] == 'config did not match manifest'
+    del rule_json['config']
+
+    # add project rule w/ proper gear id
+    # NOTE this is a legacy rule
     r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
     assert r.ok
     rule = r.json()['_id']
@@ -305,9 +329,14 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     r = with_user.session.put('/projects/' + project + '/rules/' + rule, json={'gear_id': gear})
     assert r.status_code == 403
 
-    # try to update rule to with invalid gear id
+    # try to update rule with invalid gear id
     r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'gear_id': '000000000000000000000000'})
     assert r.status_code == 404
+
+    # try to update rule with invalid gear config
+    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'config': {'param': 'invalid'}})
+    assert r.status_code == 422
+    assert r.json()['reason'] == 'config did not match manifest'
 
     # update name of rule
     rule_name = 'improved-csv-trigger-rule'
@@ -323,11 +352,25 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     r = as_admin.post('/projects/' + project + '/files', files=file_form('test2.csv'))
     assert r.ok
 
-    # test that job was created via rule
+    # test that job was created via rule and uses gear default config
     gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
     assert len(gear_jobs) == 1
     assert len(gear_jobs[0]['inputs']) == 1
     assert gear_jobs[0]['inputs'][0]['name'] == 'test2.csv'
+    assert gear_jobs[0]['config']['config'] == {'param': 'default'}
+
+    # update rule to have a custom config
+    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'config': {'param': 'custom'}})
+    assert r.ok
+
+    # upload another file that matches rule
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('test3.csv'))
+    assert r.ok
+
+    # test that job was created via rule and custom config
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
+    assert len(gear_jobs) == 2
+    assert gear_jobs[1]['config']['config'] == {'param': 'custom'}
 
     # try to delete rule of non-existent project
     r = as_admin.delete('/projects/000000000000000000000000/rules/000000000000000000000000')
@@ -368,7 +411,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
 
     # test that job was not created via rule
     gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
-    assert len(gear_jobs) == 1 # still 1 from before
+    assert len(gear_jobs) == 2 # still 2 from before
 
     # update test2.csv's metadata to include a valid measurement to spawn job
     metadata = {
@@ -396,9 +439,9 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
 
     # test that only one job was created via rule
     gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
-    assert len(gear_jobs) == 2
-    assert len(gear_jobs[1]['inputs']) == 1
-    assert gear_jobs[1]['inputs'][0]['name'] == 'test3.txt'
+    assert len(gear_jobs) == 3
+    assert len(gear_jobs[2]['inputs']) == 1
+    assert gear_jobs[2]['inputs'][0]['name'] == 'test3.txt'
 
     # delete rule
     r = as_admin.delete('/projects/' + project + '/rules/' + rule2)
@@ -423,7 +466,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
 
     # test that job was created via regex rule
     gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
-    assert len(gear_jobs) == 3
+    assert len(gear_jobs) == 4
 
     # delete rule
     r = as_admin.delete('/projects/' + project + '/rules/' + rule3)

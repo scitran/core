@@ -147,7 +147,7 @@ class RulesHandler(base.RequestHandler):
 
         validate_data(payload, 'rule-new.json', 'input', 'POST', optional=True)
         validate_regexes(payload)
-        get_gear(payload['gear_id'])
+        validate_gear_config(get_gear(payload['gear_id']), payload.get('config'))
 
         payload['project_id'] = cid
 
@@ -197,8 +197,9 @@ class RuleHandler(base.RequestHandler):
         updates = self.request.json
         validate_data(updates, 'rule-update.json', 'input', 'POST', optional=True)
         validate_regexes(updates)
-        if updates.get('gear_id'):
-            get_gear(updates['gear_id'])
+        gear_id = updates.get('gear_id', doc['gear_id'])
+        config_ = updates.get('config', doc.get('config'))
+        validate_gear_config(get_gear(gear_id), config_)
 
         doc.update(updates)
         config.db.project_rules.replace_one({'_id': bson.ObjectId(rid)}, doc)

@@ -5,6 +5,7 @@ Gears
 from __future__ import absolute_import
 
 import bson.objectid
+import copy
 import datetime
 from jsonschema import Draft4Validator, ValidationError
 import gears as gear_tools
@@ -96,13 +97,13 @@ def suggest_for_files(gear, files):
     return suggested_files
 
 def validate_gear_config(gear, config_):
-    if len(gear.get('manifest', {}).get('config', {})) > 0:
-        invocation = gear_tools.derive_invocation_schema(gear['manifest'])
+    if len(gear.get('gear', {}).get('config', {})) > 0:
+        invocation = gear_tools.derive_invocation_schema(gear['gear'])
         ci = gear_tools.isolate_config_invocation(invocation)
         validator = Draft4Validator(ci)
 
         try:
-            validator.validate(config_)
+            validator.validate(fill_gear_default_values(gear, config_))
         except ValidationError as err:
             key = None
             if len(err.relative_path) > 0:
@@ -120,8 +121,7 @@ def fill_gear_default_values(gear, config_):
     Given a gear and a config map, fill any missing keys using defaults from the gear's config
     """
 
-    if config_ is None:
-        config_ = {}
+    config_ = copy.deepcopy(config_) or {}
 
     for k,v in gear['gear'].get('config', {}).iteritems():
         if 'default' in v:
