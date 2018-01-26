@@ -1331,13 +1331,16 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     # test that the (now) empty group can be deleted
     assert as_root.delete('/groups/' + group).ok
 
-def test_abstract_containers(data_builder, as_admin):
+def test_abstract_containers(data_builder, as_admin, file_form):
     group = data_builder.create_group()
     project = data_builder.create_project()
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
+    analysis = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
+        'analysis.csv', meta={'label': 'no-job', 'inputs': [{'name': 'analysis.csv'}]})).json()['_id']
+    collection = data_builder.create_collection()
 
-    for cont in (acquisition, session, project, group):
+    for cont in (collection, analysis, acquisition, session, project, group):
         r = as_admin.post('/containers/' + cont + '/tags', json={'value': 'abstract1'})
         assert r.ok
 
@@ -1352,6 +1355,8 @@ def test_abstract_containers(data_builder, as_admin):
         assert r.ok
         assert r.json() == 'abstract2'
 
+    # /analyses/x does not support DELETE (yet?)
+    for cont in (collection, acquisition, session, project, group):
         r = as_admin.delete('/containers/' + cont)
         assert r.ok
 

@@ -15,7 +15,9 @@ CONTAINER_SEARCH_JS = r"""
         "groups": db.getCollection("groups").findOne({"_id" : _id}, {"_id": 1}),
         "projects": db.getCollection("projects").findOne({"_id" : _id}, {"_id": 1}),
         "sessions": db.getCollection("sessions").findOne({"_id" : _id}, {"_id": 1}),
-        "acquisitions": db.getCollection("acquisitions").findOne({"_id" : _id}, {"_id": 1})
+        "acquisitions": db.getCollection("acquisitions").findOne({"_id" : _id}, {"_id": 1}),
+        "analyses": db.getCollection("analyses").findOne({"_id" : _id}, {"_id": 1}),
+        "collections": db.getCollection("collections").findOne({"_id" : _id}, {"_id": 1})
     }
 })("%s");
 """
