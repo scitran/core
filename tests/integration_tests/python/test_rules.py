@@ -1,12 +1,9 @@
 def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
-    gear_name = randstr()
-    gear = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
-
-    gear_2_name = randstr()
-    gear_2 = data_builder.create_gear(gear={'name': gear_2_name, 'version': '0.0.1'})
+    gear = data_builder.create_gear(gear={'version': '0.0.1'})
+    gear_2 = data_builder.create_gear(gear={'version': '0.0.1'})
 
     rule = {
-        'alg': gear_name,
+        'gear_id': gear,
         'name': 'csv-job-trigger-rule',
         'any': [],
         'all': [
@@ -38,7 +35,7 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
     # attempt to add site rule with invalid regex
     invalid_pattern = '^(?non-image$).+'
     r = as_admin.post('/site/rules', json={
-        'alg': gear_name,
+        'gear_id': gear,
         'name': 'invalid-regex-rule',
         'any': [],
         'all': [
@@ -80,11 +77,11 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
     # get specific site rule
     r = as_admin.get('/site/rules/' + rule_id)
     assert r.ok
-    assert r.json()['alg'] == gear_name
+    assert r.json()['gear_id'] == gear
 
 
     # PUT
-    update = {'alg': gear_2_name}
+    update = {'gear_id': gear_2}
 
     # attempt to modify site rule without admin
     r = as_user.put('/site/rules/' + rule_id, json=update)
@@ -112,7 +109,7 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
     assert r.ok
     r = as_admin.get('/site/rules/' + rule_id)
     assert r.ok
-    assert r.json()['alg'] == gear_2_name
+    assert r.json()['gear_id'] == gear_2
 
 
     # DELETE
@@ -133,11 +130,9 @@ def test_site_rules(randstr, data_builder, as_admin, as_user, as_public):
 
 
 def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_admin, as_root):
-    gear_1_name = randstr()
-    gear_1 = data_builder.create_gear(gear={'name': gear_1_name, 'version': '0.0.1'})
-
+    gear_1 = data_builder.create_gear(gear={'version': '0.0.1'})
     rule_1 = {
-        'alg': gear_1_name,
+        'gear_id': gear_1,
         'name': 'csv-job-trigger-rule',
         'any': [],
         'all': [
@@ -145,11 +140,9 @@ def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_
         ]
     }
 
-    gear_2_name = randstr()
-    gear_2 = data_builder.create_gear(gear={'name': gear_2_name, 'version': '0.0.1'})
-
+    gear_2 = data_builder.create_gear(gear={'version': '0.0.1'})
     rule_2 = {
-        'alg': gear_2_name,
+        'gear_id': gear_2,
         'name': 'text-job-trigger-rule',
         'any': [],
         'all': [
@@ -231,9 +224,7 @@ def test_site_rules_copied_to_new_projects(randstr, data_builder, file_form, as_
 
 def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, api_db):
     # create versioned gear to cover code selecting latest gear
-    gear_name = randstr()
-    gear_1 = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
-    gear_2 = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.2'})
+    gear = data_builder.create_gear(gear={'version': '0.0.1'})
     project = data_builder.create_project()
 
     bad_payload = {'test': 'rules'}
@@ -273,7 +264,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.status_code == 403
 
     rule_json = {
-        'alg': 'non-existent-gear-name',
+        'gear_id': '000000000000000000000000',
         'name': 'csv-job-trigger-rule',
         'any': [],
         'all': [
@@ -284,11 +275,11 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     # try to add project rule w/ non-existent gear
     # NOTE this is a legacy rule
     r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
-    assert r.status_code == 400
+    assert r.status_code == 404
 
-    # add project rule w/ proper gear alg
+    # add project rule w/ proper gear id
     # NOTE this is a legacy rule
-    rule_json['alg'] = gear_name
+    rule_json['gear_id'] = gear
     r = as_admin.post('/projects/' + project + '/rules', json=rule_json)
     assert r.ok
     rule = r.json()['_id']
@@ -296,7 +287,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     # get project rules (verify rule was added)
     r = as_admin.get('/projects/' + project + '/rules')
     assert r.ok
-    assert r.json()[0]['alg'] == gear_name
+    assert r.json()[0]['gear_id'] == gear
 
     # try to get single project rule using non-existent rule id
     r = as_admin.get('/projects/' + project + '/rules/000000000000000000000000')
@@ -311,12 +302,12 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.status_code == 404
 
     # try to update rule w/ read-only project perms
-    r = with_user.session.put('/projects/' + project + '/rules/' + rule, json={'alg': gear_name})
+    r = with_user.session.put('/projects/' + project + '/rules/' + rule, json={'gear_id': gear})
     assert r.status_code == 403
 
-    # try to update rule to with invalid gear alg
-    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'alg': 'not-a-real-gear'})
-    assert r.status_code == 400
+    # try to update rule to with invalid gear id
+    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'gear_id': '000000000000000000000000'})
+    assert r.status_code == 404
 
     # update name of rule
     rule_name = 'improved-csv-trigger-rule'
@@ -333,7 +324,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # test that job was created via rule
-    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
     assert len(gear_jobs) == 1
     assert len(gear_jobs[0]['inputs']) == 1
     assert gear_jobs[0]['inputs'][0]['name'] == 'test2.csv'
@@ -358,7 +349,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     # add valid container.has-<something> project rule
     # NOTE this is a legacy rule
     r = as_admin.post('/projects/' + project + '/rules', json={
-        'alg': gear_name,
+        'gear_id': gear,
         'name': 'txt-job-trigger-rule-with-measurement',
         'any': [
             {'type': 'container.has-measurement', 'value': 'functional'},
@@ -376,7 +367,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # test that job was not created via rule
-    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
     assert len(gear_jobs) == 1 # still 1 from before
 
     # update test2.csv's metadata to include a valid measurement to spawn job
@@ -404,7 +395,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # test that only one job was created via rule
-    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
     assert len(gear_jobs) == 2
     assert len(gear_jobs[1]['inputs']) == 1
     assert gear_jobs[1]['inputs'][0]['name'] == 'test3.txt'
@@ -416,7 +407,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     # add regex rule
     # NOTE this is a legacy rule
     r = as_admin.post('/projects/' + project + '/rules', json={
-        'alg': gear_name,
+        'gear_id': gear,
         'name': 'file-measurement-regex',
         'any': [],
         'all': [
@@ -431,7 +422,7 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # test that job was created via regex rule
-    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear_2})]
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
     assert len(gear_jobs) == 3
 
     # delete rule
@@ -443,11 +434,10 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
 
 def test_disabled_rules(randstr, data_builder, api_db, as_admin, file_form):
     # Create gear, project and *disabled* rule triggering on any csv (once enabled)
-    gear_name = randstr()
-    gear = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
+    gear = data_builder.create_gear(gear={'version': '0.0.1'})
     project = data_builder.create_project()
     r = as_admin.post('/projects/' + project + '/rules', json={
-        'alg': gear_name,
+        'gear_id': gear,
         'name': 'csv-job-trigger-rule',
         'any': [],
         'all': [{'type': 'file.type', 'value': 'tabular data'}],
