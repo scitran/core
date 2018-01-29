@@ -1,4 +1,38 @@
+import pytest
+
 from api import util
+
+@pytest.fixture(scope='function', params=[
+    #range header content     expected_output
+    ('bytes=1-5',       [(1, 5)]),
+    ('bytes=-5',        [(-5, None)]),
+    ('bytes=5-',        [(5, None)]),
+    ('bytes=-',         util.ParseError),
+    ('bytes=3',         util.ParseError),
+    ('bytes=a-b',         util.ParseError),
+    ('by-',             util.ParseError),
+    ('bytes=5+5',   util.ParseError),
+    ('bytes=5=',   util.ParseError),
+    ('b=1-5',        util.ParseError),
+    ('bytes=1-5, 6-10, 10-15',   [(1, 5), (6, 10), (10, 15)]),
+    ('bytes=-5, 6-, 10-15',   [(-5, None), (6, None), (10, 15)]),
+    ('bytes=15, 6-10, 10-15',   util.ParseError),
+    ('bytes=15, -6--10, 10-15',   util.ParseError),
+    ('bytes=1-5; 6-10; 10-15',   util.ParseError),
+])
+def parse_range_header_fixture(request):
+    header, expected_output = request.param
+    return header, expected_output
+
+
+def test_parse_range_header(parse_range_header_fixture):
+    input, expected_output = parse_range_header_fixture
+
+    if expected_output == util.ParseError:
+        with pytest.raises(expected_output):
+            util.parse_range_header(input)
+    else:
+        assert util.parse_range_header(input) == expected_output
 
 
 def test_hrsize():

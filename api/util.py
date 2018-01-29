@@ -15,6 +15,9 @@ import django
 from django.conf import settings
 from django.template import Template, Context
 
+BYTE_RANGE_REGEX = r'^(?P<first>\d+)-(?P<last>\d+)?$'
+SUFFIX_BYTE_RANGE_REGEX = r'^(?P<first>-\d+)$'
+
 # If this is not called before templating, django throws a hissy fit
 settings.configure(
     TEMPLATES=[{'BACKEND': 'django.template.backends.django.DjangoTemplates'}],
@@ -262,3 +265,62 @@ def create_nonce():
     randrange = random.SystemRandom().randrange
 
     return ''.join([NONCE_CHARS[randrange(x)] for _ in range(NONCE_LENGTH)])
+
+
+class ParseError(ValueError):
+    """Exception class representing a string parsing error."""
+
+
+def parse_range_header(range_header_val, valid_units=('bytes',)):
+    """
+    Range header parser according to RFC7233
+
+    https://tools.ietf.org/html/rfc7233
+    """
+    byte_range_re = re.compile(BYTE_RANGE_REGEX)
+    suffix_byte_range_re = re.compile(SUFFIX_BYTE_RANGE_REGEX)
+
+    split_range_header_val = range_header_val.split('=')
+    if not len(split_range_header_val) == 2:
+        raise ParseError('Invalid range header syntax')
+
+    unit, ranges_str = split_range_header_val
+
+    if unit not in valid_units:
+        raise ParseError('Invalid unit specified')
+
+    split_ranges_str = ranges_str.split(', ')
+
+    ranges = []
+
+    for range_str in split_ranges_str:
+        re_match = byte_range_re.match(range_str)
+        first, last = None, None
+
+        if re_match:
+            first, last = re_match.groups()
+        else:
+            re_match = suffix_byte_range_re.match(range_str)
+            if re_match:
+                first = re_match.group('first')
+            else:
+                raise ParseError('Invalid range format')
+
+        if first is not None:
+            try:
+                first = int(first)
+            except TypeError:
+                raise ParseError('Invalid range, only numbers are allowed')
+
+        if last is not None:
+            try:
+                last = int(last)
+            except TypeError:
+                raise ParseError('Invalid range, only numbers are allowed')
+
+        if last is not None and first > last:
+            raise ParseError('Invalid range, first %s can\'t be greater than the last %s' % (unit, unit))
+
+        ranges.append((first, last))
+
+    return ranges

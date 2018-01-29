@@ -480,13 +480,66 @@ class FileListHandler(ListHandler):
 
         # Authenticated or ticketed download request
         else:
-            self.response.app_iter = open(filepath, 'rb')
-            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-            if self.is_true('view'):
-                self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
-            else:
-                self.response.headers['Content-Type'] = 'application/octet-stream'
-                self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+
+            range_header = self.request.headers.get('Range', '')
+            try:
+                ranges = util.parse_range_header(range_header)
+
+                if ranges:
+                    with open(filepath, 'rb') as f:
+                        for first, last in ranges:
+                            if first > fileinfo['size']-1:
+                                self.abort(416, 'Invalid range')
+
+                            if last > fileinfo['size'] - 1:
+                                raise util.ParseError('Invalid range')
+
+                            mode = os.SEEK_SET
+                            if first < 0:
+                                mode = os.SEEK_END
+                                length = abs(first)
+                            elif last is None:
+                                length = fileinfo['size'] - first
+                            else:
+                                if last > fileinfo['size']:
+                                    length = fileinfo['size'] - first
+                                else:
+                                    length = last - first + 1
+
+                            f.seek(first, mode)
+                            data = f.read(length)
+
+                            if len(ranges) > 1:
+                                self.response.write('--THIS_STRING_SEPARATES\n')
+                                self.response.write('Content-Type: %s\n' % str(
+                                    fileinfo.get('mimetype', 'application/octet-stream')))
+                                self.response.write('Content-Range: %s' % 'bytes %s-%s/%s\n' % (str(first),
+                                                                                              str(last),
+                                                                                              str(fileinfo['size'])))
+                                self.response.write('\n')
+                                self.response.write(data)
+                                self.response.write('\n')
+                            else:
+                                self.response.headers['Content-Type'] = str(
+                                    fileinfo.get('mimetype', 'application/octet-stream'))
+                                self.response.headers['Content-Range'] = 'bytes %s-%s/%s' % (str(first),
+                                                                                             str(last),
+                                                                                             str(fileinfo['size']))
+                                self.response.write(data)
+
+                        if len(ranges) > 1:
+                            self.response.headers['Content-Type'] = 'multipart/byteranges; boundary=THIS_STRING_SEPARATES'
+
+                        self.response.status = 206
+            except util.ParseError:
+                self.response.app_iter = open(filepath, 'rb')
+                self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
+
+                if self.is_true('view'):
+                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+                else:
+                    self.response.headers['Content-Type'] = 'application/octet-stream'
+                    self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
 
             # log download if we haven't already for this ticket
             if ticket:
