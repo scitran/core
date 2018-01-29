@@ -28,13 +28,11 @@ template: |
       - application/json
       - application/octet-stream
     parameters:
-      - in: formData
-        name: formData
-        type: string
-      - description: ticket id of the file to download
-        type: string
+      - name: ticket
         in: query
-        name: ticket
+        type: string
+        description: ticket id of the file to download
+        
     responses:
       '200':
         description: ''
