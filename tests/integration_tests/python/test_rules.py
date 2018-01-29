@@ -439,3 +439,41 @@ def test_rules(randstr, data_builder, file_form, as_root, as_admin, with_user, a
     assert r.ok
 
     # TODO add and test 'new-style' rules
+
+
+def test_disabled_rules(randstr, data_builder, api_db, as_admin, file_form):
+    # Create gear, project and *disabled* rule triggering on any csv (once enabled)
+    gear_name = randstr()
+    gear = data_builder.create_gear(gear={'name': gear_name, 'version': '0.0.1'})
+    project = data_builder.create_project()
+    r = as_admin.post('/projects/' + project + '/rules', json={
+        'alg': gear_name,
+        'name': 'csv-job-trigger-rule',
+        'any': [],
+        'all': [{'type': 'file.type', 'value': 'tabular data'}],
+        'disabled': True,
+    })
+    assert r.ok
+    rule = r.json()['_id']
+
+    # Upload 1st file (while rule is disabled)
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('test1.csv'))
+    assert r.ok
+
+    # Verify that no jobs were created
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
+    assert len(gear_jobs) == 0
+
+    # Enable rule
+    r = as_admin.put('/projects/' + project + '/rules/' + rule, json={'disabled': False})
+    assert r.ok
+
+    # Upload 1st file (rule is now enabled)
+    r = as_admin.post('/projects/' + project + '/files', files=file_form('test2.csv'))
+    assert r.ok
+
+    # Verify that a job was created
+    gear_jobs = [job for job in api_db.jobs.find({'gear_id': gear})]
+    assert len(gear_jobs) == 1
+    assert len(gear_jobs[0]['inputs']) == 1
+    assert gear_jobs[0]['inputs'][0]['name'] == 'test2.csv'

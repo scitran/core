@@ -32,7 +32,8 @@
                 "alg":        { "type": "string" },
                 "name":       { "type": "string" },
                 "any":        { "$ref": "#/definitions/rule-items" },
-                "all":        { "$ref": "#/definitions/rule-items" }
+                "all":        { "$ref": "#/definitions/rule-items" },
+                "disabled":   { "type": "boolean" }
             },
             "additionalProperties": false
         },
@@ -40,11 +41,12 @@
         "rule-output": {
             "type": "object",
             "properties": {
-                "_id":  { "type": "string" },
-                "alg":  { "type": "string" },
-                "name": { "type": "string" },
-                "any":  { "$ref": "#/definitions/rule-items" },
-                "all":  { "$ref": "#/definitions/rule-items" }
+                "_id":      { "type": "string" },
+                "alg":      { "type": "string" },
+                "name":     { "type": "string" },
+                "any":      { "$ref": "#/definitions/rule-items" },
+                "all":      { "$ref": "#/definitions/rule-items" },
+                "disabled": { "type": "boolean" }
             }
         }
     }
