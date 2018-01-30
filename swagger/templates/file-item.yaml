@@ -73,3 +73,12 @@ template: |
       default:
         description: ''
 
+  delete:
+    summary: Delete a file
+    operationId: delete_{{resource}}_file
+    tags:
+    - '{{tag}}'
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'
+
