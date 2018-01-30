@@ -12,32 +12,35 @@ consumes:
 - 'application/json'
 
 tags:
-  - name: files
-    description: File upload/download operations
-  - name: devices
-    description: Device operations
   - name: users
     description: User operations
-  - name: gears
-    description: Gear operations
   - name: groups
     description: Group operations
-  - name: jobs
-    description: Job operations
-  - name: collections
-    description: Collection operations
+  - name: projects
+    description: Project operations
   - name: sessions
     description: Session operations
   - name: acquisitions
     description: Acquisition operations
-  - name: projects
-    description: Project operations
+  - name: analyses
+    description: Analysis operations
+  - name: collections
+    description: Collection operations
+  - name: files
+    description: File upload/download operations
+  - name: devices
+    description: Device operations
+  - name: gears
+    description: Gear operations
+  - name: rules
+    description: Gear rule configuration
+  - name: jobs
+    description: Job operations
   - name: reports
     description: Site-wide reports
   - name: batch
     description: Batch job operations
-  - name: analyses
-    description: Analysis operations
+  - name: default
 
 paths:
   $include: 
