@@ -160,6 +160,7 @@ expected_input_schemas = set([
     'file.json',
     'file-list.json',
     'file-update.json',
+    'gear.json',
     'group-new.json',
     'group-update.json',
     'info_update.json',

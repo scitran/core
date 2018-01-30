@@ -1,0 +1,38 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Analysis",
+    "type": "object",
+	"allOf":[{"$ref":"../definitions/gear.json#/definitions/gear-doc"}],
+	"example": {
+	    "category": "converter",
+	    "gear": {
+	      "inputs": {
+	        "audio": {
+	          "base": "file",
+	          "description": "Any audio file. Plain speech suggested!"
+	        }
+	      },
+	      "maintainer": "Nathaniel Kofalt",
+	      "description": "Detects the speech content of an audio file, using the machine-learning DeepSpeech library by Mozilla.",
+	      "license": "Other",
+	      "author": "Nathaniel Kofalt",
+	      "url": "",
+	      "label": "Speech Recognition",
+	      "source": "https://github.com/mozilla/DeepSpeech",
+	      "version": "1",
+	      "custom": {
+	        "gear-builder": {
+	          "image": "gear-builder-kdfqapbezk-20171219165918",
+	          "container": "c15189b625a0ea450cafbb24ef0df03c26cc8cf151181976ec4289801e191032"
+	        }
+	      },
+	      "config": {},
+	      "name": "speech-recognition"
+	    },
+	    "exchange": {
+	      "git-commit": "local",
+	      "rootfs-hash": "sha384:e01d925f90b097b554be0f802ef6ebb9f07000d7a6a2a0c3a25dac26893d4ac2414381e2c8e60f4b58b27c7fe8e56099",
+	      "rootfs-url": "/api/gears/temp/5a39aa4e07a393001b663910"
+	    }
+	}
+}
