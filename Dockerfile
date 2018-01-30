@@ -1,4 +1,4 @@
-FROM python:2.7-alpine3.6 as build
+FROM python:2.7-alpine3.7 as build
 
 RUN apk add --no-cache build-base curl
 
@@ -10,7 +10,7 @@ RUN ./configure --prefix=/usr/local --modules=lib --state=/var/local/unit --pid=
  && make install
 
 
-FROM python:2.7-alpine3.6 as dist
+FROM python:2.7-alpine3.7 as dist
 
 RUN apk add --no-cache git
 
