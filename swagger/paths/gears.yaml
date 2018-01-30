@@ -5,12 +5,36 @@
     tags:
     - gears
     responses:
-      default:
-        description: ''
+      '200':
+        description: 'Returns a list of gears installed on the system'
+        schema:
+          $ref: schemas/output/gear-list.json
+        examples:
+          response:
+            $ref: examples/output/gear-list.json
         
 # TODO: Can we make the parameter here consistent, or split
 # this into two separate APIs?
 /gears/{GearIdOrName}:
+  get:
+    summary: Retrieve details about a specific gear
+    operationId: get_gear
+    tags:
+    - gears
+    parameters:
+      - name: GearIdOrName
+        in: path
+        type: string
+        required: true
+        description: Id of the gear to interact with
+    responses:
+      '200':
+        description: 'Details about a single gear'
+        schema:
+          $ref: schemas/output/gear.json
+        examples:
+          response:
+            $ref: examples/output/gear.json
   post:
     summary: Create or update a gear.
     description: |
@@ -18,44 +42,34 @@
       Otherwise, the specified gear will be updated
     operationId: add_gear
     parameters:
-      - required: true
+      - name: GearIdOrName
+        in: path
+        type: string
+        required: true
         description: Name of the gear to interact with
-        type: string
-        in: path
-        name: GearIdOrName
+      - name: body
+        in: body
+        required: true
+        schema: 
+          $ref: schemas/input/gear.json
     tags:
     - gears
-    responses:
-      default:
-        description: ''
-  get:
-    summary: Retrieve details about a specific gear
-    operationId: get_gear
-    tags:
-    - gears
-    parameters:
-      - required: true
-        description: Id of the gear to interact with
-        type: string
-        in: path
-        name: GearIdOrName
     responses:
       '200':
-        description: ''
+        description: 'The gear was created or updated successfully'
         schema:
-          example:
-            $ref: examples/gear_full.json
+          $ref: schemas/output/collection-new.json
   delete:
     summary: Delete a gear (not recommended)
     operationId: delete_gear
     tags:
     - gears
     parameters:
-      - required: true
-        description: Id of the gear to interact with
-        type: string
+      - name: GearIdOrName
         in: path
-        name: GearIdOrName
+        type: string
+        required: true
+        description: Id of the gear to interact with
     responses:
       '200':
         description: Gear was deleted

@@ -1,0 +1,182 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$comment": "This is based on https://github.com/flywheel-io/gears/blob/master/spec/manifest.schema.json. It is NOT used for validation, just for doc/code gen.",
+    "definitions": {
+        "gear-directive": {
+            "type": "object",
+            "description": "A schema directive."
+        },
+        "gear-author": {
+            "type": "string",
+            "description": "The author of this gear."
+        },
+        "gear-maintainer": {
+            "type": "string",
+            "description": "(optional) The maintainer of this gear. Can be used to distinguish the algorithm author from the gear maintainer."
+        },
+        "gear-cite": {
+            "type": "string",
+            "description": "(optional) Any citations relevant to the algorithm(s) or work present in the gear."
+        },
+        "gear-config": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/gear-directive"
+            },
+            "description": "Schema snippets describing the options this gear consumes. Not currently processed."
+        },
+        "gear-custom": {
+            "type": "object",
+            "description": "A place for gear authors to put arbitrary information."
+        },
+        "gear-description": {
+            "type": "string",
+            "description": "A brief description of the gear's purpose. Ideally 1-4 sentences."
+        },
+        "gear-environment": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Environment variables that should be set for the gear."
+        },
+        "gear-command": {
+            "type": "string",
+            "description": "If provided, the starting command for the gear, rather than /flywheel/v0/run. Will be templated according to the spec."
+        },
+        "gear-label": {
+            "type": "string",
+            "description": "The human-friendly name of this gear."
+        },
+        "gear-license": {
+            "type": "string",
+            "description": "Software license of the gear"
+        }, 
+        "gear-name": {
+            "type": "string",
+            "pattern": "^[a-z0-9\\-]+$",
+            "description": "The identification of this gear."
+        },
+        "gear-uri": {
+            "type": "string",
+            "description": "A valid URI, or empty string."
+        },
+        "gear-input-item": {
+            "description": "Describes a gear input",
+            "properties": {
+                "base": {
+                    "type": "string",
+                    "enum": [ "file", "api-key" ],
+                    "description": "The type of gear input."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Hackaround for description not technically being a schema directive"
+                },
+                "optional": {
+                    "type": "boolean",
+                    "description": "Allow the gear to mark an input file as optional."
+                }
+            },
+            "required": [ "base" ],
+            "additionalProperties": {
+                "$ref": "#/definitions/gear-directive"
+            }
+        },
+        "gear-inputs": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                    "$ref": "#/definitions/gear-input-item"
+                }
+            },
+            "description": "Schema snippets describing the inputs this gear consumes."
+        },
+        "gear-source": {
+            "$ref": "#/definitions/gear-uri",
+            "description": "The URL where the source code of this gear can be found. Leave blank if none."
+        },
+        "gear-url": {
+            "$ref": "#/definitions/gear-uri",
+            "description": "The URL where more information about this gear can be found. Leave blank if none."
+        },
+        "gear-version": {
+            "type": "string",
+            "description": "A human-friendly string explaining the release version of this gear. Example: 3.2.1"
+        },
+
+        "gear-exchange": {
+            "type": "object",
+            "description": "Metadata object that describes the origin of a gear version",
+            "properties": {
+                "git-commit": {
+                    "type": "string",
+                    "description": "The SHA-1 hash referring to the git commit"
+                },
+                "rootfs-hash": {
+                    "type": "string",
+                    "description": "The cryptographic hash of the root filesystem in the form of \"algorithm:<base16 hash>\""
+                },
+                "rootfs-url": {
+                    "type": "string",
+                    "description": "The absolute URL of the gear's root file system"
+                }
+            },
+            "required": [
+                "git-commit",
+                "rootfs-hash",
+                "rootfs-url"
+            ]
+        },
+        "gear": {
+            "type": "object",
+            "description": "Gear manifest",
+            "properties": {
+                "author":      { "$ref": "#/definitions/gear-author" },
+                "maintainer":  { "$ref": "#/definitions/gear-maintainer" },
+                "cite":        { "$ref": "#/definitions/gear-cite" },
+                "config":      { "$ref": "#/definitions/gear-config" },
+                "custom":      { "$ref": "#/definitions/gear-custom" },
+                "description": { "$ref": "#/definitions/gear-description" },
+                "environment": { "$ref": "#/definitions/gear-environment" },
+                "command":     { "$ref": "#/definitions/gear-command" },
+                "inputs":      { "$ref": "#/definitions/gear-inputs" },
+                "label":       { "$ref": "#/definitions/gear-label" },
+                "license":     { "$ref": "#/definitions/gear-license" },
+                "name":        { "$ref": "#/definitions/gear-name" },
+                "source":      { "$ref": "#/definitions/gear-source" },
+                "url":         { "$ref": "#/definitions/gear-url" },
+                "version":     { "$ref": "#/definitions/gear-version" }
+            },
+            "required": [
+                "author",
+                "config",
+                "description",
+                "inputs",
+                "label",
+                "license",
+                "name",
+                "source",
+                "url",
+                "version"
+            ],
+            "additionalProperties": false
+        },
+        "gear-category": {
+            "type": "string",
+            "enum": [ "utility", "analysis", "converter", "qa" ],
+            "description": "The gear category"
+        },
+        "gear-doc": {
+            "type": "object",
+            "properties": {
+                "_id":      { "$ref": "common.json#/definitions/objectid" },
+                "category": { "$ref": "#/definitions/gear-category" },
+                "gear":     { "$ref": "#/definitions/gear" },
+                "exchange": { "$ref": "#/definitions/gear-exchange" },
+                "created":  { "$ref":"created-modified.json#/definitions/created"},
+                "modified": { "$ref":"created-modified.json#/definitions/modified"}
+            },
+            "description": "A full gear description, including manifest and exchange information"
+        }
+    }
+}
