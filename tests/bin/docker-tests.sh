@@ -114,9 +114,8 @@ clean_up() {
         docker cp core-test-runner:/src/core/.coverage .coverage.unit-tests 2>/dev/null
 
         # Save integration test coverage
-        docker stop core-test-service
-        docker wait core-test-service
-        docker cp core-test-service:/tmp/.coverage.integration-tests ./
+        docker wait $(docker stop core-test-service)
+        docker cp core-test-service:/tmp/.coverage.integration-tests .
 
         # Combine unit/integ coverage and report/grenerate html
         docker run --rm \

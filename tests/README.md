@@ -16,7 +16,7 @@ See [py.test usage](https://docs.pytest.org/en/latest/usage.html) for more.
 ### Example
 The most common use case is adding a new (still failing) test, and wanting to
 * (re-)run it as fast as possible (`-B` and `-k foo`)
-* see output from quick and dirty `print`s in the test (`-vvv`)
+* see output from quick and dirty `print` statements in the test (`-vvv`)
 * get into an interactive pdb session to inspect what went wrong (`--pdb`)
 
 ```
