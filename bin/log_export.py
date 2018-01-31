@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # This implementation as of July 19 2017 has these resource utilizations of the mongodb container:
 #   - 2 million entries: 1.50 Gb
 #   - 3 million entries: 2.05 Gb
@@ -57,7 +59,7 @@ def download_large_csv(params):
         csv_file.flush()
         params['end_date'] = end_date
 
-            
+
     print "Encountered unicode errors and skipped {} entries".format(unicode_err_count)
     csv_file.close()
 
