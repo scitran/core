@@ -53,6 +53,26 @@
       ],
       "additionalProperties":false
     },
+    "job-log-statement": {
+      "type": "object",
+      "properties": {
+        "fd": { "type": "integer" },
+        "msg": { "type": "string" }
+      },
+      "required": ["fd", "msg"]
+    },
+    "job-log": {
+      "type": "object",
+      "properties": {
+        "id": {"$ref":"common.json#/definitions/objectid"},
+        "logs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/job-log-statement"
+          }
+        }
+      }
+    },
     "saved_files": {
       "type": "array",
       "items": {"$ref": "file.json#/definitions/name"}
