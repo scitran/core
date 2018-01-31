@@ -15,7 +15,7 @@ from . import validators
 from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .dao import containerutil, hierarchy
 from .jobs import rules
-from .jobs.jobs import Job
+from .jobs.jobs import Job, JobTicket
 from .types import Origin
 from .web import encoder
 from .web.errors import FileFormException
@@ -245,7 +245,7 @@ class EnginePlacer(Placer):
     """
     A placer that can accept files and/or metadata sent to it from the engine
 
-    It uses update_container_hierarchy to update the container and it's parents' fields from the metadata
+    It uses update_container_hierarchy to update the container and its parents' fields from the metadata
     """
 
     def check(self):
@@ -288,9 +288,9 @@ class EnginePlacer(Placer):
                     break
 
         if self.context.get('job_ticket_id'):
-            job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
-            job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
-            if not job_ticket.get('success'):
+            job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+
+            if not job_ticket['success']:
                 file_attrs['from_failed_job'] = True
 
         self.save_file(field, file_attrs)
@@ -312,9 +312,9 @@ class EnginePlacer(Placer):
                 self.metadata[k].pop('files', {})
 
             if self.context.get('job_ticket_id'):
-                job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
-                job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
-                if job_ticket.get('success'):
+                job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+
+                if job_ticket['success']:
                     hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
             else:
                 hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)

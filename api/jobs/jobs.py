@@ -370,6 +370,32 @@ class Job(object):
         self.request = r
         return self.request
 
+class JobTicket(object):
+    """
+    A JobTicket represents an attempt to complete a job.
+    """
+
+    @staticmethod
+    def get(_id):
+        return config.db.job_tickets.find_one({'_id': bson.ObjectId(_id)})
+
+    @staticmethod
+    def create(job_id, success):
+        j = Job.get(job_id)
+
+        result = config.db.job_tickets.insert_one({
+            'job': j.id_,
+            'success': success,
+        })
+
+        return result.inserted_id
+
+    @staticmethod
+    def find(job_id):
+        """Find any tickets with job ID"""
+        return list(config.db.job_tickets.find({'job': job_id}))
+
+
 class Logs(object):
 
     @staticmethod
@@ -422,6 +448,11 @@ class Logs(object):
 
     @staticmethod
     def add(_id, doc):
+
+        # Silently ignore adding no logs
+        if len(doc) <= 0:
+            return
+
         log = config.db.job_logs.find_one({'_id': _id})
 
         if log is None: # Race

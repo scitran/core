@@ -8,7 +8,7 @@ import pymongo
 import datetime
 
 from .. import config
-from .jobs import Job, Logs
+from .jobs import Job, Logs, JobTicket
 from .gears import get_gear, validate_gear_config, fill_gear_default_values
 from ..dao.containerutil import create_filereference_from_dictionary, create_containerreference_from_dictionary, create_containerreference_from_filereference
 from ..web.errors import InputValidationException
@@ -417,13 +417,26 @@ class Queue(object):
         """
 
         orphaned = 0
+        query = {
+            'state': 'running',
+            'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
+        }
 
         while True:
+            orphan_candidate = config.db.jobs.find_one(query)
+            if orphan_candidate is None:
+                break
+
+            # If the job is currently attempting to complete, do not orphan.
+            ticket = JobTicket.find(orphan_candidate['_id'])
+            if ticket is not None and len(ticket) > 0:
+                continue
+
+            # CAS this job, since it does not have a ticket
+            select = { '_id': orphan_candidate['_id'] }
+
             doc = config.db.jobs.find_one_and_update(
-                {
-                    'state': 'running',
-                    'modified': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(seconds=100)},
-                },
+                dict(query, **select),
                 {
                     '$set': {
                         'state': 'failed', },
@@ -432,11 +445,12 @@ class Queue(object):
             )
 
             if doc is None:
-                break
+                log.info('Job %s was heartbeat during a ticket lookup and thus not orhpaned', orphan_candidate['_id'])
             else:
                 orphaned += 1
                 j = Job.load(doc)
-                Logs.add(j.id_, [{"msg":"The job did not report in for a long time and was canceled.", "fd":-1}])
+                Logs.add(j.id_, [{'msg':'The job did not report in for a long time and was canceled.', 'fd':-1}])
                 new_id = Queue.retry(j)
-                Logs.add(j.id_, [{"msg": "Retried job as " + str(new_id) if new_id else "Job retries exceeded maximum allowed", "fd":-1}])
+                Logs.add(j.id_, [{'msg': 'Retried job as ' + str(new_id) if new_id else 'Job retries exceeded maximum allowed', 'fd':-1}])
+
         return orphaned

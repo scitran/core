@@ -8,24 +8,24 @@ import StringIO
 from jsonschema import ValidationError
 from urlparse import urlparse
 
+from . import batch
+from .. import config
 from .. import upload
 from .. import util
-from ..auth import require_drone, require_login, has_access
+from ..auth import require_drone, require_login, require_admin, has_access
+from ..auth.apikeys import JobApiKey
 from ..dao import hierarchy
 from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
 from ..dao.containerutil import ContainerReference, pluralize
+from ..util import humanize_validation_error, set_for_download
+from ..validators import validate_data, verify_payload_exists
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
 from ..web.request import AccessType
-from .. import config
-from . import batch
-from ..validators import validate_data, verify_payload_exists
-
-from ..auth.apikeys import JobApiKey
 
 from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name, check_for_gear_insertion
-from .jobs import Job, Logs
+from .jobs import Job, JobTicket, Logs
 from .batch import check_state, update
 from .queue import Queue
 from .rules import create_jobs, validate_regexes
@@ -35,11 +35,9 @@ class GearsHandler(base.RequestHandler):
 
     """Provide /gears API routes."""
 
+    @require_login
     def get(self):
         """List all gears."""
-
-        if self.public_request:
-            self.abort(403, 'Request requires login')
 
         gears   = get_gears()
         filters = self.request.GET.getall('filter')
@@ -49,13 +47,9 @@ class GearsHandler(base.RequestHandler):
 
         return gears
 
+    @require_login
     def check(self):
-        """
-        Check if a gear upload is likely to succeed.
-        """
-
-        if self.public_request:
-            self.abort(403, 'Request requires login')
+        """Check if a gear upload is likely to succeed."""
 
         check_for_gear_insertion(self.request.json)
         return None
@@ -63,27 +57,16 @@ class GearsHandler(base.RequestHandler):
 class GearHandler(base.RequestHandler):
     """Provide /gears/x API routes."""
 
+    @require_login
     def get(self, _id):
-        """Detail a gear."""
-
-        if self.public_request:
-            self.abort(403, 'Request requires login')
-
         return get_gear(_id)
 
+    @require_login
     def get_invocation(self, _id):
+        return get_invocation_schema(get_gear(_id))
 
-        if self.public_request:
-            self.abort(403, 'Request requires login')
-
-        gear = get_gear(_id)
-        return get_invocation_schema(gear)
-
+    @require_login
     def suggest(self, _id, cont_name, cid):
-
-        if self.public_request:
-            self.abort(403, 'Request requires login')
-
         cr = ContainerReference(cont_name, cid)
         if not self.superuser_request:
             cr.check_access(self.uid, 'ro')
@@ -91,13 +74,11 @@ class GearHandler(base.RequestHandler):
         gear = get_gear(_id)
         return suggest_container(gear, cont_name+'s', cid)
 
+    @require_admin
     def upload(self): # pragma: no cover
-        """Upload new gear tarball file"""
-        if not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         r = upload.process_upload(self.request, upload.Strategy.gear, container_type='gear', origin=self.origin, metadata=self.request.headers.get('metadata'))
         gear_id = upsert_gear(r[1])
+
         config.db.gears.update_one({'_id': gear_id}, {'$set': {
             'exchange.rootfs-url': '/api/gears/temp/' + str(gear_id)}
         })
@@ -110,40 +91,26 @@ class GearHandler(base.RequestHandler):
         gear = get_gear(dl_id)
         hash_ = gear['exchange']['rootfs-hash']
         filepath = os.path.join(config.get_item('persistent', 'data_path'), util.path_from_hash('v0-' + hash_.replace(':', '-')))
-        self.response.app_iter = open(filepath, 'rb')
-        # self.response.headers['Content-Length'] = str(gear['size']) # must be set after setting app_iter
-        self.response.headers['Content-Type'] = 'application/octet-stream'
-        self.response.headers['Content-Disposition'] = 'attachment; filename="gear.tar"'
 
+        stream = open(filepath, 'rb')
+        set_for_download(self.response, stream=stream, filename='gear.tar')
 
+    @require_admin
     def post(self, _id):
-        """Upsert an entire gear document."""
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
+        payload = self.request.json
 
-        doc = self.request.json
-
-        if _id != doc.get('gear', {}).get('name', ''):
+        if _id != payload.get('gear', {}).get('name', ''):
             self.abort(400, 'Name key must be present and match URL')
 
         try:
-            result = upsert_gear(self.request.json)
+            result = upsert_gear(payload)
             return { '_id': str(result) }
 
         except ValidationError as err:
-            key = "none"
-            if len(err.relative_path) > 0:
-                key = err.relative_path[0]
+            raise InputValidationException(humanize_validation_error(err))
 
-            message = err.message.replace("u'", "'")
-
-            raise InputValidationException('Gear manifest does not match schema on key ' + key + ': ' + message)
-
+    @require_admin
     def delete(self, _id):
-        """Delete a gear. Generally not recommended."""
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         return remove_gear(_id)
 
 class RulesHandler(base.RequestHandler):
@@ -164,7 +131,6 @@ class RulesHandler(base.RequestHandler):
 
         return config.db.project_rules.find({'project_id' : cid}, projection=projection)
 
-
     @verify_payload_exists
     def post(self, cid):
         """Add a rule"""
@@ -177,18 +143,18 @@ class RulesHandler(base.RequestHandler):
             if not self.user_is_admin and not has_access(self.uid, project, 'admin'):
                 raise APIPermissionException('Adding rules to a project can only be done by a project admin.')
 
-        doc = self.request.json
+        payload = self.request.json
 
-        validate_data(doc, 'rule-new.json', 'input', 'POST', optional=True)
-        validate_regexes(doc)
+        validate_data(payload, 'rule-new.json', 'input', 'POST', optional=True)
+        validate_regexes(payload)
         try:
-            get_gear_by_name(doc['alg'])
+            get_gear_by_name(payload['alg'])
         except APINotFoundException:
-            self.abort(400, 'Cannot find gear for alg {}, alg not valid'.format(doc['alg']))
+            self.abort(400, 'Cannot find gear for alg {}, alg not valid'.format(payload['alg']))
 
-        doc['project_id'] = cid
+        payload['project_id'] = cid
 
-        result = config.db.project_rules.insert_one(doc)
+        result = config.db.project_rules.insert_one(payload)
         return { '_id': result.inserted_id }
 
 class RuleHandler(base.RequestHandler):
@@ -243,9 +209,6 @@ class RuleHandler(base.RequestHandler):
         doc.update(updates)
         config.db.project_rules.replace_one({'_id': bson.ObjectId(rid)}, doc)
 
-        return
-
-
     def delete(self, cid, rid):
         """Remove a rule"""
 
@@ -261,14 +224,12 @@ class RuleHandler(base.RequestHandler):
         result = config.db.project_rules.delete_one({'project_id' : cid, '_id': bson.ObjectId(rid)})
         if result.deleted_count != 1:
             raise APINotFoundException('Rule not found.')
-        return
 
 class JobsHandler(base.RequestHandler):
-    """Provide /jobs API routes."""
+
+    @require_admin
     def get(self): # pragma: no cover (no route)
         """List all jobs."""
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
         return list(config.db.jobs.find())
 
     def add(self):
@@ -279,14 +240,11 @@ class JobsHandler(base.RequestHandler):
         if not self.superuser_request:
             uid = self.uid
 
-        job = Queue.enqueue_job(payload,self.origin, perm_check_uid=uid)
-
+        job = Queue.enqueue_job(payload, self.origin, perm_check_uid=uid)
         return { '_id': job.id_ }
 
+    @require_admin
     def stats(self):
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         all_flag = self.is_true('all')
         unique = self.is_true('unique')
         tags = self.request.GET.getall('tags')
@@ -301,22 +259,16 @@ class JobsHandler(base.RequestHandler):
 
         return Queue.get_statistics(tags=tags, last=last, unique=unique, all_flag=all_flag)
 
+    @require_admin
     def pending(self):
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         tags = self.request.GET.getall('tags')
         if len(tags) == 1:
             tags = tags[0].split(',')
 
         return Queue.get_pending(tags=tags)
 
+    @require_admin
     def next(self):
-
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
-
         tags = self.request.GET.getall('tags')
         if len(tags) <= 0:
             tags = None
@@ -328,40 +280,30 @@ class JobsHandler(base.RequestHandler):
         else:
             return job
 
+    @require_admin
     def reap_stale(self):
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         count = Queue.scan_for_orphans()
         return { 'orphaned': count }
 
 class JobHandler(base.RequestHandler):
     """Provides /Jobs/<jid> routes."""
 
+    @require_admin
     def get(self, _id):
-
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
         return Job.get(_id)
 
+    @require_admin
     def get_config(self, _id):
         """Get a job's config"""
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires superuser')
-
         j = Job.get(_id)
         c = j.config
         if c is None:
             c = {}
 
-        # Serve config as formatted json file
-        self.response.headers['Content-Type'] = 'application/octet-stream'
-        self.response.headers['Content-Disposition'] = 'attachment; filename="config.json"'
-
         # Detect if config is old- or new-style.
         # TODO: remove this logic with a DB upgrade, ref database.py's reserved upgrade section.
 
+        encoded = None
         if 'config' in c and c.get('inputs') is not None:
             # New behavior
 
@@ -394,13 +336,14 @@ class JobHandler(base.RequestHandler):
                         }
 
             encoded = pseudo_consistent_json_encode(c)
-            self.response.app_iter = StringIO.StringIO(encoded)
-            self.response.headers['Content-Length'] = str(len(encoded.encode('utf-8'))) # must be set after app_iter
-        else:
-            # Legacy behavior
+
+        else: # Legacy behavior
             encoded = pseudo_consistent_json_encode({"config": c})
-            self.response.app_iter = StringIO.StringIO(encoded)
-            self.response.headers['Content-Length'] = str(len(encoded.encode('utf-8'))) # must be set after app_iter
+
+        stream = StringIO.StringIO(encoded)
+        length = len(encoded.encode('utf-8'))
+
+        set_for_download(self.response, stream=stream, filename='config.json', length=length)
 
     @require_login
     def put(self, _id):
@@ -455,14 +398,11 @@ class JobHandler(base.RequestHandler):
         """Get a job's logs in raw text"""
 
         self._log_read_check(_id)
+        filename = 'job-' + _id + '-logs.txt'
 
-        self.response.headers['Content-Type'] = 'application/octet-stream'
-        self.response.headers['Content-Disposition'] = 'attachment; filename="job-' + _id + '-logs.txt"'
-
+        set_for_download(self.response, filename=filename)
         for output in Logs.get_text_generator(_id):
             self.response.write(output)
-
-        return
 
     def get_logs_html(self, _id):
         """Get a job's logs in html"""
@@ -474,18 +414,12 @@ class JobHandler(base.RequestHandler):
 
         return
 
+    @require_admin
     def add_logs(self, _id):
-        """Add to a job's logs"""
-        if not self.superuser_request and not self.user_is_admin:
-            self.abort(403, 'Request requires admin')
-
-
         doc = self.request.json
 
-        try:
-            Job.get(_id)
-        except Exception: # pylint: disable=broad-except
-            raise APINotFoundException('Job not found')
+        j = Job.get(_id)
+        Queue.mutate(j, {}) # Unconditionally heartbeat
 
         return Logs.add(_id, doc)
 
@@ -506,17 +440,13 @@ class JobHandler(base.RequestHandler):
         new_id = Queue.retry(j, force=True)
         return { "_id": new_id }
 
-
     @require_drone
     def prepare_complete(self, _id):
-        j = Job.get(_id)
         payload = self.request.json
-        ticket = {
-            'job': j.id_,
-            'success': payload.get('success', False),
-        }
-        return {'ticket': config.db.job_tickets.insert_one(ticket).inserted_id}
+        success = payload['success']
 
+        ticket = JobTicket.create(_id, success)
+        return { 'ticket': ticket }
 
     @require_login
     def accept_failed_output(self, _id):
