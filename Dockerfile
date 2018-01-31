@@ -35,7 +35,6 @@ ARG VCS_BRANCH=NULL
 ARG VCS_COMMIT=NULL
 RUN ./bin/build_info.sh $VCS_BRANCH $VCS_COMMIT | tee /version.json
 
-ENTRYPOINT ["./bin/entrypoint.sh"]
 CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
 
 
