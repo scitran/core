@@ -9,8 +9,8 @@ import pytest
 def database(mocker):
     bin_path = os.path.join(os.getcwd(), 'bin')
     mocker.patch('sys.path', [bin_path] + sys.path)
-    import database
-    return database
+    import db_upgrade
+    return db_upgrade
 
 
 def test_42(data_builder, api_db, as_admin, database):
