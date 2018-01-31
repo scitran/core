@@ -159,6 +159,7 @@
                 "url",
                 "version"
             ],
+            "x-sdk-include-empty": [ "config", "inputs" ],
             "additionalProperties": false
         },
         "gear-category": {
