@@ -7,9 +7,9 @@
     parameters:
       - name: body
         in: body
+        required: true
         schema:
-          example:
-            $ref: examples/input/job-new.json
+          $ref: schemas/input/job-new.json
     responses:
       '200':
         description: ''
@@ -148,6 +148,16 @@
       type: string
       in: path
       name: JobId
+  get: 
+    summary: Get job logs
+    operationId: get_job_logs
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: The current job log
+        schema:
+          $ref: schemas/output/job-log.json
   post:
     summary: Add logs to a job.
     operationId: add_logs
