@@ -23,4 +23,10 @@ after_success:
     fi
   - if [ "$TRAVIS_EVENT_TYPE" == "push" -a "$TRAVIS_BRANCH" == "master" ]; then
         ./docker/build-trigger.sh Branch "$TRAVIS_BRANCH" "$BUILD_TRIGGER_URL";
+        ./bin/build-docs.sh;
     fi
+    # Remove before pulling to master
+  - if [ "$TRAVIS_EVENT_TYPE" == "push" -a "$TRAVIS_BRANCH" == "swagger" ]; then
+        ./bin/build-docs.sh;
+    fi
+  
