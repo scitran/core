@@ -17,9 +17,25 @@ SINGULAR_TO_PLURAL = {
     'job':         'jobs',
     'project':     'projects',
     'session':     'sessions',
+    'subject':     'subjects',
     'user':        'users',
 }
 PLURAL_TO_SINGULAR = {p: s for s, p in SINGULAR_TO_PLURAL.iteritems()}
+
+# NOTE: Following structures have subject as a hierarhcy level although
+# it is not yet a formalized level of the hierarchy throughout API
+
+CONTAINER_HIERARCHY = [
+    'groups',
+    'projects',
+    'subjects',
+    'sessions',
+    'acquisitions'
+]
+
+# Generate {child: parent} and {parent: child} maps from ordered hierarchy list
+CHILD_FROM_PARENT = {p: CONTAINER_HIERARCHY[ind+1] for ind, p in enumerate(CONTAINER_HIERARCHY[:-1] )}
+PARENT_FROM_CHILD = {c: CONTAINER_HIERARCHY[ind]   for ind, c in enumerate(CONTAINER_HIERARCHY[1:]  )}
 
 
 def propagate_changes(cont_name, cont_ids, query, update, include_refs=False):

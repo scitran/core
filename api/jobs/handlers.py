@@ -7,6 +7,7 @@ import os
 import StringIO
 from jsonschema import ValidationError
 from urlparse import urlparse
+from random import randint
 
 from . import batch
 from .. import config
@@ -16,9 +17,9 @@ from ..auth import require_drone, require_login, require_admin, has_access
 from ..auth.apikeys import JobApiKey
 from ..dao import hierarchy
 from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
-from ..dao.containerutil import ContainerReference, pluralize
 from ..util import humanize_validation_error, set_for_download
 from ..validators import validate_data, verify_payload_exists
+from ..dao.containerutil import ContainerReference, pluralize, singularize, CHILD_FROM_PARENT, PARENT_FROM_CHILD
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
@@ -67,12 +68,58 @@ class GearHandler(base.RequestHandler):
 
     @require_login
     def suggest(self, _id, cont_name, cid):
-        cr = ContainerReference(cont_name, cid)
-        if not self.superuser_request:
-            cr.check_access(self.uid, 'ro')
+        """
+        Given a container reference, return display information about parents, children and files
+        as well as information about which best match each gear input
+
+        Container types acceptable for reference:
+          - Groups
+          - Projects
+          - Subjects
+          - Sessions
+          - Acquisitions
+          - Analyses
+
+        NOTE: Access via this endpoint is not logged. Only information necessary for display should be returned.
+        NOTE: Subject level is supported ahead of official separation in DB and API routes.
+        """
+
+        ## Mocked returns for development
+
+        response = {
+            'cont_type':    cont_name,
+            '_id':          cid,
+            'label':        '{} {}'.format(singularize(cont_name), cid),
+            'parents':      [],
+            'files':        [{'name': 'file_{}.zip'.format(i)} for i in range(randint(0,5))],
+            'children':     []
+        }
+
+        if cont_name in CHILD_FROM_PARENT:
+            child_cont = CHILD_FROM_PARENT[cont_name]
+            s_child_cont = singularize(child_cont)
+            response['children'].extend([{'cont_type': child_cont, '_id': ''+str(i), 'label': s_child_cont+' '+str(i)} for i in range(randint(1,5))])
+
+        parent_cont = None
+
+        if cont_name == 'analyses':
+            parent_cont = 'sessions'
+        else:
+            response['children'].extend([{'cont_type': 'analyses', '_id': str(i), 'label': 'analysis '+str(i)} for i in range(randint(0,5))])
+            parent_cont = PARENT_FROM_CHILD.get(cont_name)
+
+        while parent_cont:
+            response['parents'].append({'cont_type': parent_cont, '_id': 1, 'label': '{} {}'.format(singularize(parent_cont), 1)})
+            parent_cont = PARENT_FROM_CHILD.get(parent_cont)
 
         gear = get_gear(_id)
-        return suggest_container(gear, cont_name+'s', cid)
+        for f in response['files']:
+            f['suggested'] = {}
+            for i in gear['gear'].get('inputs', {}).iterkeys():
+                f['suggested'][i] = bool(randint(0,1))
+
+        return response
+
 
     @require_admin
     def upload(self): # pragma: no cover
