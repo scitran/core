@@ -63,7 +63,7 @@
 				},
 				"files":{
 					"type":"array",
-					"items": {"$ref":"file.json#/definitions/file"}
+					"items":{"$ref":"file.json#/definitions/file-entry"}
 				},
 				"job":{
 					"oneOf":[
