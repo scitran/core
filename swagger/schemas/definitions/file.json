@@ -41,7 +41,7 @@
           "maxLength":106
         },
         "size":{"type":"integer"},
-        "file": {
+        "file-entry": {
           "type": "object",
           "properties": {
             "name":           {"$ref":"#/definitions/name"},
@@ -91,7 +91,7 @@
         },
         "file-output":{
           "type": "object",
-          "allOf": [{"$ref":"#/definitions/file"}],
+          "allOf": [{"$ref":"#/definitions/file-entry"}],
           "required":["modified", "size"]
         },
         "file-reference": {
