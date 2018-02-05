@@ -17,8 +17,8 @@ log = config.log
 BYTES_IN_MEGABYTE = float(1<<20)
 
 def _filter_check(property_filter, property_values):
-    minus = set(property_filter.get('-', []))
-    plus = set(property_filter.get('+', []))
+    minus = set(property_filter.get('-', []) + property_filter.get('minus', []))
+    plus = set(property_filter.get('+', []) + property_filter.get('plus', []))
     if "null" in plus and not property_values:
         return True
     if "null" in minus and property_values:

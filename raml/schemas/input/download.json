@@ -5,7 +5,9 @@
             "type": "object",
             "properties": {
                 "+": {"$ref": "#/definitions/filterItems"},
-                "-": {"$ref": "#/definitions/filterItems"}
+                "plus": {"$ref": "#definitions/filterItems"},
+                "-": {"$ref": "#/definitions/filterItems"},
+                "minus": {"$ref": "#definitions/filterItems"}
             },
             "additionalProperties": false
         },
