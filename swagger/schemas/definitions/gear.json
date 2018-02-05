@@ -164,7 +164,6 @@
         },
         "gear-category": {
             "type": "string",
-            "enum": [ "utility", "analysis", "converter", "qa" ],
             "description": "The gear category"
         },
         "gear-doc": {
