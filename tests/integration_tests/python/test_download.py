@@ -463,6 +463,20 @@ def test_filters(data_builder, file_form, as_admin):
     assert r.ok
     assert r.json()['file_cnt'] == 2
 
+    # Use filter aliases
+    r = as_admin.post('/download', json={
+        'optional': False,
+        'filters': [
+            {'tags': {'plus':['red']}}
+        ],
+        'nodes': [
+            {'level': 'session', '_id': session},
+        ]
+    })
+    assert r.ok
+    # 'plus' is same as using '+'
+    assert r.json()['file_cnt'] == 2
+
     # Filter by type
     as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
         "test", meta={'name': "test", 'tags': ['red', 'blue']}))
