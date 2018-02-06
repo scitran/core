@@ -1,0 +1,47 @@
+parameters:
+  - name: resource
+    type: string
+    required: true
+  - name: parameter
+    type: string
+    required: true
+  - name: tag
+    type: string
+    required: true
+template: |
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+    - required: true
+      type: string
+      in: path
+      name: FileName
+  get:
+    summary: Get info for a particular file.
+    operationId: get_{{resource}}_file_info
+    tags: 
+    - '{{tag}}'
+    responses:
+      '200':
+        description: 'The file object, including info'
+        schema:
+          $ref: schemas/output/file-info.json
+  post:
+    summary: Update info for a particular file.
+    operationId: modify_{{resource}}_file_info
+    x-sdk-modify-info: true
+    tags: 
+    - '{{tag}}'
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/info_update.json
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count'
+
+

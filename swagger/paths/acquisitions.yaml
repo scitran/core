@@ -17,6 +17,9 @@ $template_arguments:
     delete-description: Read-write project permissions are required to delete an acquisition. </br>Admin project permissions are required if the acquisition contains data uploaded by sources other than users and jobs.
 
 
+/acquisitions/{AcquisitionId}/info:
+  $template: templates/container-item-info.yaml
+
 # ===== Tags =====
 /acquisitions/{AcquisitionId}/tags:
   $template: templates/tags.yaml
@@ -36,6 +39,8 @@ $template_arguments:
   $template: templates/file-list-upload.yaml
 /acquisitions/{AcquisitionId}/files/{FileName}:
   $template: templates/file-item.yaml
+/acquisitions/{AcquisitionId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Notes =====
 /acquisitions/{AcquisitionId}/notes:

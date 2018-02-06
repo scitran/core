@@ -16,6 +16,9 @@ $template_arguments:
     get-output-schema: schemas/output/project.json
     delete-description: Only site admins and users with "admin" project permissions may delete a project
 
+/projects/{ProjectId}/info:
+  $template: templates/container-item-info.yaml
+
 /projects/groups:
   get:
     summary: List all groups which have a project in them
@@ -231,6 +234,8 @@ $template_arguments:
   $template: templates/file-list-upload.yaml
 /projects/{ProjectId}/files/{FileName}:
   $template: templates/file-item.yaml
+/projects/{ProjectId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Permissions =====
 /projects/{ProjectId}/permissions:

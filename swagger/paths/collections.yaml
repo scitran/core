@@ -53,6 +53,7 @@ $template_arguments:
         examples:
           response:
             $ref: examples/output/collection-curators-list.json
+            
 /collections/{CollectionId}:
   parameters:
     - required: true
@@ -95,6 +96,9 @@ $template_arguments:
     responses:
       '200':
         description: Collection was deleted
+
+/collections/{CollectionId}/info:
+  $template: templates/container-item-info.yaml
 
 /collections/{CollectionId}/sessions:
   parameters:
@@ -161,6 +165,8 @@ $template_arguments:
   $template: templates/permissions.yaml
 /collections/{CollectionId}/permissions/{UserId}:
   $template: templates/permissions-user.yaml
+/collections/{CollectionId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Notes =====
 /collections/{CollectionId}/notes:
