@@ -31,6 +31,8 @@ module.exports = function(grunt) {
 	grunt.registerMultiTask('flattenSwagger', 'Resolve references in swagger YAML files', function() {
 		var srcFile = this.data.src||'swagger.yml';
 		var destFile = this.data.dest||'swagger.json';
+		var version = this.data.version || '';
+
 		var resolver = new SwaggerResolver({
 			log: function() {
 				grunt.log.writeln.apply(grunt.log, arguments);
@@ -53,6 +55,11 @@ module.exports = function(grunt) {
 		});
 
 		var root = yaml.safeLoad(fs.readFileSync(srcFile).toString());
+
+		// Set version
+		if( version && root.info ) {
+			root.info.version = version;
+		}
 
 		// Resolve any top-level includes or templates
 		try {

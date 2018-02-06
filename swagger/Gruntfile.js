@@ -68,7 +68,8 @@ module.exports = function(grunt) {
 		flattenSwagger: {
 			core: {
 				src: 'index.yaml',
-				dest: 'build/swagger-flat.json'
+				dest: 'build/swagger-flat.json',
+				version: grunt.option('docs-version')
 			}
 		},
 
