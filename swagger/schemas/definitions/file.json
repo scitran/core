@@ -61,7 +61,7 @@
             "created":     {"$ref":"created-modified.json#/definitions/created"},
             "modified":    {"$ref":"created-modified.json#/definitions/modified"},
             "size":        {"$ref":"#/definitions/size"},
-            "info_exists": {"type": "boolean"},
+            "info_exists": {"type": "boolean", "default": false},
             "input":       {"type":"boolean"},
             "output":      {"type":"boolean"}
           },

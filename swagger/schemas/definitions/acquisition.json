@@ -55,7 +55,7 @@
               "timezone":     {"$ref":"container.json#/definitions/timezone"},
               "created":      {"$ref":"created-modified.json#/definitions/created"},
               "modified":     {"$ref":"created-modified.json#/definitions/modified"},
-              "info_exists":  {"type": "boolean"},
+              "info_exists":  {"type": "boolean", "default": false},
               "permissions":{
                   "type":"array",
                   "items":{"$ref":"permission.json#/definitions/permission-output-default-required"}

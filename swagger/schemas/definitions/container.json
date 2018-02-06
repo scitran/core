@@ -4,7 +4,7 @@
         "_id":          {"type": "string"},
         "public":       {"type": "boolean"},
         "info":         {"$ref": "common.json#/definitions/info"},
-        "info_exists":  {"type": "boolean"},
+        "info_exists":  {"type": "boolean", "default": false},
         "uid":          {"type": "string"},
         "timestamp":    {"type": ["string", "null"], "format": "date-time"},
         "timezone":     {"type": "string"},
