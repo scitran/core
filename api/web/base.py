@@ -408,10 +408,9 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 tree = get_parent_tree(cont_name, cont_id)
 
-                for k,v in tree.iteritems():
-                    context[k] = {'id': str(v['_id']), 'label': v.get('label')}
-                    if k == 'subject':
-                        context[k]['label'] = v.get('code')
+                for cont in tree:
+                    context[cont['cont_type']] = {'id': str(cont['_id']), 'label': cont.get('label')}
+
             if filename:
                 context['file'] = {'name': filename}
             log_map['context'] = context

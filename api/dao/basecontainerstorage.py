@@ -47,8 +47,10 @@ class ContainerStorage(object):
     Examples: projects, sessions, acquisitions and collections
     """
 
-    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False):
+    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False, parent_cont_name=None, child_cont_name=None):
         self.cont_name = cont_name
+        self.parent_cont_name = parent_cont_name
+        self.child_cont_name = child_cont_name
         self.use_object_id = use_object_id
         self.use_delete_tag = use_delete_tag
         self.dbc = config.db[cont_name]
@@ -123,6 +125,31 @@ class ContainerStorage(object):
         if not projection:
             projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
+
+    def get_parents(self, _id, projection=None, add_self=False):
+        parents = []
+        curr_parent_cont = self.parent_cont_name
+        cont = get_container(_id)
+
+        if add_self:
+            # Add the referenced container to the list
+            parents.append(cont)
+
+        # Walk up the hierarchy until we cannot go any further
+        while curr_parent_cont:
+
+            # Create parent storage class and grab parent container
+            ps = self.factory(curr_parent_cont)
+            parent = ps.get_container(cont[curr_parent_cont])
+
+            if parent:
+                parents.append(parent)
+                curr_parent_cont = ps.parent_cont_name
+            else:
+                # Parent was missing, fail for now
+                raise APINotFoundException
+        return parents
+
 
     def _from_mongo(self, cont):
         pass

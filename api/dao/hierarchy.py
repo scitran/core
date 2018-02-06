@@ -90,7 +90,7 @@ def get_parent_tree(cont_name, _id):
     cont_name = containerutil.singularize(cont_name)
 
 
-    if cont_name not in ['acquisition', 'session', 'project', 'group', 'analysis']:
+    if cont_name not in ['acquisition', 'session', 'subject', 'project', 'group', 'analysis']:
         raise ValueError('Can only construct tree from group, project, session, analysis or acquisition level')
 
     analysis_id     = None
@@ -98,38 +98,59 @@ def get_parent_tree(cont_name, _id):
     session_id      = None
     project_id      = None
     group_id        = None
-    tree            = {}
+    tree            = []
 
     if cont_name == 'analysis':
         analysis_id = bson.ObjectId(_id)
         analysis = get_container('analysis', analysis_id)
-        tree['analysis'] = analysis
-        if analysis['parent']['type'] == 'session':
+        analysis['cont_type'] = 'analysis'
+        tree.append(analysis)
+        if analysis['parent']['type'] == 'group':
+            project_id = analysis['parent']['id']
+        elif analysis['parent']['type'] == 'project':
+            project_id = analysis['parent']['id']
+        elif analysis['parent']['type'] == 'session':
             session_id = analysis['parent']['id']
-    if cont_name == 'acquisition':
-        acquisition_id = bson.ObjectId(_id)
+        elif analysis['parent']['type'] == 'acquisition':
+            acquisition_id = analysis['parent']['id']
+    if cont_name == 'acquisition' or acquisition_id:
+        if not acquisition_id:
+            acquisition_id = bson.ObjectId(_id)
         acquisition = get_container('acquisition', acquisition_id)
-        tree['acquisition'] = acquisition
+        acquisition['cont_type'] = 'acquisition'
+        tree.append(acquisition)
         session_id = acquisition['session']
     if cont_name == 'session' or session_id:
         if not session_id:
             session_id = bson.ObjectId(_id)
         session = get_container('session', session_id)
-        tree['session'] = session
+        session['cont_type'] = 'session'
+        tree.append(session)
         subject = session.get('subject')
-        if subject:
-            tree['subject'] = subject
-        project_id = session['project']
+        if not subject:
+            config.log.warning('Session without subject found.')
+            raise Exception
+        subject_id = subject['id']
+    if cont_name == 'subject' or subject_id:
+        if not subject_id:
+            subject_id = bson.ObjectId(_id)
+        subject = get_container('subject', subject_id)
+        subject['cont_type'] = 'subject'
+        tree.append(subject)
+        project_id = subject['project']
     if cont_name == 'project' or project_id:
         if not project_id:
             project_id = bson.ObjectId(_id)
         project = get_container('project', project_id)
-        tree['project'] = project
+        project['cont_type'] = 'project'
+        tree.append(project)
         group_id = project['group']
     if cont_name == 'group' or group_id:
         if not group_id:
             group_id = _id
-        tree['group'] = get_container('group', group_id)
+        group = get_container('group', group_id)
+        group['cont_type'] = 'group'
+        tree.append(group)
 
     return tree
 
