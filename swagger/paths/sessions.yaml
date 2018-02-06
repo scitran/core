@@ -15,6 +15,9 @@ $template_arguments:
     update-input-schema: schemas/input/session.json
     get-output-schema: schemas/output/session.json
 
+/sessions/{SessionId}/info:
+  $template: templates/container-item-info.yaml
+
 '/sessions/{SessionId}/jobs':
   parameters:
     - in: path
@@ -60,6 +63,8 @@ $template_arguments:
   $template: templates/file-list-upload.yaml
 /sessions/{SessionId}/files/{FileName}:
   $template: templates/file-item.yaml
+/sessions/{SessionId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Notes =====
 /sessions/{SessionId}/notes:

@@ -1,0 +1,33 @@
+parameters:
+  - name: resource
+    type: string
+    required: true
+  - name: parameter
+    type: string
+    required: true
+  - name: tag
+    type: string
+    required: true
+template: |
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: '{{parameter}}'
+  post:
+    summary: Update or replace info for a {{resource}}.
+    operationId: modify_{{resource}}_info
+    x-sdk-modify-info: true
+    tags: 
+    - '{{tag}}'
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/info_update.json
+    responses:
+      '200':
+        description: 'The info was updated successfully'
+
+
