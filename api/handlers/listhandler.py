@@ -503,7 +503,12 @@ class FileListHandler(ListHandler):
 
     @log_access(AccessType.view_file)
     def get_info(self, cont_name, list_name, **kwargs):
-        return super(FileListHandler,self).get(cont_name, list_name, **kwargs)
+        _id = kwargs['cid']
+        filename = kwargs['name']
+        result = super(FileListHandler,self).get(cont_name, list_name, **kwargs)
+        self.log_user_access(AccessType.view_file, cont_name=cont_name, cont_id=_id, filename=filename)
+        return result
+
 
     def modify_info(self, cont_name, list_name, **kwargs):
         _id = kwargs.pop('cid')

@@ -796,6 +796,13 @@ def test_edit_file_info(data_builder, as_admin, file_form):
     project = data_builder.create_project()
     file_name = 'test_file.txt'
 
+
+    # Assert getting file info 404s properly
+    r = as_admin.get('/projects/' + project + '/files/' + 'not_real.txt' + '/info')
+    assert r.status_code == 404
+    r = as_admin.get('/projects/' + '000000000000000000000000' + '/files/' + 'not_real.txt' + '/info')
+    assert r.status_code == 404
+
     r = as_admin.post('/projects/' + project + '/files', files=file_form(file_name))
     assert r.ok
 
