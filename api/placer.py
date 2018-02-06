@@ -382,7 +382,9 @@ class PackfilePlacer(Placer):
         # Populated in check(), used in finalize()
         self.p_id           = None
         self.s_label        = None
+        self.s_code         = None
         self.a_label        = None
+        self.a_time         = None
         self.g_id           = None
 
         self.permissions    = {}
@@ -421,6 +423,12 @@ class PackfilePlacer(Placer):
         self.p_id  = self.metadata['project']['_id']
         self.s_label = self.metadata['session']['label']
         self.a_label = self.metadata['acquisition']['label']
+
+        # Save additional fields if provided
+        self.s_code = self.metadata['session'].get('subject', {}).get('code')
+        self.a_time = self.metadata['acquisition'].get('timestamp')
+        if self.a_time:
+            self.a_time = dateutil.parser.parse(self.a_time)
 
         # Get project info that we need later
         project = config.db['projects'].find_one({ '_id': bson.ObjectId(self.p_id)})
@@ -547,6 +555,10 @@ class PackfilePlacer(Placer):
             'group': self.g_id
         }
 
+        if self.s_code:
+            # If they supplied a subject code, use that in the query as well
+            query['subject.code'] = self.s_code
+
         # Updates if existing
         updates = {}
         updates['permissions'] = self.permissions
@@ -555,6 +567,7 @@ class PackfilePlacer(Placer):
 
         # Extra properties on insert
         insert_map = copy.deepcopy(query)
+        insert_map.pop('subject.code', None) # Remove query term that should not become part of the payload
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['session'])
         insert_map['subject'] = containerutil.add_id_to_subject(insert_map.get('subject'), bson.ObjectId(self.p_id))
@@ -575,6 +588,11 @@ class PackfilePlacer(Placer):
             'session': session['_id'],
             'label': self.a_label,
         }
+
+        if self.a_time:
+            # If they supplied an acquisition timestamp, use that in the query as well
+            query['timestamp'] = self.a_time
+
 
         # Updates if existing
         updates = {}

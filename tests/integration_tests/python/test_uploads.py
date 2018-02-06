@@ -1132,6 +1132,66 @@ def test_packfile_upload(data_builder, file_form, as_admin, as_root, api_db):
     assert acquisition.get('label') == 'test-packfile-timestamp'
 
 
+    # Test that acquisition timestamp is used to differenciate acquisitions and session code for sessions
+
+    # Make sure there is only one session and one acquisition with the above label to start
+    sessions = list(api_db.sessions.find({'label':'test-packfile-timestamp'}))
+    acquisitions = list(api_db.acquisitions.find({'label':'test-packfile-timestamp'}))
+    assert len(sessions) == 1
+    assert len(acquisitions) == 1
+
+
+    r = as_admin.post('/projects/' + project + '/packfile-start')
+    assert r.ok
+    token = r.json()['token']
+    r = as_admin.post('/projects/' + project + '/packfile',
+        params={'token': token}, files=file_form('one.csv'))
+    assert r.ok
+
+    metadata_json = json.dumps({
+        'project': {'_id': project},
+        'session': {
+            'label': 'test-packfile-timestamp',
+            'subject': {
+                'code': 'new-subject'
+            }
+        },
+        'acquisition': {
+            'label': 'test-packfile-timestamp',
+            'timestamp': '1999-01-01T00:00:00+00:00'
+        },
+        'packfile': {'type': 'test'}
+    })
+
+    r = as_admin.post('/projects/' + project + '/packfile-end',
+        params={'token': token, 'metadata': metadata_json})
+    assert r.ok
+
+    sessions = list(api_db.sessions.find({'label':'test-packfile-timestamp'}))
+    acquisitions = list(api_db.acquisitions.find({'label':'test-packfile-timestamp'}))
+
+    # Ensure a new session was created
+    assert len(sessions) == 2
+
+    # Ensure a new acquisition was created
+    assert len(acquisitions) == 2
+
+    # Ensure subject code exists on a session
+    for s in sessions:
+        if s.get('subject', {}).get('code') == 'new-subject':
+            break
+    else:
+        # We didn't fine one
+        assert False
+
+    # Ensure second acquisition timestamp exists on an acquisition
+    for a in acquisitions:
+        if str(a.get('timestamp')) == '1999-01-01 00:00:00':
+            break
+    else:
+        # We didn't fine one
+        assert False
+
     # get another token (start packfile-upload)
     r = as_admin.post('/projects/' + project + '/packfile-start')
     assert r.ok
