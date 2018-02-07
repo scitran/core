@@ -5,10 +5,24 @@
         "firstname":        { "type": "string", "maxLength": 64 },
         "lastname":         { "type": "string", "maxLength": 64 },
         "age":              { "type": ["integer", "null"] },
-        "sex":              { "type": "string", "enum": ["male", "female", "other", "unknown", null] },
-        "race":             { "type": "string", "enum": ["American Indian or Alaska Native", "Asian", "Native Hawaiian or Other Pacific Islander", "Black or African American", "White", "More Than One Race", "Unknown or Not Reported", null] },
-        "ethnicity":        { "type": "string", "enum": ["Not Hispanic or Latino", "Hispanic or Latino", "Unknown or Not Reported", null] },
-
+        "sex": { 
+            "oneOf": [
+                            { "type": "null"},
+                            { "type": "string", "enum": ["male", "female", "other", "unknown"] }
+            ]
+        },
+        "race": {
+            "oneOf": [
+                            { "type": "null"},
+                            { "type": "string", "enum": ["American Indian or Alaska Native", "Asian", "Native Hawaiian or Other Pacific Islander", "Black or African American", "White", "More Than One Race", "Unknown or Not Reported"] }
+            ]
+        },
+        "ethnicity": {
+            "oneOf": [
+                            { "type": "null"},
+                            { "type": "string", "enum": ["Not Hispanic or Latino", "Hispanic or Latino", "Unknown or Not Reported"] }
+            ]
+        },
         "code":             { "type": "string", "maxLength": 64 },
         "tags":             { "type": "array", "items": {"type": "string"} },
         "subject-input":{

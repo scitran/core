@@ -62,7 +62,7 @@ def test_payload():
 
 def test_file_output_valid():
     payload = [{
-        'modified': 'yesterday',
+        'modified': '2018-02-07T17:27:21+00:00',
         'size': 10
     }]
     schema_uri = validators.schema_uri("output", "file-list.json")
@@ -71,13 +71,22 @@ def test_file_output_valid():
 
 def test_file_output_invalid():
     payload = [{
-        'modified': 'yesterday'
+        'modified': '2018-02-07T17:27:21+00:00'
     }]
     schema_uri = validators.schema_uri("output", "file-list.json")
     schema, resolver = validators._resolve_schema(schema_uri)
     with pytest.raises(jsonschema.exceptions.ValidationError):
         validators._validate_json(payload, schema, resolver)
     
+def test_jsonschema_validate_enum_with_null():
+    schema = { 
+        'oneOf': [
+            { 'type': 'null' },
+            { 'type': 'string', 'enum': ['true', 'false'] }
+        ]
+    }
+    jsonschema.validate('true', schema)
+    jsonschema.validate(None, schema)
 
 # ===== Automated Tests =====
 
