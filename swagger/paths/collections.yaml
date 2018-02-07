@@ -122,10 +122,14 @@ $template_arguments:
 
 /collections/{CollectionId}/acquisitions:
   parameters:
-    - required: true
-      type: string
+    - name: CollectionId
       in: path
-      name: CollectionId
+      type: string      
+      required: true
+    - name: session
+      in: query
+      type: string
+      description: The id of a session, to which the acquisitions returned will be restricted
   get:
     summary: List acquisitions in a collection
     operationId: get_collection_acquisitions
