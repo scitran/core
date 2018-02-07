@@ -501,7 +501,6 @@ class FileListHandler(ListHandler):
                 self.log_user_access(AccessType.download_file, cont_name=cont_name, cont_id=_id)
 
 
-    @log_access(AccessType.view_file)
     def get_info(self, cont_name, list_name, **kwargs):
         _id = kwargs['cid']
         filename = kwargs['name']
