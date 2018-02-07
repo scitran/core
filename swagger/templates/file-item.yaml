@@ -87,6 +87,21 @@ template: |
       '200':
         $ref: '#/responses/200:deleted-with-count'
 
+  put:
+    summary: Modify a file's attributes
+    operationId: modify_{{resource}}_file
+    tags:
+    - '{{tag}}'
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/file-update.json
+    responses:
+      '200':
+        $ref: '#/responses/200:modified-with-count-and-jobs'
+
   delete:
     summary: Delete a file
     operationId: delete_{{resource}}_file
