@@ -17,7 +17,7 @@ from ..dao import noop
 from ..dao import liststorage
 from ..dao import containerutil
 from ..web.errors import APIStorageException
-from ..web.request import log_access, AccessType
+from ..web.request import AccessType
 
 
 def initialize_list_configurations():
