@@ -11,6 +11,9 @@ SciTran Core is a RESTful HTTP API, written in Python and backed by MongoDB. It 
 
 ### [Documentation](https://scitran.github.io/core)
 
+API documentation for branches and tags can be found at https://scitran.github.io/branches/**branchname** and
+https://scitran.github.io/tags/**tagname**.
+
 ### [Contributing](https://github.com/scitran/core/blob/master/CONTRIBUTING.md)
 
 ### [Testing](https://github.com/scitran/core/blob/master/TESTING.md)
