@@ -415,22 +415,9 @@ class AnalysisStorage(ContainerStorage):
             if next_job is None:
                 break
             job = Job.load(next_job)
-        if job.id_ != str(analysis['job']):
+        if job.id_ != analysis['job']:
             # Update analysis if job has changed
-            # Remove old inputs and replace with new job inputs
-            # (In practice these should never change)
-            files = analysis.get('files', [])
-            files[:] = [x for x in files if x.get('output')]
-
-            for i in getattr(job, 'inputs',{}):
-                fileref = job.inputs[i]
-                contref = containerutil.create_containerreference_from_filereference(job.inputs[i])
-                file_ = contref.find_file(fileref.name)
-                if file_:
-                    file_['input'] = True
-                    files.append(file_)
-
-            self.update_el(analysis['_id'], {'job': job.id_, 'files': files})
+            self.update_el(analysis['_id'], {'job': job.id_})
 
         analysis['job'] = job
         return analysis
