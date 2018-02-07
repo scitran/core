@@ -630,6 +630,27 @@ class BatchHandler(base.RequestHandler):
         return batch_proposal
 
     @require_login
+    def post_with_jobs(self):
+        """
+        Creates a batch from preconstructed jobs
+        """
+        payload = self.request.json
+        jobs_ = payload.get('jobs', [])
+
+        batch_proposal = {
+            'proposal': {
+                'preconstructed_jobs': jobs_
+            },
+            'origin': self.origin,
+            'state': 'pending',
+            '_id': bson.ObjectId()
+        }
+        batch.insert(batch_proposal)
+        batch_proposal['preconstructed_jobs'] = batch_proposal.pop('proposal')
+
+        return batch_proposal
+
+    @require_login
     def run(self, _id):
         """
         Creates jobs from proposed inputs, returns jobs enqueued.

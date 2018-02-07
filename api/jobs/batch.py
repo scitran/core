@@ -134,84 +134,100 @@ def run(batch_job):
     proposal = batch_job.get('proposal')
     if not proposal:
         raise APIStorageException('The batch job is not formatted correctly.')
-    proposed_inputs = proposal.get('inputs', [])
-    proposed_destinations = proposal.get('destinations', [])
+    preconstructed_jobs = proposal.get('preconstructed_jobs')
 
-    gear_id = batch_job['gear_id']
-    gear = gears.get_gear(gear_id)
-    gear_name = gear['gear']['name']
+    # If Running a batch from already-constructed jobs
+    if preconstructed_jobs:
+        origin = batch_job.get('origin')
+        jobs = []
+        job_ids = []
 
-    config_ = batch_job.get('config')
-    origin = batch_job.get('origin')
-    tags = proposal.get('tags', [])
-    tags.append('batch')
+        for preconstructed_job in preconstructed_jobs:
+            job = Queue.enqueue_job(preconstructed_job, origin)
+            job_id = job.id_
+            jobs.append(job)
+            job_ids.append(job_id)
 
-    if gear.get('category') == 'analysis':
-        analysis_base = proposal.get('analysis', {})
-        if not analysis_base.get('label'):
-            time_now = datetime.datetime.utcnow()
-            analysis_base['label'] = {'label': '{} {}'.format(gear_name, time_now)}
-        an_storage = AnalysisStorage()
-        acq_storage = AcquisitionStorage()
+    # Otherwise create jobs from the containers and gear id provided in the proposal
+    else:
+        proposed_inputs = proposal.get('inputs', [])
+        proposed_destinations = proposal.get('destinations', [])
 
-    jobs = []
-    job_ids = []
+        gear_id = batch_job['gear_id']
+        gear = gears.get_gear(gear_id)
+        gear_name = gear['gear']['name']
 
-    job_defaults = {
-        'config':   config_,
-        'gear_id':  gear_id,
-        'tags':     tags,
-        'batch':    str(batch_job.get('_id')),
-        'inputs':   {}
-    }
-
-    for inputs in proposed_inputs:
-
-        job_map = copy.deepcopy(job_defaults)
-        job_map['inputs'] = inputs
+        config_ = batch_job.get('config')
+        origin = batch_job.get('origin')
+        tags = proposal.get('tags', [])
+        tags.append('batch')
 
         if gear.get('category') == 'analysis':
+            analysis_base = proposal.get('analysis', {})
+            if not analysis_base.get('label'):
+                time_now = datetime.datetime.utcnow()
+                analysis_base['label'] = {'label': '{} {}'.format(gear_name, time_now)}
+            an_storage = AnalysisStorage()
+            acq_storage = AcquisitionStorage()
 
-            analysis = copy.deepcopy(analysis_base)
+        jobs = []
+        job_ids = []
 
-            # Create analysis
-            acquisition_id = inputs.values()[0].get('id')
-            session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
-            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin, None)
-            job = result.get('job')
-            job_id = result.get('job_id')
+        job_defaults = {
+            'config':   config_,
+            'gear_id':  gear_id,
+            'tags':     tags,
+            'batch':    str(batch_job.get('_id')),
+            'inputs':   {}
+        }
 
-        else:
+        for inputs in proposed_inputs:
 
-            job = Queue.enqueue_job(job_map, origin)
-            job_id = job.id_
+            job_map = copy.deepcopy(job_defaults)
+            job_map['inputs'] = inputs
 
+            if gear.get('category') == 'analysis':
 
-        jobs.append(job)
-        job_ids.append(job_id)
+                analysis = copy.deepcopy(analysis_base)
 
-    for dest in proposed_destinations:
+                # Create analysis
+                acquisition_id = inputs.values()[0].get('id')
+                session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
+                result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin, None)
+                job = result.get('job')
+                job_id = result.get('job_id')
 
-        job_map = copy.deepcopy(job_defaults)
-        job_map['destination'] = dest
+            else:
 
-        if gear.get('category') == 'analysis':
-
-            analysis = copy.deepcopy(analysis_base)
-
-            # Create analysis
-            result = an_storage.create_job_and_analysis('sessions', bson.ObjectId(dest['id']), analysis, job_map, origin, None)
-            job = result.get('job')
-            job_id = result.get('job_id')
-
-        else:
-
-            job = Queue.enqueue_job(job_map, origin)
-            job_id = job.id_
+                job = Queue.enqueue_job(job_map, origin)
+                job_id = job.id_
 
 
-        jobs.append(job)
-        job_ids.append(job_id)
+            jobs.append(job)
+            job_ids.append(job_id)
+
+        for dest in proposed_destinations:
+
+            job_map = copy.deepcopy(job_defaults)
+            job_map['destination'] = dest
+
+            if gear.get('category') == 'analysis':
+
+                analysis = copy.deepcopy(analysis_base)
+
+                # Create analysis
+                result = an_storage.create_job_and_analysis('sessions', bson.ObjectId(dest['id']), analysis, job_map, origin, None)
+                job = result.get('job')
+                job_id = result.get('job_id')
+
+            else:
+
+                job = Queue.enqueue_job(job_map, origin)
+                job_id = job.id_
+
+
+            jobs.append(job)
+            job_ids.append(job_id)
 
     update(batch_job['_id'], {'state': 'running', 'jobs': job_ids})
     return jobs
