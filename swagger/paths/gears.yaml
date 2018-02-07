@@ -73,3 +73,23 @@
     responses:
       '200':
         description: Gear was deleted
+
+/gears/{GearId}/invocation:
+    parameters:
+      - name: GearId
+        in: path
+        type: string
+        required: true
+        description: Id of the gear to interact with
+    get:
+      summary: Get a schema for invoking a gear.
+      operationId: get_gear_invocation
+      tags:
+      - gears
+      responses:
+        '200':
+          description: The gear invocation schema.
+          schema:
+            type: object
+
+
