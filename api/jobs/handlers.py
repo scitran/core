@@ -637,6 +637,16 @@ class BatchHandler(base.RequestHandler):
         payload = self.request.json
         jobs_ = payload.get('jobs', [])
 
+        uid = None
+        if not self.superuser_request:
+            uid = self.uid
+
+        for job_number, job_ in enumerate(jobs_):
+            try:
+                Queue.validate_job(job_, self.origin, create_job=False, perm_check_uid=uid)
+            except InputValidationException as e:
+                raise InputValidationException("Job {}: {}".format(job_number, str(e)))
+
         batch_proposal = {
             'proposal': {
                 'preconstructed_jobs': jobs_

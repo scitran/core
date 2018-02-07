@@ -84,6 +84,30 @@ def test_batch(data_builder, as_user, as_admin, as_root):
     assert r.ok
     analysis_batch_id = r.json()['_id']
 
+    # try to create a batch with invalid preconstructed jobs
+    r = as_admin.post('/batch/jobs', json={
+        'jobs': [
+            {
+                'gear_id': gear,
+                'inputs': {
+                    'dicom': {
+                        'type': 'acquisition',
+                        'id': acquisition,
+                        'name': 'test.zip'
+                    }
+                },
+                'config': { 'two-digit multiple of ten': 20 },
+                'destination': {
+                    'type': 'acquisition',
+                    'id': acquisition
+                },
+                'tags': [ 'test-tag' ]
+            }
+        ]
+    })
+    assert r.status_code == 400
+    assert "Job 0" in r.json().get('message')
+
     # create a batch with preconstructed jobs
     r = as_admin.post('/batch/jobs', json={
         'jobs': [
