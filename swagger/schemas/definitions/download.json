@@ -5,13 +5,14 @@
             "type": "object",
             "properties": {
                 "+": {"$ref": "#/definitions/filter-items"},
-                "plus": {"$ref": "#definitions/filterItems"},
+                "plus": {"$ref": "#/definitions/filter-items"},
                 "-": {"$ref": "#/definitions/filter-items"},
-                "minus": {"$ref": "#definitions/filterItems"}
+                "minus": {"$ref": "#/definitions/filter-items"}
             },
             "additionalProperties": false
         },
-        "filter-items": {            "type": "array",
+        "filter-items": {            
+			"type": "array",
             "minItems": 1,
             "items": {
                 "type": "string"
