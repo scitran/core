@@ -1,0 +1,59 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+        "packfile-project-input": {
+            "type": "object",
+            "properties": {
+                "_id":          {"type": "string"}
+            },
+            "additionalProperties": false,
+            "required": ["_id"]
+        },
+        "packfile-session-input":      {
+            "type": "object",
+            "properties": {
+                "label":        {"type": "string"},
+                "subject":      {"$ref": "subject.json#/definitions/subject-input"}
+            },
+            "additionalProperties": false,
+            "required": ["label"]
+        },
+        "packfile-acquisition-input":  {
+            "type": "object",
+            "properties": {
+                "label":        {"type": "string"},
+                "timestamp":    {"type": ["string", "null"], "format": "date-time"},
+                "timezone":     {"type": "string"}
+            },
+            "additionalProperties": false,
+            "required": ["label"]
+        },
+        "packfile-packfile-input":  {
+            "type": "object",
+            "properties": {
+                "type":         {"type": "string"}
+            },
+            "additionalProperties": false,
+            "required": ["type"]
+        },
+
+        "packfile-input": {
+            "title": "Packfile",
+            "type": "object",
+            "properties": {
+                "project":     {"$ref":"#/definitions/packfile-project-input"},
+                "session":     {"$ref":"#/definitions/packfile-session-input"},
+                "acquisition": {"$ref":"#/definitions/packfile-acquisition-input"},
+                "packfile":    {"$ref":"#/definitions/packfile-packfile-input"}
+            },
+            "required": ["project", "session", "acquisition", "packfile"],
+            "additionalProperties": false
+        },
+        "packfile-start": {
+            "type":"object",
+            "properties":{
+                "token":{"$ref":"common.json#/definitions/objectid"}
+            }            
+        }
+    }
+}

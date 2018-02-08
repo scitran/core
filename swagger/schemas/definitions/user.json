@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "firstname":        {
+                          "maxLength": 64,
+                          "minLength": 1,
+                          "title": "First Name",
+                          "type": "string"
+                        },
+    "lastname":         {
+                          "maxLength": 64,
+                          "minLength": 1,
+                          "title": "Last Name",
+                          "type": "string"
+                        },
+    "email":            {
+                          "format": "email",
+                          "title": "Email",
+                          "type": "string"
+                        },
+    "avatar":           {
+                          "format": "uri",
+                          "title": "Avatar",
+                          "type": "string"
+                        },
+    "root":             { "type": "boolean"},
+    "disabled":         { "type": "boolean"},
+    "preferences":      {
+                          "title": "Preferences",
+                          "type": "object"
+                        },
+    "wechat": {},
+    "firstlogin":       {"type": "string"},
+    "lastlogin":        {"type": "string"},
+    "api-key":{
+      "type":"object",
+      "properties":{
+        "key":            {"type": "string"},
+        "created":        {"$ref":"created-modified.json#/definitions/created"},
+        "last_used":      {}
+      },
+      "additionalProperties":false
+    },
+    "user-input":{
+      "type":"object",
+      "properties":{
+        "_id":{"$ref":"common.json#/definitions/user-id"},
+        "firstname":{"$ref":"#/definitions/firstname"},
+        "lastname":{"$ref":"#/definitions/lastname"},
+        "email":{"$ref":"#/definitions/email"},
+        "avatar":{"$ref":"#/definitions/avatar"},
+        "avatars":{"$ref":"avatars.json#/definitions/avatars"},
+        "root":{"$ref":"#/definitions/root"},
+        "disabled":{"$ref":"#/definitions/disabled"},
+        "preferences":{"$ref":"#/definitions/preferences"},
+        "wechat":{"$ref":"#/definitions/wechat"},
+        "firstlogin":{"$ref":"#/definitions/firstlogin"},
+        "lastlogin":{"$ref":"#/definitions/lastlogin"}
+      },
+      "additionalProperties":false
+    },
+    "user-output":{
+      "type":"object",
+      "properties":{
+        "_id":{"$ref":"common.json#/definitions/user-id"},
+        "firstname":{"$ref":"#/definitions/firstname"},
+        "lastname":{"$ref":"#/definitions/lastname"},
+        "email":{"$ref":"#/definitions/email"},
+        "avatar":{"$ref":"#/definitions/avatar"},
+        "avatars":{"$ref":"avatars.json#/definitions/avatars"},
+        "root":{"$ref":"#/definitions/root"},
+        "disabled":{"$ref":"#/definitions/disabled"},
+        "preferences":{"$ref":"#/definitions/preferences"},
+        "wechat":{"$ref":"#/definitions/wechat"},
+        "firstlogin":{"$ref":"#/definitions/firstlogin"},
+        "lastlogin":{"$ref":"#/definitions/lastlogin"},
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"}
+      },
+      "additionalProperties":false
+    },
+    "user-output-api-key": {
+      "type":"object",
+      "properties":{
+        "_id":{"$ref":"common.json#/definitions/user-id"},
+        "api_key":{"$ref":"#/definitions/api-key"},
+        "firstname":{"$ref":"#/definitions/firstname"},
+        "lastname":{"$ref":"#/definitions/lastname"},
+        "email":{"$ref":"#/definitions/email"},
+        "avatar":{"$ref":"#/definitions/avatar"},
+        "avatars":{"$ref":"avatars.json#/definitions/avatars"},
+        "root":{"$ref":"#/definitions/root"},
+        "disabled":{"$ref":"#/definitions/disabled"},
+        "preferences":{"$ref":"#/definitions/preferences"},
+        "wechat":{"$ref":"#/definitions/wechat"},
+        "firstlogin":{"$ref":"#/definitions/firstlogin"},
+        "lastlogin":{"$ref":"#/definitions/lastlogin"},
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"}
+      },
+      "additionalProperties":false,
+      "required":[
+         "_id", "firstname", "lastname",
+         "root", "email", "created", "modified"
+      ]      
+    }
+  }
+}

@@ -1,0 +1,81 @@
+swagger: '2.0'
+info:
+  version: 0.0.1
+  title: SciTran
+host: 'dev.flywheel.io'
+basePath: '/api'
+schemes: 
+- 'https'
+produces:
+- 'application/json'
+consumes:
+- 'application/json'
+
+tags:
+  - name: files
+    description: File upload/download operations
+  - name: devices
+    description: Device operations
+  - name: users
+    description: User operations
+  - name: gears
+    description: Gear operations
+  - name: groups
+    description: Group operations
+  - name: jobs
+    description: Job operations
+  - name: collections
+    description: Collection operations
+  - name: sessions
+    description: Session operations
+  - name: acquisitions
+    description: Acquisition operations
+  - name: projects
+    description: Project operations
+  - name: reports
+    description: Site-wide reports
+  - name: batch
+    description: Batch job operations
+
+paths:
+  $include: 
+    - paths/login.yaml
+    - paths/download.yaml
+    - paths/upload-by-label.yaml
+    - paths/upload-by-uid.yaml
+    - paths/upload-match-uid.yaml
+    - paths/clean-packfiles.yaml
+    - paths/engine.yaml
+    - paths/config.yaml
+    - paths/config-js.yaml
+    - paths/version.yaml
+    - paths/users.yaml
+    - paths/jobs.yaml
+    - paths/gears.yaml
+    - paths/devices.yaml
+    - paths/groups.yaml
+    - paths/collections.yaml
+    - paths/sessions.yaml
+    - paths/acquisitions.yaml
+    - paths/projects.yaml
+    - paths/report.yaml
+    - paths/batch.yaml
+
+
+securityDefinitions:
+  ApiKey:
+    type: apiKey
+    in: header
+    name: Authorization
+    description: |
+      Your API key is available on your Profile page from within the Flywheel Application.
+      **NOTE:** The API key should be prefixed with `scitran-user` if you're testing APIs on this page.
+      
+      e.g. `scitran-user dev.flywheel.io:DFCAds356sdvd`.
+
+security: 
+  - ApiKey: []
+
+responses:
+  $ref: responses/index.yaml
+

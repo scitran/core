@@ -1,6 +1,0 @@
-{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "allOf":[{"$ref":"../definitions/user.json#/definitions/user-input"}],
-  "required":["_id", "firstname", "lastname"]
-}

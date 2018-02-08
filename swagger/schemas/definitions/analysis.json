@@ -1,0 +1,81 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+		"inputs": 		{
+							"type": ["array", "null"],
+						 	"items": {"$ref":"file.json#/definitions/file"}
+						},
+		"outputs": 		{
+							"type": ["array", "null"],
+						 	"items": {"$ref":"file.json#/definitions/file"}
+						},
+		"analysis-input":{
+			"type":"object",
+			"properties":{
+				"inputs":      {"$ref":"#/definitions/inputs"},
+				"outputs":     {"$ref":"#/definitions/outputs"},
+				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
+				"description": {"$ref":"common.json#/definitions/description"},
+				"job":         {"$ref":"common.json#/definitions/objectid"},
+				"label":       {"$ref":"common.json#/definitions/label"},
+				"user":        {"$ref":"common.json#/definitions/user-id"}
+			},
+		    "additionalProperties": false
+		},
+		"analysis-update":{
+			"type":"object",
+			"properties":{
+				"label":{"$ref":"common.json#/definitions/label"}
+			},
+			"additionalProperties":false
+		},
+		"analysis-output":{
+			"type":"object",
+			"properties":{
+				"_id":{"$ref":"common.json#/definitions/objectid"},
+				"files":{
+					"type":"array",
+					"items":{"$ref":"file.json#/definitions/file"}
+				},
+				"job":{
+					"oneOf":[
+						{"$ref":"common.json#/definitions/objectid"},
+						{"type":"object"}
+					]
+				},
+				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
+				"description": {"$ref":"common.json#/definitions/description"},
+				"label":       {"$ref":"common.json#/definitions/label"},
+				"user":        {"$ref":"common.json#/definitions/user-id"},
+				"created":     {"$ref":"created-modified.json#/definitions/created"},
+				"modified":    {"$ref":"created-modified.json#/definitions/modified"}
+			},
+			"required":["_id", "files", "label", "user", "created", "modified"]
+		},
+		"analysis-job": {
+			"type": "object",
+			"properties":{
+				"analysis":{
+					"type":"object",
+					"allOf":[{"$ref":"#/definitions/analysis-input"}],
+					"required":["label"]
+				},
+				"job":{
+					"type":"object",
+					"allOf":[{"$ref":"job.json#/definitions/job-input"}]
+				}
+			}
+		},
+		"analysis-files-create-ticket-output": {
+			"type":"object",
+			"properties":{
+				"ticket":{"type":"string"},
+				"filename":{"type":"string"},
+				"file_cnt":{"type":"integer"},
+				"size":{"type":"integer"}
+			},
+			"additionalProperties":false,
+			"required":["ticket", "filename", "file_cnt", "size"]			
+		}
+    }
+}

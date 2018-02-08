@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "text":             {"type": "string"},
+    "note-input":{
+      "type":"object",
+      "properties":{
+        "text":{"$ref":"#/definitions/text"}
+      },
+      "additionalProperties": false
+    },
+    "notes-list-input": {
+      "type": "array",
+      "items":{"allOf":[{"$ref":"#/definitions/note-input"}]}
+    },
+    "note-output":{
+      "type":"object",
+      "properties":{
+        "_id":{"$ref":"common.json#/definitions/objectid"},
+        "text":{"$ref":"#/definitions/text"},
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"},
+        "user":{"$ref":"common.json#/definitions/user-id"}
+      },
+      "additionalProperties": false,
+      "required":["_id", "text", "created", "modified", "user"]
+    },
+    "notes-list-output":{
+      "type":"array",
+      "items":{"allOf":[{"$ref":"#/definitions/note-output"}]}
+    }
+  }
+}

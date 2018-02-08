@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Project",
+    "type": "object",
+    "allOf": [{"$ref": "container.json"}],
+    "properties": {
+        "_id": {},
+        "created": {},
+        "modified": {},
+        "permissions": {},
+        "files": {},
+        "public": {},
+        "label": {},
+        "template": {"$ref":"../definitions/project-template.json#/definitions/project-template"},
+        "tags": {},
+        "info": {},
+        "description": {},
+
+        "group": {"type": "string"}
+    },
+    "additionalProperties": false
+}

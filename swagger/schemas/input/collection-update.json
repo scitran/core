@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Collection",
+    "type": "object",
+    "allOf": [{"$ref": "../definitions/collection.json#/definitions/collection-input-with-contents"}],
+    "example": {
+		"contents": {
+			"operation": "add",
+			"nodes": [{
+				"level": "session",
+				"_id": "57dc50b0931cefd8ac2a371e"
+			}]
+		}
+	}
+}

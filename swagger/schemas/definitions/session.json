@@ -1,0 +1,105 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions":{
+        "operator":     {"type": "string"},
+        "project":      {"type": "string"},
+        "project_has_template":{"type":"boolean"},
+        "satisfies_template":{"type":"boolean"},
+        "session-input":{
+            "type": "object",
+            "properties": {
+                "operator":     {"$ref":"#/definitions/operator"},
+                "public":       {"$ref":"container.json#/definitions/public"},
+                "label":        {"$ref":"common.json#/definitions/label"},
+                "info":         {"$ref":"container.json#/definitions/info"},
+                "project":      {"$ref":"#/definitions/project"},
+                "uid":          {"$ref":"container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"container.json#/definitions/timezone"},
+                "subject":      {"$ref": "subject.json#/definitions/subject-input"}
+            },
+            "additionalProperties": false
+        },
+        "session-metadata-input": {
+            "type": "object",
+            "properties": {
+                "public":       {"type": ["boolean", "null"]},
+                "label":        {"type": ["string", "null"]},
+                "info":         {"type": ["object", "null"]},
+                "operator":     {"type": ["string", "null"]},
+                "uid":          {"type": ["string", "null"]},
+                "timestamp":    {"type": ["string", "null"], "format": "date-time"},
+                "timezone":     {"type": ["string", "null"]},
+                "subject":      {"$ref": "subject.json#/definitions/subject-input"},
+                "files":        {
+                    "type": ["array", "null"],
+                    "items": {"$ref": "file.json#/definitions/file-input"}
+                }
+            },
+            "additionalProperties": false            
+        },
+        "session-output":{
+            "type": "object",
+            "properties": {
+                "_id":          {"$ref":"common.json#/definitions/objectid"},
+                "public":       {"$ref":"container.json#/definitions/public"},
+                "label":        {"$ref":"common.json#/definitions/label"},
+                "info":         {"$ref":"container.json#/definitions/info"},
+                "info_exists":  {"$ref":"container.json#/definitions/info_exists"},
+                "operator":     {"$ref":"#/definitions/operator"},
+                "project":      {"$ref":"#/definitions/project"},
+                "uid":          {"$ref":"container.json#/definitions/uid"},
+                "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
+                "timezone":     {"$ref":"container.json#/definitions/timezone"},
+                "subject":      {"$ref":"subject.json#/definitions/subject-output-default-required"},
+                "created":      {"$ref":"created-modified.json#/definitions/created"},
+                "modified":     {"$ref":"created-modified.json#/definitions/modified"},
+                "permissions":  {"$ref":"permission.json#/definitions/permission-output-list"},
+                "group":                {"$ref":"common.json#/definitions/string-id"},
+                "project_has_template": {"$ref":"#/definitions/project_has_template"},
+                "satisfies_template":   {"$ref":"#/definitions/satisfies_template"},
+                "files":{
+                    "type":"array",
+                    "items":{"$ref":"file.json#/definitions/file-output"}
+                },
+                "notes": {"$ref":"note.json#/definitions/notes-list-output"},
+                "tags":  {"$ref":"tag.json#/definitions/tag-output-list"},
+                "analyses":{
+                    "type":"array",
+                    "items":{"$ref":"analysis.json#/definitions/analysis-output"}
+                }
+            },
+            "additionalProperties": false
+        },
+        "session-jobs-output": {
+            "type": "object",
+            "properties":{
+                "jobs":{
+                    "type":"array",
+                    "items":{"$ref": "job.json#/definitions/job-output"}
+                },
+                "containers":{
+                    "patternProperties": {
+                        "^[a-fA-F0-9]{24}$":{
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "additionalProperties":false            
+        },
+        "session-template-recalc-output": {
+            "type": "object",
+            "properties":{
+                "sessions_changed":{
+                    "type":"array",
+                    "items":{
+                        "allOf":[{"$ref":"common.json#/definitions/objectid"}]
+                    }
+                }
+            },
+            "additionalProperties":false,
+            "required":["sessions_changed"]            
+        }
+    }
+}

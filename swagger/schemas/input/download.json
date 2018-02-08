@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$ref": "../definitions/download.json#/definitions/download-input",
+
+    "example": {
+		"optional": true,
+		"nodes": [{"level":"project", "_id":"57abe1589e512c513d42cb83"}],
+		"filters":[{
+			"tags":{"+":["incomplete"]},
+			"types":{"+":["dicom"]}
+		}]    	
+    }
+}

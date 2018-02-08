@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "User",
+  "type": "object",
+  "allOf":[
+    {"$ref":"../definitions/user.json#/definitions/user-input"}
+  ],
+  "example": {
+		"firstname": "Jane",
+		"lastname": "Smith",
+		"email": "jane.smith@gmail.com"
+	}
+}

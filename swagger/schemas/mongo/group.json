@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Group",
+  "type": "object",
+  "properties": {
+    "_id":              {
+                          "title": "ID",
+                          "type": "string"
+                        },
+    "created":          {},
+    "modified":         {},
+    "label":             {},
+    "permissions":            {
+                          "type": "array",
+                          "items": {"$ref": "../definitions/permission.json#/definitions/permission"},
+                          "title": "Permissions",
+                          "default": [],
+                          "uniqueItems": true
+                        }
+  },
+  "additionalProperties": false,
+  "required": ["_id", "created", "modified"]
+}

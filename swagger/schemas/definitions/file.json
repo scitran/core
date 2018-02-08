@@ -1,0 +1,98 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions":{
+        "name":           { "type": "string" },
+        "file-type":      { "type": "string" },
+        "mimetype":       { "type": "string" },
+        "modality":       { "type": "string" },
+        "measurements": {
+          "items": { "type": "string"},
+          "type": "array",
+          "uniqueItems": true
+        },
+        "tags": {
+          "items": { "type": "string"},
+          "type": "array",
+          "uniqueItems": true
+        },
+        "via": {
+          "type":"object",
+          "properties":{
+              "id":{"type":"string"},
+              "method":{"type":"string"},
+              "type":{"type":"string"},
+              "name":{"type":"string"}
+          }
+        },
+        "file-origin":{
+            "type":"object",
+            "properties":{
+                "id":     {"type":"string"},
+                "method": {"type":"string"},
+                "type":   {"type":"string"},
+                "name":   {"type":"string"},
+                "via":    {"$ref":"#/definitions/via"}
+            },
+            "additionalProperties":false
+        },
+        "hash":{
+          "type":"string", 
+          "minLength":106,
+          "maxLength":106
+        },
+        "size":{"type":"integer"},
+        "file": {
+          "type": "object",
+          "properties": {
+            "name":           {"$ref":"#/definitions/name"},
+            "type":           {"$ref":"#/definitions/file-type"},
+            "mimetype":       {"$ref":"#/definitions/mimetype"},
+            "modality":       {
+                "oneOf":[
+                    {"$ref":"#/definitions/modality"},
+                    {"type":"null"}
+                ]
+            },
+            "measurements": {"$ref":"#/definitions/measurements"},
+            "tags":        {"$ref":"#/definitions/tags"},
+            "info":        {"$ref":"common.json#/definitions/info"},
+            "origin":      {"$ref":"#/definitions/file-origin"},
+            "hash":        {"$ref":"#/definitions/hash"},
+            "created":     {"$ref":"created-modified.json#/definitions/created"},
+            "modified":    {"$ref":"created-modified.json#/definitions/modified"},
+            "size":        {"$ref":"#/definitions/size"},
+            "info_exists": {"type": "boolean"},
+            "input":       {"type":"boolean"},
+            "output":      {"type":"boolean"}
+          },
+          "additionalProperties": false
+        },
+        "file-input":{
+            "type": "object",
+            "properties": {
+              "name":           {"$ref":"#/definitions/name"},
+              "type":           {"$ref":"#/definitions/file-type"},
+              "mimetype":       {"$ref":"#/definitions/mimetype"},
+              "modality":       {"$ref":"#/definitions/modality"},
+              "measurements":   {"$ref":"#/definitions/measurements"},
+              "tags":           {"$ref":"#/definitions/tags"},
+              "info":           {"$ref":"common.json#/definitions/info"}
+          },
+          "additionalProperties": false
+        },
+        "file-update":{
+            "type": "object",
+            "properties": {
+              "type":           {"$ref":"#/definitions/file-type"},
+              "modality":       {"$ref":"#/definitions/modality"},
+              "measurements":   {"$ref":"#/definitions/measurements"}
+          },
+          "additionalProperties": false
+        },
+        "file-output":{
+          "type": "object",
+          "allOf": [{"$ref":"#/definitions/file"}],
+          "required":["modified", "size"]
+        }
+    }
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "errors": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      }
+    },
+    "interval": {"type": "integer"},
+    "status-value": {
+      "type": "string",
+      "enum": ["ok", "missing", "error", "unknown"]
+    },
+    "device": {
+      "type": "object",
+      "properties": {
+        "_id":       {"type":"string"},
+        "method":    {"type":"string"},
+        "name":      {"type":"string"},
+        "errors":    {"$ref":"#/definitions/errors"},
+        "info":      {"$ref":"common.json#/definitions/info"},
+        "interval":  {"$ref":"#/definitions/interval"},
+        "last_seen": {"$ref":"common.json#/definitions/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "device-input":{
+        "type": "object",
+        "properties": {
+          "interval":       {"$ref":"#/definitions/interval"},
+          "errors":         {"$ref":"#/definitions/errors"},
+          "info":           {"$ref":"common.json#/definitions/info"}
+        },
+        "additionalProperties": false
+    },
+    "device-output": {
+      "type": "object",
+      "allOf": [{"$ref":"#/definitions/device"}],
+      "required": ["_id", "name", "method", "last_seen"]
+    },
+    "device-status": {
+      "type":"object",
+      "patternProperties": {
+        "^[0-9a-z.@_-]*$":{
+          "properties":{
+            "errors":    {"$ref":"#/definitions/errors"},
+            "last_seen": {"$ref":"common.json#/definitions/timestamp"},
+            "status":    {"$ref":"#/definitions/status-value"}
+          },
+          "additionalProperties":false,
+          "required": ["last_seen", "status"]
+        }      
+      }
+    }
+  }
+}

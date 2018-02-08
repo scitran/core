@@ -1,0 +1,14 @@
+/version:
+  get:
+    summary: Get server and database schema version info
+    operationId: get_version
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/version.json
+        examples: 
+          response:
+            _id: "version"
+            database: 2
+          

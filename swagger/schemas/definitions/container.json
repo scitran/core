@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+        "_id":          {"type": "string"},
+        "public":       {"type": "boolean"},
+        "info":         {"$ref": "common.json#/definitions/info"},
+        "info_exists":  {"type": "boolean"},
+        "uid":          {"type": "string"},
+        "timestamp":    {"type": ["string", "null"], "format": "date-time"},
+        "timezone":     {"type": "string"},
+
+        "container-new-output": {
+          "type": "object",
+          "properties": {
+            "_id": {"$ref":"#/definitions/_id"}
+          },
+          "required": ["_id"]
+        }        
+    }
+}

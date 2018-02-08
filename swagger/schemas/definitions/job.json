@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+
+    "gear_id": {"type":"string"},
+    "previous_job_id": {"type":"string"},
+
+    "inputs-property-type":{"type":"string"},
+    "inputs-property-id":{"type":"string"},
+    "inputs-property-name":{"type":"string"},
+
+    "inputs-item": {
+      "type":"object",
+      "properties":{
+        "type":{"enum":["http", "scitran"]},
+        "uri":{"type":"string"},
+        "location":{"type":"string"},
+        "vu":{"type":"string"}
+      },
+      "required":["type", "uri", "location"]      
+    },
+    "inputs-entry": {
+      "type": "object",
+      "properties": {
+        "type": {"$ref":"#/definitions/inputs-property-type"},
+        "id": {"$ref":"#/definitions/inputs-property-id"},
+        "name": {"$ref":"#/definitions/inputs-property-name"}
+      },
+      "required": [ "type", "id", "name" ],
+      "additionalProperties":false
+    },
+    "inputs-object": {
+      "type": "object",
+      "patternProperties": {
+        "[-_ a-zA-Z0-9]+": {"$ref":"#/definitions/inputs-entry"}
+      }
+    },
+    "inputs-array":{
+      "type":"array",
+      "items":{
+        "type":"object",
+        "properties":{
+          "type": {"$ref":"#/definitions/inputs-property-type"},
+          "id": {"$ref":"#/definitions/inputs-property-id"},
+          "name": {"$ref":"#/definitions/inputs-property-name"},
+          "input":{"type":"string"}
+        }
+      }
+    },
+    "destination": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties":false
+    },
+    "job-origin": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties":false
+    },
+    "saved_files": {
+      "type": "array",
+      "items": {"$ref": "file.json#/definitions/name"}
+    },
+    "produced-metadata": {
+      "type": "object"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+
+    "state":{
+      "type":"string"
+    },
+    "attempt":{
+      "type":"integer"
+    },
+    "config":{
+      "oneOf":[
+        {
+          "enum":[null]
+        },
+        {
+          "type":"object"
+        }
+      ]
+    },
+    "request":{
+      "type":"object",
+      "properties":{
+        "inputs":{
+          "type":"array",
+          "items":{"$ref":"#/definitions/inputs-item"}
+        },
+        "target":{"type":"object"},
+        "outputs":{
+          "type":"array",
+          "items": {"type": "object"}
+        }
+      }
+    },
+    "job": {
+      "type":"object",
+      "properties":{
+        "id":{"$ref":"common.json#/definitions/objectid"},
+        "origin":{"$ref":"#/definitions/job-origin"},
+        "gear_id":{"$ref":"#/definitions/gear_id"},
+        "previous_job_id":{"type":"string"},
+        "inputs":{"$ref":"#/definitions/inputs-object"},
+        "destination":{"$ref":"#/definitions/destination"},
+        "tags":{"$ref":"#/definitions/tags"},
+        "state":{"$ref":"#/definitions/state"},
+        "attempt":{"$ref":"#/definitions/attempt"},
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"},
+        "config":{"$ref":"#/definitions/config"},
+        "request":{"$ref":"#/definitions/request"},
+        "saved_files":{"$ref":"#/definitions/saved_files"},
+        "produced_metadata":{"$ref":"#/definitions/produced-metadata"}
+      },
+      "additionalProperties":false
+    },
+    "job-input": {
+      "type":"object",
+      "properties": {
+        "gear_id":{"$ref":"#/definitions/gear_id"},
+        "inputs":{"$ref":"#/definitions/inputs-object"},
+        "destination":{"$ref":"#/definitions/destination"},
+        "tags":{"$ref":"#/definitions/tags"},
+        "config":{"$ref":"#/definitions/config"}
+      },
+      "required": ["gear_id"],
+      "additionalProperties":false
+    },
+    "job-output": {
+      "type": "object",
+      "allOf": [{"$ref":"#/definitions/job"}],
+      "required": [
+        "id", "gear_id", "inputs", "config",
+        "destination", "tags", "state", "attempt"
+      ]
+    }
+  }
+}

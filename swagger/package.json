@@ -1,0 +1,32 @@
+{
+  "name": "scitran-core-swagger",
+  "version": "0.0.1",
+  "description": "REST API Documentation and Code Generation for the SciTran core SDK",
+  "main": "index.js",
+  "scripts": {
+    "build": "node_modules/.bin/grunt",
+    "lint": "node_modules/.bin/grunt lintSchemas",
+    "test": "node_modules/.bin/jasmine --config=support/jasmine.json",
+    "watch": "node_modules/.bin/grunt live",
+	"coverage": "node_modules/.bin/grunt coverage"
+  },
+  "author": "Justin Ehlert <justinehlert@flywheel.io>",
+  "license": "MIT",
+  "devDependencies": {
+    "connect-livereload": "^0.6.0",
+    "glob": "^7.1.2",
+    "grunt": "^1.0.1",
+    "grunt-contrib-connect": "^1.0.2",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "jasmine": "^2.8.0",
+    "js-yaml": "^3.10.0",
+    "json-refs": "^3.0.2",
+    "load-grunt-tasks": "^3.5.2",
+    "lodash": "^4.17.4",
+    "mustache": "^2.3.0",
+    "pluralize": "^7.0.0",
+    "swagger-tools": "^0.10.3",
+    "swagger-ui-dist": "^3.7.0"
+  }
+}

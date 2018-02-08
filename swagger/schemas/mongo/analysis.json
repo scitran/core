@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Analysis",
+    "type": "object",
+    "properties": {
+    	"_id":          {"type": "string"},
+        "parent":       {
+                            "type": "object",
+                            "properties": {
+                                "type": "string",
+                                "id":   "string"
+                            }
+                        },
+        "created":      {},
+        "modified":     {},
+        "notes":        {"type": "array",  "items": {"$ref": "note.json"}},
+		"files": 		{
+							"type": ["array", "null"],
+						 	"items": {
+						 		"$ref": "file.json",
+						 		"additionalProperties": {
+						 			"output": 	{"type": "boolean"},
+						 			"input": 	{"type": "boolean"}
+						 		}
+							}
+						},
+        "job":			{"type": "string"},
+        "label":    	{"type": "string", "minLength": 1, "maxLength": 256},
+        "user":     	{"type": "string"},
+        "permissions":  {"type": "array",  "items": {"$ref": "../definitions/permission.json#/definitions/permission"}},
+        "public":       {"type": "boolean"}
+    }
+}

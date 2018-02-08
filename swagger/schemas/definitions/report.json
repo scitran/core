@@ -1,0 +1,112 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions":{
+        "gender-count":{
+            "type":"object",
+            "properties":{
+                "Male": {"type":"integer"},
+                "Unknown or Not Reported":{"type":"integer"},
+                "Female":{"type":"integer"}
+            },
+            "additionalProperties":false,
+            "required":["Male", "Female", "Unknown or Not Reported"]
+        },
+        "ethnicity-grid":{
+            "type":"object",
+            "properties":{
+                "Not Hispanic or Latino":{
+                    "allOf":[{"$ref":"#/definitions/gender-count"}]
+                },
+                "Hispanic or Latino":{
+                    "allOf":[{"$ref":"#/definitions/gender-count"}]
+                },
+                "Unknown or Not Reported":{
+                    "allOf":[{"$ref":"#/definitions/gender-count"}]
+                },
+                "Total":{"type":"integer"}
+            }
+        },
+        "demographics-grid": {
+            "type":"object",
+            "properties":{
+                "Black or African American":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "Unknown or Not Reported":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "American Indian or Alaska Native":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "Asian":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "White":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "Total":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "Native Hawaiian or Other Pacific Islander":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "More Than One Race":{
+                    "allOf":[{"$ref":"#/definitions/ethnicity-grid"}]
+                },
+                "male_count": {"type":"integer"},
+                "group_label": {"$ref":"common.json#/definitions/label"},
+                "over_18_count": {"type":"integer"},
+                "under_18_count": {"type":"integer"},
+                "female_count": {"type":"integer"},
+                "subjects_count": {"type":"integer"},
+                "other_count": {"type":"integer"},
+                "name": {"$ref":"common.json#/definitions/label"},
+                "session_count": {"type":"integer"},
+                "admins": {
+                    "type":"array",
+                    "items":{
+                        "type":"string"
+                    }
+                },
+                "demographics_total": {"type":"integer"}
+            }
+        },
+        "group-report": {
+            "type":"object",
+            "properties":{
+                "project_count":{"type":"integer"},
+                "label":{
+                    "oneOf":[
+                        {"$ref":"group.json#/definitions/label"},
+                        {"type":"null"}
+                    ]
+                },
+                "session_count":{"type":"integer"}
+            },
+            "additionalProperties":false,
+            "required":["project_count", "label", "session_count"]            
+        },
+
+        "report-project": {
+            "type":"object",
+            "properties":{
+                "projects":{
+                    "type":"array",
+                    "items":{"$ref":"#/definitions/demographics-grid"}
+                }
+            }            
+        },
+        "report-site": {
+            "type":"object",
+            "properties":{
+                "group_count":{"type":"integer"},
+                "groups":{
+                    "type":"array",
+                    "items":{"$ref":"#/definitions/group-report"}
+                }
+            },
+            "additionalProperties":false,
+            "required":["group_count", "groups"]            
+        }
+    }
+}

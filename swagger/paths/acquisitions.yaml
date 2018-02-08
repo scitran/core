@@ -1,0 +1,56 @@
+$template_arguments:
+  resource: acquisition
+  tag: acquisitions
+  parameter: AcquisitionId
+
+/acquisitions:
+  $template: templates/container.yaml
+  arguments:
+    list-output-schema: schemas/output/acquisition-list.json
+    create-input-schema: schemas/input/acquisition.json
+
+/acquisitions/{AcquisitionId}:
+  $template: templates/container-item.yaml
+  arguments:
+    update-input-schema: schemas/input/acquisition-update.json
+    get-output-schema: schemas/output/acquisition.json
+
+# ===== Tags =====
+/acquisitions/{AcquisitionId}/tags:
+  $template: templates/tags.yaml
+/acquisitions/{AcquisitionId}/tags/{TagValue}:
+  $template: templates/tags-tag.yaml
+
+# ===== Packfile =====
+/acquisitions/{AcquisitionId}/packfile-start:
+  $template: templates/packfile-start.yaml
+/acquisitions/{AcquisitionId}/packfile:
+  $template: templates/packfile.yaml
+/acquisitions/{AcquisitionId}/packfile-end:
+  $template: templates/packfile-end.yaml
+
+# ===== Files =====
+/acquisitions/{AcquisitionId}/files:
+  $template: templates/file-list-upload.yaml
+/acquisitions/{AcquisitionId}/files/{FileName}:
+  $template: templates/file-item.yaml
+
+# ===== Notes =====
+/acquisitions/{AcquisitionId}/notes:
+  $template: templates/notes.yaml
+/acquisitions/{AcquisitionId}/notes/{NoteId}:
+  $template: templates/notes-note.yaml
+
+# ===== Analyses =====
+/acquisitions/{AcquisitionId}/analyses:
+  $template: templates/analyses-list.yaml
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}:
+  $template: templates/analysis-item.yaml
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}/files:
+  $template: templates/analysis-files.yaml
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}/files/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}/notes:
+  $template: templates/analysis-notes.yaml
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}/notes/{NoteId}:
+  $template: templates/analysis-notes-item.yaml

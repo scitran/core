@@ -1,0 +1,64 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions":{
+        "label": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[0-9A-Za-z][0-9A-Za-z .@_-]{0,30}[0-9A-Za-z]$",
+            "title": "label",
+            "type": "string"
+        },
+        "group": {
+          "type": "object",
+          "properties": {
+            "_id":{"$ref":"common.json#/definitions/string-id"},
+            "label": {"$ref": "#/definitions/label"},
+            "permissions": {"$ref": "permission.json#/definitions/permission-output-list"},
+            "created": {"$ref":"created-modified.json#/definitions/created"},
+            "modified": {"$ref":"created-modified.json#/definitions/modified"}
+          },
+          "additionalProperties":false
+        },
+        "group-input":{
+          "type": "object",
+          "properties": {
+            "_id":{"$ref":"common.json#/definitions/string-id"},
+            "label": {"$ref": "#/definitions/label"}
+          },
+          "additionalProperties": false
+        },
+        "group-metadata-input": {
+          "type": "object",
+          "properties": {
+            "_id":{"type":"string"}
+          },
+          "additionalProperties": false
+        },
+        "group-output":{
+          "type": "object",
+          "allOf": [{"$ref":"#/definitions/group"}],
+          "required": ["permissions", "created","modified","_id"]
+        },
+        "group-new-output": {
+          "type": "object",
+          "properties": {
+            "_id": {"$ref":"common.json#/definitions/string-id"}
+          },
+          "required": ["_id"]
+        },
+        "group-output-list":{
+            "type":"array",
+            "items":{"$ref":"#/definitions/group-output"}
+        },
+        "project-group-output":{
+          "type": "object",
+          "allOf": [{"$ref":"#/definitions/group"}],
+          "required": ["_id"]
+        },
+        "project-group-output-list":{
+            "type":"array",
+            "items":{"$ref":"#/definitions/project-group-output"}
+        }
+    }
+}
+

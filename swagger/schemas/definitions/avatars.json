@@ -1,0 +1,15 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"definitions": {
+		"avatars": {
+			"title": "Avatar",
+			"type": "object",
+			"properties": {
+				"gravatar":         {"type": ["string", "null"], "format": "uri" },
+				"provider":         {"type": ["string", "null"], "format": "uri" },
+				"custom":           {"type": ["string", "null"], "pattern": "^https:", "format": "uri" }
+			},
+			"additionalProperties": false
+		}
+	}
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "value":             {"type": "string", "minLength": 1, "maxLength": 32},
+    "tag":{
+      "properties":{
+        "value":{"$ref":"#/definitions/value"}
+      },
+      "additionalProperties": false,
+      "required": ["value"]
+    },
+    "tag-output-list":{
+      "type":"array",
+      "items":{
+        "allOf":[{"$ref":"#/definitions/tag"}]
+      }
+    }
+  }
+}

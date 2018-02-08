@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions":{
+        "project-input":{
+            "type": "object",
+            "properties": {
+                "public":       {"$ref":"container.json#/definitions/public"},
+                "label":        {"$ref":"common.json#/definitions/label"},
+                "info":         {"$ref":"container.json#/definitions/info"},
+                "description":  {"$ref":"common.json#/definitions/description"},
+                "group":        {"$ref":"common.json#/definitions/string-id"}
+            },
+            "additionalProperties": false
+        },
+        "project-metadata-input": {
+            "type": "object",
+            "properties": {
+                "public":       {"type": ["boolean", "null"]},
+                "label":        {"type": ["string", "null"]},
+                "info":         {"type": ["object", "null"]},
+                "files":        {
+                    "type": ["array", "null"],
+                    "items": {"$ref": "file.json#/definitions/file-input"}
+                }
+            },
+            "additionalProperties": false
+        },
+        "project-output":{
+            "type": "object",
+            "properties": {
+                "_id":         {"$ref":"common.json#/definitions/objectid"},
+                "public":      {"$ref":"container.json#/definitions/public"},
+                "label":       {"$ref":"common.json#/definitions/label"},
+                "info":        {"$ref":"container.json#/definitions/info"},
+                "info_exists": {"$ref":"container.json#/definitions/info_exists"},
+                "description": {"$ref":"common.json#/definitions/description"},
+                "group":       {"$ref":"common.json#/definitions/string-id"},
+                "created":     {"$ref":"created-modified.json#/definitions/created"},
+                "modified":    {"$ref":"created-modified.json#/definitions/modified"},
+                "template":    {"type":"object"},
+                "permissions": {"$ref":"permission.json#/definitions/permission-output-list"},
+                "files":{
+                    "type":"array",
+                    "items":{
+                        "allOf":[{"$ref":"file.json#/definitions/file-output"}]
+                    }
+                },
+                "notes": {"$ref":"note.json#/definitions/notes-list-output"},
+                "tags":  {"$ref":"tag.json#/definitions/tag-output-list"},
+                "analyses":{
+                    "type":"array",
+                    "items":{"$ref":"analysis.json#/definitions/analysis-output"}
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}
