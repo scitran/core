@@ -171,7 +171,7 @@ def sanitize_string_to_filename(value):
     http://stackoverflow.com/a/7406369
     """
 
-    keepcharacters = (' ', '.', '_', '-')
+    keepcharacters = (' ', '.', '_', '-', '/')
     return "".join([c for c in value if c.isalnum() or c in keepcharacters]).rstrip()
 
 def obj_from_map(_map):
