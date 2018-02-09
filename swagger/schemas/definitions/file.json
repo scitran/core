@@ -93,6 +93,17 @@
           "type": "object",
           "allOf": [{"$ref":"#/definitions/file"}],
           "required":["modified", "size"]
-        }
+        },
+        "file-reference": {
+          "type": "object",
+          "properties": {
+            "type": {"$ref":"container.json#/definitions/container-type"},
+            "id": {"$ref":"container.json#/definitions/_id"},
+            "name": {"$ref":"#/definitions/name"}
+          },
+          "required": [ "type", "id", "name" ],
+          "additionalProperties":false,
+          "description": "A reference to an individual file in a container, by type, id and name"
+        }    
     }
 }

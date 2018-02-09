@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "allOf": [{"$ref":"../definitions/batch.json#/definitions/batch-proposal-input"}],
+    "example": {
+	    "gear_id": "59b1b5b0e105c40019f50015",
+	    "config": {},
+	    "tags": ["test-tag"],
+	    "targets": [{
+	    	"type": "session",
+	    	"id": "deb1b5b0e105c40019f500af"
+	    }]
+	}
+}
