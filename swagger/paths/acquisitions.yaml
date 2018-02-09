@@ -51,6 +51,8 @@ $template_arguments:
 # ===== Analyses =====
 /acquisitions/{AcquisitionId}/analyses:
   $template: templates/analyses-list.yaml
+  arguments:
+    allowCreate: true
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
   arguments:

@@ -93,26 +93,9 @@ $template_arguments:
 
 # ===== Analyses =====
 /sessions/{SessionId}/analyses:
-  parameters:
-    - in: path
-      type: string
-      required: true
-      name: SessionId
-  post:
-    summary: Create an analysis.
-    description: ''
-    operationId: add_session_analysis
-    tags:
-    - 'sessions'
-    parameters:
-      - in: body
-        name: body
-        schema:
-          $ref: schemas/input/analysis.json
-    responses:
-      '200':
-        description: ''
-
+  $template: templates/analyses-list.yaml
+  arguments:
+    allowCreate: true
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
   arguments:
