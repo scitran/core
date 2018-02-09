@@ -21,6 +21,18 @@
         "[-_ a-zA-Z0-9]+": {"$ref":"file.json#/definitions/file-reference"}
       }
     },
+    "inputs-array":{
+      "type":"array",
+      "items":{
+        "type":"object",
+        "properties":{
+          "type": {"$ref":"container.json#/definitions/container-type"},
+          "id": {"$ref":"container.json#/definitions/_id"},
+          "name": {"$ref":"file.json#/definitions/name"},
+          "input":{"type":"string"}
+        }
+      }
+    },
     "destination": {
       "type": "object",
       "properties": {
@@ -88,7 +100,8 @@
     },
 
     "state":{
-      "type":"string"
+      "type":"string",
+      "enum": [ "pending", "running", "failed", "complete", "cancelled" ]
     },
     "attempt":{
       "type":"integer"

@@ -63,7 +63,7 @@
                     "items":{"$ref":"file.json#/definitions/file-output"}
                 },
                 "notes": {"$ref":"note.json#/definitions/notes-list-output"},
-                "tags":  {"$ref":"tag.json#/definitions/tag-output-list"},
+                "tags":  {"$ref":"tag.json#/definitions/tag-list"},
                 "analyses":{
                     "type":"array",
                     "items":{"$ref":"analysis.json#/definitions/analysis-output"}

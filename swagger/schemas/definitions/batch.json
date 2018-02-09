@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "matched-container-list": {
+      "type": "array",
+      "items": {"$ref":"container.json#/definitions/container-output-with-files"}
+    },
+    "batch-proposal-detail": {
+      "type": "object",
+      "properties": {
+        "analysis": {"$ref": "analysis.json#/definitions/analysis-input"},
+        "tags": {"$ref":"tag.json#/definitions/tag-list"}
+      },
+      "additionalProperties": false
+    },
+    "batch": {
+      "type": "object",
+      "properties": {
+        "_id": {"$ref":"common.json#/definitions/objectid"},
+        "gear_id": {"$ref":"job.json#/definitions/gear_id"},
+        "state": {"$ref":"job.json#/definitions/state"},
+        "origin": {"$ref":"job.json#/definitions/job-origin"},
+        "config": {"$ref":"job.json#/definitions/config"},
+        "jobs": {
+          "type": "array",
+          "items": { "$ref": "common.json#/definitions/objectid" }
+        },
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"}
+      }
+    },
+    "batch-proposal": {
+      "type": "object",
+      "properties": {
+        "_id": {"$ref":"common.json#/definitions/objectid"},
+        "gear_id": {"$ref":"job.json#/definitions/gear_id"},
+        "state": {"$ref":"job.json#/definitions/state"},
+        "config": {"$ref":"job.json#/definitions/config"},
+        "origin": {"$ref":"job.json#/definitions/job-origin"},
+
+        "proposal": { "$ref": "#/definitions/batch-proposal-detail" },
+
+        "ambiguous": { "$ref": "#/definitions/matched-container-list" },
+        "matched": { "$ref": "#/definitions/matched-container-list" },
+        "not_matched": { "$ref": "#/definitions/matched-container-list" },
+
+        "improper_permissions": { 
+          "type": "array", 
+          "items": {"$ref":"container.json#/definitions/_id"} 
+        },
+
+        "created":{"$ref":"created-modified.json#/definitions/created"},
+        "modified":{"$ref":"created-modified.json#/definitions/modified"}
+      },
+      "additionalProperties": false
+    },
+    "batch-proposal-input": {
+      "type": "object",
+      "properties": {
+        "gear_id": {"$ref":"job.json#/definitions/gear_id"},
+        "config": {"$ref":"job.json#/definitions/config"},
+        "tags": {"$ref":"tag.json#/definitions/tag-list"},
+        "analysis": {"$ref": "analysis.json#/definitions/analysis-input"},
+        "targets": {
+          "type": "array",
+          "items": {"$ref":"container.json#/definitions/container-reference"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "batch-cancel-output": {
+      "type": "object",
+      "properties": {
+        "number_cancelled": {"type":"integer"}
+      },
+      "additionalProperties": false,
+      "required": ["number_cancelled"],
+      "x-sdk-return": "number_cancelled"
+    }
+  }
+}

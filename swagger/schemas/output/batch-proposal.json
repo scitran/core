@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "allOf": [{"$ref":"../definitions/batch.json#/definitions/batch-proposal"}],
+    "example": {
+	    "_id": "5a33fa6352e95c001707489b",
+	    "gear_id": "59b1b5b0e105c40019f50015",
+	    "config": {},
+	    "state": "pending",
+	    "origin": {
+	      "type": "user",
+	      "id": "justinehlert@flywheel.io"
+	    },
+	    "proposal": {},
+	    "created": "2017-12-15T16:37:55.538000+00:00",
+	    "modified": "2017-12-15T16:38:01.107000+00:00"
+	}
+}

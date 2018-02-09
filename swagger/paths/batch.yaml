@@ -2,34 +2,31 @@
   get:
     summary: Get a list of batch jobs the user has created.
     description: Requires login.
-    operationId: get_all_batch_jobs
+    operationId: get_all_batches
     tags:
     - batch
     responses:
       '200':
-        description: ''
-        # Schema file does not exist
-        # schema:
-          # $ref: schemas/output/batch-list.json
+        description: 'Returns a list of all known batch jobs for the user'
+        schema:
+          $ref: schemas/output/batch-list.json
   post:
     summary: Create a batch job proposal and insert it as 'pending'.
-    operationId: create_batch_job
+    operationId: propose_batch
     tags:
     - batch
     parameters:
       - name: body
         in: body
-        description: ''
+        required: true
+        description: The batch proposal
         schema:
-          type: object
-          # Schema file does not exist
-          # $ref: schemas/input/batch-insert.json
+          $ref: schemas/input/propose-batch.json
     responses:
       '200':
-        description: ''
-        # Schema file does not exist
-        # schema:
-          # $ref: schemas/output/batch-insert.json
+        description: The batch proposal object that was created
+        schema:
+          $ref: schemas/output/batch-proposal.json
 
 /batch/{BatchId}:
   parameters:
@@ -40,19 +37,18 @@
   get:
     summary: Get batch job details.
     parameters:
-      - in: query
+      - name: jobs
+        in: query
         type: boolean
-        name: jobs
         description: If true, return job objects instead of job ids
-    operationId: get_batch_job
+    operationId: get_batch
     tags:
     - batch
     responses:
       '200':
-        description: ''
-        # Schema file does not exist
-        # schema:
-          # $ref: schemas/output/batch.json
+        description: 'The batch object'
+        schema:
+          $ref: schemas/output/batch.json
       '404':
         $ref: '#/responses/404:resource-not-found'
 
@@ -67,7 +63,7 @@
     description: |
       Creates jobs from proposed inputs, returns jobs enqueued.
       Moves 'pending' batch job to 'running'.
-    operationId: run_batch_job
+    operationId: start_batch
     tags:
     - batch
     responses:
@@ -87,12 +83,11 @@
     description: |
       Cancels jobs that are still pending, returns number of jobs cancelled.
       Moves a 'running' batch job to 'cancelled'.
-    operationId: cancel_batch_job
+    operationId: cancel_batch
     tags:
     - batch
     responses:
       '200':
-        description: ''
-        examples:
-          response: 
-            canceled_jobs: 4
+        description: 'The number of jobs canceled'
+        schema:
+          $ref: schemas/output/batch-cancel.json
