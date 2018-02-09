@@ -89,7 +89,7 @@
       'running' state.
 
       Accepts the same body as /api/jobs/add , except all fields are optional.
-    operationId: update_job
+    operationId: modify_job
     tags:
     - jobs
     responses:
@@ -98,6 +98,7 @@
     parameters:
       - name: body
         in: body
+        required: true
         schema:
           example:
             $ref: examples/input/job-update.json
