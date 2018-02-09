@@ -44,7 +44,6 @@
             }
         },
         "attempt": 1,
-        "name": "cortex-demo",
         "tags": ["ad-hoc", "cortex-demo", "analysis"],
         "destination": {
             "type": "analysis",
@@ -82,7 +81,8 @@
         "created": "2016-10-18T17:45:11.816000+00:00",
         "state": "complete",
         "config": {},
-        "id": "58065fa7e5dc5b001457a882"
+        "id": "58065fa7e5dc5b001457a882",
+        "gear_id": "58065fa7e5dc5b001457a882"
     },
     "user": "canakgun@flywheel.io",
     "_id": "58065fa7e5dc5b001457a881"
