@@ -122,6 +122,11 @@ module.exports = function(grunt) {
 	// returns a simplified version of schema
 	function simplifySchema(schema, path, context) {
 		schema = _.cloneDeep(schema);
+		// If an x-sdk-schema is specified, use that
+		if( schema['x-sdk-schema'] ) {
+			schema = schema['x-sdk-schema'];
+		}
+
 		if( !isValidSchema(schema) ) {
 			grunt.log.writeln('WARNING '.red + 'Invalid schema (no object type specified) at: ' + formatPath(path));
 			schema.type = 'object';

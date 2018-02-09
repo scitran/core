@@ -41,7 +41,10 @@
 					"oneOf":[
 						{"$ref":"common.json#/definitions/objectid"},
 						{"$ref": "job.json#/definitions/job-output"}
-					]
+					],
+					"x-sdk-schema": { 
+						"$ref": "job.json#/definitions/job-output"
+					}
 				},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
 				"description": {"$ref":"common.json#/definitions/description"},
