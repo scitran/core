@@ -181,6 +181,8 @@ $template_arguments:
 # ===== Analyses =====
 /collections/{CollectionId}/analyses:
   $template: templates/analyses-list.yaml
+  arguments:
+    allowCreate: true
 /collections/{CollectionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
   arguments:

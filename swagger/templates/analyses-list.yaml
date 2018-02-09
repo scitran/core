@@ -8,23 +8,53 @@ parameters:
   - name: tag
     type: string
     required: true
+  - name: allowCreate
+    type: boolean
+    required: false
 template: |
   parameters:
     - required: true
       type: string
       in: path
       name: '{{parameter}}'
+  get:
+    summary: Get analyses for {{resource}}.
+    description: Returns analyses that directly belong to this resource.
+    operationId: get_{{resource}}_analyses
+    tags:
+    - '{{tag}}'
+    responses:
+      '200': 
+        description: The list of analyses
+        schema:
+          $ref: schemas/output/analyses-list.json
+
+  {{#allowCreate}}
   post:
     summary: Create an analysis and upload files.
+    description: |
+      When query param "job" is "true", send JSON to create
+      an analysis and job.  Otherwise, multipart/form-data
+      to upload files and create an analysis.
     operationId: add_{{resource}}_analysis
     tags:
     - '{{tag}}'
     consumes:
+      - application/json
       - multipart/form-data
     parameters:
-      - in: formData
-        name: formData
-        type: string
+      - in: body
+        name: body
+        required: true
+        schema: 
+          $ref: schemas/input/analysis-job.json
+      - name: job
+        in: query
+        type: boolean
+        description: Return job as an object instead of an id
     responses:
       '200':
-        description: ''
+        description: Returns the id of the analysis that was created.
+        schema:
+          $ref: schemas/output/container-new.json  
+  {{/allowCreate}}

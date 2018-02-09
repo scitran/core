@@ -11,3 +11,52 @@ $template_arguments:
 
 /analyses/{AnalysisId}/files/{Filename}:
   $template: templates/analysis-files-create-ticket-filename.yaml
+
+/{ContainerName}/{ContainerId}/{SubcontainerName}/analyses:
+  parameters:
+    - name: ContainerName
+      in: path
+      type: string
+      required: true
+      enum:
+        - groups
+        - projects
+        - sessions
+        - acquisitions
+        - collections
+      description: The parent container type
+    - name: ContainerId
+      in: path
+      type: string
+      required: true
+      description: The parent container id
+    - name: SubcontainerName
+      in: path
+      type: string
+      required: true
+      enum:
+        - all
+        - projects
+        - sessions
+        - acquisitions
+      description: The sub container type
+  get:
+    summary: Get nested analyses for a container
+    description: >
+      Returns analyses that belong to containers of the specified type that belong
+      to ContainerId. 
+
+      For example: `projects/{ProjectId}/acquisitions/analyses` will return any analyses 
+      that have an acquisition that is under that project as a parent.
+
+      The `all` keyword is also supported, for example: projects/{ProjectId}/all/analyses 
+      will return any analyses that have any session or acquisition or the project itself as a parent.
+    operationId: get_analyses
+    tags:
+    - analyses
+    responses:
+      '200': 
+        description: The list of analyses
+        schema:
+          $ref: schemas/output/analyses-list.json  
+

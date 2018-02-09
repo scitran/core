@@ -40,7 +40,7 @@
 				"job":{
 					"oneOf":[
 						{"$ref":"common.json#/definitions/objectid"},
-						{"type":"object"}
+						{"$ref": "job.json#/definitions/job-output"}
 					]
 				},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
@@ -52,6 +52,24 @@
 			},
 			"required":["_id", "files", "label", "user", "created", "modified"]
 		},
+		"analysis-list-entry":{
+			"type":"object",
+			"properties":{
+				"_id":{"$ref":"common.json#/definitions/objectid"},
+				"files":{
+					"type":"array",
+					"items":{"$ref":"file.json#/definitions/file-entry"}
+				},
+				"job":         {"$ref":"common.json#/definitions/objectid"},
+				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
+				"description": {"$ref":"common.json#/definitions/description"},
+				"label":       {"$ref":"common.json#/definitions/label"},
+				"user":        {"$ref":"common.json#/definitions/user-id"},
+				"created":     {"$ref":"created-modified.json#/definitions/created"},
+				"modified":    {"$ref":"created-modified.json#/definitions/modified"}
+			},
+			"required":["_id", "files", "label", "user", "created", "modified"]
+		},		
 		"analysis-job": {
 			"type": "object",
 			"properties":{
