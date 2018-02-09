@@ -85,7 +85,7 @@
 				"_id":{"$ref":"common.json#/definitions/objectid"},
 				"files":{
 					"type":"array",
-					"items":{"$ref":"file.json#/definitions/file"}
+					"items":{"$ref":"file.json#/definitions/file-entry"}
 				},
 				"job":         {"$ref":"common.json#/definitions/objectid"},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
