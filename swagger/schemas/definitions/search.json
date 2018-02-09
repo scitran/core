@@ -1,0 +1,128 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+    	"search-type": {
+    		"type": "string",
+    		"enum": ["file", "acquisition", "session", "analysis", "collection"],
+    		"description": "Sets the type of search results to return"
+    	},
+    	"search-query": {
+    		"type": "object",
+    		"properties": {
+	    		"return_type": {"$ref": "#/definitions/search-type"},
+	    		"search_string": {
+	    			"type": "string",
+	    			"description": "Represents the plain text search query"
+	    		},
+	    		"all_data": {
+	    			"type": "boolean",
+	    			"description": "When set will include all data that the user does not have access to read",
+	    			"default": false
+	    		},
+	    		"filters": {
+	    			"type": "object",
+	    			"description": "See https://www.elastic.co/guide/en/elasticsearch/reference/current/term-level-queries.html"
+	    		}
+	    	},
+	    	"required": ["return_type"]
+    	},
+    	"search-project-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "label":       {"$ref":"common.json#/definitions/label"}
+    		},
+    		"description": "Fields for project search response"
+    	},
+    	"search-group-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "label":       {"$ref":"common.json#/definitions/label"}
+    		},
+    		"description": "Fields for group search response"
+    	},
+    	"search-session-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "label":       {"$ref":"common.json#/definitions/label"},
+                "timestamp":   {"$ref":"common.json#/definitions/timestamp"},
+                "created":     {"$ref":"created-modified.json#/definitions/created"}
+    		},
+    		"description": "Fields for session search response"
+    	},
+    	"search-acquisition-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "label":       {"$ref":"common.json#/definitions/label"},
+                "timestamp":   {"$ref":"common.json#/definitions/timestamp"},
+                "created":     {"$ref":"created-modified.json#/definitions/created"}
+    		},
+    		"description": "Fields for acquisition search response"
+    	},
+    	"search-subject-response": {
+    		"type": "object",
+    		"properties": {
+                "code":         {"$ref":"subject.json#/definitions/code"}
+            },
+    		"description": "Fields for subject search response"
+    	},
+    	"search-file-response": {
+    		"type": "object",
+    		"properties": {
+                "measurements": {"$ref":"file.json#/definitions/measurements"},
+                "created":      {"$ref":"created-modified.json#/definitions/created"},
+	            "type":         {"$ref":"file.json#/definitions/file-type"},
+	            "name":         {"$ref":"file.json#/definitions/name"},
+	            "size":         {"$ref":"file.json#/definitions/size"}
+    		},
+    		"description": "Fields for file search response"
+    	},
+    	"search-analysis-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "label":       {"$ref":"common.json#/definitions/label"},
+                "user":        {"$ref":"common.json#/definitions/user-id"},
+                "created":     {"$ref":"created-modified.json#/definitions/created"}
+    		},
+    		"description": "Fields for acquisition search response"
+    	},
+    	"search-parent-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "type":        {"$ref":"container.json#/definitions/container-type"}
+            },
+			"description": "Fields for parent search response"  
+    	},
+    	"search-collection-response": {
+    		"type": "object",
+    		"properties": {
+                "_id":         {"$ref":"container.json#/definitions/_id"},
+                "label":       {"$ref":"common.json#/definitions/label"},
+                "curator":     {"$ref":"common.json#/definitions/user-id"},
+                "created":     {"$ref":"created-modified.json#/definitions/created"}
+    		},
+    		"description": "Fields for collection search response"
+    	},
+    	"search-response": {
+    		"type": "object",
+    		"properties": {
+    			"project":     {"$ref":"#/definitions/search-project-response"},
+    			"group":       {"$ref":"#/definitions/search-group-response"},
+    			"session":     {"$ref":"#/definitions/search-session-response"},
+    			"acquisition": {"$ref":"#/definitions/search-acquisition-response"},
+    			"subject":     {"$ref":"#/definitions/search-subject-response"},
+    			"file":        {"$ref":"#/definitions/search-file-response"},
+    			"collection":  {"$ref":"#/definitions/search-collection-response"},
+    			"analysis":    {"$ref":"#/definitions/search-analysis-response"},
+    			"parent":      {"$ref":"#/definitions/search-parent-response"},
+    			"permissions": {"$ref":"permission.json#/definitions/permission-output-list"}
+    		},
+    		"description": "Single search response entry"
+    	}
+    }
+}

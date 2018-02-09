@@ -68,6 +68,7 @@ paths:
     - paths/batch.yaml
     - paths/analyses.yaml
     - paths/site-rules.yaml
+    - paths/dataexplorer.yaml
 
 
 securityDefinitions:
