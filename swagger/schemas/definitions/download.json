@@ -9,6 +9,7 @@
                 "-": {"$ref": "#/definitions/filter-items"},
                 "minus": {"$ref": "#/definitions/filter-items"}
             },
+            "x-sdk-ignore-properties": ["+", "-"],
             "additionalProperties": false
         },
         "filter-items": {            
