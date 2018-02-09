@@ -175,6 +175,7 @@ expected_input_schemas = set([
     'propose-batch.json',
     'rule-new.json',
     'rule-update.json',
+    'search-query.json',
     'session.json',
     'session-update.json',
     'subject.json',

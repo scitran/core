@@ -1,0 +1,21 @@
+/dataexplorer/search:
+  post:
+    summary: Perform a search query
+    operationId: search
+    parameters:
+      - name: simple
+        in: query
+        type: boolean
+      - name: limit
+        in: query
+        type: integer
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/search-query.json
+    responses:
+      '200':
+        description: A list of results of the search query
+        schema:
+          $ref: schemas/output/search-response-list.json
