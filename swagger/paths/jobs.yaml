@@ -25,6 +25,13 @@
     operationId: get_next_job
     tags:
     - jobs
+    parameters:
+      - name: tags
+        in: query
+        type: array
+        items:
+          type: string
+        collectionFormat: multi
     responses:
       '200':
         description: ''
@@ -161,9 +168,15 @@
           $ref: schemas/output/job-log.json
   post:
     summary: Add logs to a job.
-    operationId: add_logs
+    operationId: add_job_logs
     tags:
     - jobs
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/job-logs.json
     responses:
       '200':
         description: Logs were added. No value is returned.
