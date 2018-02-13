@@ -14,7 +14,7 @@ template: |
       type: string
       in: path
       name: '{{parameter}}'
-  post:
+  get:
     summary: End a packfile upload
     operationId: end_{{resource}}_packfile_upload
     tags: 
@@ -22,9 +22,15 @@ template: |
     produces:
       - text/event-stream
     parameters:
-      - in: formData
-        name: formData
+      - name: token
+        in: query
         type: string
+        required: true
+      - name: metadata
+        in: query
+        type: string
+        required: true
+        description: string-encoded metadata json object.
     responses:
       '200':
         description: ''

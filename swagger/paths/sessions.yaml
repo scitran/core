@@ -50,14 +50,6 @@ $template_arguments:
 /sessions/{SessionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
 
-# ===== Packfile =====
-/sessions/{SessionId}/packfile-start:
-  $template: templates/packfile-start.yaml
-/sessions/{SessionId}/packfile:
-  $template: templates/packfile.yaml
-/sessions/{SessionId}/packfile-end:
-  $template: templates/packfile-end.yaml
-
 # ===== Files =====
 /sessions/{SessionId}/files:
   $template: templates/file-list-upload.yaml
