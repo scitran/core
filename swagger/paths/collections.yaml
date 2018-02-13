@@ -150,14 +150,6 @@ $template_arguments:
 /collections/{CollectionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
 
-# ===== Packfile =====
-/collections/{CollectionId}/packfile-start:
-  $template: templates/packfile-start.yaml
-/collections/{CollectionId}/packfile:
-  $template: templates/packfile.yaml
-/collections/{CollectionId}/packfile-end:
-  $template: templates/packfile-end.yaml
-
 # ===== Files =====
 /collections/{CollectionId}/files:
   $template: templates/file-list-upload.yaml

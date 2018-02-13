@@ -22,9 +22,14 @@ template: |
     consumes:
       - multipart/form-data
     parameters:
-      - in: formData
-        name: formData
+      - name: token
+        in: query
         type: string
+        required: true
+      - name: file
+        in: formData
+        type: file
+        required: true
     responses:
       '200':
         description: ''

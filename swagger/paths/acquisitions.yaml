@@ -26,14 +26,6 @@ $template_arguments:
 /acquisitions/{AcquisitionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
 
-# ===== Packfile =====
-/acquisitions/{AcquisitionId}/packfile-start:
-  $template: templates/packfile-start.yaml
-/acquisitions/{AcquisitionId}/packfile:
-  $template: templates/packfile.yaml
-/acquisitions/{AcquisitionId}/packfile-end:
-  $template: templates/packfile-end.yaml
-
 # ===== Files =====
 /acquisitions/{AcquisitionId}/files:
   $template: templates/file-list-upload.yaml
