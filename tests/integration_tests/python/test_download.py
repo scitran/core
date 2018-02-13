@@ -218,9 +218,16 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
     assert r.ok
     ticket = r.json()['ticket']
 
-    # download single file from byte 0 to end of file
+    # try to download single file's first byte w/o feature flag
     r = as_admin.get(session_files + '/one.csv',
                      params={'ticket': ticket},
+                     headers={'Range': 'bytes=0-0'})
+    assert r.ok
+    assert r.content == '123456789'
+
+    # download single file from byte 0 to end of file
+    r = as_admin.get(session_files + '/one.csv',
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=0-'})
     assert r.ok
     assert r.content == '123456789'
@@ -229,10 +236,10 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
     assert r.ok
     ticket = r.json()['ticket']
 
-    # download single file's first byte
+    # download single file's first byte by using lower case header
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
-                     headers={'Range': 'bytes=0-0'})
+                     params={'ticket': ticket, 'view': 'true'},
+                     headers={'range': 'bytes=0-0'})
     assert r.ok
     assert r.content == '1'
 
@@ -242,7 +249,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # download single file's first two byte
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=0-1'})
     assert r.ok
     assert r.content == '12'
@@ -253,7 +260,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # download single file's last 5 bytes
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=-5'})
     assert r.ok
     assert r.content == '56789'
@@ -264,7 +271,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid unit
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'lol=-5'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -276,7 +283,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
     # try to download single file with invalid range where the last byte is greater then the size of the file
     # in this case the whole file is returned
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=0-500'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -287,7 +294,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range where the first byte is greater then the size of the file
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=500-'})
     assert r.status_code == 416
 
@@ -297,7 +304,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range, in this case the whole file is returned
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=-'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -308,7 +315,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range first byte is greater than the last one
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=10-5'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -319,7 +326,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range, can't parse first byte
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=r-0'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -330,7 +337,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range, can't parse last byte
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=0-bb'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -341,7 +348,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range syntax
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=1+5'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -352,7 +359,7 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # try to download single file with invalid range header syntax
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes-1+5'})
     assert r.status_code == 200
     assert r.content == '123456789'
@@ -363,17 +370,18 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
 
     # download multiple ranges
     r = as_admin.get(session_files + '/one.csv',
-                     params={'ticket': ticket},
+                     params={'ticket': ticket, 'view': 'true'},
                      headers={'Range': 'bytes=1-2, 3-4'})
-
-    assert r.content == '--THIS_STRING_SEPARATES\n' \
+    assert r.ok
+    boundary = r.headers.get('Content-Type').split('boundary=')[1]
+    assert r.content == '--{0}\n' \
                         'Content-Type: text/csv\n' \
                         'Content-Range: bytes 1-2/9\n\n' \
                         '23\n' \
-                        '--THIS_STRING_SEPARATES\n' \
+                        '--{0}\n' \
                         'Content-Type: text/csv\n' \
                         'Content-Range: bytes 3-4/9\n\n' \
-                        '45\n'
+                        '45\n'.format(boundary)
 
 
 def test_analysis_download(data_builder, file_form, as_admin, default_payload):
