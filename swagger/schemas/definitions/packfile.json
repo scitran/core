@@ -52,8 +52,9 @@
         "packfile-start": {
             "type":"object",
             "properties":{
-                "token":{"$ref":"common.json#/definitions/objectid"}
-            }            
+                "token":{"type": "string"}
+            },
+            "x-sdk-return": "token"
         }
     }
 }
