@@ -47,7 +47,8 @@ def test_search(as_public, as_drone, es):
                 'must': {'match': {'_all': 'search'}},
                 'filter': {'bool': {'must': [
                     {'terms': {filter_key + '.raw': filter_value}},
-                    {'range': filter_range}
+                    {'range': filter_range},
+                    {'term': {'deleted': False}}
                 ]}},
             }},
             'aggs': {'by_container': {'terms':
@@ -69,7 +70,11 @@ def test_search(as_public, as_drone, es):
     es.search.assert_called_with(
         body={
             'size': 0,
-            'query': {'match_all': {}},
+            'query': {'bool': {
+                'filter': {'bool': {'must': [
+                    {'term': {'deleted': False}}
+                ]}},
+            }},
             'aggs': {'by_container': {'terms':
                 {'field': cont_type + '._id', 'size': 100},
                 'aggs': {'by_top_hit': {'top_hits': {
@@ -89,7 +94,11 @@ def test_search(as_public, as_drone, es):
     es.search.assert_called_with(
         body={
             'size': 0,
-            'query': {'match_all': {}},
+            'query': {'bool': {
+                'filter': {'bool': {'must': [
+                    {'term': {'deleted': False}}
+                ]}},
+            }},
             'aggs': {'by_container': {'terms':
                 {'field': cont_type + '._id', 'size': 100},
                 'aggs': {'by_top_hit': {'top_hits': {
@@ -113,7 +122,12 @@ def test_search(as_public, as_drone, es):
     es.search.assert_called_with(
         body={
             '_source': deh.SOURCE[cont_type],
-            'query': {'bool': {'filter': {'bool': {'must': [{'term': {'container_type': cont_type}}]}}}},
+            'query': {'bool': {
+                'filter': {'bool': {'must': [
+                    {'term': {'container_type': cont_type}},
+                    {'term': {'deleted': False}}
+                ]}},
+            }},
             'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
             'size': 100},
         doc_type='flywheel',
@@ -136,6 +150,7 @@ def test_search(as_public, as_drone, es):
                     {'term': {'container_type': cont_type}},
                     {'terms': {filter_key + '.raw': filter_value}},
                     {'range': filter_range},
+                    {'term': {'deleted': False}}
                 ]}}
             }},
             'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
@@ -160,6 +175,7 @@ def test_search(as_public, as_drone, es):
                     {'term': {'container_type': cont_type}},
                     {'terms': {filter_key + '.raw': filter_value}},
                     {'range': filter_range},
+                    {'term': {'deleted': False}}
                 ]}}
             }},
             'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
@@ -199,7 +215,8 @@ def test_search(as_public, as_drone, es):
                                 {'terms': {filter_key + '.raw': [filter_value]}}
                             ]
                         }
-                    }
+                    },
+                    {'term': {'deleted': False}}
                 ]}}
             }},
             'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
@@ -233,6 +250,7 @@ def test_search(as_public, as_drone, es):
                 'filter': {'bool': {'must': [
                     {'term': {'container_type': cont_type}},
                     {'terms': {filter_key + '.raw': filter_value}},
+                    {'term': {'deleted': False}}
                 ]}}
             }},
             'script_fields': {'info_exists': deh.INFO_EXISTS_SCRIPT},
@@ -411,7 +429,9 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     es.search.assert_called_with(
         body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
-              'query': {'bool': {'must': {'match_all': {}}}},
+              'query': {'bool': {
+                'filter': [{'term': {'deleted': False}}],
+                'must': {'match_all': {}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
@@ -422,7 +442,9 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
     es.search.assert_called_with(
         body={'aggs': {'results': {'terms': {'field': field_name + '.raw', 'size': 15, 'missing': 'null'}}},
-              'query': {'bool': {'must': {'match': {'field': search_str}}}},
+              'query': {'bool': {
+              'filter': [{'term': {'deleted': False}}],
+              'must': {'match': {'field': search_str}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
@@ -434,7 +456,9 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name})
     es.search.assert_called_with(
         body={'aggs': {'results': {'stats': {'field': field_name}}},
-              'query': {'bool': {'must': {'match_all': {}}}},
+              'query': {'bool': {
+              'filter': [{'term': {'deleted': False}}],
+              'must': {'match_all': {}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
@@ -445,7 +469,9 @@ def test_aggregate_field_values(as_public, as_drone, es):
     r = as_drone.post('/dataexplorer/search/fields/aggregate', json={'field_name': field_name, 'search_string': search_str})
     es.search.assert_called_with(
         body={'aggs': {'results': {'stats': {'field': field_name}}},
-              'query': {'bool': {'must': {'match': {'field': search_str}}}},
+              'query': {'bool': {
+              'filter': [{'term': {'deleted': False}}],
+              'must': {'match': {'field': search_str}}}},
               'size': 0},
         doc_type='flywheel',
         index='data_explorer')
