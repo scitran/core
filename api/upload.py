@@ -91,16 +91,13 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     # Here, we accept any
 
     # Non-file form fields may have an empty string as filename, check for 'falsy' values
-    file_fields = [x for x in form if form[x].filename]
+    file_fields = extract_file_fields(form)
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
         raise FileFormException("Targeted uploads can only send one file")
 
-
-
     for field in file_fields:
-        field = form[field]
         # Augment the cgi.FieldStorage with a variety of custom fields.
         # Not the best practice. Open to improvements.
         # These are presumbed to be required by every function later called with field as a parameter.
@@ -270,3 +267,18 @@ class Upload(base.RequestHandler):
                 'directories': cleaned,
             }
         }
+
+def extract_file_fields(form):
+    """Returns a list of file fields in the form, handling multiple values""" 
+    result = []
+    for fieldname in form:
+        field = form[fieldname]
+        if isinstance(field, list):
+            for field_entry in field:
+                if field_entry.filename:
+                    result.append(field_entry)
+
+        elif field.filename:
+            result.append(field)
+
+    return result

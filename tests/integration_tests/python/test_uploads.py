@@ -1197,9 +1197,14 @@ def test_packfile_upload(data_builder, file_form, as_admin, as_root, api_db):
     assert r.ok
     token = r.json()['token']
 
+    files = [ 
+        ('file', file_form('two.csv')['file']) , 
+        ('file', file_form('three.csv')['file']) 
+    ]
+
     # upload to packfile
     r = as_admin.post('/projects/' + project + '/packfile',
-        params={'token': token}, files=file_form('two.csv'))
+        params={'token': token}, files=files)
     assert r.ok
 
     # expire upload token
