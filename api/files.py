@@ -186,7 +186,7 @@ def get_valid_file(file_info):
 
 def get_signed_url(file_path, file_system, filename=None):
     try:
-        if hasattr(config.fs, 'get_signed_url'):
+        if hasattr(file_system, 'get_signed_url'):
             return file_system.get_signed_url(file_path, filename=filename)
     except fs.errors.NoURL:
         return None
