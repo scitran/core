@@ -187,7 +187,7 @@ def humanize_validation_error(val_err):
         key = val_err.relative_path[0]
     message = val_err.message.replace("u'", "'")
 
-    return 'Gear manifest does not match schema on key ' + key + ': ' + message
+    return 'Object does not match schema on key ' + key + ': ' + message
 
 def obj_from_map(_map):
     """
