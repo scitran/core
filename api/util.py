@@ -279,9 +279,9 @@ def path_from_uuid(uuid_):
     """
     create a filepath from a UUID
     e.g.
-    hash_ = v0-sha384-01b395a1cbc0f218
+    uuid_ = cbb33a87-6754-4dfd-abd3-7466d4463ebc
     will return
-    v0/sha384/01/b3/v0-sha384-01b395a1cbc0f218
+    cb/b3/cbb33a87-6754-4dfd-abd3-7466d4463ebc
     """
     uuid_1 = uuid_.split('-')[0]
     first_stanza = uuid_1[0:2]

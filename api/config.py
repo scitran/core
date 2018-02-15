@@ -328,7 +328,5 @@ def get_auth(auth_type):
 
 # Storage configuration
 fs = open_fs(__config['persistent']['fs_url'])
-signed_url_available = ['GCSFS']
-
 legacy_fs = open_fs('osfs://' + __config['persistent']['data_path'])
 support_legacy_fs = True

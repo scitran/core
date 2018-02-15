@@ -186,18 +186,15 @@ def get_valid_file(file_info):
 
 def get_signed_url(file_path, file_system, filename=None):
     try:
-        if type(file_system).__name__ in config.signed_url_available:
-            return file_system.geturl(file_path, filename=filename)
+        if hasattr(config.fs, 'get_signed_url'):
+            return file_system.get_signed_url(file_path, filename=filename)
     except fs.errors.NoURL:
         return None
 
 
 def get_fs_by_file_path(file_path):
-    if config.support_legacy_fs:
-        if config.legacy_fs.isfile(file_path):
-            return config.legacy_fs
-        elif config.legacy_fs.isfile(file_path):
-            return config.legacy_fs
+    if config.support_legacy_fs and config.legacy_fs.isfile(file_path):
+        return config.legacy_fs
 
     if config.fs.isfile(file_path):
         return config.fs
