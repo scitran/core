@@ -276,7 +276,7 @@ class JobsHandler(base.RequestHandler):
         job = Queue.start_job(tags=tags)
 
         if job is None:
-            self.abort(400, 'No jobs to process')
+            raise InputValidationException('No jobs to process')
         else:
             return job
 
