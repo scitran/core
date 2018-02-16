@@ -34,7 +34,7 @@ class Node(object):
         raise NotImplementedError() # pragma: no cover
 
     @staticmethod
-    def filter(children, criterion, id=False):
+    def filter(children, criterion, _id=False):
         raise NotImplementedError() # pragma: no cover
 
 def _get_files(table, match):
@@ -73,7 +73,7 @@ class FileNode(Node):
         return []
 
     @staticmethod
-    def filter(children, criterion, id=False):
+    def filter(children, criterion, _id=False):
         raise APINotFoundException("Files have no children")
 
 class AcquisitionNode(Node):
@@ -84,7 +84,7 @@ class AcquisitionNode(Node):
         return files
 
     @staticmethod
-    def filter(children, criterion, id=False):
+    def filter(children, criterion, _id=False):
         for x in children:
             if x['node_type'] == "file" and x.get('name') == criterion:
                 return x, FileNode
@@ -100,8 +100,8 @@ class SessionNode(Node):
         return list(acqs) + files
 
     @staticmethod
-    def filter(children, criterion, id=False):
-        if id:
+    def filter(children, criterion, _id=False):
+        if _id:
             selectAcq = '_id'
             selectFil = '_id'
         else:
@@ -125,8 +125,8 @@ class ProjectNode(Node):
         return list(sessions) + files
 
     @staticmethod
-    def filter(children, criterion, id=False):
-        if id:
+    def filter(children, criterion, _id=False):
+        if _id:
             selectSes = '_id'
             selectFil = '_id'
         else:
@@ -148,8 +148,8 @@ class GroupNode(Node):
         return projects
 
     @staticmethod
-    def filter(children, criterion, id=False):
-        if id:
+    def filter(children, criterion, _id=False):
+        if _id:
             select = '_id'
         else:
             select = 'label'
@@ -167,7 +167,7 @@ class RootNode(Node):
         return groups
 
     @staticmethod
-    def filter(children, criterion, id=False):
+    def filter(children, criterion, _id=False):
         for x in children:
             if x.get('_id') == criterion:
                 return x, GroupNode
