@@ -106,16 +106,17 @@ $template_arguments:
       - in: body
         name: body
         schema:
-          $ref: schemas/input/analysis-job.json
-      - in: query
-        type: boolean
-        name: job
+          $ref: schemas/input/analysis.json
     responses:
       '200':
         description: ''
 
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/inputs:
+  $template: templates/analysis-inputs.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/inputs/{Filename}:
+  $template: templates/analysis-inputs-create-ticket-filename.yaml
 /sessions/{SessionId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
 /sessions/{SessionId}/analyses/{AnalysisId}/files/{Filename}:
