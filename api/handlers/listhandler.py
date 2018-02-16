@@ -480,13 +480,67 @@ class FileListHandler(ListHandler):
 
         # Authenticated or ticketed download request
         else:
-            self.response.app_iter = open(filepath, 'rb')
-            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-            if self.is_true('view'):
-                self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+            range_header = self.request.headers.get('Range', '')
+            try:
+                if not self.is_true('view'):
+                    raise util.RangeHeaderParseError('Feature flag not set')
+
+                ranges = util.parse_range_header(range_header)
+                for first, last in ranges:
+                    if first > fileinfo['size'] - 1:
+                        self.abort(416, 'Invalid range')
+
+                    if last > fileinfo['size'] - 1:
+                        raise util.RangeHeaderParseError('Invalid range')
+
+            except util.RangeHeaderParseError:
+                self.response.app_iter = open(filepath, 'rb')
+                self.response.headers['Content-Length'] = str(fileinfo['size'])  # must be set after setting app_iter
+
+                if self.is_true('view'):
+                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+                else:
+                    self.response.headers['Content-Type'] = 'application/octet-stream'
+                    self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
             else:
-                self.response.headers['Content-Type'] = 'application/octet-stream'
-                self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+                self.response.status = 206
+                if len(ranges) > 1:
+                    self.response.headers['Content-Type'] = 'multipart/byteranges; boundary=%s' % self.request.id
+                else:
+                    self.response.headers['Content-Type'] = str(
+                        fileinfo.get('mimetype', 'application/octet-stream'))
+                    self.response.headers['Content-Range'] = 'bytes %s-%s/%s' % (str(ranges[0][0]),
+                                                                                 str(ranges[0][1]),
+                                                                                 str(fileinfo['size']))
+                with open(filepath, 'rb') as f:
+                    for first, last in ranges:
+                        mode = os.SEEK_SET
+                        if first < 0:
+                            mode = os.SEEK_END
+                            length = abs(first)
+                        elif last is None:
+                            length = fileinfo['size'] - first
+                        else:
+                            if last > fileinfo['size']:
+                                length = fileinfo['size'] - first
+                            else:
+                                length = last - first + 1
+
+                        f.seek(first, mode)
+                        data = f.read(length)
+
+                        if len(ranges) > 1:
+                            self.response.write('--%s\n' % self.request.id)
+                            self.response.write('Content-Type: %s\n' % str(
+                                fileinfo.get('mimetype', 'application/octet-stream')))
+                            self.response.write('Content-Range: %s' % 'bytes %s-%s/%s\n' % (str(first),
+                                                                                            str(last),
+                                                                                            str(fileinfo['size'])))
+                            self.response.write('\n')
+                            self.response.write(data)
+                            self.response.write('\n')
+                        else:
+                            self.response.write(data)
 
             # log download if we haven't already for this ticket
             if ticket:
