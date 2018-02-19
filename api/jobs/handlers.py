@@ -241,6 +241,8 @@ class JobsHandler(base.RequestHandler):
             uid = self.uid
 
         job = Queue.enqueue_job(payload, self.origin, perm_check_uid=uid)
+        job.insert()
+
         return { '_id': job.id_ }
 
     @require_admin
@@ -643,7 +645,7 @@ class BatchHandler(base.RequestHandler):
 
         for job_number, job_ in enumerate(jobs_):
             try:
-                Queue.validate_job(job_, self.origin, create_job=False, perm_check_uid=uid)
+                Queue.enqueue_job(job_, self.origin, perm_check_uid=uid)
             except InputValidationException as e:
                 raise InputValidationException("Job {}: {}".format(job_number, str(e)))
 
