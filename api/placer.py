@@ -12,10 +12,11 @@ from . import files
 from . import tempdir as tempfile
 from . import util
 from . import validators
-from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .dao import containerutil, hierarchy
+from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .jobs import rules
 from .jobs.jobs import Job, JobTicket
+from .jobs.queue import Queue
 from .types import Origin
 from .web import encoder
 from .web.errors import FileFormException
@@ -277,7 +278,6 @@ class EnginePlacer(Placer):
                     self.metadata[self.container_type]['files'] = files_
             ###
 
-
     def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
             file_mds = self.metadata.get(self.container_type, {}).get('files', [])
@@ -297,6 +297,15 @@ class EnginePlacer(Placer):
         self.saved.append(file_attrs)
 
     def finalize(self):
+        job = None
+        job_ticket = None
+        success = True
+
+        if self.context.get('job_ticket_id'):
+            job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+            job = Job.get(job_ticket['job'])
+            success = job_ticket['success']
+
         if self.metadata is not None:
             bid = bson.ObjectId(self.id_)
 
@@ -311,13 +320,14 @@ class EnginePlacer(Placer):
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
 
-            if self.context.get('job_ticket_id'):
-                job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
-
-                if job_ticket['success']:
-                    hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
-            else:
+            if success:
                 hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+
+        if job_ticket is not None:
+            if success:
+                Queue.mutate(job, {'state': 'complete'})
+            else:
+                Queue.mutate(job, {'state': 'failed'})
 
         if self.context.get('job_id'):
             job = Job.get(self.context.get('job_id'))
