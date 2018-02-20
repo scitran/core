@@ -100,6 +100,7 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
         raise FileFormException("Targeted uploads can only send one file")
 
     for field in file_fields:
+        field.file.close()
         # Augment the cgi.FieldStorage with a variety of custom fields.
         # Not the best practice. Open to improvements.
         # These are presumbed to be required by every function later called with field as a parameter.
@@ -111,7 +112,7 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
                 file_processor.temp_fs.listdir('/'),
             ))
         field.size = file_processor.temp_fs.getsize(field.path)
-        field.hash = file_processor.hash_file_formatted(field.path, file_processor.temp_fs)
+        field.hash = util.format_hash(files.DEFAULT_HASH_ALG, field.hasher.hexdigest())
         field.uuid = str(uuid.uuid4())
         field.mimetype = util.guess_mimetype(field.filename)  # TODO: does not honor metadata's mime type if any
         field.modified = timestamp

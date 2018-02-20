@@ -3,9 +3,10 @@ import cgi
 import json
 import six
 import hashlib
+import uuid
 
 import fs.move
-import fs.tempfs
+import fs.subfs
 import fs.path
 import fs.errors
 
@@ -16,7 +17,8 @@ DEFAULT_HASH_ALG = 'sha384'
 class FileProcessor(object):
     def __init__(self, base, presistent_fs):
         self.base = base
-        self._temp_fs = fs.tempfs.TempFS(identifier='.temp', temp_dir=self.base)
+        self._tempdir_name = str(uuid.uuid4())
+        self._temp_fs = fs.subfs.SubFS(presistent_fs, fs.path.join('tmp', self._tempdir_name))
         self._presistent_fs = presistent_fs
 
     def store_temp_file(self, src_path, dest_path):
@@ -26,7 +28,7 @@ class FileProcessor(object):
             dest_path = six.u(dest_path)
         dst_dir = fs.path.dirname(dest_path)
         self._presistent_fs.makedirs(dst_dir, recreate=True)
-        fs.move.move_file(src_fs=self.temp_fs, src_path=src_path, dst_fs=self._presistent_fs, dst_path=dest_path)
+        self._presistent_fs.move(src_path=fs.path.join('tmp', self._tempdir_name, src_path), dst_path=dest_path)
 
     def process_form(self, request):
         """
@@ -97,7 +99,9 @@ class FileProcessor(object):
         self.close()
 
     def close(self):
-        self.temp_fs.close()
+        # Cleaning up
+        self._presistent_fs.listdir(fs.path.join('tmp', self._tempdir_name))
+        self._presistent_fs.removetree(fs.path.join('tmp', self._tempdir_name))
 
 
 def get_single_file_field_storage(file_system):
@@ -118,6 +122,7 @@ def get_single_file_field_storage(file_system):
             # Sanitize form's filename (read: prevent malicious escapes, bad characters, etc)
 
             self.filename = fs.path.basename(self.filename)
+            self.hasher = hashlib.new(DEFAULT_HASH_ALG)
             if not isinstance(self.filename, unicode):
                 self.filename = six.u(self.filename)
             self.open_file = file_system.open(self.filename, 'wb')
@@ -131,10 +136,13 @@ def get_single_file_field_storage(file_system):
                 # Always write fields of type "file" to disk for consistent renaming behavior
                 if self.filename:
                     self.file = self.make_file('')
-
                     self.file.write(self._FieldStorage__file.getvalue())
+                    self.hasher.update(self._FieldStorage__file.getvalue())
                 self._FieldStorage__file = None
+
             self.file.write(line)
+            if hasattr(self, 'hasher'):
+                self.hasher.update(line)
 
     return SingleFileFieldStorage
 
