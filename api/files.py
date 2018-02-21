@@ -18,8 +18,9 @@ class FileProcessor(object):
     def __init__(self, base, presistent_fs):
         self.base = base
         self._tempdir_name = str(uuid.uuid4())
-        self._temp_fs = fs.subfs.SubFS(presistent_fs, fs.path.join('tmp', self._tempdir_name))
         self._presistent_fs = presistent_fs
+        self._presistent_fs.makedirs(fs.path.join('tmp', self._tempdir_name), recreate=True)
+        self._temp_fs = fs.subfs.SubFS(presistent_fs, fs.path.join('tmp', self._tempdir_name))
 
     def store_temp_file(self, src_path, dest_path):
         if not isinstance(src_path, unicode):

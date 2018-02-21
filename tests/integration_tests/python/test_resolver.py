@@ -177,10 +177,10 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
         return '<id:' + s + '>'
 
     # resolve root/group/project/session/acquisition/file with id
-    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), acquisition_file]})
+    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), idz(acquisition_file)]})
     result = r.json()
     assert r.ok
-    assert path_in_result([group, project, session, acquisition, acquisition_file], result)
+    assert path_in_result([group, project, session, acquisition, acquisition_file_id], result)
     assert result['children'] == []
 
     # try to resolve non-existent root/group/project/session/acquisition/child

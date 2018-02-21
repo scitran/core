@@ -23,7 +23,7 @@ logging.getLogger('MARKDOWN').setLevel(logging.WARNING) # silence Markdown libra
 logging.getLogger('requests').setLevel(logging.WARNING) # silence Requests library
 logging.getLogger('paste.httpserver').setLevel(logging.WARNING) # silence Paste library
 logging.getLogger('elasticsearch').setLevel(logging.WARNING) # silence Elastic library
-
+logging.getLogger('urllib3').setLevel(logging.WARNING) # silence urllib3 library
 
 # NOTE: Keep in sync with environment variables in sample.config file.
 DEFAULT_CONFIG = {
