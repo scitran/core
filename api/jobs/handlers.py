@@ -113,10 +113,13 @@ class GearHandler(base.RequestHandler):
             parent_cont = PARENT_FROM_CHILD.get(parent_cont)
 
         gear = get_gear(_id)
-        for f in response['files']:
-            f['suggested'] = {}
-            for i in gear['gear'].get('inputs', {}).iterkeys():
-                f['suggested'][i] = bool(randint(0,1))
+        if gear and gear.get('gear', {}).get('inputs'):
+            for f in response['files']:
+                f['suggested'] = {}
+                for i in gear['gear'].get('inputs', {}).iterkeys():
+                    f['suggested'][i] = bool(randint(0,1))
+        else:
+            config.log.warning('\nThe gear either does not exist, has no inputs, or is malformed: \n{}\n'.format(gear))
 
         return response
 
