@@ -96,6 +96,7 @@ def get_parent_tree(cont_name, _id):
     analysis_id     = None
     acquisition_id  = None
     session_id      = None
+    subject_id      = None
     project_id      = None
     group_id        = None
     tree            = []
