@@ -114,10 +114,16 @@ def migrate_collections():
                 }
                 log.debug('update file in mongo: %s' % update_set)
                 # Update the file with the newly generated UUID
-                config.db[f['collection']].find_one_and_update(
-                    {'_id': f['collection_id'], f['prefix'] + '.name': f['fileinfo']['name']},
+                updated_doc = config.db[f['collection']].find_one_and_update(
+                    {'_id': f['collection_id'], f['prefix'] + '.name': f['fileinfo']['name'],
+                     f['prefix'] + '.hash': f['fileinfo']['hash']},
                     {'$set': update_set}
                 )
+
+                if not updated_doc:
+                    log.info('Probably the following file has been updated during the migration '
+                                'and its hash is changed, cleaning up from the new filesystem')
+                    config.fs.remove(f_new_path)
 
             show_progress(i + 1, len(_files))
 

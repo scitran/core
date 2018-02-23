@@ -4,6 +4,7 @@ import sys
 import fs.move
 import fs.path
 import pytest
+import pymongo
 
 from api import config, util
 from bson.objectid import ObjectId
@@ -141,7 +142,7 @@ def files_to_migrate(data_builder, api_db, as_admin, randstr, file_form):
     )
 
     move_file_to_legacy(util.path_from_uuid(file_id_1), util.path_from_hash(file_hash_1))
-    files.append((url_1, util.path_from_hash(file_hash_1)))
+    files.append((project_id, file_name_1, url_1, util.path_from_hash(file_hash_1)))
     # Create an UUID file
     file_name_2 = '%s.csv' % randstr()
     file_content_2 = randstr()
@@ -154,7 +155,7 @@ def files_to_migrate(data_builder, api_db, as_admin, randstr, file_form):
     url_2 = '/projects/' + project_id + '/files/' + file_name_2
 
     move_file_to_legacy(util.path_from_uuid(file_id_2), util.path_from_uuid(file_id_2))
-    files.append((url_2, util.path_from_uuid(file_id_2)))
+    files.append((project_id, file_name_2, url_2, util.path_from_uuid(file_id_2)))
 
     yield files
 
@@ -173,9 +174,9 @@ def test_migrate_collections(files_to_migrate, as_admin, migrate_storage):
     """Testing collection migration"""
 
     # get file storing by hash in legacy storage
-    (url_1, file_path_1) = files_to_migrate[0]
+    (_, _, url_1, file_path_1) = files_to_migrate[0]
     # get ile storing by uuid in legacy storage
-    (url_2, file_path_2) = files_to_migrate[1]
+    (_, _,url_2, file_path_2) = files_to_migrate[1]
 
     # get the ticket
     r = as_admin.get(url_1, params={'ticket': ''})
@@ -220,9 +221,9 @@ def test_migrate_collections_error(files_to_migrate, migrate_storage):
     """Testing that the migration script throws an exception if it couldn't migrate a file"""
 
     # get file storing by hash in legacy storage
-    (url, file_path_1) = files_to_migrate[0]
+    (_, _, url, file_path_1) = files_to_migrate[0]
     # get the other file, so we can clean up
-    (_, file_path_2) = files_to_migrate[1]
+    (_, _, _, file_path_2) = files_to_migrate[1]
 
     # delete the file
     config.legacy_fs.remove(file_path_1)
@@ -272,3 +273,40 @@ def test_migrate_gears_error(gears_to_migrate, migrate_storage):
 
     # clean up
     config.legacy_fs.remove(gear_file_path_2)
+
+
+def test_file_replaced_handling(files_to_migrate, migrate_storage, as_admin, file_form, api_db, mocker, caplog):
+
+    origin_find_one_and_update = pymongo.collection.Collection.find_one_and_update
+
+    def mocked(*args, **kwargs):
+        self = args[0]
+        filter = args[1]
+        update = args[2]
+
+        as_admin.post('/projects/' + project_id + '/files', files=file_form((file_name_1, 'new_content')))
+
+        return origin_find_one_and_update(self, filter, update)
+
+
+    with mocker.mock_module.patch.object(pymongo.collection.Collection, 'find_one_and_update', mocked):
+        # get file storing by hash in legacy storage
+        (project_id, file_name_1, url_1, file_path_1) = files_to_migrate[0]
+        # get ile storing by uuid in legacy storage
+        (_, file_name_2, url_2, file_path_2) = files_to_migrate[1]
+
+        # run the migration
+        migrate_storage.migrate_collections()
+
+        file_1_id = api_db['projects'].find_one(
+            {'files.name': file_name_1}
+        )['files'][0]['_id']
+
+        file_2_id = api_db['projects'].find_one(
+            {'files.name': file_name_2}
+        )['files'][1]['_id']
+
+        assert config.fs.exists(util.path_from_uuid(file_1_id))
+        assert config.fs.exists(util.path_from_uuid(file_2_id))
+
+    assert any(log.message == 'Probably the following file has been updated during the migration and its hash is changed, cleaning up from the new filesystem' for log in caplog.records)
