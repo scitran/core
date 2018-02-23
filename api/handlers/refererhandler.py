@@ -200,7 +200,7 @@ class AnalysesHandler(RefererHandler):
         if analysis.get('job'):
             raise InputValidationException('Analysis created via a job does not allow file uploads')
 
-        upload.process_upload(self.request, upload.Strategy.targeted, container_type='analysis', id_=_id, origin=self.origin)
+        upload.process_upload(self.request, upload.Strategy.targeted_multi, container_type='analysis', id_=_id, origin=self.origin)
 
 
     def download(self, **kwargs):

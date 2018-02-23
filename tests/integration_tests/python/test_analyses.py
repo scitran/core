@@ -2,8 +2,10 @@ import cStringIO
 import os
 import tarfile
 
+import bson
 
-def test_online_analysis(data_builder, as_admin, as_drone, file_form):
+
+def test_online_analysis(data_builder, as_admin, as_drone, file_form, api_db):
     gear = data_builder.create_gear(gear={'inputs': {'csv': {'base': 'file'}}})
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
@@ -37,9 +39,10 @@ def test_online_analysis(data_builder, as_admin, as_drone, file_form):
     assert r.ok
 
     check_files(as_admin, analysis, 'files', 'output.csv')
+    api_db.analyses.delete_one({'_id': bson.ObjectId(analysis)})
 
 
-def test_offline_analysis(data_builder, as_admin, file_form):
+def test_offline_analysis(data_builder, as_admin, file_form, api_db):
     session = data_builder.create_session()
     acquisition = data_builder.create_acquisition()
     assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('input.csv')).ok
@@ -55,25 +58,30 @@ def test_offline_analysis(data_builder, as_admin, file_form):
     check_files(as_admin, analysis, 'inputs', 'input.csv')
 
     # Manual upload
-    r = as_admin.post('/analyses/' + analysis + '/files', files=file_form('output.csv'))
+    r = as_admin.post('/analyses/' + analysis + '/files', files=file_form('output1.csv', 'output2.csv', meta=[
+        {'name': 'output1.csv', 'info': {'foo': 'foo'}},
+        {'name': 'output2.csv', 'info': {'bar': 'bar'}},
+    ]))
     assert r.ok
 
-    check_files(as_admin, analysis, 'files', 'output.csv')
+    check_files(as_admin, analysis, 'files', 'output1.csv', 'output2.csv')
+    api_db.analyses.delete_one({'_id': bson.ObjectId(analysis)})
 
 
-def test_legacy_analysis(data_builder, as_admin, file_form):
+def test_legacy_analysis(data_builder, as_admin, file_form, api_db):
     session = data_builder.create_session()
 
     r = as_admin.post('/sessions/' + session + '/analyses', files=file_form('input.csv', 'output.csv', meta={
         'label': 'legacy',
-        'inputs': [{'name': 'input.csv'}],
-        'outputs': [{'name': 'output.csv'}],
+        'inputs': [{'name': 'input.csv', 'info': {'foo': 'foo'}}],
+        'outputs': [{'name': 'output.csv', 'info': {'bar': 'bar'}}],
     }))
     assert r.ok
     analysis = r.json()['_id']
 
     check_files(as_admin, analysis, 'inputs', 'input.csv')
     check_files(as_admin, analysis, 'files', 'output.csv')
+    api_db.analyses.delete_one({'_id': bson.ObjectId(analysis)})
 
 
 def check_files(as_admin, analysis_id, filegroup, *filenames):

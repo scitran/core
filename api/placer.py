@@ -108,9 +108,10 @@ class Placer(object):
                 session_id = AcquisitionStorage().get_container(str(self.id_)).get('session')
             SessionStorage().recalc_session_compliance(session_id, hard=True)
 
+
 class TargetedPlacer(Placer):
     """
-    A placer that can accept N files to a specific container (acquisition, etc).
+    A placer that can accept 1 file to a specific container (acquisition, etc).
     """
 
     def check(self):
@@ -126,6 +127,25 @@ class TargetedPlacer(Placer):
     def finalize(self):
         self.recalc_session_compliance()
         return self.saved
+
+
+class TargetedMultiPlacer(TargetedPlacer):
+    """
+    A placer that can accept N files to a specific container (acquisition, etc).
+    """
+
+    def check(self):
+        self.requireTarget()
+        validators.validate_data(self.metadata, 'file-list.json', 'input', 'POST', optional=True)
+
+    def process_file_field(self, field, file_attrs):
+        if self.metadata:
+            for fileinfo in self.metadata:
+                if fileinfo['name'] == file_attrs['name']:
+                    file_attrs.update(fileinfo)
+        self.save_file(field, file_attrs)
+        self.saved.append(file_attrs)
+
 
 class UIDPlacer(Placer):
     """

@@ -5,7 +5,7 @@ import os.path
 import shutil
 
 from .web import base
-from .web.errors import FileStoreException, FileFormException
+from .web.errors import FileStoreException
 from . import config
 from . import files
 from . import placer as pl
@@ -15,17 +15,18 @@ from .dao import hierarchy
 log = config.log
 
 Strategy = util.Enum('Strategy', {
-    'targeted'     : pl.TargetedPlacer,     # Upload N files to a container.
-    'engine'       : pl.EnginePlacer,       # Upload N files from the result of a successful job.
-    'token'        : pl.TokenPlacer,        # Upload N files to a saved folder based on a token.
-    'packfile'     : pl.PackfilePlacer,     # Upload N files as a new packfile to a container.
-    'labelupload'  : pl.LabelPlacer,
-    'uidupload'    : pl.UIDPlacer,
-    'uidmatch'     : pl.UIDMatchPlacer,
-    'reaper'       : pl.UIDReaperPlacer,
-    'analysis'     : pl.AnalysisPlacer,     # Upload N files to an analysis as input and output (no db updates - deprecated)
-    'analysis_job' : pl.AnalysisJobPlacer,  # Upload N files to an analysis as output from job results
-    'gear'         : pl.GearPlacer
+    'targeted'       : pl.TargetedPlacer,       # Upload 1 files to a container.
+    'targeted_multi' : pl.TargetedMultiPlacer,  # Upload N files to a container.
+    'engine'         : pl.EnginePlacer,         # Upload N files from the result of a successful job.
+    'token'          : pl.TokenPlacer,          # Upload N files to a saved folder based on a token.
+    'packfile'       : pl.PackfilePlacer,       # Upload N files as a new packfile to a container.
+    'labelupload'    : pl.LabelPlacer,
+    'uidupload'      : pl.UIDPlacer,
+    'uidmatch'       : pl.UIDMatchPlacer,
+    'reaper'         : pl.UIDReaperPlacer,
+    'analysis'       : pl.AnalysisPlacer,       # Upload N files to an analysis as input and output (no db updates - deprecated)
+    'analysis_job'   : pl.AnalysisJobPlacer,    # Upload N files to an analysis as output from job results
+    'gear'           : pl.GearPlacer
 })
 
 def process_upload(request, strategy, container_type=None, id_=None, origin=None, context=None, response=None, metadata=None):
