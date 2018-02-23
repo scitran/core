@@ -61,7 +61,7 @@ class TemporaryDirectory(object):
 
     def __del__(self):
         # Issue a Warning if implicit cleanup needed
-        self.cleanup(_warn=True)
+        self.cleanup()
 
     # The following code attempts to make
     # this class tolerant of the module nulling out process

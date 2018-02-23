@@ -12,10 +12,11 @@ from . import files
 from . import tempdir as tempfile
 from . import util
 from . import validators
-from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .dao import containerutil, hierarchy
+from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .jobs import rules
-from .jobs.jobs import Job
+from .jobs.jobs import Job, JobTicket
+from .jobs.queue import Queue
 from .types import Origin
 from .web import encoder
 from .web.errors import FileFormException
@@ -245,7 +246,7 @@ class EnginePlacer(Placer):
     """
     A placer that can accept files and/or metadata sent to it from the engine
 
-    It uses update_container_hierarchy to update the container and it's parents' fields from the metadata
+    It uses update_container_hierarchy to update the container and its parents' fields from the metadata
     """
 
     def check(self):
@@ -277,7 +278,6 @@ class EnginePlacer(Placer):
                     self.metadata[self.container_type]['files'] = files_
             ###
 
-
     def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
             file_mds = self.metadata.get(self.container_type, {}).get('files', [])
@@ -288,15 +288,24 @@ class EnginePlacer(Placer):
                     break
 
         if self.context.get('job_ticket_id'):
-            job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
-            job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
-            if not job_ticket.get('success'):
+            job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+
+            if not job_ticket['success']:
                 file_attrs['from_failed_job'] = True
 
         self.save_file(field, file_attrs)
         self.saved.append(file_attrs)
 
     def finalize(self):
+        job = None
+        job_ticket = None
+        success = True
+
+        if self.context.get('job_ticket_id'):
+            job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+            job = Job.get(job_ticket['job'])
+            success = job_ticket['success']
+
         if self.metadata is not None:
             bid = bson.ObjectId(self.id_)
 
@@ -311,13 +320,14 @@ class EnginePlacer(Placer):
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
 
-            if self.context.get('job_ticket_id'):
-                job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
-                job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
-                if job_ticket.get('success'):
-                    hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
-            else:
+            if success:
                 hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+
+        if job_ticket is not None:
+            if success:
+                Queue.mutate(job, {'state': 'complete'})
+            else:
+                Queue.mutate(job, {'state': 'failed'})
 
         if self.context.get('job_id'):
             job = Job.get(self.context.get('job_id'))
