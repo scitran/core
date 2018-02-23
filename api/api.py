@@ -243,14 +243,12 @@ endpoints = [
 
 
         # Analyses
-        route( '/analyses/<_id:{cid}>',                         AnalysesHandler,  m=['GET']),
+        route( '/analyses/<_id:{cid}>',                      AnalysesHandler,  m=['GET']),
         prefix('/analyses/<_id:{cid}>', [
-            route('/inputs',                                    AnalysesHandler, h='download_inputs',  m=['GET']),
-            route('/inputs/<filename:{fname}>',                 AnalysesHandler, h='download_inputs',  m=['GET']),
-            route('/files',                                     AnalysesHandler, h='upload',           m=['POST']),
-            route('/files',                                     AnalysesHandler, h='download',         m=['GET']),
-            route('/files/<filename:{fname}>',                  AnalysesHandler, h='download',         m=['GET']),
-            route('/info',                                      AnalysesHandler, h='modify_info',      m=['POST']),
+            route('/files',                                       AnalysesHandler, h='upload',      m=['POST']),
+            route('/<filegroup:inputs|files>',                    AnalysesHandler, h='download',    m=['GET']),
+            route('/<filegroup:inputs|files>/<filename:{fname}>', AnalysesHandler, h='download',    m=['GET']),
+            route('/info',                                        AnalysesHandler, h='modify_info', m=['POST']),
         ]),
         prefix('/<:{cname}>/<:{cid}>/<cont_name:analyses>/<cid:{cid}>', [
             route('/<list_name:notes>',                         NotesListHandler,               m=['POST']),
@@ -280,16 +278,14 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='modify_info',    m=['POST']),
 
-                route( '/<sub_cont_name:{cname}|all>/analyses',     AnalysesHandler, h='get_all',         m=['GET']),
-                route( '/analyses',                                 AnalysesHandler, h='get_all',         m=['GET']),
-                route( '/analyses',                                 AnalysesHandler,                      m=['POST']),
+                route( '/<sub_cont_name:{cname}|all>/analyses', AnalysesHandler, h='get_all', m=['GET']),
+                route( '/analyses',                             AnalysesHandler, h='get_all', m=['GET']),
+                route( '/analyses',                             AnalysesHandler,              m=['POST']),
                 prefix('/analyses', [
-                    route('/<_id:{cid}>',                           AnalysesHandler,                      m=['GET', 'PUT', 'DELETE']),
-                    route('/<_id:{cid}>/inputs',                    AnalysesHandler, h='download_inputs', m=['GET']),
-                    route('/<_id:{cid}>/inputs/<filename:{fname}>', AnalysesHandler, h='download_inputs', m=['GET']),
-                    route('/<_id:{cid}>/files',                     AnalysesHandler, h='upload',          m=['POST']),
-                    route('/<_id:{cid}>/files',                     AnalysesHandler, h='download',        m=['GET']),
-                    route('/<_id:{cid}>/files/<filename:{fname}>',  AnalysesHandler, h='download',        m=['GET']),
+                    route('/<_id:{cid}>',                                             AnalysesHandler,               m=['GET', 'PUT', 'DELETE']),
+                    route('/<_id:{cid}>/files',                                       AnalysesHandler, h='upload',   m=['POST']),
+                    route('/<_id:{cid}>/<filegroup:inputs|files>',                    AnalysesHandler, h='download', m=['GET']),
+                    route('/<_id:{cid}>/<filegroup:inputs|files>/<filename:{fname}>', AnalysesHandler, h='download', m=['GET']),
                 ]),
 
                 route('/<list_name:notes>',             NotesListHandler,               m=['POST']),

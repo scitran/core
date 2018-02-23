@@ -176,10 +176,14 @@ def run(batch_job):
 
             # Create analysis
             acquisition_id = inputs.values()[0].get('id')
-            session_id = acq_storage.get_container(acquisition_id, projection={'session':1}).get('session')
-            result = an_storage.create_job_and_analysis('sessions', session_id, analysis, job_map, origin, None)
-            job = result.get('job')
-            job_id = result.get('job_id')
+            session_id = acq_storage.get_container(acquisition_id, projection={'session': 1}).get('session')
+            analysis['job'] = job_map
+            result = an_storage.create_el(analysis, 'sessions', session_id, origin, None)
+
+            analysis = an_storage.get_el(result.inserted_id)
+            an_storage.inflate_job_info(analysis)
+            job = analysis.get('job')
+            job_id = job.id_
 
         else:
 
@@ -200,9 +204,13 @@ def run(batch_job):
             analysis = copy.deepcopy(analysis_base)
 
             # Create analysis
-            result = an_storage.create_job_and_analysis('sessions', bson.ObjectId(dest['id']), analysis, job_map, origin, None)
-            job = result.get('job')
-            job_id = result.get('job_id')
+            analysis['job'] = job_map
+            result = an_storage.create_el(analysis, 'sessions', session_id, origin, None)
+
+            analysis = an_storage.get_el(result.inserted_id)
+            an_storage.inflate_job_info(analysis)
+            job = analysis.get('job')
+            job_id = job.id_
 
         else:
 
