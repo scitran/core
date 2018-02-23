@@ -444,8 +444,9 @@ class JobHandler(base.RequestHandler):
     def prepare_complete(self, _id):
         payload = self.request.json
         success = payload['success']
+        elapsed = payload['elapsed']
 
-        ticket = JobTicket.create(_id, success)
+        ticket = JobTicket.create(_id, success, elapsed)
         return { 'ticket': ticket }
 
     @require_login
