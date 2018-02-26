@@ -5,7 +5,7 @@ import os.path
 import shutil
 
 from .web import base
-from .web.errors import FileStoreException
+from .web.errors import FileStoreException, FileFormException
 from . import config
 from . import files
 from . import placer as pl

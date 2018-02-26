@@ -989,13 +989,9 @@ def test_analysis_upload(data_builder, default_payload, file_form, as_admin):
     r = as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('one.csv'))
     assert r.ok
 
-    # try to create analysis+job w/ missing analysis/job info
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={})
-    assert r.status_code == 400
-
     # create session analysis (job) using acquisition's file as input
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'test analysis job'},
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'test analysis job',
         'job': {
             'gear_id': gear,
             'inputs': {
@@ -1036,9 +1032,8 @@ def test_analysis_engine_upload(data_builder, file_form, as_root):
     assert r.ok
 
     # Check for created timestamps for output files
-    r = as_root.get('/sessions/'+ session + '/analyses/' + session_analysis).json()['files']
-    assert r[1].get('output')
-    assert r[1].get('created')
+    r = as_root.get('/sessions/'+ session + '/analyses/' + session_analysis)
+    assert 'created' in r.json()['files'][0]
 
 
     # delete acquisition analysis

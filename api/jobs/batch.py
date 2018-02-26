@@ -183,7 +183,7 @@ def run(batch_job):
             analysis = an_storage.get_el(result.inserted_id)
             an_storage.inflate_job_info(analysis)
             job = analysis.get('job')
-            job_id = job.id_
+            job_id = bson.ObjectId(job.id_)
 
         else:
 
@@ -205,12 +205,12 @@ def run(batch_job):
 
             # Create analysis
             analysis['job'] = job_map
-            result = an_storage.create_el(analysis, 'sessions', session_id, origin, None)
+            result = an_storage.create_el(analysis, 'sessions', bson.ObjectId(dest['id']), origin, None)
 
             analysis = an_storage.get_el(result.inserted_id)
             an_storage.inflate_job_info(analysis)
             job = analysis.get('job')
-            job_id = job.id_
+            job_id = bson.ObjectId(job.id_)
 
         else:
 

@@ -715,10 +715,11 @@ class AnalysisPlacer(Placer):
         # Merge fileinfos from the processed upload into the metadata from the payload (for inputs and outputs)
         upload_fileinfos = {fileinfo['name']: fileinfo for fileinfo in self.saved}
         if 'outputs' in self.metadata:
-            self.metadata['files'] = self.metadata['outputs']
+            self.metadata['files'] = self.metadata.pop('outputs')
         for filegroup in ('inputs', 'files'):
             for meta_fileinfo in self.metadata.get(filegroup, []):
-                meta_fileinfo.update(upload_fileinfos[meta_fileinfo['name']])
+                # TODO warn (err?) on meta for unknown filename?
+                meta_fileinfo.update(upload_fileinfos.get(meta_fileinfo['name'], {}))
         return self.metadata
 
 

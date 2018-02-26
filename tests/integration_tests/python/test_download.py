@@ -384,94 +384,62 @@ def test_filelist_range_download(data_builder, as_admin, file_form):
                         '45\n'.format(boundary)
 
 
-def test_analysis_download(data_builder, file_form, as_admin, default_payload):
+def test_analysis_download(data_builder, file_form, as_admin, as_drone, default_payload):
     session = data_builder.create_session()
-    acquisition = data_builder.create_acquisition()
-    gear_doc = default_payload['gear']['gear']
-    gear_doc['inputs'] = {
-        'csv': {
-            'base': 'file'
-        },
-        'zip': {
-            'base': 'file'
-        }
-    }
-    gear = data_builder.create_gear(gear=gear_doc)
-
-
-    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('one.csv')).ok
-    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('two.zip')).ok
-
     zip_cont = cStringIO.StringIO()
     with zipfile.ZipFile(zip_cont, 'w') as zip_file:
         zip_file.writestr('two.csv', 'sample\ndata\n')
     zip_cont.seek(0)
 
-    # analysis for testing most of the download functionality
-    # analysis_files and new_analysis_files refer to this analyisis
-    analysis1 = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
-        'one.csv', ('two.zip', zip_cont),
-        meta={'label': 'test', 'inputs': [{'name': 'one.csv'}, {'name': 'two.csv'}]}
-    )).json()['_id']
-
-    # Analyis Only for testing that inputs are in their own folder
-    r = as_admin.post('/sessions/' + session + '/analyses',
-        json={
-            'analysis': {'label': 'test'},
-            'job': {
-                'gear_id': gear,
-                'inputs': {
-                    'csv': {
-                        'name': 'one.csv',
-                        'type': 'acquisition',
-                        'id': acquisition
-                    },
-                    'zip': {
-                        'name': 'two.zip',
-                        'type': 'acquisition',
-                        'id': acquisition
-                    }
-                }
-            }
-        },
-        params={'job':True}
-    )
+    # create (legacy) analysis for testing the download functionality
+    r = as_admin.post('/sessions/' + session + '/analyses', files=file_form('one.csv', ('two.zip', zip_cont), meta={
+        'label': 'test',
+        'inputs': [{'name': 'one.csv'}],
+        'outputs': [{'name': 'two.zip'}],
+    }))
     assert r.ok
     analysis = r.json()['_id']
-    analysis_files = '/sessions/' + session + '/analyses/' + analysis1 + '/files'
-    new_analysis_files = '/analyses/' + analysis1 + '/files'
 
-    # Check that analysis files are labelled as inputs
+    analysis_inputs = '/sessions/' + session + '/analyses/' + analysis + '/inputs'
+    analysis_outputs = '/sessions/' + session + '/analyses/' + analysis + '/files'
+    new_analysis_inputs = '/analyses/' + analysis + '/inputs'
+    new_analysis_outputs = '/analyses/' + analysis + '/files'
+
+    # Check that analysis inputs are placed under the inputs key
     r = as_admin.get('/sessions/' + session + '/analyses/' + analysis)
     assert r.ok
-    assert r.json().get('files')[0].get('input')
+    assert [f['name'] for f in r.json().get('inputs', [])] == ['one.csv']
 
-    # try to download analysis files w/ non-existent ticket
-    r = as_admin.get(analysis_files, params={'ticket': '000000000000000000000000'})
+    # try to download analysis inputs w/ non-existent ticket
+    r = as_admin.get(analysis_inputs, params={'ticket': '000000000000000000000000'})
     assert r.status_code == 404
 
-    # get analysis batch download ticket for all files
-    r = as_admin.get(analysis_files, params={'ticket': ''}, json={"optional":True,"nodes":[{"level":"analysis","_id":analysis1}]})
+    # get analysis batch download ticket for all inputs
+    r = as_admin.get(analysis_inputs, params={'ticket': ''}, json={"optional":True,"nodes":[{"level":"analysis","_id":analysis}]})
     assert r.ok
     ticket = r.json()['ticket']
 
     # filename is analysis_<label> not analysis_<_id>
     assert r.json()['filename'] == 'analysis_test.tar'
 
-    # batch download analysis files w/ ticket from wrong endpoint
-    r = as_admin.get(analysis_files, params={'ticket': ticket})
+    # batch download analysis inputs w/ ticket from wrong endpoint
+    r = as_admin.get(analysis_inputs, params={'ticket': ticket})
     assert r.status_code == 400
 
-    # batch download analysis files w/ ticket from correct endpoint
+    # batch download analysis inputs w/ ticket from correct endpoint
     r = as_admin.get('/download', params={'ticket': ticket})
     assert r.ok
 
-    ### Using '/download' endpoint ###
-    # try to download analysis files w/ non-existent ticket
+    # Check to make sure outputs are in tar
+    with tarfile.open(mode='r', fileobj=cStringIO.StringIO(r.content)) as tar:
+        assert [m.name for m in tar.getmembers()] == ['test/input/one.csv']
+
+    ### Using '/download' endpoint only - for analysis outputs only! ###
+    # try to download analysis outputs w/ non-existent ticket
     r = as_admin.get('/download', params={'ticket': '000000000000000000000000'})
     assert r.status_code == 404
 
-    # get analysis batch download ticket for all files
+    # get analysis batch download ticket for all outputs
     r = as_admin.get('/download', params={'ticket': ''}, json={"optional":True,"nodes":[{"level":"analysis","_id":analysis}]})
     assert r.ok
     ticket = r.json()['ticket']
@@ -479,112 +447,101 @@ def test_analysis_download(data_builder, file_form, as_admin, default_payload):
     # filename is analysis_<label> not analysis_<_id>
     assert r.json()['filename'] == 'analysis_test.tar'
 
-    # batch download analysis files w/ ticket
+    # batch download analysis outputs w/ ticket
     r = as_admin.get('/download', params={'ticket': ticket})
     assert r.ok
 
-    # Check to make sure files are in tar
-    tar_file = cStringIO.StringIO(r.content)
-    tar = tarfile.open(mode="r", fileobj=tar_file)
-    members = tar.getmembers()
-    assert len(members) == 2
-    for tarinfo in members:
-        assert os.path.basename(tarinfo.name) in ['one.csv', 'two.zip']
-        assert 'input' in tarinfo.name
-
-    tar.close()
-
+    # Check to make sure outputs are in tar
+    with tarfile.open(mode='r', fileobj=cStringIO.StringIO(r.content)) as tar:
+        assert [m.name for m in tar.getmembers()] == ['test/output/two.zip']
 
     # try to get download ticket for non-existent analysis file
-    r = as_admin.get(analysis_files + '/non-existent.csv')
+    r = as_admin.get(analysis_inputs + '/non-existent.csv')
     assert r.status_code == 404
 
     # get analysis download ticket for single file
-    r = as_admin.get(analysis_files + '/one.csv', params={'ticket': ''})
+    r = as_admin.get(analysis_inputs + '/one.csv', params={'ticket': ''})
     assert r.ok
     ticket = r.json()['ticket']
 
     # download single analysis file w/ ticket
-    r = as_admin.get(analysis_files + '/one.csv', params={'ticket': ticket})
+    r = as_admin.get(analysis_inputs + '/one.csv', params={'ticket': ticket})
     assert r.ok
 
     # try to get zip info for non-zip file
-    r = as_admin.get(analysis_files + '/one.csv', params={'ticket': ticket, 'info': 'true'})
+    r = as_admin.get(analysis_inputs + '/one.csv', params={'ticket': ticket, 'info': 'true'})
     assert r.status_code == 400
 
     # try to get zip member of non-zip file
-    r = as_admin.get(analysis_files + '/one.csv', params={'ticket': ticket, 'member': 'nosuch'})
+    r = as_admin.get(analysis_inputs + '/one.csv', params={'ticket': ticket, 'member': 'nosuch'})
     assert r.status_code == 400
 
     # try to download a different file w/ ticket
-    r = as_admin.get(analysis_files + '/two.zip', params={'ticket': ticket})
+    r = as_admin.get(analysis_outputs + '/two.zip', params={'ticket': ticket})
     assert r.status_code == 400
 
     # get analysis download ticket for zip file
-    r = as_admin.get(analysis_files + '/two.zip', params={'ticket': ''})
+    r = as_admin.get(analysis_outputs + '/two.zip', params={'ticket': ''})
     assert r.ok
     ticket = r.json()['ticket']
 
     # get zip info
-    r = as_admin.get(analysis_files + '/two.zip', params={'ticket': ticket, 'info': 'true'})
+    r = as_admin.get(analysis_outputs + '/two.zip', params={'ticket': ticket, 'info': 'true'})
     assert r.ok
 
     # try to get non-existent zip member
-    r = as_admin.get(analysis_files + '/two.zip', params={'ticket': ticket, 'member': 'nosuch'})
+    r = as_admin.get(analysis_outputs + '/two.zip', params={'ticket': ticket, 'member': 'nosuch'})
     assert r.status_code == 400
 
     # get zip member
-    r = as_admin.get(analysis_files + '/two.zip', params={'ticket': ticket, 'member': 'two.csv'})
+    r = as_admin.get(analysis_outputs + '/two.zip', params={'ticket': ticket, 'member': 'two.csv'})
     assert r.ok
 
     ### single file analysis download using FileListHandler ###
     # try to get download ticket for non-existent analysis file
-    r = as_admin.get(new_analysis_files + '/non-existent.csv')
+    r = as_admin.get(new_analysis_inputs + '/non-existent.csv')
     assert r.status_code == 404
 
     # get analysis download ticket for single file
-    r = as_admin.get(new_analysis_files + '/one.csv', params={'ticket': ''})
+    r = as_admin.get(new_analysis_inputs + '/one.csv', params={'ticket': ''})
     assert r.ok
     ticket = r.json()['ticket']
 
     # download single analysis file w/ ticket
-    r = as_admin.get(new_analysis_files + '/one.csv', params={'ticket': ticket})
+    r = as_admin.get(new_analysis_inputs + '/one.csv', params={'ticket': ticket})
     assert r.ok
 
     # try to get zip info for non-zip file
-    r = as_admin.get(new_analysis_files + '/one.csv', params={'ticket': ticket, 'info': 'true'})
+    r = as_admin.get(new_analysis_inputs + '/one.csv', params={'ticket': ticket, 'info': 'true'})
     assert r.status_code == 400
 
     # try to get zip member of non-zip file
-    r = as_admin.get(new_analysis_files + '/one.csv', params={'ticket': ticket, 'member': 'nosuch'})
+    r = as_admin.get(new_analysis_inputs + '/one.csv', params={'ticket': ticket, 'member': 'nosuch'})
     assert r.status_code == 400
 
     # try to download a different file w/ ticket
-    r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ticket})
+    r = as_admin.get(new_analysis_outputs + '/two.zip', params={'ticket': ticket})
     assert r.status_code == 400
 
     # get analysis download ticket for zip file
-    r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ''})
+    r = as_admin.get(new_analysis_outputs + '/two.zip', params={'ticket': ''})
     assert r.ok
     ticket = r.json()['ticket']
 
     # get zip info
-    r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ticket, 'info': 'true'})
+    r = as_admin.get(new_analysis_outputs + '/two.zip', params={'ticket': ticket, 'info': 'true'})
     assert r.ok
 
     # try to get non-existent zip member
-    r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ticket, 'member': 'nosuch'})
+    r = as_admin.get(new_analysis_outputs + '/two.zip', params={'ticket': ticket, 'member': 'nosuch'})
     assert r.status_code == 400
 
     # get zip member
-    r = as_admin.get(new_analysis_files + '/two.zip', params={'ticket': ticket, 'member': 'two.csv'})
+    r = as_admin.get(new_analysis_outputs + '/two.zip', params={'ticket': ticket, 'member': 'two.csv'})
     assert r.ok
-
 
     # delete session analysis (job)
     r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis)
-    assert r.ok
-    r = as_admin.delete('/sessions/' + session + '/analyses/' + analysis1)
     assert r.ok
 
 def test_filters(data_builder, file_form, as_admin):
@@ -722,7 +679,7 @@ def test_summary(data_builder, as_admin, file_form):
     assert r.status_code == 400
 
     r = as_admin.post('/sessions/' + session + '/analyses',  files=file_form(
-        file_name, meta={'label': 'test', 'inputs':[{'name':file_name}]}))
+        file_name, meta={'label': 'test', 'outputs':[{'name':file_name}]}))
     assert r.ok
     analysis = r.json()['_id']
 

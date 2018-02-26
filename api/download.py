@@ -49,7 +49,8 @@ class Download(base.RequestHandler):
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
                 if cont_name == 'analyses':
-                    targets.append((filepath, prefix + '/' + ('input' if f.get('input') else 'output') + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                    # TODO implement analysis input downloads via generic download endpoint, too
+                    targets.append((filepath, prefix + '/output/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                 else:
                     targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
                 total_size += f['size']

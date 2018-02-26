@@ -44,7 +44,7 @@
 			},
 		    "additionalProperties": false
 		},
-		"analysis-input": {"oneOf": [
+		"analysis-input": {"anyOf": [
 			{"$ref":"#/definitions/analysis-input-adhoc"},
 			{"$ref":"#/definitions/analysis-input-job"},
 			{"$ref":"#/definitions/analysis-input-legacy"}
