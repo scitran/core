@@ -531,14 +531,11 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        container = self._get_container(_id)
-        if self.config.get('children_cont'):
-            container['has_children'] = bool(self.storage.get_children(_id))
-        else:
-            container['has_children'] = False
-        if container.get('files') or container.get('analyses'):
-            container['has_children'] = True
+        container = self._get_container(_id, get_children=True)
+        container['cont_name'] = containerutil.singularize(cont_name)
 
+        if cont_name in ['sessions', 'acquisitions']:
+            container['has_original_data'] = containerutil.container_origin_types(container, child_cont_name=self.config.get('children_cont'))
         if cont_name == 'acquisitions':
             analyses = containerutil.get_referring_analyses(cont_name, _id)
             if analyses:

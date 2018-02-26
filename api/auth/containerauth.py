@@ -26,9 +26,12 @@ def default_container(handler, container=None, target_parent_container=None):
                     required_perm = 'admin'
                 has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
             elif method == 'DELETE':
-                # Container deletion always requires admin
-                required_perm = 'admin'
-                has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
+                # Project delete requires admin, others require rw
+                if container['cont_name'] == 'project' or container.get('has_original_data', False):
+                    required_perm = 'admin'
+                else:
+                    required_perm = 'rw'
+                has_access = _get_access(handler.uid, container) >= INTEGER_PERMISSIONS[required_perm]
             elif method == 'PUT' and target_parent_container is not None:
                 has_access = (
                     _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['admin'] and

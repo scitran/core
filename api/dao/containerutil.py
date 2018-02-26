@@ -3,6 +3,7 @@ import copy
 
 from .. import config
 from ..auth import has_access
+from ..types import Origin
 
 from ..web.errors import APINotFoundException, APIPermissionException
 
@@ -161,6 +162,24 @@ def get_referring_analyses(cont_name, cont_id, filename=None):
     analysis_ids = [bson.ObjectId(job['destination']['id']) for job in jobs]
     analyses = config.db.analyses.find({'_id': {'$in': analysis_ids}, 'deleted': {'$exists': False}})
     return list(analyses)
+
+
+def container_has_original_data(container, child_cont_name=None):
+    """
+    Given a container, creates a list of all origin types
+    for all files in the container and it's children, if provided.
+    If the set only includes user and job uploaded files, the container
+    is not considered to have "original data".
+    """
+    origin_types = set()
+
+    for f in container.get('files', []):
+        origin_types.add(f['origin']['type'])
+    if child_cont_name:
+        for c in container.get(child_cont_name, []):
+            for f in c.get('files', []):
+                origin_types.add(f['origin']['type'])
+    return origin_types.issubset(set(str(Origin.user, Origin.job)))
 
 
 class ContainerReference(object):
