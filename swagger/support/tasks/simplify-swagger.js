@@ -29,6 +29,15 @@ module.exports = function(grunt) {
 			aliases: {}
 		};
 
+		try {
+			// Merge models
+			// for example, this will merge group-input and group-output into group based on the
+			// x-sdk-model property
+			mergeModels(root, context);
+		} catch( e ) {
+			grunt.fail.warn('ERROR: '.red + ' ' + e);
+		}
+
 		// Walk through definitions, simplifying models where we can
 		simplifyDefinitions(root, context);
 
@@ -159,6 +168,98 @@ module.exports = function(grunt) {
 			}
 		}
 		return schema;
+	}
+
+	// Merge all models that have the x-sdk-model property
+	function mergeModels(root, context) {
+		var defs = root.definitions||{};
+		var keys = _.keys(defs);
+		var models = {};
+		var aliases = {};
+
+		// First collect all the models to be merged
+		_.each(keys, function(k) {
+			var schema = defs[k];
+			if( schema['x-sdk-model'] ) {
+				var modelName = schema['x-sdk-model'];
+				if( !models[modelName] ) {
+					models[modelName] = [];
+				}
+				models[modelName].push({
+					id: k,
+					schema: schema
+				});
+
+				// Create temporary aliases for comparing properties
+				aliases['#/definitions/' + k] = '#/definitions/' + modelName;
+			}
+		});
+
+		// Then perform the merge
+		keys = _.keys(models);
+		_.each(keys, function(modelName) {
+			var schemas = models[modelName];
+			var schema = _.cloneDeep(schemas[0]).schema;
+			var refSchema = {
+				$ref: '#/definitions/' + modelName
+			};
+
+			for( var i = 1; i < schemas.length; i++ ) {
+				// Merge each schema into the current
+				mergeSchema(modelName, schema, schemas[i], aliases);
+			}
+
+			// Add aliases and delete the original models
+			for( var i = 0; i < schemas.length; i++ ) {
+				var id = schemas[i].id;
+				context.aliases['#/definitions/' + id] = refSchema;
+				delete defs[id];
+			}
+			
+			// Remove fields that are no longer relevant
+			delete schema['x-sdk-model'];
+			delete schema['required'];
+			
+			defs[modelName] = schema;
+		});
+	}
+
+	function mergeSchema(name, schema, src, aliases) {
+		schema.properties = schema.properties||{};
+		var dstProps = schema.properties;
+		var srcProps = src.schema.properties||{};
+		
+		var keys = _.keys(srcProps);
+		_.each(keys, function(k) {
+			// Compare, after resolving aliases
+			// This way, file-input and file-output resolve to file-entry (for example)
+			// and are treated as the same for comparison purposes
+			var srcProp = resolveAlias(srcProps[k], aliases);
+			var dstProp = resolveAlias(dstProps[k], aliases);
+			if( dstProp && !_.isEqual(srcProp, dstProp) ) {
+				throw 'Cannot merge model ' + src.id + ' into ' + name + ': incompatible "' + k + '" property';
+			} else {
+				dstProps[k] = srcProp;
+			}			
+		});
+	}
+
+	function resolveAlias(schema, aliases) {
+		// Simple alias resolution where aliases is a map of:
+		// #/definition/model1 to #/defintion/model2
+		if( !schema ) {
+			return schema;
+		}
+
+		return walk(schema, function(obj) {
+			if( obj.$ref ) {
+				var alias = aliases[obj.$ref];
+				if( alias ) {
+					return _.extend({}, obj, { $ref: alias });
+				}
+			}
+			return obj;
+		});
 	}
 
 	function resolvePathObj(root, path) {

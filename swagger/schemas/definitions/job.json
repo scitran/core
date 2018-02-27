@@ -152,7 +152,8 @@
         "saved_files":{"$ref":"#/definitions/saved_files"},
         "produced_metadata":{"$ref":"#/definitions/produced-metadata"}
       },
-      "additionalProperties":false
+      "additionalProperties":false,
+      "x-sdk-model":"job"
     },
     "job-input": {
       "type":"object",
@@ -164,7 +165,8 @@
         "config":{"$ref":"#/definitions/config"}
       },
       "required": ["gear_id"],
-      "additionalProperties":false
+      "additionalProperties":false,
+      "x-sdk-model":"job"
     },
     "job-output": {
       "type": "object",
@@ -172,7 +174,8 @@
       "required": [
         "id", "gear_id", "inputs", "config",
         "destination", "tags", "state", "attempt"
-      ]
+      ],
+      "x-sdk-model":"job"
     }
   }
 }

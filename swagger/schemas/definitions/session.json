@@ -18,7 +18,8 @@
                 "timezone":     {"$ref":"container.json#/definitions/timezone"},
                 "subject":      {"$ref": "subject.json#/definitions/subject-input"}
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "session"
         },
         "session-metadata-input": {
             "type": "object",
@@ -69,7 +70,8 @@
                     "items":{"$ref":"analysis.json#/definitions/analysis-output"}
                 }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "session"
         },
         "session-jobs-output": {
             "type": "object",

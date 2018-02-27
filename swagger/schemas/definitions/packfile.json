@@ -47,7 +47,8 @@
                 "packfile":    {"$ref":"#/definitions/packfile-packfile-input"}
             },
             "required": ["project", "session", "acquisition", "packfile"],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "packfile"
         },
         "packfile-start": {
             "type":"object",

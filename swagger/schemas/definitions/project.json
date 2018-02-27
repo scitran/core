@@ -10,7 +10,8 @@
                 "description":  {"$ref":"common.json#/definitions/description"},
                 "group":        {"$ref":"common.json#/definitions/string-id"}
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "project"
         },
         "project-metadata-input": {
             "type": "object",
@@ -52,7 +53,8 @@
                     "items":{"$ref":"analysis.json#/definitions/analysis-output"}
                 }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "project"
         }
     }
 }
