@@ -226,10 +226,22 @@ $template_arguments:
   $template: templates/analyses-list.yaml
 /projects/{ProjectId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+/projects/{ProjectId}/analyses/{AnalysisId}/inputs:
+  $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: inputs
+/projects/{ProjectId}/analyses/{AnalysisId}/inputs/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: inputs
 /projects/{ProjectId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: outputs
 /projects/{ProjectId}/analyses/{AnalysisId}/files/{Filename}:
   $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: outputs
 /projects/{ProjectId}/analyses/{AnalysisId}/notes:
   $template: templates/analysis-notes.yaml
 /projects/{ProjectId}/analyses/{AnalysisId}/notes/{NoteId}:
