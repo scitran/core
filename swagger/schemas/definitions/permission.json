@@ -11,11 +11,13 @@
         "_id":{"$ref":"common.json#/definitions/user-id"},
         "access":{"$ref":"#/definitions/access"}
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-sdk-model": "permission"
     },
     "permission-output-default-required":{
       "allOf":[{"$ref":"#/definitions/permission"}],
-      "required":["_id", "access"]
+      "required":["_id", "access"],
+      "x-sdk-model": "permission"
     },
     "permission-output-list": {
       "type": "array",

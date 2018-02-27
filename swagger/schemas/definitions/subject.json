@@ -45,7 +45,8 @@
                   "items":{"$ref":"file.json#/definitions/file-input"}
               }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "subject"
         },
         "subject-output":{
             "type": "object",
@@ -68,11 +69,13 @@
                   "items":{"$ref":"file.json#/definitions/file-output"}
               }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "subject"
         },
         "subject-output-default-required":{
             "allOf":[{"$ref":"#/definitions/subject-output"}],
-            "required":["_id"]
+            "required":["_id"],
+            "x-sdk-model": "subject"
         }
     }
 }

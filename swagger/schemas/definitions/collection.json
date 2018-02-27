@@ -34,6 +34,7 @@
                 "info":         {"$ref": "container.json#/definitions/info"},
                 "description":  {"$ref": "common.json#/definitions/description"}
             },
+            "x-sdk-model": "collection",
             "additionalProperties": false
         },
         "collection-input-with-contents":{
@@ -45,6 +46,7 @@
                 "description":  {"$ref": "common.json#/definitions/description"},
                 "contents":     {"$ref": "#/definitions/collection-operation"}
             },
+            "x-sdk-model": "collection",
             "additionalProperties": false
         },
         "collection-new-output": {
@@ -82,6 +84,7 @@
                     "items":{"$ref":"analysis.json#/definitions/analysis-output"}
                 }
             },
+            "x-sdk-model": "collection",
             "additionalProperties":false
         }
     }

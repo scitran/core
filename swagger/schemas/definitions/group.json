@@ -23,7 +23,8 @@
               }
             }
           },
-          "additionalProperties":false
+          "additionalProperties":false,
+          "x-sdk-model": "group"
         },
         "group-input":{
           "type": "object",
@@ -31,7 +32,8 @@
             "_id":{"$ref":"common.json#/definitions/string-id"},
             "label": {"$ref": "#/definitions/label"}
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "x-sdk-model": "group"
         },
         "group-metadata-input": {
           "type": "object",
@@ -43,7 +45,8 @@
         "group-output":{
           "type": "object",
           "allOf": [{"$ref":"#/definitions/group"}],
-          "required": ["permissions", "created","modified","_id"]
+          "required": ["permissions", "created","modified","_id"],
+          "x-sdk-model": "group"
         },
         "group-new-output": {
           "type": "object",
@@ -60,7 +63,8 @@
         "project-group-output":{
           "type": "object",
           "allOf": [{"$ref":"#/definitions/group"}],
-          "required": ["_id"]
+          "required": ["_id"],
+          "x-sdk-model": "group"
         },
         "project-group-output-list":{
             "type":"array",
