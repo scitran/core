@@ -620,7 +620,6 @@ class PackfilePlacer(Placer):
         insert_map = copy.deepcopy(query)
 
         # Remove query term that should not become part of the payload
-        insert_map.pop('subject.code', None)
         insert_map.pop('deleted')
 
         insert_map['created'] = self.timestamp
