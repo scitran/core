@@ -1377,7 +1377,8 @@ def upgrade_to_43():
     Add initial file versioning to all files
     """
     for cont_name in ['projects', 'sessions', 'acquisitions', 'analyses', 'collections']:
-        config.db[cont_name].find({'files': { '$gt': [] }, 'files.version': {'$exists': False }})
+        cursor = config.db[cont_name].find({'files': { '$gt': [] }, 'files.version': {'$exists': False }})
+        process_cursor(cursor, upgrade_to_43_closure, context=cont_name)
 
 
 ###
