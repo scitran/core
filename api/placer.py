@@ -562,7 +562,8 @@ class PackfilePlacer(Placer):
         query = {
             'project': bson.ObjectId(self.p_id),
             'label': self.s_label,
-            'group': self.g_id
+            'group': self.g_id,
+            'deleted': {'$exists': False}
         }
 
         if self.s_code:
@@ -577,14 +578,18 @@ class PackfilePlacer(Placer):
 
         # Extra properties on insert
         insert_map = copy.deepcopy(query)
-        insert_map.pop('subject.code', None) # Remove query term that should not become part of the payload
+
+        # Remove query term that should not become part of the payload
+        insert_map.pop('subject.code', None)
+        insert_map.pop('deleted')
+
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['session'])
         insert_map['subject'] = containerutil.add_id_to_subject(insert_map.get('subject'), bson.ObjectId(self.p_id))
         if 'timestamp' in insert_map:
             insert_map['timestamp'] = dateutil.parser.parse(insert_map['timestamp'])
 
-        session = config.db['session' + 's'].find_one_and_update(
+        session = config.db.sessions.find_one_and_update(
             query, {
                 '$set': updates,
                 '$setOnInsert': insert_map
@@ -597,6 +602,7 @@ class PackfilePlacer(Placer):
         query = {
             'session': session['_id'],
             'label': self.a_label,
+            'deleted': {'$exists': False}
         }
 
         if self.a_time:
@@ -612,12 +618,17 @@ class PackfilePlacer(Placer):
 
         # Extra properties on insert
         insert_map = copy.deepcopy(query)
+
+        # Remove query term that should not become part of the payload
+        insert_map.pop('subject.code', None)
+        insert_map.pop('deleted')
+
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['acquisition'])
         if 'timestamp' in insert_map:
             insert_map['timestamp'] = dateutil.parser.parse(insert_map['timestamp'])
 
-        acquisition = config.db['acquisition' + 's'].find_one_and_update(
+        acquisition = config.db.acquisitions.find_one_and_update(
             query, {
                 '$set': updates,
                 '$setOnInsert': insert_map
