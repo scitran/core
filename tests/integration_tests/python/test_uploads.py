@@ -708,7 +708,7 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
             'info': {'test': 'f0'}
         },
         {
-            'name': 'folder:two.csv',
+            'name': 'folder/two.csv',
             'type': 'engine type 1',
             'info': {'test': 'f1'}
         }
@@ -717,7 +717,7 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
     # engine upload
     r = as_root.post('/engine',
         params={'level': 'acquisition', 'id': acquisition, 'job': job},
-        files=file_form('one.csv', 'folder:two.csv', meta=metadata)
+        files=file_form('one.csv', 'two.csv', meta=metadata)
     )
     assert r.ok
 
@@ -747,7 +747,7 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
     assert a_timestamp == m_timestamp
 
     for mf in metadata['acquisition']['files']:
-        f = find_file_in_array(mf['name'].replace(':', '/'), a['files'])
+        f = find_file_in_array(mf['name'], a['files'])
         assert mf is not None
         assert f['type'] == mf['type']
         assert f['info'] == mf['info']
@@ -779,7 +779,7 @@ def test_session_engine_upload(data_builder, file_form, as_root):
                     'info': {'test': 'f1'}
                 },
                 {
-                    'name': 'folder:three.csv',
+                    'name': 'folder/three.csv',
                     'type': 'engine type 2',
                     'info': {'test': 'f2'}
                 }
@@ -789,7 +789,7 @@ def test_session_engine_upload(data_builder, file_form, as_root):
 
     r = as_root.post('/engine',
         params={'level': 'session', 'id': session},
-        files=file_form('one.csv', 'two.csv', 'folder:three.csv', meta=metadata)
+        files=file_form('one.csv', 'two.csv', 'three.csv', meta=metadata)
     )
     assert r.ok
 
@@ -812,11 +812,7 @@ def test_session_engine_upload(data_builder, file_form, as_root):
     assert s_timestamp == m_timestamp
 
     for f in s['files']:
-        if '/' in f['name']:
-            assert f['name'] == 'folder/three.csv'
-            mf = find_file_in_array(f['name'].replace('/', ':'), metadata['session']['files'])
-        else:
-            mf = find_file_in_array(f['name'], metadata['session']['files'])
+        mf = find_file_in_array(f['name'], metadata['session']['files'])
         assert mf is not None
         assert f['type'] == mf['type']
         assert f['info'] == mf['info']
@@ -840,7 +836,7 @@ def test_project_engine_upload(data_builder, file_form, as_root):
                     'info': {'test': 'f1'}
                 },
                 {
-                    'name': 'folder:three.csv',
+                    'name': 'folder/three.csv',
                     'type': 'engine type 2',
                     'info': {'test': 'f2'}
                 }
@@ -850,7 +846,7 @@ def test_project_engine_upload(data_builder, file_form, as_root):
 
     r = as_root.post('/engine',
         params={'level': 'project', 'id': project},
-        files=file_form('one.csv', 'two.csv', 'folder:three.csv', meta=metadata)
+        files=file_form('one.csv', 'two.csv', 'three.csv', meta=metadata)
     )
     assert r.ok
 
@@ -862,11 +858,7 @@ def test_project_engine_upload(data_builder, file_form, as_root):
     assert p['info'] == metadata['project']['info']
 
     for f in p['files']:
-        if '/' in f['name']:
-            assert f['name'] == 'folder/three.csv'
-            mf = find_file_in_array(f['name'].replace('/', ':'), metadata['project']['files'])
-        else:
-            mf = find_file_in_array(f['name'], metadata['project']['files'])
+        mf = find_file_in_array(f['name'], metadata['project']['files'])
         assert mf is not None
         assert f['type'] == mf['type']
         assert f['info'] == mf['info']
@@ -874,8 +866,7 @@ def test_project_engine_upload(data_builder, file_form, as_root):
 
 def test_acquisition_file_only_engine_upload(data_builder, file_form, as_root):
     acquisition = data_builder.create_acquisition()
-    file_names = ['one.csv', 'folder:two.csv']
-    expected_file_names = ['one.csv', 'folder/two.csv']
+    file_names = ['one.csv', 'two.csv']
 
     r = as_root.post('/engine',
         params={'level': 'acquisition', 'id': acquisition},
@@ -885,7 +876,7 @@ def test_acquisition_file_only_engine_upload(data_builder, file_form, as_root):
 
     r = as_root.get('/acquisitions/' + acquisition)
     assert r.ok
-    assert set(f['name'] for f in r.json()['files']) == set(expected_file_names)
+    assert set(f['name'] for f in r.json()['files']) == set(file_names)
 
 
 def test_acquisition_subsequent_file_engine_upload(data_builder, file_form, as_root):
