@@ -299,6 +299,8 @@ class EnginePlacer(Placer):
             if not job_ticket['success']:
                 file_attrs['from_failed_job'] = True
 
+        file_attrs['name'] = file_attrs['name'].replace(':', '/')
+
         self.save_file(field, file_attrs)
         self.saved.append(file_attrs)
 
@@ -318,7 +320,7 @@ class EnginePlacer(Placer):
             file_mds = self.metadata.get(self.container_type, {}).get('files', [])
             saved_file_names = [x.get('name') for x in self.saved]
             for file_md in file_mds:
-                if file_md['name'] not in saved_file_names:
+                if file_md['name'].replace(':', '/') not in saved_file_names:
                     self.save_file(None, file_md) # save file_attrs update only
                     self.saved.append(file_md)
 
