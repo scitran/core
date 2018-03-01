@@ -346,11 +346,11 @@ class EnginePlacer(Placer):
                     }
                 })
 
-        # if self.context.get('job_id'):
-        # 	job = Job.get(self.context.get('job_id'))
-        # 	job.saved_files = [f['name'] for f in self.saved]
-        # 	job.produced_metadata = self.metadata
-        # 	job.save()
+        if self.context.get('job_id'):
+            job = Job.get(self.context.get('job_id'))
+            job.saved_files = [f['name'] for f in self.saved]
+            job.produced_metadata = self.metadata
+            job.save()
 
         self.recalc_session_compliance()
         return self.saved
