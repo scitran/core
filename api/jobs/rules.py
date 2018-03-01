@@ -223,7 +223,7 @@ def create_jobs(db, container_before, container_after, container_type, replaced_
     jobs_before, jobs_after, potential_jobs = [], [], []
 
     files_before    = container_before.get('files', [])
-    files_after     = container_after['files'] # It should always have at least one file after
+    files_after     = container_after.get('files', [])
 
     for f in files_before:
         jobs_before.extend(create_potential_jobs(db, container_before, container_type, f))
