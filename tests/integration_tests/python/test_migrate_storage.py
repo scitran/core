@@ -170,7 +170,7 @@ def files_to_migrate(data_builder, api_db, as_admin, randstr, file_form):
         except:
             pass
 
-def test_migrate_collections(files_to_migrate, as_admin, migrate_storage):
+def test_migrate_containers(files_to_migrate, as_admin, migrate_storage):
     """Testing collection migration"""
 
     # get file storing by hash in legacy storage
@@ -194,7 +194,7 @@ def test_migrate_collections(files_to_migrate, as_admin, migrate_storage):
     # download the file
     assert as_admin.get(url_2, params={'ticket': ticket}).ok
     # run the migration
-    migrate_storage.migrate_collections()
+    migrate_storage.migrate_containers()
 
     # delete files from the legacy storage
     config.legacy_fs.remove(file_path_1)
@@ -217,7 +217,7 @@ def test_migrate_collections(files_to_migrate, as_admin, migrate_storage):
     # download the file
     assert as_admin.get(url_2, params={'ticket': ticket}).ok
 
-def test_migrate_collections_error(files_to_migrate, migrate_storage):
+def test_migrate_containers_error(files_to_migrate, migrate_storage):
     """Testing that the migration script throws an exception if it couldn't migrate a file"""
 
     # get file storing by hash in legacy storage
@@ -229,7 +229,7 @@ def test_migrate_collections_error(files_to_migrate, migrate_storage):
     config.legacy_fs.remove(file_path_1)
 
     with pytest.raises(migrate_storage.MigrationError):
-        migrate_storage.migrate_collections()
+        migrate_storage.migrate_containers()
 
     # clean up
     config.legacy_fs.remove(file_path_2)
@@ -296,7 +296,7 @@ def test_file_replaced_handling(files_to_migrate, migrate_storage, as_admin, fil
         (_, file_name_2, url_2, file_path_2) = files_to_migrate[1]
 
         # run the migration
-        migrate_storage.migrate_collections()
+        migrate_storage.migrate_containers()
 
         file_1_id = api_db['projects'].find_one(
             {'files.name': file_name_1}
