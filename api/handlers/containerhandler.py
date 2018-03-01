@@ -544,9 +544,11 @@ class ContainerHandler(base.RequestHandler):
 
         target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
+        permchecker(noop)('DELETE', _id)
+
         try:
             # This line exec the actual delete checking permissions using the decorator permchecker
-            result = permchecker(self.storage.exec_op)('DELETE', _id)
+            result = self.storage.exec_op('DELETE', _id)
         except APIStorageException as e:
             self.abort(400, e.message)
         if result.modified_count == 1:
