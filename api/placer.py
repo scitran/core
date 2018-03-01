@@ -251,6 +251,13 @@ class EnginePlacer(Placer):
 
     def check(self):
         self.requireTarget()
+
+        # Check that required state exists
+        if self.context.get('job_id'):
+            Job.get(self.context.get('job_id'))
+        if self.context.get('job_ticket_id'):
+            JobTicket.get(self.context.get('job_ticket_id'))
+
         if self.metadata is not None:
             validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
 
@@ -706,6 +713,12 @@ class AnalysisJobPlacer(Placer):
     def check(self):
         if self.id_ is None:
             raise Exception('Must specify a target analysis')
+
+        # Check that required state exists
+        if self.context.get('job_id'):
+            Job.get(self.context.get('job_id'))
+        if self.context.get('job_ticket_id'):
+            JobTicket.get(self.context.get('job_ticket_id'))
 
     def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
