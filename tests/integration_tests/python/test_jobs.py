@@ -387,8 +387,10 @@ def test_failed_job_output(data_builder, default_payload, as_user, as_admin, as_
     assert r.ok
     job = r.json()['_id']
 
+    api_db.jobs.update_one({'_id': bson.ObjectId(job)}, {'$set':{'state': 'running'}})
+
     # prepare completion (send success status before engine upload)
-    r = as_drone.post('/jobs/' + job + '/prepare-complete', json={'success': False})
+    r = as_drone.post('/jobs/' + job + '/prepare-complete', json={'success': False, 'elapsed': -1})
     assert r.ok
 
     # verify that job ticket has been created
