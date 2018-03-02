@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "allOf": [{"$ref": "../definitions/resolver.json#/definitions/resolver-input"}],
+    "example": {
+		"path": ["scitran", "Neuroscience"]
+	}
+}
