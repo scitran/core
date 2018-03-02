@@ -19,7 +19,7 @@ class Job(object):
     def __init__(self, gear_id, inputs, destination=None, tags=None,
                  attempt=1, previous_job_id=None, created=None,
                  modified=None, state='pending', request=None,
-                 id_=None, config_=None, now=False, origin=None,
+                 id_=None, config_=None, origin=None,
                  saved_files=None, produced_metadata=None, batch=None,
                  failed_output_accepted=False, profile=None):
         """
@@ -102,7 +102,6 @@ class Job(object):
         self.request            = request
         self.id_                = id_
         self.config             = config_
-        self.now                = now
         self.origin             = origin
         self.saved_files        = saved_files
         self.produced_metadata  = produced_metadata
@@ -163,7 +162,6 @@ class Job(object):
             request=d.get('request'),
             id_=d['_id'],
             config_=d.get('config'),
-            now=d.get('now', False),
             origin=d.get('origin'),
             saved_files=d.get('saved_files'),
             produced_metadata=d.get('produced_metadata'),
@@ -207,8 +205,6 @@ class Job(object):
             d.pop('previous_job_id')
         if d['request'] is None:
             d.pop('request')
-        if d['now'] is False:
-            d.pop('now')
         if d['failed_output_accepted'] is False:
             d.pop('failed_output_accepted')
 
