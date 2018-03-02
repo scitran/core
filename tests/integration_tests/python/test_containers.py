@@ -1267,8 +1267,13 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     assert r.status_code == 403
     assert r.json()['reason'] == 'permission_denied'
 
-    # try to delete acquisition with perms
+    # try to delete acquisition without perms
     r = as_user.delete('/acquisitions/' + acquisition)
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'permission_denied'
+
+    # try to delete file without perms
+    r = as_user.delete('/acquisitions/' + acquisition + '/files/test2.csv')
     assert r.status_code == 403
     assert r.json()['reason'] == 'permission_denied'
 
@@ -1298,6 +1303,11 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     assert r.status_code == 403
     assert r.json()['reason'] == 'original_data_present'
 
+    # try to delete "original data" file without admin perms
+    r = as_user.delete('/acquisitions/' + acquisition + '/files/test2.csv')
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'original_data_present'
+
     # Add session level analysis
     r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
         'analysis': {'label': 'with-job'},
@@ -1319,8 +1329,7 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     assert r.status_code == 400
 
     # verify that a non-referenced file _can_ be deleted from the same acquisition
-    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('unrelated.csv')).ok
-    assert as_admin.delete('/acquisitions/' + acquisition + '/files/unrelated.csv').ok
+    assert as_admin.delete('/acquisitions/' + acquisition + '/files/test2.csv').ok
 
     # delete collection
     assert collection in as_admin.get('/acquisitions/' + acquisition).json()['collections']
@@ -1335,10 +1344,6 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     assert 'deleted' in api_db.analyses.find_one({'_id': bson.ObjectId(analysis)})
     assert as_admin.get('/sessions/' + session + '/analyses/' + analysis).status_code == 404
     assert as_admin.get('/analyses/' + analysis).status_code == 404
-
-    # try to delete acquisition without admin perms
-    r = as_user.delete('/acquisitions/' + acquisition)
-    assert r.status_code == 403
 
     # delete acquisition
     assert as_admin.delete('/acquisitions/' + acquisition).ok
