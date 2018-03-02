@@ -47,9 +47,8 @@ def files_sublist(handler, container):
     def g(exec_op):
         def f(method, _id, query_params=None, payload=None, exclude_params=None):
             errors = None
-            if method == 'GET' and container.get('public', False):
-                min_access = -1
-            elif method == 'GET':
+            min_access = sys.maxint
+            if method == 'GET':
                 min_access = INTEGER_PERMISSIONS['ro']
             elif method in ['POST', 'PUT']:
                 min_access = INTEGER_PERMISSIONS['rw']
@@ -66,10 +65,6 @@ def files_sublist(handler, container):
                 else:
                     errors = {'reason': 'permission_denied'}
 
-            else:
-                min_access = sys.maxint
-
-            log.warning('the user access is {} and the min access is {}'.format(access, min_access))
 
             if access >= min_access:
                 return exec_op(method, _id, query_params, payload, exclude_params)

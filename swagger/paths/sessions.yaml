@@ -14,8 +14,9 @@ $template_arguments:
   arguments:
     update-input-schema: schemas/input/session.json
     get-output-schema: schemas/output/session.json
+    delete-description: Read-write project permissions are required to delete a session. </br>Admin project permissions are required if the session or it's acquisitions contain data uploaded by sources other than users and jobs.
 
-'/sessions/{SessionId}/jobs':
+/sessions/{SessionId}/jobs:
   parameters:
     - in: path
       type: string
@@ -104,7 +105,7 @@ $template_arguments:
     parameters:
       - in: body
         name: body
-        schema: 
+        schema:
           $ref: schemas/input/analysis-job.json
       - in: query
         type: boolean

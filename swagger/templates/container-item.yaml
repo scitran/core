@@ -9,6 +9,8 @@ parameters:
     type: string
   - name: get-output-schema
     type: string
+  - name: delete-description
+    type: string
 template: |
   parameters:
     - in: path
@@ -43,6 +45,9 @@ template: |
   delete:
     summary: Delete a {{resource}}
     operationId: delete_{{resource}}
+    {{#delete-description}}
+    description: {{{.}}}
+    {{/delete-description}}
     tags:
       - '{{tag}}'
     responses:
