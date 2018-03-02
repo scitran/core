@@ -69,6 +69,7 @@ paths:
     - paths/analyses.yaml
     - paths/site-rules.yaml
     - paths/dataexplorer.yaml
+    - paths/resolver.yaml
 
 
 securityDefinitions:
