@@ -4,7 +4,6 @@ Purpose of this module is to define all the permissions checker decorators for t
 
 from . import _get_access, INTEGER_PERMISSIONS
 from ..web.errors import APIPermissionException
-from .. import config
 
 
 def default_container(handler, container=None, target_parent_container=None):
@@ -39,7 +38,6 @@ def default_container(handler, container=None, target_parent_container=None):
 
                 if not has_access and container.get('has_original_data', False) and user_perms == INTEGER_PERMISSIONS['rw']:
                     # The user was not granted access because the container had original data
-
                     errors = {'reason': 'original_data_present'}
                 else:
                     errors = {'reason': 'permission_denied'}

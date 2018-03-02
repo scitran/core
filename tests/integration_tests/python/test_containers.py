@@ -1269,7 +1269,7 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
 
     # try to delete acquisition referenced by analysis
     r = as_admin.delete('/acquisitions/' + acquisition)
-    assert r.status_code == 400
+    assert r.status_code == 403
 
     # try to delete acquisition file referenced by analysis
     r = as_admin.delete('/acquisitions/' + acquisition + '/files/test.csv')
