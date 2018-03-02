@@ -158,7 +158,17 @@ module.exports = function(grunt) {
 					grunt.log.writeln('WARNING Cannot simplify "allOf" definition at: ' + formatPath(path));
 				}
 			} else {
-				grunt.log.writeln('WARNING Cannot simplify "allOf" definition at: ' + formatPath(path));
+				// Still replace aliases
+				for( var i = 0; i < schema.allOf.length; i++ ) {
+					var alias = context.aliases[schema.allOf[i].$ref];
+					if( alias ) {
+						schema.allOf[i] = _.cloneDeep(alias);
+					}
+				}
+				// It's not an error to not simplify polymorphic types
+				if( !schema['x-discriminator-value'] ) {
+					grunt.log.writeln('WARNING Cannot simplify "allOf" definition at: ' + formatPath(path));
+				}
 			}
 		} else if( schema.$ref ) {
 			// Replace alias for $ref fields
