@@ -7,9 +7,10 @@ import pymongo
 import shutil
 import zipfile
 
+from backports import tempfile
+
 from . import config
 from . import files
-from . import tempdir as tempfile
 from . import util
 from . import validators
 from .dao import containerutil, hierarchy

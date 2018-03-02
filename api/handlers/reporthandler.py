@@ -7,8 +7,9 @@ import os
 import pymongo
 import pytz
 
+from backports import tempfile
+
 from .. import config
-from .. import tempdir as tempfile
 from .. import util
 from ..web import base
 
