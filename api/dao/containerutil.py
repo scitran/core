@@ -171,15 +171,16 @@ def container_has_original_data(container, child_cont_name=None):
     If the set only includes user and job uploaded files, the container
     is not considered to have "original data".
     """
-    origin_types = set()
 
     for f in container.get('files', []):
-        origin_types.add(f['origin']['type'])
+        if f['origin']['type'] not in [str(Origin.user), str(Origin.job)]:
+            return True
     if child_cont_name:
         for c in container.get(child_cont_name, []):
             for f in c.get('files', []):
-                origin_types.add(f['origin']['type'])
-    return origin_types.issubset(set(str(Origin.user, Origin.job)))
+                if f['origin']['type'] not in [str(Origin.user), str(Origin.job)]:
+                    return True
+    return False
 
 
 class ContainerReference(object):

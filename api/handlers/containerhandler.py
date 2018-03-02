@@ -13,7 +13,7 @@ from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..types import Origin
 from ..web import base
-from ..web.errors import APIStorageException
+from ..web.errors import APIStorageException, APIPermissionException
 from ..web.request import log_access, AccessType
 
 log = config.log
@@ -531,20 +531,29 @@ class ContainerHandler(base.RequestHandler):
         _id = kwargs.pop('cid')
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
-        container = self._get_container(_id, get_children=True)
+
+        if cont_name != 'acquisitions':
+            get_children = True
+        else:
+            get_children = False
+        container = self._get_container(_id, get_children=get_children)
         container['cont_name'] = containerutil.singularize(cont_name)
 
         if cont_name in ['sessions', 'acquisitions']:
-            container['has_original_data'] = containerutil.container_origin_types(container, child_cont_name=self.config.get('children_cont'))
+            container['has_original_data'] = containerutil.container_has_original_data(container, child_cont_name=self.config.get('children_cont'))
         if cont_name == 'acquisitions':
             analyses = containerutil.get_referring_analyses(cont_name, _id)
             if analyses:
                 analysis_ids = [str(a['_id']) for a in analyses]
-                self.abort(400, 'Cannot delete acquisition {} referenced by analyses {}'.format(_id, analysis_ids))
+                errors = {'reason': 'analysis_conflict'}
+                raise APIPermissionException('Cannot delete acquisition {} referenced by analyses {}'.format(_id, analysis_ids), errors=errors)
 
         target_parent_container, _ = self._get_parent_container(container)
         permchecker = self._get_permchecker(container, target_parent_container)
         permchecker(noop)('DELETE', _id)
+        if self.is_true('check'):
+            # User only wanted to check permissions, respond with 200
+            return
 
         try:
             # This line exec the actual delete checking permissions using the decorator permchecker
