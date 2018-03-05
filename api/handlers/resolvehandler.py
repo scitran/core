@@ -16,7 +16,9 @@ class ResolveHandler(base.RequestHandler):
             self.abort(403, 'Request requires login')
 
         doc = self.request.json
-        result = Resolver.resolve(doc['path'])
+
+        resolver = Resolver()
+        result = resolver.resolve(doc['path'])
 
         # Cancel the request if anything in the path is unauthorized; remove any children that are unauthorized.
         if not self.superuser_request:

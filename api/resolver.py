@@ -4,15 +4,16 @@ Resolve an ambiguous path through the data hierarchy.
 
 from . import config
 from .web.errors import APINotFoundException
+from bson.objectid import ObjectId
+from collections import deque
 
 class Node(object):
-
     # All lists obtained by the Resolver are sorted by the created timestamp, then the database ID as a fallback.
     # As neither property should ever change, this sort should be consistent
     sorting = [('created', 1), ('_id', 1)]
 
     # Globally disable extraneous properties of unbounded length, along with some PHI fields.
-    projection = {
+    default_projection = {
         'files':             0,
         'info':              0,
         'tags':              0,
@@ -25,154 +26,93 @@ class Node(object):
         'subject.lastname':  0,
     }
 
-    # Add some more fields for debugging purposes.
-    # projection['roles']       = 0
-    # projection['permissions'] = 0
+    # In some cases we only want to resolve the id of a container
+    id_only_projection = {
+        '_id':               1,
+        'label':             1,
+        'permissions':       1,
+    }
 
-    @staticmethod
-    def get_children(parent):
-        raise NotImplementedError() # pragma: no cover
+    def __init__(self, collection, node_type, parent, files=True, use_id=False, object_id=True):
+        self.collection = collection
+        self.node_type = node_type
+        self.parent = parent
+        self.files = files
+        self.use_id = use_id
+        self.object_id = object_id
 
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        raise NotImplementedError() # pragma: no cover
+    def find(self, criterion, parent=None, id_only=False, include_files=False, use_id=False, limit=0): 
+        query = {
+            'deleted': {'$exists':  False}
+        }
 
-def _get_files(table, match):
+        # Setup criterion match
+        if criterion:
+            if use_id or self.use_id:
+                if self.object_id:
+                    query['_id'] = ObjectId(criterion)
+                else:
+                    query['_id'] = criterion
+            else:
+                query['label'] = criterion
+
+        # Add parent to query
+        if parent and self.parent:
+            query[self.parent] = parent['_id']
+
+        # Setup projection
+        if id_only: 
+            proj = Node.id_only_projection
+        else:
+            proj = Node.default_projection.copy()
+            if include_files:
+                del proj['files']
+
+        results = list(config.db[self.collection].find(query, proj, sort=Node.sorting, limit=limit))
+        for el in results:
+            el['node_type'] = self.node_type
+        return results
+
+
+PROJECT_TREE = [
+    Node('groups', 'group', None, False, True, False),
+    Node('projects', 'project', 'group'),
+    Node('sessions', 'session', 'project'),
+    Node('acquisitions', 'acquisition', 'session')
+]
+
+def parse_criterion(value):
+    if not value:
+        return False, None
+
+    use_id = False
+    # Check for <id:xyz> syntax
+    if value.startswith('<id:') and value.endswith('>'):
+        value = value[4:len(value)-1]
+        use_id = True
+
+    return use_id, value
+
+def pop_files(container):
     """
-    Return a consistently-ordered set of files for a given container query.
+    Return a consistently-ordered set of files for a given container.
     """
-
-    pipeline = [
-        {'$match': match },
-        {'$unwind': '$files'},
-        {'$sort': {'files.name': 1}},
-        {'$group': {'_id':'$_id', 'files': {'$push':'$files'}}}
-    ]
-
-    result = config.mongo_pipeline(table, pipeline)
-    if len(result) == 0:
+    if not container:
         return []
 
-    files = result[0]['files']
-    for x in files:
-        x.update({'node_type': 'file'})
+    files = container.pop('files', [])
+
+    files.sort(key=lambda f: f.get('name', ''))
+    for f in files:
+        f['node_type'] = 'file'
+
     return files
 
-def _get_docs(table, label, match):
-    match_nondeleted = match.copy()
-    match_nondeleted['deleted'] = {'$exists': False}
-    results = list(config.db[table].find(match, Node.projection, sort=Node.sorting))
-    for y in results:
-        y.update({'node_type': label})
-    return results
-
-
-class FileNode(Node):
-    @staticmethod
-    def get_children(parent):
-        return []
-
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        raise APINotFoundException("Files have no children")
-
-class AcquisitionNode(Node):
-    @staticmethod
-    def get_children(parent):
-        files    = _get_files('acquisitions', {'_id' : parent['_id'] })
-
-        return files
-
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        for x in children:
-            if x['node_type'] == "file" and x.get('name') == criterion:
-                return x, FileNode
-        raise APINotFoundException('No ' + criterion + ' file found.')
-
-class SessionNode(Node):
-
-    @staticmethod
-    def get_children(parent):
-        acqs = _get_docs('acquisitions', 'acquisition', {'session' : parent['_id']})
-        files    = _get_files('sessions', {'_id' : parent['_id'] })
-
-        return list(acqs) + files
-
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        if _id:
-            selectAcq = '_id'
-            selectFil = '_id'
-        else:
-            selectAcq = 'label'
-            selectFil = 'name'
-
-        for x in children:
-            if x['node_type'] == "acquisition" and str(x.get(selectAcq)) == criterion:
-                return x, AcquisitionNode
-            if x['node_type'] == "file" and str(x.get(selectFil)) == criterion:
-                return x, FileNode
-        raise APINotFoundException('No ' + criterion + ' acquisition or file found.')
-
-class ProjectNode(Node):
-
-    @staticmethod
-    def get_children(parent):
-        sessions = _get_docs('sessions', 'session', {'project' : parent['_id']})
-        files    = _get_files('projects', {'_id' : parent['_id'] })
-
-        return list(sessions) + files
-
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        if _id:
-            selectSes = '_id'
-            selectFil = '_id'
-        else:
-            selectSes = 'label'
-            selectFil = 'name'
-
-        for x in children:
-            if x['node_type'] == "session" and str(x.get(selectSes)) == criterion:
-                return x, SessionNode
-            if x['node_type'] == "file" and str(x.get(selectFil)) == criterion:
-                return x, FileNode
-        raise APINotFoundException('No ' + criterion + ' session or file found.')
-
-class GroupNode(Node):
-
-    @staticmethod
-    def get_children(parent):
-        projects = _get_docs('projects', 'project', {'group' : parent['_id']})
-        return projects
-
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        if _id:
-            select = '_id'
-        else:
-            select = 'label'
-
-        for x in children:
-            if str(x.get(select)) == criterion:
-                return x, ProjectNode
-        raise APINotFoundException('No ' + criterion + ' project found.')
-
-class RootNode(Node):
-
-    @staticmethod
-    def get_children(parent):
-        groups = _get_docs('groups', 'group', {})
-        return groups
-
-    @staticmethod
-    def filter(children, criterion, _id=False):
-        for x in children:
-            if x.get('_id') == criterion:
-                return x, GroupNode
-        raise APINotFoundException('No ' + criterion + ' group found.')
-
+def find_file(files, name):
+    for f in files:
+        if str(f.get('name')) == name:
+            return f
+    return None
 
 class Resolver(object):
     """
@@ -181,46 +121,82 @@ class Resolver(object):
     Does not tolerate ambiguity at any level of the path except the final node.
     """
 
-    @staticmethod
-    def resolve(path):
+    def __init__(self, id_only=False):
+        self.id_only = id_only 
 
+    def resolve(self, path):
         if not isinstance(path, list):
             raise Exception("Path must be an array of strings")
 
-        node, resolved, last = Resolver._resolve(path, RootNode)
-        children = node.get_children(last)
+        path = deque(path)
+        tree = deque(PROJECT_TREE)
+        resolved_path = []
+        resolved_children = []
+        last = None
+        files = []
+
+        # Short circuit - just return a list of groups
+        if not path:
+            resolved_children = tree[0].find(None, id_only=self.id_only)
+            return {
+                'path': resolved_path,
+                'children': resolved_children
+            }
+
+        # Walk down the tree, building path until we get to the last node
+        # Keeping in mind that path may be empty
+        while len(path) > 0 and len(tree) > 0:
+            node = tree.popleft()
+            current_id, current = parse_criterion(path.popleft()) 
+            
+            # Find the next child 
+            children = node.find(current, parent=last, id_only=self.id_only, include_files=True, use_id=current_id, limit=1) 
+
+            # If children is empty, try to find a match in the last set of files
+            if not children:
+                # Check in last set of files
+                if not current_id:
+                    child = find_file(files, current)
+                    if child:
+                        children = [child]
+                        files = []
+                        if len(path) > 0:
+                            raise APINotFoundException('Files have no children')
+
+            if not children:
+                # Not found
+                or_file = 'or file ' if node.files else ''
+                raise APINotFoundException('No {0} {1} {2} found.'.format(current, node.node_type, or_file))
+
+            # Otherwise build up path
+            resolved_path.append(children[0])
+            last = resolved_path[-1]
+            files = pop_files(last)
+
+        # Resolve children 
+        if not self.id_only:
+            # If there are path elements left, search in the last set of files
+            if len(path) > 0:
+                f = find_file(files, path[0])
+                if not f:
+                    raise APINotFoundException('No ' + path[0] + ' file found.')
+                if len(path) > 1:
+                    raise APINotFoundException('Files have no children')
+                resolved_path.append(f)
+            elif last and last.get('node_type') != 'file':
+                # Retrieve any child nodes
+                if len(tree) > 0:
+                    node = tree[0]
+                    resolved_children = node.find(None, parent=last)
+
+                # Add any files from the last node
+                resolved_children = resolved_children + files
+
+        elif len(path) > 0:
+            raise APINotFoundException('Cannot retrieve id for file: {0}'.format(path[0]))
 
         return {
-            'path': resolved,
-            'children': children
+            'path': resolved_path,
+            'children': resolved_children
         }
 
-    @staticmethod
-    def _resolve(path, node, parents=None):
-
-        if parents is None:
-            parents = []
-
-        last = None
-        if len(parents) > 0:
-            last = parents[len(parents) - 1]
-
-        if len(path) == 0:
-            return node, parents, last
-
-        current = path[0]
-        current_id = False
-
-        # Check for <id:xyz> syntax
-        if current.startswith('<id:') and current.endswith('>'):
-            current = current[4:len(current)-1]
-            current_id = True
-            print current
-
-        children = node.get_children(last)
-        selected, next_ = node.filter(children, current, current_id)
-
-        path = path[1:]
-        parents.append(selected)
-
-        return Resolver._resolve(path, next_, parents)

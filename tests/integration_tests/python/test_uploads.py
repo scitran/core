@@ -341,9 +341,16 @@ def test_reaper_project_search(data_builder, file_form, as_root):
     assert r.ok
     project_list = r.json()
     assert len(project_list) == 2
-    project = project_list[1]
-    assert project_list[1]['label'] == expected_project_label_2
+
+    # Order is not guaranteed
+    if project_list[0]['_id'] == project_1:
+        project = project_list[1]
+    else:
+        project = project_list[0]
+
+    assert project['label'] == expected_project_label_2
     project_2 = project['_id']
+        
 
     assert len(as_root.get('/projects/' + project_2 + '/sessions').json()) == 1
     session = as_root.get('/projects/' + project_2 + '/sessions').json()[0]['_id']
@@ -374,8 +381,14 @@ def test_reaper_project_search(data_builder, file_form, as_root):
     project_list = r.json()
     # Ensure there are still only 2 projects
     assert len(project_list) == 2
-    project = project_list[1]
-    assert project_list[1]['label'] == expected_project_label_2
+    
+    # Order is not guaranteed
+    if project_list[0]['_id'] == project_1:
+        project = project_list[1]
+    else:
+        project = project_list[0]
+
+    assert project['label'] == expected_project_label_2
 
     assert len(as_root.get('/projects/' + project_2 + '/sessions').json()) == 2
     session2 = as_root.get('/projects/' + project_2 + '/sessions').json()[1]['_id']
