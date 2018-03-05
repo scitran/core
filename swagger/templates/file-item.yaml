@@ -35,7 +35,7 @@ template: |
       - name: ticket
         in: query
         type: string
-        description: The generated ticket id for the download, or present but empty to generate a ticket id.
+        description: The generated ticket id for the download, or present but empty to generate a ticket id
       - name: view
         in: query
         type: boolean
@@ -69,4 +69,18 @@ template: |
     responses:
       default:
         description: ''
+  delete:
+    summary: Delete a file
+    description: |
+      A user with read-write or higher permissions on the container may delete files
+      that were uploaded by users or were the output of jobs. (Specifically, files
+      whose `origin.type` is either `job` or `user`.)
+      <br/>
+      A user with admin permissions on the container may delete any file.
+    operationId: delete_{{resource}}_file
+    tags:
+      - '{{tag}}'
+    responses:
+      '200':
+        $ref: '#/responses/200:deleted-with-count'
 

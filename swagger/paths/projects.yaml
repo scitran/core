@@ -14,6 +14,7 @@ $template_arguments:
   arguments:
     update-input-schema: schemas/input/project-update.json
     get-output-schema: schemas/output/project.json
+    delete-description: Only site admins and users with "admin" project permissions may delete a project
 
 /projects/groups:
   get:
@@ -112,8 +113,8 @@ $template_arguments:
       - in: body
         name: body
         schema:
-          $ref: schemas/input/rule-update.json        
-        
+          $ref: schemas/input/rule-update.json
+
 
 '/projects/{ProjectId}/template':
   parameters:

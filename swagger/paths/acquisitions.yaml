@@ -14,6 +14,8 @@ $template_arguments:
   arguments:
     update-input-schema: schemas/input/acquisition-update.json
     get-output-schema: schemas/output/acquisition.json
+    delete-description: Read-write project permissions are required to delete an acquisition. </br>Admin project permissions are required if the acquisition contains data uploaded by sources other than users and jobs.
+
 
 # ===== Tags =====
 /acquisitions/{AcquisitionId}/tags:

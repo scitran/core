@@ -345,6 +345,7 @@ class RequestHandler(webapp2.RequestHandler):
         elif isinstance(exception, errors.APIConsistencyException):
             code = 400
         elif isinstance(exception, errors.APIPermissionException):
+            custom_errors = exception.errors
             code = 403
         elif isinstance(exception, errors.APINotFoundException):
             code = 404

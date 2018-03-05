@@ -15,7 +15,10 @@ class APINotFoundException(Exception):
     pass
 
 class APIPermissionException(Exception):
-    pass
+    def __init__(self, msg, errors=None):
+
+        super(APIPermissionException, self).__init__(msg)
+        self.errors = errors
 
 class APIRefreshTokenException(Exception):
     # Specifically alert a client when the user's refresh token expires
