@@ -1326,7 +1326,8 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
 
     # try to delete acquisition file referenced by analysis
     r = as_admin.delete('/acquisitions/' + acquisition + '/files/test.csv')
-    assert r.status_code == 400
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'analysis_conflict'
 
     # verify that a non-referenced file _can_ be deleted from the same acquisition
     assert as_admin.delete('/acquisitions/' + acquisition + '/files/test2.csv').ok
