@@ -40,9 +40,9 @@ class GroupStorage(ContainerStorage):
 
 
 class ProjectStorage(ContainerStorage):
-
     def __init__(self):
-        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True)
+        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True, 
+            list_projection={'info': 0, 'files.info': 0})
 
     def create_el(self, payload):
         result = super(ProjectStorage, self).create_el(payload)
@@ -100,7 +100,12 @@ class ProjectStorage(ContainerStorage):
 class SessionStorage(ContainerStorage):
 
     def __init__(self):
-        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True)
+        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True, 
+            # Remove subject first/last from list view to better log access to this information
+            list_projection={'info': 0, 'analyses': 0, 'subject.firstname': 0,
+                'subject.lastname': 0, 'subject.sex': 0, 'subject.age': 0,
+                'subject.race': 0, 'subject.ethnicity': 0, 'subject.info': 0,
+                'files.info': 0, 'tags': 0})
 
     def _fill_default_values(self, cont):
         cont = super(SessionStorage,self)._fill_default_values(cont)
@@ -225,7 +230,8 @@ class SessionStorage(ContainerStorage):
 class AcquisitionStorage(ContainerStorage):
 
     def __init__(self):
-        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True)
+        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True, 
+            list_projection={'info': 0, 'collections': 0, 'files.info': 0, 'tags': 0})
 
     def create_el(self, payload):
         result = super(AcquisitionStorage, self).create_el(payload)
@@ -291,7 +297,7 @@ class AcquisitionStorage(ContainerStorage):
 class CollectionStorage(ContainerStorage):
 
     def __init__(self):
-        super(CollectionStorage, self).__init__('collections', use_object_id=True, use_delete_tag=True)
+        super(CollectionStorage, self).__init__('collections', use_object_id=True, use_delete_tag=True, list_projection={'info': 0})
 
 
 class AnalysisStorage(ContainerStorage):

@@ -19,10 +19,9 @@ class CollectionsHandler(ContainerHandler):
 
     container_handler_configurations['collections'] = {
         'permchecker': containerauth.collection_permissions,
-        'storage': containerstorage.ContainerStorage('collections', use_object_id=True, use_delete_tag=True),
+        'storage': containerstorage.CollectionStorage(),
         'storage_schema_file': 'collection.json',
-        'payload_schema_file': 'collection.json',
-        'list_projection': {'info': 0}
+        'payload_schema_file': 'collection.json'
     }
 
     def __init__(self, request=None, response=None):
@@ -116,7 +115,7 @@ class CollectionsHandler(ContainerHandler):
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 
     def get_all(self):
-        projection = self.container_handler_configurations['collections']['list_projection']
+        projection = self.get_list_projection('collections')
         if self.superuser_request:
             permchecker = always_ok
         elif self.public_request:
@@ -163,7 +162,7 @@ class CollectionsHandler(ContainerHandler):
         if not self.superuser_request:
             query['permissions._id'] = self.uid
 
-        projection = self.container_handler_configurations['sessions']['list_projection']
+        projection = self.get_list_projection('sessions')
 
         sessions = list(containerstorage.SessionStorage().get_all_el(query, None, projection))
 
@@ -193,7 +192,7 @@ class CollectionsHandler(ContainerHandler):
         if not self.superuser_request:
             query['permissions._id'] = self.uid
 
-        projection = self.container_handler_configurations['acquisitions']['list_projection']
+        projection = self.get_list_projection('acquisitions')
 
         acquisitions = list(containerstorage.AcquisitionStorage().get_all_el(query, None, projection))
 
@@ -202,3 +201,8 @@ class CollectionsHandler(ContainerHandler):
         for acquisition in acquisitions:
             acquisition = self.handle_origin(acquisition)
         return acquisitions
+
+    def get_list_projection(self, container):
+        """Return the list_projection for container."""
+        cfg = self.container_handler_configurations[container]
+        return cfg['storage'].get_list_projection()
