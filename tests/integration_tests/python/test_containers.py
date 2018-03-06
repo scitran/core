@@ -1235,7 +1235,8 @@ def test_fields_list_requests(data_builder, file_form, as_admin):
     assert not a['files'][0].get('info')
 
 
-def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, as_user, file_form, api_db):
+
+def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, as_user, as_drone, file_form, api_db):
     gear_doc = default_payload['gear']['gear']
     gear_doc['inputs'] = {'csv': {'base': 'file'}}
     gear = data_builder.create_gear(gear=gear_doc)
@@ -1245,15 +1246,8 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     acquisition = data_builder.create_acquisition()
     collection = data_builder.create_collection()
     assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('test.csv')).ok
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
-        'job': {
-            'gear_id': gear,
-            'inputs': {'csv': {'type': 'acquisition', 'id': acquisition, 'name': 'test.csv'}}
-        }
-    })
-    assert r.ok
-    analysis = r.json()['_id']
+    assert as_drone.post('/acquisitions/' + acquisition + '/files', files=file_form('test2.csv')).ok
+
     r = as_admin.put('/collections/' + collection, json={
         'contents': {'operation': 'add', 'nodes': [{'level': 'session', '_id': session}]}
     })
@@ -1263,21 +1257,80 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     r = as_root.delete('/groups/' + group)
     assert r.status_code == 400
 
+    # try to delete project without perms
+    r = as_user.delete('/projects/' + project)
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'permission_denied'
+
+    # try to delete session without perms
+    r = as_user.delete('/sessions/' + session)
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'permission_denied'
+
+    # try to delete acquisition without perms
+    r = as_user.delete('/acquisitions/' + acquisition)
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'permission_denied'
+
+    # try to delete file without perms
+    r = as_user.delete('/acquisitions/' + acquisition + '/files/test2.csv')
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'permission_denied'
+
+    # Add user as rw
+    r = as_user.get('/users/self')
+    assert r.ok
+    uid = r.json()['_id']
+
+    r = as_admin.post('/projects/' + project + '/permissions', json={
+        '_id': uid,
+        'access': 'rw'
+    })
+    assert r.ok
+
     # try to delete project without admin perms
     r = as_user.delete('/projects/' + project)
     assert r.status_code == 403
+    assert r.json()['reason'] == 'permission_denied'
+
+    # try to delete a session with "original data" without admin perms
+    r = as_user.delete('/sessions/' + session)
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'original_data_present'
+
+    # try to delete an acquisition with "original data" without admin perms
+    r = as_user.delete('/acquisitions/' + acquisition)
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'original_data_present'
+
+    # try to delete "original data" file without admin perms
+    r = as_user.delete('/acquisitions/' + acquisition + '/files/test2.csv')
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'original_data_present'
+
+    # Add session level analysis
+    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
+        'analysis': {'label': 'with-job'},
+        'job': {
+            'gear_id': gear,
+            'inputs': {'csv': {'type': 'acquisition', 'id': acquisition, 'name': 'test.csv'}}
+        }
+    })
+    assert r.ok
+    analysis = r.json()['_id']
 
     # try to delete acquisition referenced by analysis
     r = as_admin.delete('/acquisitions/' + acquisition)
-    assert r.status_code == 400
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'analysis_conflict'
 
     # try to delete acquisition file referenced by analysis
     r = as_admin.delete('/acquisitions/' + acquisition + '/files/test.csv')
-    assert r.status_code == 400
+    assert r.status_code == 403
+    assert r.json()['reason'] == 'analysis_conflict'
 
     # verify that a non-referenced file _can_ be deleted from the same acquisition
-    assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('unrelated.csv')).ok
-    assert as_admin.delete('/acquisitions/' + acquisition + '/files/unrelated.csv').ok
+    assert as_admin.delete('/acquisitions/' + acquisition + '/files/test2.csv').ok
 
     # delete collection
     assert collection in as_admin.get('/acquisitions/' + acquisition).json()['collections']
@@ -1292,10 +1345,6 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     assert 'deleted' in api_db.analyses.find_one({'_id': bson.ObjectId(analysis)})
     assert as_admin.get('/sessions/' + session + '/analyses/' + analysis).status_code == 404
     assert as_admin.get('/analyses/' + analysis).status_code == 404
-
-    # try to delete acquisition without admin perms
-    r = as_user.delete('/acquisitions/' + acquisition)
-    assert r.status_code == 403
 
     # delete acquisition
     assert as_admin.delete('/acquisitions/' + acquisition).ok

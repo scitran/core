@@ -5,9 +5,10 @@ import shutil
 import hashlib
 import collections
 
+from backports import tempfile
+
 from . import util
 from . import config
-from . import tempdir as tempfile
 
 DEFAULT_HASH_ALG='sha384'
 

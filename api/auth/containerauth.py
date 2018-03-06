@@ -3,6 +3,7 @@ Purpose of this module is to define all the permissions checker decorators for t
 """
 
 from . import _get_access, INTEGER_PERMISSIONS
+from ..web.errors import APIPermissionException
 
 
 def default_container(handler, container=None, target_parent_container=None):
@@ -14,7 +15,7 @@ def default_container(handler, container=None, target_parent_container=None):
     def g(exec_op):
         def f(method, _id=None, payload=None, unset_payload=None, recursive=False, r_payload=None, replace_metadata=False):
             projection = None
-            additional_error_msg = None
+            errors = None
             if method == 'GET' and container.get('public', False):
                 has_access = True
             elif method == 'GET':
@@ -26,9 +27,21 @@ def default_container(handler, container=None, target_parent_container=None):
                     required_perm = 'admin'
                 has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
             elif method == 'DELETE':
-                # Container deletion always requires admin
-                required_perm = 'admin'
-                has_access = _get_access(handler.uid, target_parent_container) >= INTEGER_PERMISSIONS[required_perm]
+                # Project delete requires admin, others require rw
+                if container['cont_name'] == 'project' or container.get('has_original_data', False):
+                    required_perm = 'admin'
+                else:
+                    required_perm = 'rw'
+
+                user_perms = _get_access(handler.uid, container)
+                has_access = user_perms >= INTEGER_PERMISSIONS[required_perm]
+
+                if not has_access and container.get('has_original_data', False) and user_perms == INTEGER_PERMISSIONS['rw']:
+                    # The user was not granted access because the container had original data
+                    errors = {'reason': 'original_data_present'}
+                else:
+                    errors = {'reason': 'permission_denied'}
+
             elif method == 'PUT' and target_parent_container is not None:
                 has_access = (
                     _get_access(handler.uid, container) >= INTEGER_PERMISSIONS['admin'] and
@@ -44,9 +57,7 @@ def default_container(handler, container=None, target_parent_container=None):
                 return exec_op(method, _id=_id, payload=payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata, projection=projection)
             else:
                 error_msg = 'user not authorized to perform a {} operation on the container.'.format(method)
-                if additional_error_msg:
-                    error_msg += ' '+additional_error_msg
-                handler.abort(403, error_msg)
+                raise APIPermissionException(error_msg, errors=errors)
         return f
     return g
 

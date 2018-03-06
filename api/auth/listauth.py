@@ -6,6 +6,8 @@ Purpose of this module is to define all the permissions checker decorators for t
 import sys
 
 from .. import config
+from ..types import Origin
+from ..web.errors import APIPermissionException
 from . import _get_access, INTEGER_PERMISSIONS
 
 log = config.log
@@ -33,6 +35,41 @@ def default_sublist(handler, container):
                 return exec_op(method, _id, query_params, payload, exclude_params)
             else:
                 handler.abort(403, 'user not authorized to perform a {} operation on the list'.format(method))
+        return f
+    return g
+
+def files_sublist(handler, container):
+    """
+    Files have slightly modified permissions centered around origin.
+    Admin is required to remove files with an origin type other than engine or user.
+    """
+    access = _get_access(handler.uid, container)
+    def g(exec_op):
+        def f(method, _id, query_params=None, payload=None, exclude_params=None):
+            errors = None
+            min_access = sys.maxint
+            if method == 'GET':
+                min_access = INTEGER_PERMISSIONS['ro']
+            elif method in ['POST', 'PUT']:
+                min_access = INTEGER_PERMISSIONS['rw']
+            elif method =='DELETE':
+                min_access = INTEGER_PERMISSIONS['rw']
+                file_is_original_data = bool(container.get('origin',{}).get('type') not in [str(Origin.user), str(Origin.job)])
+
+                if file_is_original_data:
+                    min_access = INTEGER_PERMISSIONS['admin']
+
+                if file_is_original_data and access == INTEGER_PERMISSIONS['rw']:
+                    # The user was not granted access because the container had original data
+                    errors = {'reason': 'original_data_present'}
+                else:
+                    errors = {'reason': 'permission_denied'}
+
+
+            if access >= min_access:
+                return exec_op(method, _id, query_params, payload, exclude_params)
+            else:
+                raise APIPermissionException('user not authorized to perform a {} operation on the list'.format(method), errors=errors)
         return f
     return g
 

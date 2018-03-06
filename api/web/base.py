@@ -335,7 +335,6 @@ class RequestHandler(webapp2.RequestHandler):
             code = exception.code
         elif isinstance(exception, errors.InputValidationException):
             code = 400
-            self.request.logger.warning(str(exception))
         elif isinstance(exception, errors.APIAuthProviderException):
             code = 401
         elif isinstance(exception, errors.APIRefreshTokenException):
@@ -346,6 +345,7 @@ class RequestHandler(webapp2.RequestHandler):
         elif isinstance(exception, errors.APIConsistencyException):
             code = 400
         elif isinstance(exception, errors.APIPermissionException):
+            custom_errors = exception.errors
             code = 403
         elif isinstance(exception, errors.APINotFoundException):
             code = 404

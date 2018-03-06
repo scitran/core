@@ -18,11 +18,15 @@ template: |
   get:
     summary: Download a file.
     description: |
-      If "ticket" is specified by empty, a download ticket will be created
-      If "ticket" is not specified, the file will be download
-      If "ticket" is specified and not empty, the file will be downloaded
+      Files can be downloaded directly from this endpoint with a valid "Authorization" header or via a ticket id.
+
+      To generate a ticket:
+        - Make a request with an empty "ticket" parameter and a valid "Authorization" header. The server will respond with a generated ticket id.
+        - Make another request with the received ticket id in the "ticket" parameter. A valid "Authorization" header is no longer required.
+
+      When "view" is true, [RFC7233](https://tools.ietf.org/html/rfc7233) range request headers are supported.
     operationId: download_{{resource}}_file
-    tags: 
+    tags:
     - '{{tag}}'
     produces:
       - application/json
@@ -31,8 +35,24 @@ template: |
       - name: ticket
         in: query
         type: string
-        description: ticket id of the file to download
-        
+        description: The generated ticket id for the download, or present but empty to generate a ticket id
+      - name: view
+        in: query
+        type: boolean
+        default: false
+        description: |
+          If true, the proper "Content-Type" header based on the file's mimetype is set on response
+          If false, the "Content-Type" header is set to "application/octet-stream"
+      - name: info
+        in: query
+        type: boolean
+        default: false
+        description: If the file is a zipfile, return a json response of zipfile member information
+      - name: member
+        in: query
+        type: string
+        description: The filename of a zipfile member to download rather than the entire file
+
     responses:
       '200':
         description: ''
@@ -44,9 +64,23 @@ template: |
   post:
     summary: Replace a file
     operationId: replace_{{resource}}_file
-    tags: 
+    tags:
     - '{{tag}}'
     responses:
       default:
         description: ''
+  delete:
+    summary: Delete a file
+    description: |
+      A user with read-write or higher permissions on the container may delete files
+      that were uploaded by users or were the output of jobs. (Specifically, files
+      whose `origin.type` is either `job` or `user`.)
+      <br/>
+      A user with admin permissions on the container may delete any file.
+    operationId: delete_{{resource}}_file
+    tags:
+      - '{{tag}}'
+    responses:
+      '200':
+        $ref: '#/responses/200:deleted-with-count'
 

@@ -33,7 +33,7 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
 
     # try to resolve non-existent root/child
     r = as_admin.post('/resolve', json={'path': ['child']})
-    assert r.status_code == 500
+    assert r.status_code == 404
 
 
     # GROUP
@@ -59,7 +59,7 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
 
     # try to resolve non-existent root/group/child
     r = as_admin.post('/resolve', json={'path': [group, 'child']})
-    assert r.status_code == 500
+    assert r.status_code == 404
 
 
     # PROJECT
@@ -100,7 +100,7 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
 
     # try to resolve non-existent root/group/project/child
     r = as_admin.post('/resolve', json={'path': [group, project_label, 'child']})
-    assert r.status_code == 500
+    assert r.status_code == 404
 
 
     # SESSION
@@ -141,7 +141,7 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
 
     # try to resolve non-existent root/group/project/session/child
     r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, 'child']})
-    assert r.status_code == 500
+    assert r.status_code == 404
 
 
     # ACQUISITION
@@ -170,12 +170,22 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
     assert path_in_result([group, project, session, acquisition, acquisition_file], result)
     assert result['children'] == []
 
+    def idz(s):
+        return '<id:' + s + '>'
+
+    # resolve root/group/project/session/acquisition/file with id
+    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), acquisition_file]})
+    result = r.json()
+    assert r.ok
+    assert path_in_result([group, project, session, acquisition, acquisition_file], result)
+    assert result['children'] == []
+
     # try to resolve non-existent root/group/project/session/acquisition/child
     r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, acquisition_label, 'child']})
-    assert r.status_code == 500
+    assert r.status_code == 404
 
 
     # FILE
     # try to resolve non-existent (also invalid) root/group/project/session/acquisition/file/child
     r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, acquisition_label, acquisition_file, 'child']})
-    assert r.status_code == 500
+    assert r.status_code == 404

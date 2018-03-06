@@ -387,8 +387,10 @@ def test_failed_job_output(data_builder, default_payload, as_user, as_admin, as_
     assert r.ok
     job = r.json()['_id']
 
+    api_db.jobs.update_one({'_id': bson.ObjectId(job)}, {'$set':{'state': 'running'}})
+
     # prepare completion (send success status before engine upload)
-    r = as_drone.post('/jobs/' + job + '/prepare-complete', json={'success': False})
+    r = as_drone.post('/jobs/' + job + '/prepare-complete', json={'success': False, 'elapsed': -1})
     assert r.ok
 
     # verify that job ticket has been created
@@ -418,6 +420,8 @@ def test_failed_job_output(data_builder, default_payload, as_user, as_admin, as_
         }
     }
 
+    api_db.jobs.update_one({'_id': bson.ObjectId(job)}, {'$set':{'state': 'running'}})
+
     r = as_drone.post('/engine',
         params={'level': 'acquisition', 'id': acquisition, 'job': job, 'job_ticket': job_ticket['_id']},
         files=file_form('result.txt', meta=metadata)
@@ -440,16 +444,6 @@ def test_failed_job_output(data_builder, default_payload, as_user, as_admin, as_
     # try to accept failed output - user has no access to destination
     r = as_user.post('/jobs/' + job + '/accept-failed-output')
     assert r.status_code == 403
-
-    # try to accept failed output - job is not in failed state yet
-    r = as_admin.post('/jobs/' + job + '/accept-failed-output')
-    assert r.status_code == 400
-
-    # set job state to failed
-    r = as_drone.put('/jobs/' + job, json={'state': 'running'})
-    assert r.ok
-    r = as_drone.put('/jobs/' + job, json={'state': 'failed'})
-    assert r.ok
 
     # accept failed output
     r = as_admin.post('/jobs/' + job + '/accept-failed-output')

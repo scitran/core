@@ -7,15 +7,17 @@ import pymongo
 import shutil
 import zipfile
 
+from backports import tempfile
+
 from . import config
 from . import files
-from . import tempdir as tempfile
 from . import util
 from . import validators
-from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .dao import containerutil, hierarchy
+from .dao.containerstorage import SessionStorage, AcquisitionStorage
 from .jobs import rules
-from .jobs.jobs import Job
+from .jobs.jobs import Job, JobTicket
+from .jobs.queue import Queue
 from .types import Origin
 from .web import encoder
 from .web.errors import FileFormException
@@ -245,11 +247,18 @@ class EnginePlacer(Placer):
     """
     A placer that can accept files and/or metadata sent to it from the engine
 
-    It uses update_container_hierarchy to update the container and it's parents' fields from the metadata
+    It uses update_container_hierarchy to update the container and its parents' fields from the metadata
     """
 
     def check(self):
         self.requireTarget()
+
+        # Check that required state exists
+        if self.context.get('job_id'):
+            Job.get(self.context.get('job_id'))
+        if self.context.get('job_ticket_id'):
+            JobTicket.get(self.context.get('job_ticket_id'))
+
         if self.metadata is not None:
             validators.validate_data(self.metadata, 'enginemetadata.json', 'input', 'POST', optional=True)
 
@@ -277,7 +286,6 @@ class EnginePlacer(Placer):
                     self.metadata[self.container_type]['files'] = files_
             ###
 
-
     def process_file_field(self, field, file_attrs):
         if self.metadata is not None:
             file_mds = self.metadata.get(self.container_type, {}).get('files', [])
@@ -288,15 +296,24 @@ class EnginePlacer(Placer):
                     break
 
         if self.context.get('job_ticket_id'):
-            job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
-            job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
-            if not job_ticket.get('success'):
+            job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+
+            if not job_ticket['success']:
                 file_attrs['from_failed_job'] = True
 
         self.save_file(field, file_attrs)
         self.saved.append(file_attrs)
 
     def finalize(self):
+        job = None
+        job_ticket = None
+        success = True
+
+        if self.context.get('job_ticket_id'):
+            job_ticket = JobTicket.get(self.context.get('job_ticket_id'))
+            job = Job.get(job_ticket['job'])
+            success = job_ticket['success']
+
         if self.metadata is not None:
             bid = bson.ObjectId(self.id_)
 
@@ -311,13 +328,24 @@ class EnginePlacer(Placer):
             for k in self.metadata.keys():
                 self.metadata[k].pop('files', {})
 
-            if self.context.get('job_ticket_id'):
-                job_ticket_id = bson.ObjectId(self.context.get('job_ticket_id'))
-                job_ticket = config.db.job_tickets.find_one({'_id': job_ticket_id})
-                if job_ticket.get('success'):
-                    hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
-            else:
+            if success:
                 hierarchy.update_container_hierarchy(self.metadata, bid, self.container_type)
+
+        if job_ticket is not None:
+            if success:
+                Queue.mutate(job, {
+                    'state': 'complete',
+                    'profile': {
+                        'elapsed': job_ticket['elapsed']
+                    }
+                })
+            else:
+                Queue.mutate(job, {
+                    'state': 'failed',
+                    'profile': {
+                        'elapsed': job_ticket['elapsed']
+                    }
+                })
 
         if self.context.get('job_id'):
             job = Job.get(self.context.get('job_id'))
@@ -552,7 +580,8 @@ class PackfilePlacer(Placer):
         query = {
             'project': bson.ObjectId(self.p_id),
             'label': self.s_label,
-            'group': self.g_id
+            'group': self.g_id,
+            'deleted': {'$exists': False}
         }
 
         if self.s_code:
@@ -567,14 +596,18 @@ class PackfilePlacer(Placer):
 
         # Extra properties on insert
         insert_map = copy.deepcopy(query)
-        insert_map.pop('subject.code', None) # Remove query term that should not become part of the payload
+
+        # Remove query term that should not become part of the payload
+        insert_map.pop('subject.code', None)
+        insert_map.pop('deleted')
+
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['session'])
         insert_map['subject'] = containerutil.add_id_to_subject(insert_map.get('subject'), bson.ObjectId(self.p_id))
         if 'timestamp' in insert_map:
             insert_map['timestamp'] = dateutil.parser.parse(insert_map['timestamp'])
 
-        session = config.db['session' + 's'].find_one_and_update(
+        session = config.db.sessions.find_one_and_update(
             query, {
                 '$set': updates,
                 '$setOnInsert': insert_map
@@ -587,6 +620,7 @@ class PackfilePlacer(Placer):
         query = {
             'session': session['_id'],
             'label': self.a_label,
+            'deleted': {'$exists': False}
         }
 
         if self.a_time:
@@ -602,12 +636,16 @@ class PackfilePlacer(Placer):
 
         # Extra properties on insert
         insert_map = copy.deepcopy(query)
+
+        # Remove query term that should not become part of the payload
+        insert_map.pop('deleted')
+
         insert_map['created'] = self.timestamp
         insert_map.update(self.metadata['acquisition'])
         if 'timestamp' in insert_map:
             insert_map['timestamp'] = dateutil.parser.parse(insert_map['timestamp'])
 
-        acquisition = config.db['acquisition' + 's'].find_one_and_update(
+        acquisition = config.db.acquisitions.find_one_and_update(
             query, {
                 '$set': updates,
                 '$setOnInsert': insert_map
@@ -676,6 +714,12 @@ class AnalysisJobPlacer(Placer):
     def check(self):
         if self.id_ is None:
             raise Exception('Must specify a target analysis')
+
+        # Check that required state exists
+        if self.context.get('job_id'):
+            Job.get(self.context.get('job_id'))
+        if self.context.get('job_ticket_id'):
+            JobTicket.get(self.context.get('job_ticket_id'))
 
     def process_file_field(self, field, file_attrs):
         if self.metadata is not None:

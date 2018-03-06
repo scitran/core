@@ -3,6 +3,7 @@ Resolve an ambiguous path through the data hierarchy.
 """
 
 from . import config
+from .web.errors import APINotFoundException
 
 class Node(object):
 
@@ -33,7 +34,7 @@ class Node(object):
         raise NotImplementedError() # pragma: no cover
 
     @staticmethod
-    def filter(children, criterion):
+    def filter(children, criterion, _id=False):
         raise NotImplementedError() # pragma: no cover
 
 def _get_files(table, match):
@@ -72,8 +73,8 @@ class FileNode(Node):
         return []
 
     @staticmethod
-    def filter(children, criterion):
-        raise Exception("Files have no children")
+    def filter(children, criterion, _id=False):
+        raise APINotFoundException("Files have no children")
 
 class AcquisitionNode(Node):
     @staticmethod
@@ -83,11 +84,11 @@ class AcquisitionNode(Node):
         return files
 
     @staticmethod
-    def filter(children, criterion):
+    def filter(children, criterion, _id=False):
         for x in children:
             if x['node_type'] == "file" and x.get('name') == criterion:
                 return x, FileNode
-        raise Exception('No ' + criterion + ' file found.')
+        raise APINotFoundException('No ' + criterion + ' file found.')
 
 class SessionNode(Node):
 
@@ -99,13 +100,20 @@ class SessionNode(Node):
         return list(acqs) + files
 
     @staticmethod
-    def filter(children, criterion):
+    def filter(children, criterion, _id=False):
+        if _id:
+            selectAcq = '_id'
+            selectFil = '_id'
+        else:
+            selectAcq = 'label'
+            selectFil = 'name'
+
         for x in children:
-            if x['node_type'] == "acquisition" and x.get('label') == criterion:
+            if x['node_type'] == "acquisition" and str(x.get(selectAcq)) == criterion:
                 return x, AcquisitionNode
-            if x['node_type'] == "file" and x.get('name') == criterion:
+            if x['node_type'] == "file" and str(x.get(selectFil)) == criterion:
                 return x, FileNode
-        raise Exception('No ' + criterion + ' acquisition or file found.')
+        raise APINotFoundException('No ' + criterion + ' acquisition or file found.')
 
 class ProjectNode(Node):
 
@@ -117,13 +125,20 @@ class ProjectNode(Node):
         return list(sessions) + files
 
     @staticmethod
-    def filter(children, criterion):
+    def filter(children, criterion, _id=False):
+        if _id:
+            selectSes = '_id'
+            selectFil = '_id'
+        else:
+            selectSes = 'label'
+            selectFil = 'name'
+
         for x in children:
-            if x['node_type'] == "session" and x.get('label') == criterion:
+            if x['node_type'] == "session" and str(x.get(selectSes)) == criterion:
                 return x, SessionNode
-            if x['node_type'] == "file" and x.get('name') == criterion:
+            if x['node_type'] == "file" and str(x.get(selectFil)) == criterion:
                 return x, FileNode
-        raise Exception('No ' + criterion + ' session or file found.')
+        raise APINotFoundException('No ' + criterion + ' session or file found.')
 
 class GroupNode(Node):
 
@@ -133,11 +148,16 @@ class GroupNode(Node):
         return projects
 
     @staticmethod
-    def filter(children, criterion):
+    def filter(children, criterion, _id=False):
+        if _id:
+            select = '_id'
+        else:
+            select = 'label'
+
         for x in children:
-            if x.get('label') == criterion:
+            if str(x.get(select)) == criterion:
                 return x, ProjectNode
-        raise Exception('No ' + criterion + ' project found.')
+        raise APINotFoundException('No ' + criterion + ' project found.')
 
 class RootNode(Node):
 
@@ -147,11 +167,11 @@ class RootNode(Node):
         return groups
 
     @staticmethod
-    def filter(children, criterion):
+    def filter(children, criterion, _id=False):
         for x in children:
             if x.get('_id') == criterion:
                 return x, GroupNode
-        raise Exception('No ' + criterion + ' group found.')
+        raise APINotFoundException('No ' + criterion + ' group found.')
 
 
 class Resolver(object):
@@ -188,9 +208,17 @@ class Resolver(object):
         if len(path) == 0:
             return node, parents, last
 
-        current  = path[0]
+        current = path[0]
+        current_id = False
+
+        # Check for <id:xyz> syntax
+        if current.startswith('<id:') and current.endswith('>'):
+            current = current[4:len(current)-1]
+            current_id = True
+            print current
+
         children = node.get_children(last)
-        selected, next_ = node.filter(children, current)
+        selected, next_ = node.filter(children, current, current_id)
 
         path = path[1:]
         parents.append(selected)

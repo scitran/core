@@ -1192,14 +1192,46 @@ def test_packfile_upload(data_builder, file_form, as_admin, as_root, api_db):
         # We didn't fine one
         assert False
 
+    # Remove sessions and acquisitions via delete and ensure new containers are created
+    session_ids_before = [str(x['_id']) for x in sessions]
+    acquisition_ids_before = [str(x['_id']) for x in acquisitions]
+    for s in session_ids_before:
+        assert as_admin.delete('/sessions/'+s).ok
+
+    # Add another packfile with the same metadata as above
+    r = as_admin.post('/projects/' + project + '/packfile-start')
+    assert r.ok
+    token = r.json()['token']
+    r = as_admin.post('/projects/' + project + '/packfile',
+        params={'token': token}, files=file_form('one.csv'))
+    assert r.ok
+
+    r = as_admin.post('/projects/' + project + '/packfile-end',
+        params={'token': token, 'metadata': metadata_json})
+    assert r.ok
+
+    # Ensure a new session and acquisition was created
+    sessions_after = list(api_db.sessions.find({'label':'test-packfile-timestamp', 'deleted': {'$exists': False}}))
+    acquisitions_after = list(api_db.acquisitions.find({'label':'test-packfile-timestamp', 'deleted': {'$exists': False}}))
+    assert len(sessions_after) == 1
+    assert len(acquisitions_after) == 1
+    assert str(sessions_after[0]['_id']) not in session_ids_before
+    assert str(acquisitions_after[0]['_id']) not in acquisition_ids_before
+
+
     # get another token (start packfile-upload)
     r = as_admin.post('/projects/' + project + '/packfile-start')
     assert r.ok
     token = r.json()['token']
 
+    files = [
+        ('file', file_form('two.csv')['file']) ,
+        ('file', file_form('three.csv')['file'])
+    ]
+
     # upload to packfile
     r = as_admin.post('/projects/' + project + '/packfile',
-        params={'token': token}, files=file_form('two.csv'))
+        params={'token': token}, files=files)
     assert r.ok
 
     # expire upload token

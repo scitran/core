@@ -16,7 +16,7 @@ from ..auth import listauth, always_ok
 from ..dao import noop
 from ..dao import liststorage
 from ..dao import containerutil
-from ..web.errors import APIStorageException
+from ..web.errors import APIStorageException, APIPermissionException
 from ..web.request import AccessType
 
 
@@ -38,7 +38,7 @@ def initialize_list_configurations():
         },
         'files': {
             'storage': liststorage.FileStorage,
-            'permchecker': listauth.default_sublist,
+            'permchecker': listauth.files_sublist,
             'use_object_id': True,
             'storage_schema_file': 'file.json',
             'input_schema_file': 'file.json'
@@ -380,44 +380,6 @@ class FileListHandler(ListHandler):
             return info
 
     def get(self, cont_name, list_name, **kwargs):
-        """
-        .. http:get:: /api/(cont_name)/(cid)/files/(file_name)
-
-            Gets the ticket used to download the file when the ticket is not provided.
-
-            Downloads the file when the ticket is provided.
-
-            :query ticket: should be empty
-
-            :param cont_name: one of ``projects``, ``sessions``, ``acquisitions``, ``collections``
-            :type cont_name: string
-
-            :param cid: Container ID
-            :type cid: string
-
-            :statuscode 200: no error
-            :statuscode 400: explain...
-            :statuscode 409: explain...
-
-            **Example request**:
-
-            .. sourcecode:: http
-
-                GET /api/acquisitions/57081d06b386a6dc79ca383c/files/fMRI%20Loc%20Word%20Face%20Obj.zip?ticket= HTTP/1.1
-                Host: demo.flywheel.io
-                Accept: */*
-
-
-            **Example response**:
-
-            .. sourcecode:: http
-
-                HTTP/1.1 200 OK
-                Vary: Accept-Encoding
-                Content-Type: application/json; charset=utf-8
-                {"ticket": "1e975e3d-21e9-41f4-bb97-261f03d35ba1"}
-
-        """
         _id = kwargs.pop('cid')
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id)
         list_name = storage.list_name
@@ -480,13 +442,67 @@ class FileListHandler(ListHandler):
 
         # Authenticated or ticketed download request
         else:
-            self.response.app_iter = open(filepath, 'rb')
-            self.response.headers['Content-Length'] = str(fileinfo['size']) # must be set after setting app_iter
-            if self.is_true('view'):
-                self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+            range_header = self.request.headers.get('Range', '')
+            try:
+                if not self.is_true('view'):
+                    raise util.RangeHeaderParseError('Feature flag not set')
+
+                ranges = util.parse_range_header(range_header)
+                for first, last in ranges:
+                    if first > fileinfo['size'] - 1:
+                        self.abort(416, 'Invalid range')
+
+                    if last > fileinfo['size'] - 1:
+                        raise util.RangeHeaderParseError('Invalid range')
+
+            except util.RangeHeaderParseError:
+                self.response.app_iter = open(filepath, 'rb')
+                self.response.headers['Content-Length'] = str(fileinfo['size'])  # must be set after setting app_iter
+
+                if self.is_true('view'):
+                    self.response.headers['Content-Type'] = str(fileinfo.get('mimetype', 'application/octet-stream'))
+                else:
+                    self.response.headers['Content-Type'] = 'application/octet-stream'
+                    self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
             else:
-                self.response.headers['Content-Type'] = 'application/octet-stream'
-                self.response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+                self.response.status = 206
+                if len(ranges) > 1:
+                    self.response.headers['Content-Type'] = 'multipart/byteranges; boundary=%s' % self.request.id
+                else:
+                    self.response.headers['Content-Type'] = str(
+                        fileinfo.get('mimetype', 'application/octet-stream'))
+                    self.response.headers['Content-Range'] = 'bytes %s-%s/%s' % (str(ranges[0][0]),
+                                                                                 str(ranges[0][1]),
+                                                                                 str(fileinfo['size']))
+                with open(filepath, 'rb') as f:
+                    for first, last in ranges:
+                        mode = os.SEEK_SET
+                        if first < 0:
+                            mode = os.SEEK_END
+                            length = abs(first)
+                        elif last is None:
+                            length = fileinfo['size'] - first
+                        else:
+                            if last > fileinfo['size']:
+                                length = fileinfo['size'] - first
+                            else:
+                                length = last - first + 1
+
+                        f.seek(first, mode)
+                        data = f.read(length)
+
+                        if len(ranges) > 1:
+                            self.response.write('--%s\n' % self.request.id)
+                            self.response.write('Content-Type: %s\n' % str(
+                                fileinfo.get('mimetype', 'application/octet-stream')))
+                            self.response.write('Content-Range: %s' % 'bytes %s-%s/%s\n' % (str(first),
+                                                                                            str(last),
+                                                                                            str(fileinfo['size'])))
+                            self.response.write('\n')
+                            self.response.write(data)
+                            self.response.write('\n')
+                        else:
+                            self.response.write(data)
 
             # log download if we haven't already for this ticket
             if ticket:
@@ -557,7 +573,8 @@ class FileListHandler(ListHandler):
             analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
             if analyses:
                 analysis_ids = [str(a['_id']) for a in analyses]
-                self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids))
+                raise APIPermissionException('Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids),
+                    errors={'reason': 'analysis_conflict'})
 
         self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id, filename=filename)
         try:

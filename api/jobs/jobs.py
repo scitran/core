@@ -21,7 +21,7 @@ class Job(object):
                  modified=None, state='pending', request=None,
                  id_=None, config_=None, now=False, origin=None,
                  saved_files=None, produced_metadata=None, batch=None,
-                 failed_output_accepted=False):
+                 failed_output_accepted=False, profile=None):
         """
         Creates a job.
 
@@ -71,6 +71,8 @@ class Job(object):
             created = time_now
         if modified is None:
             modified = time_now
+        if profile is None:
+            profile = {}
 
         if destination is None and inputs is not None:
             # Grab an arbitrary input's container
@@ -106,6 +108,7 @@ class Job(object):
         self.produced_metadata  = produced_metadata
         self.batch              = batch
         self.failed_output_accepted = failed_output_accepted
+        self.profile = profile
 
 
     def intention_equals(self, other_job):
@@ -165,7 +168,9 @@ class Job(object):
             saved_files=d.get('saved_files'),
             produced_metadata=d.get('produced_metadata'),
             batch=d.get('batch'),
-            failed_output_accepted=d.get('failed_output_accepted', False))
+            failed_output_accepted=d.get('failed_output_accepted', False),
+            profile=d.get('profile', {})
+        )
 
     @classmethod
     def get(cls, _id):
@@ -370,6 +375,33 @@ class Job(object):
         self.request = r
         return self.request
 
+class JobTicket(object):
+    """
+    A JobTicket represents an attempt to complete a job.
+    """
+
+    @staticmethod
+    def get(_id):
+        return config.db.job_tickets.find_one({'_id': bson.ObjectId(_id)})
+
+    @staticmethod
+    def create(job_id, success, elapsed):
+        j = Job.get(job_id)
+
+        result = config.db.job_tickets.insert_one({
+            'job': j.id_,
+            'success': success,
+            'elapsed': elapsed,
+        })
+
+        return result.inserted_id
+
+    @staticmethod
+    def find(job_id):
+        """Find any tickets with job ID"""
+        return list(config.db.job_tickets.find({'job': job_id}))
+
+
 class Logs(object):
 
     @staticmethod
@@ -422,6 +454,11 @@ class Logs(object):
 
     @staticmethod
     def add(_id, doc):
+
+        # Silently ignore adding no logs
+        if len(doc) <= 0:
+            return
+
         log = config.db.job_logs.find_one({'_id': _id})
 
         if log is None: # Race

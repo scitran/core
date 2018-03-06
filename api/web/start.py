@@ -2,7 +2,14 @@ import atexit
 import json
 import os
 import traceback
+import warnings
+
 import webapp2
+
+
+# Disable warnings for implicit tempfile.TemporaryDirectory cleanup
+warnings.filterwarnings('ignore', message=r'Implicitly cleaning up <TemporaryDirectory')
+
 
 # Enable code coverage for testing when API is started
 # Start coverage before local module loading so their def and imports are counted

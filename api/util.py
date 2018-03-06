@@ -15,6 +15,9 @@ import django
 from django.conf import settings
 from django.template import Template, Context
 
+BYTE_RANGE_RE = re.compile(r'^(?P<first>\d+)-(?P<last>\d+)?$')
+SUFFIX_BYTE_RANGE_RE = re.compile(r'^(?P<first>-\d+)$')
+
 # If this is not called before templating, django throws a hissy fit
 settings.configure(
     TEMPLATES=[{'BACKEND': 'django.template.backends.django.DjangoTemplates'}],
@@ -174,6 +177,18 @@ def sanitize_string_to_filename(value):
     keepcharacters = (' ', '.', '_', '-')
     return "".join([c for c in value if c.isalnum() or c in keepcharacters]).rstrip()
 
+def humanize_validation_error(val_err):
+    """
+    Takes a jsonschema.ValidationError, returns a human-friendly string
+    """
+
+    key = 'none'
+    if len(val_err.relative_path) > 0:
+        key = val_err.relative_path[0]
+    message = val_err.message.replace("u'", "'")
+
+    return 'Object does not match schema on key ' + key + ': ' + message
+
 def obj_from_map(_map):
     """
     Creates an anonymous object with properties determined by the passed (shallow) map.
@@ -196,13 +211,26 @@ def path_from_hash(hash_):
     path = (hash_version, hash_alg, first_stanza, second_stanza, hash_)
     return os.path.join(*path)
 
+def set_for_download(response, stream=None, filename=None, length=None):
+    """Takes a self.response, and various download options."""
+
+    # If an app_iter is to be set, it MUST be before these other headers are set.
+    if stream is not None:
+        response.app_iter = stream
+
+    response.headers['Content-Type'] = 'application/octet-stream'
+
+    if filename is not None:
+        response.headers['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+
+    if length is not None:
+        response.headers['Content-Length'] = str(length)
 
 def format_hash(hash_alg, hash_):
     """
     format the hash including version and algorithm
     """
     return '-'.join(('v0', hash_alg, hash_))
-
 
 def create_json_http_exception_response(message, code, request_id, custom=None):
     content = {
@@ -214,13 +242,11 @@ def create_json_http_exception_response(message, code, request_id, custom=None):
         content.update(custom)
     return content
 
-
 def send_json_http_exception(response, message, code, request_id, custom=None):
     response.set_status(code)
     json_content = json.dumps(create_json_http_exception_response(message, code, request_id, custom))
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.write(json_content)
-
 
 class Enum(baseEnum.Enum):
     # Enum strings are prefixed by their class: "Category.classifier".
@@ -262,3 +288,55 @@ def create_nonce():
     randrange = random.SystemRandom().randrange
 
     return ''.join([NONCE_CHARS[randrange(x)] for _ in range(NONCE_LENGTH)])
+
+
+class RangeHeaderParseError(ValueError):
+    """Exception class representing a string parsing error."""
+
+
+def parse_range_header(range_header_val, valid_units=('bytes',)):
+    """
+    Range header parser according to RFC7233
+
+    https://tools.ietf.org/html/rfc7233
+    """
+
+    split_range_header_val = range_header_val.split('=')
+    if not len(split_range_header_val) == 2:
+        raise RangeHeaderParseError('Invalid range header syntax')
+
+    unit, ranges_str = split_range_header_val
+
+    if unit not in valid_units:
+        raise RangeHeaderParseError('Invalid unit specified')
+
+    split_ranges_str = ranges_str.split(', ')
+
+    ranges = []
+
+    for range_str in split_ranges_str:
+        re_match = BYTE_RANGE_RE.match(range_str)
+        first, last = None, None
+
+        if re_match:
+            first, last = re_match.groups()
+        else:
+            re_match = SUFFIX_BYTE_RANGE_RE.match(range_str)
+            if re_match:
+                first = re_match.group('first')
+            else:
+                raise RangeHeaderParseError('Invalid range format')
+
+        if first is not None:
+            first = int(first)
+
+
+        if last is not None:
+            last = int(last)
+
+        if last is not None and first > last:
+            raise RangeHeaderParseError('Invalid range, first %s can\'t be greater than the last %s' % (unit, unit))
+
+        ranges.append((first, last))
+
+    return ranges

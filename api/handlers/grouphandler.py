@@ -3,7 +3,7 @@ import datetime
 from ..web import base
 from .. import util
 from .. import validators
-from ..auth import groupauth
+from ..auth import groupauth, require_admin
 from ..dao import containerstorage
 from .containerhandler import ContainerHandler
 
@@ -24,6 +24,7 @@ class GroupHandler(base.RequestHandler):
             ContainerHandler.join_user_info([result])
         return result
 
+    @require_admin
     def delete(self, _id):
         if _id == 'unknown':
             self.abort(400, 'The group "unknown" can\'t be deleted as it is integral within the API')
