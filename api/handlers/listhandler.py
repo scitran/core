@@ -16,7 +16,7 @@ from ..auth import listauth, always_ok
 from ..dao import noop
 from ..dao import liststorage
 from ..dao import containerutil
-from ..web.errors import APIStorageException
+from ..web.errors import APIStorageException, APIPermissionException
 from ..web.request import AccessType
 
 
@@ -573,7 +573,8 @@ class FileListHandler(ListHandler):
             analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
             if analyses:
                 analysis_ids = [str(a['_id']) for a in analyses]
-                self.abort(400, 'Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids))
+                raise APIPermissionException('Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids),
+                    errors={'reason': 'analysis_conflict'})
 
         self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id, filename=filename)
         try:
