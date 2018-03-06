@@ -84,6 +84,29 @@ def test_legacy_analysis(data_builder, as_admin, file_form, api_db):
     api_db.analyses.delete_one({'_id': bson.ObjectId(analysis)})
 
 
+def test_analysis_download(data_builder, as_admin, file_form, api_db):
+    session = data_builder.create_session()
+
+    r = as_admin.post('/sessions/' + session + '/analyses', files=file_form('input.csv', 'output.csv', meta={
+        'label': 'legacy',
+        'inputs': [{'name': 'input.csv', 'info': {'foo': 'foo'}}],
+        'outputs': [{'name': 'output.csv', 'info': {'bar': 'bar'}}],
+    }))
+    assert r.ok
+    analysis = r.json()['_id']
+
+    # Get download ticket for analysis via /download
+    r = as_admin.get('/download', params={'ticket': ''}, json={'optional':True, 'nodes': [{'level':'analysis','_id': analysis}]})
+    assert r.ok
+    ticket = r.json()['ticket']
+
+    # Verify both inputs and outputs are present
+    r = as_admin.get('/download', params={'ticket': ticket})
+    assert r.ok
+    with tarfile.open(mode='r', fileobj=cStringIO.StringIO(r.content)) as tar:
+        assert set(m.name for m in tar.getmembers()) == set(['legacy/input/input.csv', 'legacy/output/output.csv'])
+
+
 def check_files(as_admin, analysis_id, filegroup, *filenames):
     # Verify that filegroup has all files, inflated
     r = as_admin.get('/analyses/' + analysis_id)

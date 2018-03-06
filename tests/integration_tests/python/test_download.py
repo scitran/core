@@ -451,9 +451,9 @@ def test_analysis_download(data_builder, file_form, as_admin, as_drone, default_
     r = as_admin.get('/download', params={'ticket': ticket})
     assert r.ok
 
-    # Check to make sure outputs are in tar
+    # Check to make sure inputs and outputs are in tar
     with tarfile.open(mode='r', fileobj=cStringIO.StringIO(r.content)) as tar:
-        assert [m.name for m in tar.getmembers()] == ['test/output/two.zip']
+        assert set([m.name for m in tar.getmembers()]) == set(['test/input/one.csv', 'test/output/two.zip'])
 
     # try to get download ticket for non-existent analysis file
     r = as_admin.get(analysis_inputs + '/non-existent.csv')
