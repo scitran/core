@@ -22,6 +22,7 @@ class GroupHandler(base.RequestHandler):
             self._filter_permissions([result], self.uid)
         if self.is_true('join_avatars'):
             ContainerHandler.join_user_info([result])
+        util.add_node_type(self.request, result)
         return result
 
     def delete(self, _id):

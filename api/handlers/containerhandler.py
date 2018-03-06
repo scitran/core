@@ -115,6 +115,9 @@ class ContainerHandler(base.RequestHandler):
 
         inflate_job_info = cont_name == 'sessions'
         result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info)
+
+        util.add_node_type(self.request, result)
+
         return self.handle_origin(result)
 
     def handle_origin(self, result):

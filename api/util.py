@@ -340,3 +340,9 @@ def parse_range_header(range_header_val, valid_units=('bytes',)):
         ranges.append((first, last))
 
     return ranges
+
+def add_node_type(request, result):
+    """Adds a 'node_type' property to result if fw_node_type is set in the request environment."""
+    if 'fw_node_type' in request.environ and isinstance(result, dict):
+        result['node_type'] = request.environ['fw_node_type']
+

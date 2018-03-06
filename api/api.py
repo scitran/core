@@ -95,6 +95,7 @@ endpoints = [
 
         route('/login',                                         RequestHandler, h='log_in',   m=['POST']),
         route('/logout',                                        RequestHandler, h='log_out',  m=['POST']),
+        route('/lookup',                                        ResolveHandler, h='lookup',   m=['POST']),
         route('/resolve',                                       ResolveHandler, h='resolve',  m=['POST']),
         route('/schemas/<schema:{schema}>',                     SchemaHandler,                m=['GET']),
         route('/report/<report_type:site|project|accesslog|usage>',   ReportHandler,                m=['GET']),

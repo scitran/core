@@ -3,7 +3,7 @@ Resolve an ambiguous path through the data hierarchy.
 """
 
 from . import config
-from .web.errors import APINotFoundException
+from .web.errors import APINotFoundException, InputValidationException
 from bson.objectid import ObjectId
 from collections import deque
 
@@ -31,6 +31,7 @@ class Node(object):
         '_id':               1,
         'label':             1,
         'permissions':       1,
+        'files':             1,
     }
 
     def __init__(self, collection, node_type, parent, files=True, use_id=False, object_id=True):
@@ -126,7 +127,7 @@ class Resolver(object):
 
     def resolve(self, path):
         if not isinstance(path, list):
-            raise Exception("Path must be an array of strings")
+            raise InputValidationException("Path must be an array of strings")
 
         path = deque(path)
         tree = deque(PROJECT_TREE)
@@ -173,17 +174,20 @@ class Resolver(object):
             last = resolved_path[-1]
             files = pop_files(last)
 
+        # If there are path elements left, search in the last set of files
+        if len(path) > 0:
+            filename = path.popleft()
+            f = find_file(files, filename)
+            if not f:
+                raise APINotFoundException('No ' + filename + ' file found.')
+            if len(path) > 0:
+                raise APINotFoundException('Files have no children')
+            resolved_path.append(f)
+            files = []
+
         # Resolve children 
         if not self.id_only:
-            # If there are path elements left, search in the last set of files
-            if len(path) > 0:
-                f = find_file(files, path[0])
-                if not f:
-                    raise APINotFoundException('No ' + path[0] + ' file found.')
-                if len(path) > 1:
-                    raise APINotFoundException('Files have no children')
-                resolved_path.append(f)
-            elif last and last.get('node_type') != 'file':
+            if last and last.get('node_type') != 'file':
                 # Retrieve any child nodes
                 if len(tree) > 0:
                     node = tree[0]
