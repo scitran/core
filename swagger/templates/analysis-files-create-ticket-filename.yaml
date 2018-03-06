@@ -38,7 +38,7 @@ template: |
       - application/json
       - application/octet-stream
     parameters:
-      - description: ticket id of the {{filegroup}}s to download
+      - description: ticket id of the {{filegroup}} to download
         type: string
         in: query
         name: ticket

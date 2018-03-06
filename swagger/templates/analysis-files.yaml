@@ -20,7 +20,7 @@ template: |
   get:
     summary: Download analysis {{filegroup}}.
     description: >
-      If "ticket" query param is included and not empty, download {{filegroup}}s.
+      If "ticket" query param is included and not empty, download {{filegroup}}.
 
       If "ticket" query param is included and empty, create a ticket for all
       {{filegroup}} in the anlaysis

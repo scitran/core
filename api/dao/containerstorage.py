@@ -318,7 +318,16 @@ class AnalysisStorage(ContainerStorage):
     # pylint: disable=arguments-differ
     def create_el(self, analysis, parent_type, parent_id, origin, uid=None):
         """
-        TODO
+        Create an analysis.
+
+        * Fill defaults if not provided
+        * Flatten input filerefs using `FileReference.get_file()`
+
+        If `analysis` has a `job` key, create a "job-based" analysis:
+            * Analysis inputs will are copied from the job inputs
+            * Create analysis and job, both referencing each other
+            * Do not create (remove) analysis if can't enqueue job
+
         """
         parent_type = containerutil.singularize(parent_type)
         parent = self.get_parent(parent_type, parent_id)
