@@ -74,7 +74,7 @@ class AnalysesHandler(RefererHandler):
             each other via ``job`` and ``destination`` fields. Job based
             analyses are only allowed at the session level.
         """
-        parent = containerstorage.factory(cont_name).get_container(cid)
+        parent = ContainerStorage.factory(cont_name).get_container(cid)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('POST')
 
@@ -310,14 +310,14 @@ class AnalysesHandler(RefererHandler):
 
 
         """
-        cid = kwargs.pop('cid')
-        cont_name = kwargs.pop('cont_name')
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
         filegroup = kwargs.get('filegroup')
         filename = kwargs.get('filename')
 
         parent = self.storage.get_parent(_id, cont=analysis)
+        cid = analysis['parent']['id']
+        cont_name = analysis['parent']['type']
         permchecker = self.get_permchecker(parent)
 
         ticket_id = self.get_param('ticket')

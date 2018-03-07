@@ -381,7 +381,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def log_user_access(self, access_type, cont_name=None, cont_id=None, filename=None, multifile=False, origin_override=None):
 
-        if bool(1) == True:
+        if not config.get_item('core', 'access_log_enabled'):
             return
 
         if not isinstance(access_type, AccessType):
@@ -408,9 +408,10 @@ class RequestHandler(webapp2.RequestHandler):
             else:
                 tree = get_parent_tree(cont_name, cont_id)
 
-                for cont in tree:
-                    context[cont['cont_type']] = {'id': str(cont['_id']), 'label': cont.get('label')}
-
+                for k,v in tree.iteritems():
+                    context[k] = {'id': str(v['_id']), 'label': v.get('label')}
+                    if k == 'subject':
+                        context[k]['label'] = v.get('code')
             if filename:
                 context['file'] = {'name': filename}
             log_map['context'] = context
