@@ -48,7 +48,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def initialize(self, request, response):
         super(RequestHandler, self).initialize(request, response)
-        request.logger.info("Initialized request")
+        request.logger.debug("Initialized request")
 
     def initialization_auth(self):
         drone_request = False
