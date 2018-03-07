@@ -107,14 +107,18 @@ class ContainerStorage(object):
             raise APINotFoundException('Could not find {} {}'.format(self.cont_name, _id))
         if get_children:
             children = self.get_children(_id, projection=projection)
-            cont[CHILD_MAP[self.cont_name]] = children
+            cont[containerutil.pluralize(self.child_cont_name)] = children
         return cont
 
-    def get_children(self, _id, projection=None, uid=None):
+    def get_children_legacy(self, _id, projection=None, uid=None):
+        """
+        A get_children method that returns sessions from the project level rather than subjects.
+        Will be removed when Subject completes it's transition to a stand alone collection.
+        """
         try:
             child_name = CHILD_MAP[self.cont_name]
         except KeyError:
-            raise APINotFoundException('Children cannot be listed from the {0} level'.format(self.cont_name))
+            raise APIStorageException('Children cannot be listed from the {0} level'.format(self.cont_name))
         if not self.use_object_id:
             query = {containerutil.singularize(self.cont_name): _id}
         else:
@@ -126,29 +130,59 @@ class ContainerStorage(object):
             projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
 
-    def get_parents(self, _id, projection=None, add_self=False):
+
+    def get_children(self, _id, projection=None, uid=None):
+        child_name = self.child_cont_name
+        if not child_name:
+            raise APIStorageException('Children cannot be listed from the {0} level'.format(self.cont_name))
+        if not self.use_object_id:
+            query = {containerutil.singularize(self.cont_name): _id}
+        else:
+            query = {containerutil.singularize(self.cont_name): bson.ObjectId(_id)}
+
+        if uid:
+            query['permissions'] = {'$elemMatch': {'_id': uid}}
+        if not projection:
+            projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
+        return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
+
+
+    def get_parent_tree(self, _id, cont=None, projection=None, add_self=False):
         parents = []
-        curr_parent_cont = self.parent_cont_name
-        cont = get_container(_id)
+
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
 
         if add_self:
             # Add the referenced container to the list
             parents.append(cont)
 
         # Walk up the hierarchy until we cannot go any further
-        while curr_parent_cont:
+        while True:
 
-            # Create parent storage class and grab parent container
-            ps = self.factory(curr_parent_cont)
-            parent = ps.get_container(cont[curr_parent_cont])
+            try:
 
-            if parent:
-                parents.append(parent)
-                curr_parent_cont = ps.parent_cont_name
-            else:
-                # Parent was missing, fail for now
-                raise APINotFoundException
+                parent = self.get_parent(cont['_id'], cont=cont, projection=projection)
+
+            except (APINotFoundException, APIStorageException):
+                # We got as far as we could, either we reached the top of the hierarchy or we hit a dead end with a missing parent
+                break
+
+            parents.append(parent)
+            cont = parent
+
         return parents
+
+    def get_parent(self, _id, cont=None, projection=None):
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        if self.parent_cont_name:
+            ps = self.factory(self.parent_cont_name)
+            return ps.get_container(cont[self.parent_cont_name], projection=projection)
+
+        else:
+            raise APIStorageException('The container level {} has no parent.'.format(self.cont_name))
 
 
     def _from_mongo(self, cont):

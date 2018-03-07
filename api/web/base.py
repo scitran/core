@@ -381,7 +381,7 @@ class RequestHandler(webapp2.RequestHandler):
 
     def log_user_access(self, access_type, cont_name=None, cont_id=None, filename=None, multifile=False, origin_override=None):
 
-        if True:
+        if bool(1) == True:
             return
 
         if not isinstance(access_type, AccessType):

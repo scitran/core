@@ -1,7 +1,6 @@
 import bson
 import datetime
 import dateutil
-from random import randint
 
 from .. import config
 from .. import util
@@ -533,7 +532,7 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
 
-        if cont_name != 'acquisitions':
+        if cont_name == 'sessions':
             get_children = True
         else:
             get_children = False

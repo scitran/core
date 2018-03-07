@@ -19,13 +19,13 @@ from ..dao import hierarchy
 from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
 from ..util import humanize_validation_error, set_for_download
 from ..validators import validate_data, verify_payload_exists
-from ..dao.containerutil import ContainerReference, pluralize, singularize, CHILD_FROM_PARENT, PARENT_FROM_CHILD
+from ..dao.containerutil import pluralize, singularize, CHILD_FROM_PARENT, PARENT_FROM_CHILD
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
 from ..web.request import AccessType
 
-from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, suggest_container, get_gear_by_name, check_for_gear_insertion
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, get_gear_by_name, check_for_gear_insertion
 from .jobs import Job, JobTicket, Logs
 from .batch import check_state, update
 from .queue import Queue

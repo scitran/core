@@ -19,7 +19,7 @@ log = config.log
 class GroupStorage(ContainerStorage):
 
     def __init__(self):
-        super(GroupStorage,self).__init__('groups', use_object_id=False)
+        super(GroupStorage,self).__init__('groups', use_object_id=False, parent_cont_name=None, child_cont_name='project')
 
     def _fill_default_values(self, cont):
         cont = super(GroupStorage,self)._fill_default_values(cont)
@@ -42,7 +42,7 @@ class GroupStorage(ContainerStorage):
 class ProjectStorage(ContainerStorage):
 
     def __init__(self):
-        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True)
+        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True, parent_cont_name='group', child_cont_name='subject')
 
     def create_el(self, payload):
         result = super(ProjectStorage, self).create_el(payload)
@@ -57,14 +57,14 @@ class ProjectStorage(ContainerStorage):
 
         if payload and 'template' in payload:
             # We are adding/changing the project template, update session compliance
-            sessions = self.get_children(_id, projection={'_id':1})
+            sessions = self.get_children_legacy(_id, projection={'_id':1})
             session_storage = SessionStorage()
             for s in sessions:
                 session_storage.update_el(s['_id'], {'project_has_template': True})
 
         elif unset_payload and 'template' in unset_payload:
             # We are removing the project template, remove session compliance
-            sessions = self.get_children(_id, projection={'_id':1})
+            sessions = self.get_children_legacy(_id, projection={'_id':1})
             session_storage = SessionStorage()
             for s in sessions:
                 session_storage.update_el(s['_id'], None, unset_payload={'project_has_template': '', 'satisfies_template': ''})
@@ -97,10 +97,56 @@ class ProjectStorage(ContainerStorage):
         return changed_sessions
 
 
+class SubjectStorage(ContainerStorage):
+
+    def __init__(self):
+        super(SubjectStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True, parent_cont_name='project', child_cont_name='session')
+
+    def _from_mongo(self, cont):
+        subject = cont['subject']
+        if cont.get('permissions'):
+            subject['permissions'] = cont['permissions']
+        if cont.get('project'):
+            subject['project'] = cont['project']
+        if subject['code']:
+            subject['label'] = subject.pop('code')
+        else:
+            subject['label'] = 'unknown'
+
+    def get_el(self, _id, projection=None, fill_defaults=False):
+        _id = bson.ObjectId(_id)
+        cont = self.dbc.find_one({'subject._id': _id, 'deleted': {'$exists': False}}, projection)
+        cont = self._from_mongo(cont)
+        if fill_defaults:
+            self._fill_default_values(cont)
+        return cont
+
+    def get_all_el(self, query, user, projection, fill_defaults=False):
+        if query is None:
+            query = {}
+        if user:
+            if query.get('permissions'):
+                query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
+            else:
+                query['permissions'] = {'$elemMatch': user}
+        query['deleted'] = {'$exists': False}
+
+
+        results = list(self.dbc.find(query, projection))
+        for cont in results:
+
+            self._from_mongo(cont)
+            if fill_defaults:
+                self._fill_default_values(cont)
+
+        return results
+
+
+
 class SessionStorage(ContainerStorage):
 
     def __init__(self):
-        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True)
+        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True, parent_cont_name='subject', child_cont_name='acquisition')
 
     def _fill_default_values(self, cont):
         cont = super(SessionStorage,self)._fill_default_values(cont)
@@ -225,7 +271,7 @@ class SessionStorage(ContainerStorage):
 class AcquisitionStorage(ContainerStorage):
 
     def __init__(self):
-        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True)
+        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True, parent_cont_name='session', child_cont_name=None)
 
     def create_el(self, payload):
         result = super(AcquisitionStorage, self).create_el(payload)
@@ -300,9 +346,12 @@ class AnalysisStorage(ContainerStorage):
         super(AnalysisStorage, self).__init__('analyses', use_object_id=True, use_delete_tag=True)
 
 
-    def get_parent(self, parent_type, parent_id):
-        parent_storage = ContainerStorage.factory(parent_type)
-        return parent_storage.get_container(parent_id)
+    def get_parent(self, _id, cont=None, projection=None):
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        ps = ContainerStorage.factory(cont['parent']['type'])
+        return ps.get_container(cont['parent']['id'], projection=projection)
 
 
     def get_analyses(self, parent_type, parent_id, inflate_job_info=False):
