@@ -199,6 +199,8 @@ class AnalysesHandler(RefererHandler):
 
         if analysis.get('job'):
             raise InputValidationException('Analysis created via a job does not allow file uploads')
+        elif analysis.get('files'):
+            raise InputValidationException('Analysis already has outputs and does not allow repeated file uploads')
 
         upload.process_upload(self.request, upload.Strategy.targeted_multi, container_type='analysis', id_=_id, origin=self.origin)
 

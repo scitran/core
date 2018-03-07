@@ -65,6 +65,13 @@ def test_offline_analysis(data_builder, as_admin, file_form, api_db):
     assert r.ok
 
     check_files(as_admin, analysis, 'files', 'output1.csv', 'output2.csv')
+
+    # Verify that repeated uploads are rejected
+    r = as_admin.post('/analyses/' + analysis + '/files', files=file_form('output3.csv', meta=[
+        {'name': 'output3.csv', 'info': {'baz': 'baz'}},
+    ]))
+    assert r.status_code == 400
+
     api_db.analyses.delete_one({'_id': bson.ObjectId(analysis)})
 
 
