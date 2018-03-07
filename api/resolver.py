@@ -1,10 +1,9 @@
 """
 Resolve an ambiguous path through the data hierarchy.
 """
-
-from . import config
+from .dao import containerstorage, containerutil
 from .web.errors import APINotFoundException, InputValidationException
-from bson.objectid import ObjectId
+import bson
 from collections import deque
 
 class Node(object):
@@ -12,46 +11,31 @@ class Node(object):
     # As neither property should ever change, this sort should be consistent
     sorting = [('created', 1), ('_id', 1)]
 
-    # Globally disable extraneous properties of unbounded length, along with some PHI fields.
-    default_projection = {
-        'files':             0,
-        'info':              0,
-        'tags':              0,
-        'subject.sex':       0,
-        'subject.age':       0,
-        'subject.race':      0,
-        'subject.ethnicity': 0,
-        'subject.info':      0,
-        'subject.firstname': 0,
-        'subject.lastname':  0,
-    }
-
     # In some cases we only want to resolve the id of a container
     id_only_projection = {
-        '_id':               1,
         'label':             1,
         'permissions':       1,
         'files':             1,
     }
 
-    def __init__(self, collection, node_type, parent, files=True, use_id=False, object_id=True):
-        self.collection = collection
-        self.node_type = node_type
+    def __init__(self, storage, parent, files=True, use_id=False):
+        self.storage = storage
+        self.node_type = containerutil.singularize(storage.cont_name)
         self.parent = parent
         self.files = files
         self.use_id = use_id
-        self.object_id = object_id
 
-    def find(self, criterion, parent=None, id_only=False, include_files=False, use_id=False, limit=0): 
-        query = {
-            'deleted': {'$exists':  False}
-        }
+    def find(self, criterion, parent=None, id_only=False, include_files=True, use_id=False, limit=0): 
+        query = {}
 
         # Setup criterion match
         if criterion:
             if use_id or self.use_id:
-                if self.object_id:
-                    query['_id'] = ObjectId(criterion)
+                if self.storage.use_object_id:
+                    try:
+                        query['_id'] = bson.ObjectId(criterion)
+                    except bson.errors.InvalidId as e:
+                        raise InputValidationException(e.message)
                 else:
                     query['_id'] = criterion
             else:
@@ -63,23 +47,27 @@ class Node(object):
 
         # Setup projection
         if id_only: 
-            proj = Node.id_only_projection
+            proj = Node.id_only_projection.copy()
         else:
-            proj = Node.default_projection.copy()
-            if include_files:
-                del proj['files']
+            proj = self.storage.get_list_projection()
+            if not include_files:
+                proj['files'] = 0
 
-        results = list(config.db[self.collection].find(query, proj, sort=Node.sorting, limit=limit))
+        # We don't use the user field here because we want to return a 403 if
+        # they try to resolve something they don't have access to
+        results = self.storage.get_all_el(query, None, proj, sort=Node.sorting, limit=limit)
         for el in results:
+            self.storage.filter_deleted_files(el)
             el['node_type'] = self.node_type
+
         return results
 
 
 PROJECT_TREE = [
-    Node('groups', 'group', None, False, True, False),
-    Node('projects', 'project', 'group'),
-    Node('sessions', 'session', 'project'),
-    Node('acquisitions', 'acquisition', 'session')
+    Node(containerstorage.GroupStorage(), None, files=False, use_id=True),
+    Node(containerstorage.ProjectStorage(), 'group'),
+    Node(containerstorage.SessionStorage(), 'project'),
+    Node(containerstorage.AcquisitionStorage(), 'session')
 ]
 
 def parse_criterion(value):
@@ -110,6 +98,9 @@ def pop_files(container):
     return files
 
 def find_file(files, name):
+    """ 
+    Find a file by name
+    """
     for f in files:
         if str(f.get('name')) == name:
             return f
@@ -191,7 +182,7 @@ class Resolver(object):
                 # Retrieve any child nodes
                 if len(tree) > 0:
                     node = tree[0]
-                    resolved_children = node.find(None, parent=last)
+                    resolved_children = node.find(None, parent=last, include_files=False)
 
                 # Add any files from the last node
                 resolved_children = resolved_children + files

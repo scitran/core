@@ -180,6 +180,10 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
     assert path_in_result([group, project, session, acquisition, acquisition_file], result)
     assert result['children'] == []
 
+    # resolve root/group/project/session/acquisition/file with invalid id
+    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz('not-valid'), idz(acquisition), acquisition_file]})
+    assert r.status_code == 400
+
     # try to resolve non-existent root/group/project/session/acquisition/child
     r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, acquisition_label, 'child']})
     assert r.status_code == 404

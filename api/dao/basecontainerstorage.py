@@ -214,7 +214,18 @@ class ContainerStorage(object):
         self.filter_deleted_files(cont)
         return cont
 
-    def get_all_el(self, query, user, projection, fill_defaults=False):
+    def get_all_el(self, query, user, projection, fill_defaults=False, **kwargs):
+        """
+        Get all elements matching query for this container.
+
+        Args:
+            query (dict): The query object, or None for all elements
+            user (dict): The user object, if filtering on permissions is desired, otherwise None
+            projection (dict): The optional projection to use for returned elements
+            fill_defaults (bool): Whether or not to populate the default values for returned elements. Default is False.
+            **kwargs: Additional arguments to pass to the underlying find function
+
+        """
         if query is None:
             query = {}
         if user:
@@ -238,7 +249,7 @@ class ContainerStorage(object):
         else:
             replace_info_with_bool = False
 
-        results = list(self.dbc.find(query, projection))
+        results = list(self.dbc.find(query, projection, **kwargs))
         for cont in results:
             self.filter_deleted_files(cont)
             self._from_mongo(cont)
