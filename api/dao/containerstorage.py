@@ -114,10 +114,11 @@ class SubjectStorage(ContainerStorage):
             subject['permissions'] = cont['permissions']
         if cont.get('project'):
             subject['project'] = cont['project']
-        if subject['code']:
+        if subject.get('code'):
             subject['label'] = subject.pop('code')
         else:
             subject['label'] = 'unknown'
+        return subject
 
     def get_el(self, _id, projection=None, fill_defaults=False):
         _id = bson.ObjectId(_id)
@@ -137,15 +138,26 @@ class SubjectStorage(ContainerStorage):
                 query['permissions'] = {'$elemMatch': user}
         query['deleted'] = {'$exists': False}
 
-
         results = list(self.dbc.find(query, projection))
+        if not results:
+            return []
+        formatted_results = []
         for cont in results:
-
-            self._from_mongo(cont)
+            s = self._from_mongo(cont)
             if fill_defaults:
-                self._fill_default_values(cont)
+                self._fill_default_values(s)
+            formatted_results.append(s)
 
-        return results
+        return formatted_results
+
+    def get_children(self, _id, projection=None, uid=None):
+        query = {'subject._id': bson.ObjectId(_id)}
+        if uid:
+            query['permissions'] = {'$elemMatch': {'_id': uid}}
+        if not projection:
+            projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
+        return SessionStorage().get_all_el(query, None, projection)
+
 
 
 
@@ -209,6 +221,16 @@ class SessionStorage(ContainerStorage):
                 unset_payload['satisfies_template'] = ""
                 unset_payload['project_has_template'] = ""
         return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
+
+    def get_parent(self, _id, cont=None, projection=None):
+        """
+        Override until subject becomes it's own collection
+        """
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        return SubjectStorage().get_container(cont['subject']['_id'], projection=projection)
+
 
     def recalc_session_compliance(self, session_id, session=None, template=None, hard=False):
         """
@@ -358,6 +380,14 @@ class AnalysisStorage(ContainerStorage):
 
         ps = ContainerStorage.factory(cont['parent']['type'])
         return ps.get_container(cont['parent']['id'], projection=projection)
+
+    def get_parent_tree(self, _id, cont=None, projection=None, add_self=False):
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        ps = ContainerStorage.factory(cont['parent']['type'])
+
+        return ps.get_parent_tree(cont['parent']['id'])
 
 
     def get_analyses(self, parent_type, parent_id, inflate_job_info=False):

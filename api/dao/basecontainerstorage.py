@@ -63,7 +63,6 @@ class ContainerStorage(object):
         """
         cont_storage_name = containerutil.singularize(cont_name).capitalize() + 'Storage'
         for subclass in cls.__subclasses__():
-            config.log.warning('we are comparing {} and {}'.format(subclass.__name__, cont_storage_name))
             if subclass.__name__ == cont_storage_name:
                 return subclass()
         return cls(containerutil.pluralize(cont_name))
@@ -151,26 +150,34 @@ class ContainerStorage(object):
     def get_parent_tree(self, _id, cont=None, projection=None, add_self=False):
         parents = []
 
+        curr_storage = self
+
         if not cont:
             cont = self.get_container(_id, projection=projection)
 
         if add_self:
             # Add the referenced container to the list
+            cont['cont_name'] = self.cont_name
             parents.append(cont)
 
         # Walk up the hierarchy until we cannot go any further
         while True:
 
             try:
-
-                parent = self.get_parent(cont['_id'], cont=cont, projection=projection)
+                parent = curr_storage.get_parent(cont['_id'], cont=cont, projection=projection)
 
             except (APINotFoundException, APIStorageException):
                 # We got as far as we could, either we reached the top of the hierarchy or we hit a dead end with a missing parent
                 break
 
+            curr_storage = ContainerStorage.factory(curr_storage.parent_cont_name)
+            parent['cont_type'] = curr_storage.cont_name
             parents.append(parent)
-            cont = parent
+
+            if curr_storage.parent_cont_name:
+                cont = parent
+            else:
+                break
 
         return parents
 
@@ -180,7 +187,8 @@ class ContainerStorage(object):
 
         if self.parent_cont_name:
             ps = ContainerStorage.factory(self.parent_cont_name)
-            return ps.get_container(cont[self.parent_cont_name], projection=projection)
+            parent = ps.get_container(cont[self.parent_cont_name], projection=projection)
+            return parent
 
         else:
             raise APIStorageException('The container level {} has no parent.'.format(self.cont_name))

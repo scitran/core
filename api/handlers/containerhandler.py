@@ -570,56 +570,6 @@ class ContainerHandler(base.RequestHandler):
         else:
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
 
-    # def tree(self, cont_name, cid, **kwargs):
-    #     """
-    #     Given a container reference, return display information about parents, children and files.
-
-    #     Container types acceptable for reference:
-    #       - Groups
-    #       - Projects
-    #       - Subjects
-    #       - Sessions
-    #       - Acquisitions
-    #       - Analyses
-
-    #     NOTE: Access via this endpoint is not logged. Only information necessary for display should be returned.
-    #     NOTE: Subject level is supported ahead of official separation in DB and API routes.
-    #     """
-
-    #     ## Mocked returns for development
-
-    #     response = {
-    #         'cont_type':    cont_name,
-    #         '_id':          cid,
-    #         'label':        '{} {}'.format(containerutil.singularize(cont_name), cid),
-    #         'parents':      []
-    #         'files':        [{'name': 'file_'+i+'.zip'} for i in range(rantint(0,5))],
-    #         'children':     {}
-    #     }
-
-    #     if containerutil.singularize(cont_name) in containerutil.CHILD_FROM_PARENT:
-    #         child_cont = containerutil.CHILD_FROM_PARENT[cont_name]
-    #         s_child_cont = containerutil.singularize(child_cont)
-    #         response['children'][child_cont] = [{'cont_name': s_child_cont, '_id': ''+i, 'label': s_child_cont+' '+i} for i in range(rantint(0,5))]
-
-    #     parent_cont = None
-
-    #     if cont_type == 'analyses':
-    #         parent_cont = 'sessions'
-    #     else:
-
-    #         response['children']['analyses'] = 'analyses': [{'cont_name': 'analysis', '_id': ''+i, 'label': 'analysis '+i} for i in range(rantint(0,5))]
-
-    #         parent_cont = containerutil.PARENT_FROM_CHILD.get(cont_name)
-
-    #     while parent_cont:
-    #         response['parents'].append({'cont_type': parent_cont, '_id': 1, 'label': '{} {}'.format(containerutil.singularize(parent_name), 1)})
-    #         parent_cont = containerutil.PARENT_FROM_CHILD.get(parent_cont)
-
-
-    #     return response
-
-
 
     def get_groups_with_project(self):
         """
