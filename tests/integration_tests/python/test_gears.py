@@ -105,11 +105,11 @@ def test_gear_access(data_builder, as_public, as_admin, as_user):
 
 def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
     gear = data_builder.create_gear()
-    group = data_builder.create_group()
-    project = data_builder.create_project()
-    session = data_builder.create_session()
+    group = data_builder.create_group(label='test-group')
+    project = data_builder.create_project(label='test-project')
+    session = data_builder.create_session(label='test-session', subject={'code': 'test-subject'})
     subject = as_admin.get('/sessions/' + session).json()['subject']['_id']
-    acquisition = data_builder.create_acquisition()
+    acquisition = data_builder.create_acquisition(label='test-acquisition')
 
     # Add files to project/sessions/acquisition
     as_admin.post('/projects/' + project + '/files', files=file_form(
@@ -173,5 +173,5 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
     print r.json()
     assert len(r.json()['files']) == 1
-    assert len(r.json()['parents']) == 4
+    assert len(r.json()['parents']) == 3
 
