@@ -280,8 +280,9 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     batch1 = r.json()
 
     assert len(batch1['matched']) == 2
-    assert batch1['matched'][0]['id'] == session
-    assert batch1['matched'][1]['id'] == session2
+    matched_ids = [ x['id'] for x in batch1['matched'] ]
+    assert session in matched_ids
+    assert session2 in matched_ids
 
     # create a batch w/o inputs targeting acquisitions
     r = as_admin.post('/batch', json={
@@ -291,8 +292,9 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     assert r.ok
     batch2 = r.json()
     assert len(batch2['matched']) == 2
-    assert batch2['matched'][0]['id'] == session
-    assert batch1['matched'][1]['id'] == session2
+    matched_ids = [ x['id'] for x in batch2['matched'] ]
+    assert session in matched_ids
+    assert session2 in matched_ids
 
     # create a batch w/o inputs targeting project
     r = as_admin.post('/batch', json={
@@ -302,8 +304,9 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     assert r.ok
     batch3 = r.json()
     assert len(batch3['matched']) == 2
-    assert batch3['matched'][0]['id'] == session
-    assert batch1['matched'][1]['id'] == session2
+    matched_ids = [ x['id'] for x in batch3['matched'] ]
+    assert session in matched_ids
+    assert session2 in matched_ids
 
     batch_id = batch1['_id']
 
@@ -353,8 +356,9 @@ def test_no_input_batch(data_builder, default_payload, randstr, as_admin, as_roo
     batch4 = r.json()
 
     assert len(batch4['matched']) == 2
-    assert batch4['matched'][0]['id'] == session
-    assert batch1['matched'][1]['id'] == session2
+    matched_ids = [ x['id'] for x in batch4['matched'] ]
+    assert session in matched_ids
+    assert session2 in matched_ids
     batch_id = batch4['_id']
 
     # run batch
