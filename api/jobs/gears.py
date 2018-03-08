@@ -13,7 +13,6 @@ import pymongo
 from .. import config
 from .jobs import Job
 
-from ..dao.basecontainerstorage import ContainerStorage
 from ..web.errors import APIValidationException, APINotFoundException
 
 log = config.log
@@ -54,13 +53,10 @@ def get_gear_by_name(name):
 def get_invocation_schema(gear):
     return gear_tools.derive_invocation_schema(gear['gear'])
 
-def suggest_container(gear, cont_name, cid):
+def add_suggest_info_to_files(gear, files):
     """
-    Given a container reference, suggest files that would work well for each input on a gear.
+    Given a list of files, add information to each file that details those that would work well for each input on a gear.
     """
-
-    root = ContainerStorage.factory(cont_name).get_container(cid, projection={'permissions':0}, get_children=True)
-    root['analyses'] = ContainerStorage.factory('analyses').get_analyses(cont_name, cid, False)
 
     invocation_schema = get_invocation_schema(gear)
 
@@ -69,22 +65,12 @@ def suggest_container(gear, cont_name, cid):
         schema = gear_tools.isolate_file_invocation(invocation_schema, x)
         schemas[x] = Draft4Validator(schema)
 
-    # It would be nice to have use a visitor here instead of manual key loops.
-    for acq in root.get('acquisitions', []):
-        for f in acq.get('files', []):
-            f['suggested'] = {}
-            for x in schemas:
-                f['suggested'][x] = schemas[x].is_valid(f)
+    for f in files:
+        f['suggested'] = {}
+        for x in schemas:
+            f['suggested'][x] = schemas[x].is_valid(f)
 
-    for analysis in root.get('analyses',[]):
-        files = analysis.get('files', [])
-        for f in files:
-            f['suggested'] = {}
-            for x in schemas:
-                f['suggested'][x] = schemas[x].is_valid(f)
-        analysis['files'] = files
-
-    return root
+    return files
 
 def suggest_for_files(gear, files):
 

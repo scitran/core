@@ -7,7 +7,6 @@ import os
 import StringIO
 from jsonschema import ValidationError
 from urlparse import urlparse
-from random import randint
 
 from . import batch
 from .. import config
@@ -16,16 +15,16 @@ from .. import util
 from ..auth import require_drone, require_login, require_admin, has_access
 from ..auth.apikeys import JobApiKey
 from ..dao import hierarchy
-from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage
+from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage, AnalysisStorage, cs_factory
 from ..util import humanize_validation_error, set_for_download
 from ..validators import validate_data, verify_payload_exists
-from ..dao.containerutil import pluralize, singularize, CHILD_FROM_PARENT, PARENT_FROM_CHILD
+from ..dao.containerutil import pluralize
 from ..web import base
 from ..web.encoder import pseudo_consistent_json_encode
 from ..web.errors import APIPermissionException, APINotFoundException, InputValidationException
 from ..web.request import AccessType
 
-from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, get_gear_by_name, check_for_gear_insertion
+from .gears import validate_gear_config, get_gears, get_gear, get_invocation_schema, remove_gear, upsert_gear, get_gear_by_name, check_for_gear_insertion, add_suggest_info_to_files
 from .jobs import Job, JobTicket, Logs
 from .batch import check_state, update
 from .queue import Queue
@@ -84,42 +83,39 @@ class GearHandler(base.RequestHandler):
         NOTE: Subject level is supported ahead of official separation in DB and API routes.
         """
 
-        ## Mocked returns for development
+        # Do all actions that could result in a 404 first
+        gear = get_gear(_id)
+        if not gear:
+            raise APINotFoundException('Gear with id {} not found.'.format(_id))
+
+        storage = cs_factory(cont_name)
+        container = storage.get_container(cid)
 
         response = {
             'cont_type':    cont_name,
             '_id':          cid,
-            'label':        '{} {}'.format(singularize(cont_name), cid),
+            'label':        container['label'],
             'parents':      [],
-            'files':        [{'name': 'file_{}.zip'.format(i)} for i in range(randint(0,5))],
-            'children':     []
+            'files':        [],
+            'children':     {}
         }
 
-        if cont_name in CHILD_FROM_PARENT:
-            child_cont = CHILD_FROM_PARENT[cont_name]
-            s_child_cont = singularize(child_cont)
-            response['children'].extend([{'cont_type': child_cont, '_id': ''+str(i), 'label': s_child_cont+' '+str(i)} for i in range(randint(1,5))])
-
-        parent_cont = None
-
-        if cont_name == 'analyses':
-            parent_cont = 'sessions'
+        if cont_name != 'analyses':
+            analyses = AnalysisStorage().get_analyses(cont_name, cid)
+            response['children']['analyses'] = [{'cont_name': 'analysis', '_id': a['_id'], 'label': a['label']} for a in analyses]
         else:
-            response['children'].extend([{'cont_type': 'analyses', '_id': str(i), 'label': 'analysis '+str(i)} for i in range(randint(0,5))])
-            parent_cont = PARENT_FROM_CHILD.get(cont_name)
+            # Only show output files for analyses
+            container['files'] = [f for f in container.get('files', []) if f.get('output')]
 
-        while parent_cont:
-            response['parents'].append({'cont_type': parent_cont, '_id': 1, 'label': '{} {}'.format(singularize(parent_cont), 1)})
-            parent_cont = PARENT_FROM_CHILD.get(parent_cont)
+        if cont_name not in ['analyses', 'acquisitions']:
+            children = storage.get_children(cid)
+            response['children'][pluralize(storage.child_cont_name)] = [{'cont_name': storage.child_cont_name, '_id': c['_id'], 'label': c['label']} for c in children]
 
-        gear = get_gear(_id)
-        if gear and gear.get('gear', {}).get('inputs'):
-            for f in response['files']:
-                f['suggested'] = {}
-                for i in gear['gear'].get('inputs', {}).iterkeys():
-                    f['suggested'][i] = bool(randint(0,1))
-        else:
-            config.log.warning('\nThe gear either does not exist, has no inputs, or is malformed: \n{}\n'.format(gear))
+        parents = storage.get_parent_tree(cid, cont=container)
+        response['parents'] = [{'cont_name': p['cont_type'], '_id': p['_id'], 'label': p['label']} for p in parents]
+
+        files = add_suggest_info_to_files(gear, container.get('files', []))
+        response['files'] = [{'name': f['name'], 'suggested': f['suggested']} for f in files]
 
         return response
 

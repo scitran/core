@@ -63,6 +63,7 @@ class ContainerStorage(object):
         """
         cont_storage_name = containerutil.singularize(cont_name).capitalize() + 'Storage'
         for subclass in cls.__subclasses__():
+            config.log.warning('we are comparing {} and {}'.format(subclass.__name__, cont_storage_name))
             if subclass.__name__ == cont_storage_name:
                 return subclass()
         return cls(containerutil.pluralize(cont_name))
@@ -178,7 +179,7 @@ class ContainerStorage(object):
             cont = self.get_container(_id, projection=projection)
 
         if self.parent_cont_name:
-            ps = self.factory(self.parent_cont_name)
+            ps = ContainerStorage.factory(self.parent_cont_name)
             return ps.get_container(cont[self.parent_cont_name], projection=projection)
 
         else:

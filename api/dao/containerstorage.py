@@ -16,6 +16,12 @@ from .basecontainerstorage import ContainerStorage
 log = config.log
 
 
+# Python circular reference workaround
+# Can be removed when dao module is reworked
+def cs_factory(cont_name):
+    return ContainerStorage.factory(cont_name)
+
+
 class GroupStorage(ContainerStorage):
 
     def __init__(self):
