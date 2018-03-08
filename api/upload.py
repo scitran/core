@@ -31,7 +31,7 @@ Strategy = util.Enum('Strategy', {
 
 
 def process_upload(request, strategy, container_type=None, id_=None, origin=None, context=None, response=None,
-                   metadata=None):
+                   metadata=None, file_fields=None, tempdir=None):
     """
     Universal file upload entrypoint.
 
@@ -78,14 +78,17 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
     # The vast majority of this function's wall-clock time is spent here.
     # Tempdir is deleted off disk once out of scope, so let's hold onto this reference.
-    file_processor = files.FileProcessor(config.get_item('persistent', 'data_path'), config.fs)
-    form = file_processor.process_form(request)
+    file_processor = files.FileProcessor(config.get_item('persistent', 'data_path'), config.fs, tempdir_name=tempdir)
+    if not file_fields:
+        form = file_processor.process_form(request)
+        # Non-file form fields may have an empty string as filename, check for 'falsy' values
+        file_fields = extract_file_fields(form)
 
-    if 'metadata' in form:
-        try:
-            metadata = json.loads(form['metadata'].value)
-        except Exception:
-            raise FileStoreException('wrong format for field "metadata"')
+        if 'metadata' in form:
+            try:
+                metadata = json.loads(form['metadata'].value)
+            except Exception:
+                raise FileStoreException('wrong format for field "metadata"')
 
     placer_class = strategy.value
     placer = placer_class(container_type, container, id_, metadata, timestamp, origin, context, file_processor)
@@ -95,15 +98,18 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
     # or "file1", "file2", etc (if multiple). Following this convention is probably a good idea.
     # Here, we accept any
 
-    # Non-file form fields may have an empty string as filename, check for 'falsy' values
-    file_fields = extract_file_fields(form)
     # TODO: Change schemas to enabled targeted uploads of more than one file.
     # Ref docs from placer.TargetedPlacer for details.
     if strategy == Strategy.targeted and len(file_fields) > 1:
         raise FileFormException("Targeted uploads can only send one file")
 
     for field in file_fields:
-        field.file.close()
+        if hasattr(field, 'file'):
+            field.file.close()
+            field.hash = util.format_hash(files.DEFAULT_HASH_ALG, field.hasher.hexdigest())
+
+        if not hasattr(field, 'hash'):
+            field.hash = ''
         # Augment the cgi.FieldStorage with a variety of custom fields.
         # Not the best practice. Open to improvements.
         # These are presumbed to be required by every function later called with field as a parameter.
@@ -115,7 +121,6 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
                 file_processor.temp_fs.listdir('/'),
             ))
         field.size = file_processor.temp_fs.getsize(field.path)
-        field.hash = util.format_hash(files.DEFAULT_HASH_ALG, field.hasher.hexdigest())
         field.uuid = str(uuid.uuid4())
         field.mimetype = util.guess_mimetype(field.filename)  # TODO: does not honor metadata's mime type if any
         field.modified = timestamp
@@ -140,98 +145,6 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
         file_attrs['type'] = files.guess_type_from_filename(file_attrs['name'])
         placer.process_file_field(field, file_attrs)
-
-    # Respond either with Server-Sent Events or a standard json map
-    if placer.sse and not response:
-        raise Exception("Programmer error: response required")
-    elif placer.sse:
-        response.headers['Content-Type'] = 'text/event-stream; charset=utf-8'
-        response.headers['Connection'] = 'keep-alive'
-
-        # Instead of handing the iterator off to response.app_iter, send it ourselves.
-        # This prevents disconnections from leaving the API in a partially-complete state.
-        #
-        # Timing out between events or throwing an exception will result in undefinied behaviour.
-        # Right now, in our environment:
-        # - Timeouts may result in nginx-created 500 Bad Gateway HTML being added to the response.
-        # - Exceptions add some error json to the response, which is not SSE-sanitized.
-
-        for item in placer.finalize():
-            try:
-                response.write(item)
-            except Exception:  # pylint: disable=broad-except
-                log.info('SSE upload progress failed to send; continuing')
-
-        return
-    else:
-        return placer.finalize()
-
-
-def process_signed_url_upload(request, strategy, tempdir, filename, metadata, container_type=None, id_=None, origin=None, context=None,
-                              response=None):
-    """
-    """
-
-    if not isinstance(strategy, Strategy):
-        raise Exception('Unknown upload strategy')
-
-    if id_ is not None and container_type == None:
-        raise Exception('Unspecified container type')
-
-    if container_type is not None and container_type not in (
-    'acquisition', 'session', 'project', 'collection', 'analysis', 'gear'):
-        raise Exception('Unknown container type')
-
-    timestamp = datetime.datetime.utcnow()
-
-    container = None
-    if container_type and id_:
-        container = hierarchy.get_container(container_type, id_)
-
-    # The vast majority of this function's wall-clock time is spent here.
-    # Tempdir is deleted off disk once out of scope, so let's hold onto this reference.
-    file_processor = files.FileProcessor(config.get_item('persistent', 'data_path'), config.fs, tempdir_name=tempdir)
-
-    placer_class = strategy.value
-    placer = placer_class(container_type, container, id_, metadata, timestamp, origin, context, file_processor)
-    placer.check()
-
-    field = util.dotdict({})
-    field.filename = filename
-    field.path = field.filename
-    if not file_processor.temp_fs.exists(field.path):
-        # tempdir_exists = os.path.exists(tempdir.name)
-        raise Exception("file {} does not exist, files in tmpdir: {}".format(
-            field.path,
-            file_processor.temp_fs.listdir('/'),
-        ))
-    field.size = file_processor.temp_fs.getsize(field.path)
-    # TODO: somehow figure out the hash of the file
-    # field.hash = util.format_hash(files.DEFAULT_HASH_ALG, field.hasher.hexdigest())
-    field.uuid = str(uuid.uuid4())
-    field.mimetype = util.guess_mimetype(field.filename)  # TODO: does not honor metadata's mime type if any
-    field.modified = timestamp
-
-    # create a file-attribute map commonly used elsewhere in the codebase.
-    # Stands in for a dedicated object... for now.
-    file_attrs = {
-        '_id': field.uuid,
-        'name': field.filename,
-        'modified': field.modified,
-        'size': field.size,
-        'mimetype': field.mimetype,
-        #'hash': field.hash,
-        'origin': origin,
-
-        'type': None,
-        'modality': None,
-        'measurements': [],
-        'tags': [],
-        'info': {}
-    }
-
-    file_attrs['type'] = files.guess_type_from_filename(file_attrs['name'])
-    placer.process_file_field(field, file_attrs)
 
     # Respond either with Server-Sent Events or a standard json map
     if placer.sse and not response:
@@ -298,17 +211,22 @@ class Upload(base.RequestHandler):
             if not user:
                 self.abort(403, 'Uploading requires login')
 
-        payload = self.request.json_body
         context = {'uid': self.uid if not self.superuser_request else None}
 
-        # TODO: Make it available for the other strategies
-        if strategy == 'reaper':
+        if strategy in 'label':
+            strategy = Strategy.labelupload
+        elif strategy == 'uid':
+            strategy = Strategy.uidupload
+        elif strategy == 'uid-match':
+            strategy = Strategy.uidmatch
+        elif strategy == 'reaper':
             strategy = Strategy.reaper
         else:
             self.abort(500, 'strategy {} not implemented'.format(strategy))
 
         # Request for download ticket
         if self.get_param('ticket') == '':
+            payload = self.request.json_body
             metadata = payload.get('metadata', None)
             filename = payload.get('filename', None)
 
@@ -317,6 +235,7 @@ class Upload(base.RequestHandler):
 
             tempdir = str(uuid.uuid4())
             # Upload into a temp folder, so we will be able to cleanup
+            print(type(config.fs))
             signed_url = files.get_signed_url(fs.path.join('tmp', tempdir, filename), config.fs, purpose='upload')
 
             if not signed_url:
@@ -335,7 +254,12 @@ class Upload(base.RequestHandler):
                 # If we don't have an origin with this request, use the ticket's origin
                 self.origin = ticket.get('origin')
 
-            return process_signed_url_upload(self.request, strategy, ticket['tempdir'], ticket['filename'], ticket['metadata'], origin=self.origin, context=context)
+            file_fields = [
+                util.dotdict({
+                    'filename': ticket['filename']
+                })
+            ]
+            return process_upload(self.request, strategy, metadata=ticket['metadata'], origin=self.origin, context=context, file_fields=file_fields, tempdir=ticket['tempdir'])
 
     def engine(self):
         """Handles file uploads from the engine"""
