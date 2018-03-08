@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type":"object",
+    "allOf": [{ "$ref": "../definitions/resolver.json#/definitions/resolver-node" }],
+    "example": {
+		"node_type": "project",
+		"_id": "57e452791cff88b85f9f9c97",
+		"label": "Neuroscience",
+		"group": "scitran",
+		"created": "2016-09-22T21:51:53.151000+00:00",
+		"modified": "2016-09-22T21:51:53.151000+00:00",
+		"public": false,
+		"permissions": [{
+			"access": "admin",
+			"_id": "coltonlw@flywheel.io"
+		}]				
+    }
+}

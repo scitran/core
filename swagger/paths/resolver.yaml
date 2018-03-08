@@ -24,3 +24,21 @@
         description: ''
         schema:
           $ref: schemas/output/resolver.json
+
+/lookup:
+  post:
+    summary: Perform path based lookup of a single node in the Flywheel hierarchy
+    description: |
+      This will perform a deep lookup of a node. See /resolve for more details.
+    operationId: lookup_path
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/resolver.json
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/lookup.json
