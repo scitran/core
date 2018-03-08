@@ -157,7 +157,7 @@ class ContainerStorage(object):
 
         if add_self:
             # Add the referenced container to the list
-            cont['cont_name'] = self.cont_name
+            cont['cont_type'] = self.cont_name
             parents.append(cont)
 
         # Walk up the hierarchy until we cannot go any further

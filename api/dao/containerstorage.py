@@ -107,6 +107,7 @@ class SubjectStorage(ContainerStorage):
 
     def __init__(self):
         super(SubjectStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True, parent_cont_name='project', child_cont_name='session')
+        self.cont_name = 'subjects'
 
     def _from_mongo(self, cont):
         subject = cont['subject']
@@ -387,7 +388,7 @@ class AnalysisStorage(ContainerStorage):
 
         ps = ContainerStorage.factory(cont['parent']['type'])
 
-        return ps.get_parent_tree(cont['parent']['id'])
+        return ps.get_parent_tree(cont['parent']['id'], add_self=True)
 
 
     def get_analyses(self, parent_type, parent_id, inflate_job_info=False):

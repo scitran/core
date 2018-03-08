@@ -171,7 +171,6 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
     r = as_admin.get('/gears/' + gear + '/suggest/analysis/' + analysis)
     assert r.ok
 
-    print r.json()
     assert len(r.json()['files']) == 1
-    assert len(r.json()['parents']) == 3
+    assert len(r.json()['parents']) == 4
 
