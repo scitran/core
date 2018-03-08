@@ -363,17 +363,17 @@ class FileListHandler(ListHandler):
         """
         with file_system.open(file_path, 'rb') as f:
             with zipfile.ZipFile(f) as zf:
-                info = {}
-                info['comment'] = zf.comment
-                info['members'] = []
+                info = {
+                    'comment': zf.comment,
+                    'members': []
+                }
                 for zi in zf.infolist():
-                    m = {}
-                    m['path']      = zi.filename
-                    m['size']      = zi.file_size
-                    m['timestamp'] = datetime.datetime(*zi.date_time)
-                    m['comment']   = zi.comment
-
-                    info['members'].append(m)
+                    info['members'].append({
+                        'path': zi.filename,
+                        'size': zi.file_size,
+                        'timestamp': datetime.datetime(*zi.date_time),
+                        'comment': zi.comment
+                    })
 
                 return info
 

@@ -89,9 +89,6 @@ class Placer(object):
         if field is not None and self.file_processor is not None:
             self.file_processor.store_temp_file(field.path, util.path_from_uuid(field.uuid))
 
-        # if field is not None:
-        #     files.move_form_file_field_into_storage(field)
-
         # Update the DB
         if file_attrs is not None:
             container_before, self.container = hierarchy.upsert_fileinfo(self.container_type, self.id_, file_attrs)
@@ -507,13 +504,13 @@ class PackfilePlacer(Placer):
         # Write all files to zip
         complete = 0
         for path in paths:
-            p = fs.path.join(self.folder, path)
+            full_path = fs.path.join(self.folder, path)
 
             # Set the file's mtime & atime.
-            self.file_processor.persistent_fs.settimes(p, self.ziptime, self.ziptime)
+            self.file_processor.persistent_fs.settimes(full_path, self.ziptime, self.ziptime)
 
             # Place file into the zip folder we created before
-            with self.file_processor.persistent_fs.open(p, 'rb') as f:
+            with self.file_processor.persistent_fs.open(full_path, 'rb') as f:
                 self.zip_.writestr(fs.path.join(self.dir_, path), f.read())
 
             # Report progress

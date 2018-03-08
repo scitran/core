@@ -65,7 +65,8 @@ DEFAULT_CONFIG = {
         'db_server_selection_timeout': '3000',
         'data_path': os.path.join(os.path.dirname(__file__), '../persistent/data'),
         'elasticsearch_host': 'localhost:9200',
-        'fs_url': 'osfs://' + os.path.join(os.path.dirname(__file__), '../persistent/data')
+        'fs_url': 'osfs://' + os.path.join(os.path.dirname(__file__), '../persistent/data'),
+        'support_legacy_fs': True
     },
 }
 
@@ -329,4 +330,4 @@ def get_auth(auth_type):
 # Storage configuration
 fs = open_fs(__config['persistent']['fs_url'])
 legacy_fs = open_fs('osfs://' + __config['persistent']['data_path'])
-support_legacy_fs = True
+support_legacy_fs = __config['persistent']['support_legacy_fs']

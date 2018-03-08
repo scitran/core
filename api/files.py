@@ -142,7 +142,10 @@ def get_single_file_field_storage(file_system):
                 self._FieldStorage__file = None
 
             self.file.write(line)
-            if hasattr(self, 'hasher'):
+
+            # NOTE: In case of metadata, we don't have a file name and we also don't have a hasher,
+            # so skipping the hasher.update
+            if self.filename:
                 self.hasher.update(line)
 
     return SingleFileFieldStorage
