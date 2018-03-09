@@ -322,11 +322,12 @@ class AnalysesHandler(RefererHandler):
             if not self.origin.get('id'):
                 self.origin = ticket.get('origin')
 
-        fileinfo = analysis.get(filegroup, [])
         if filename:
             # Allow individual file lookups to just specify `files`
-            fileinfo = analysis.get('inputs', []).extend(analysis.get('outputs',[]))
+            fileinfo = analysis.get('inputs', []) + analysis.get('files',[])
             fileinfo = [fi for fi in fileinfo if fi['name'] == filename]
+        else:
+            fileinfo = analysis.get(filegroup, [])
 
         if not fileinfo:
             error_msg = 'No files on analysis {}'.format(_id)
