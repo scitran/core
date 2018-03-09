@@ -324,6 +324,8 @@ class AnalysesHandler(RefererHandler):
 
         fileinfo = analysis.get(filegroup, [])
         if filename:
+            # Allow individual file lookups to just specify `files`
+            fileinfo = analysis.get('inputs', []).extend(analysis.get('outputs',[]))
             fileinfo = [fi for fi in fileinfo if fi['name'] == filename]
 
         if not fileinfo:
