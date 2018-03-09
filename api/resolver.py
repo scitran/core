@@ -38,6 +38,7 @@ from collections import deque
 
 from .dao import containerutil
 from .dao.basecontainerstorage import ContainerStorage
+from .jobs import gears
 from .web.errors import APINotFoundException, InputValidationException
 
 def path_peek(path):
@@ -263,16 +264,39 @@ class ContainerNode(BaseNode):
 
 class GearsNode(BaseNode):
     """The top level "gears" node"""
-    def __init__(self):
-        pass
-
     def next(self, path_in, path_out, id_only):
         """Get the next node in the hierarchy, adding any value found to path_out"""
+        if not path_in:
+            return None
+
+        use_id, criterion = parse_criterion(path_in)
+        if use_id:
+            gear = gears.get_gear(criterion)
+        else:
+            gear = gears.get_gear_by_name(criterion)
+
+        if not gear:
+            raise APINotFoundException('No gear {0} found.'.format(criterion))
+
+        gear['node_type'] = 'gear'
+        path_out.append(gear)
+
         return None
 
     def get_children(self, path_out):
         """Get a list of all gears"""
-        return []
+
+        # No children for gears yet
+        if path_out:
+            return []
+
+        results = gears.get_gears()
+
+        for gear in results:
+            gear['node_type'] = 'gear'
+
+        return list(results)
+
 
 class Resolver(object):
     """

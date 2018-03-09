@@ -59,7 +59,10 @@ class GearHandler(base.RequestHandler):
 
     @require_login
     def get(self, _id):
-        return get_gear(_id)
+        result = get_gear(_id)
+        util.add_node_type(self.request, result)
+        return result
+
 
     @require_login
     def get_invocation(self, _id):

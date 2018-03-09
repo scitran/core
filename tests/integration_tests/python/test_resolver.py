@@ -1,9 +1,14 @@
 def path_in_result(path, result):
     return [node.get('_id', node.get('name')) for node in result['path']] == path
 
-
 def child_in_result(child, result):
     return sum(all((k in c and c[k]==v) for k,v in child.iteritems()) for c in result['children']) == 1
+
+def gear_in_path(name, id, result):
+    for g in result['path']:
+        if g['gear']['name'] == name and g['_id'] == id: 
+            return True
+    return False
 
 def idz(s):
     return '<id:' + s + '>'
@@ -216,7 +221,6 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     # lookup root (1 group)
     group = data_builder.create_group()
     r = as_admin.post('/lookup', json={'path': []})
-    result = r.json()
     assert r.status_code == 404
 
     # try to lookup non-existent root/child
@@ -346,4 +350,58 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     # try to lookup non-existent (also invalid) root/group/project/session/acquisition/file/child
     r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, acquisition_label, 'files', acquisition_file, 'child']})
     assert r.status_code == 404
+
+def test_resolve_gears(data_builder, default_payload, as_admin, as_user, as_public, file_form):
+    # ROOT
+    # try accessing resolver w/o logging in
+    r = as_public.post('/resolve', json={'path': ['gears']})
+    assert r.status_code == 403
+
+    # resolve root (1 gear)
+    gear_id = data_builder.create_gear()
+    gear = as_admin.get('/gears/' + gear_id).json()
+    gear_name = gear['gear']['name']
+
+    r = as_admin.post('/resolve', json={'path': ['gears']})
+    result = r.json()
+    assert r.ok
+    assert result['path'] == []
+    assert child_in_result({'_id': gear_id, 'node_type': 'gear'}, result)
+
+    # resolve gear (empty)
+    r = as_admin.post('/resolve', json={'path': ['gears', gear_name]})
+    result = r.json()
+    assert r.ok
+    assert gear_in_path(gear_name, gear_id, result)
+    assert result['children'] == []
+
+    # resolve gear by id
+    r = as_admin.post('/resolve', json={'path': ['gears', idz(gear_id)]})
+    result = r.json()
+    assert r.ok
+    assert gear_in_path(gear_name, gear_id, result)
+    assert result['children'] == []
+    
+    # Lookup (empty)
+    r = as_admin.post('/lookup', json={'path': ['gears']})
+    result = r.json()
+    assert r.status_code == 404
+
+    # Lookup by name
+    r = as_admin.post('/lookup', json={'path': ['gears', gear_name]})
+    result = r.json()
+    assert r.ok
+    assert result['node_type'] == 'gear'
+    assert result['_id'] == gear_id 
+    assert result['gear']['name'] == gear_name
+
+    # Lookup by id
+    r = as_admin.post('/lookup', json={'path': ['gears', idz(gear_id)]})
+    result = r.json()
+    assert r.ok
+    assert result['node_type'] == 'gear'
+    assert result['_id'] == gear_id 
+    assert result['gear']['name'] == gear_name
+
+
 
