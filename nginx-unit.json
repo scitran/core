@@ -1,6 +1,6 @@
 {
     "listeners": {
-        "*:80": {
+        "*:8080": {
             "application": "scitran-core"
         }
     },

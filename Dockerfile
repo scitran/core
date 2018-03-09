@@ -1,6 +1,6 @@
 FROM python:2.7-alpine3.7 as build
 
-RUN apk add --no-cache build-base curl
+RUN apk --no-cache add build-base curl
 
 WORKDIR /src/nginx-unit
 
@@ -12,14 +12,13 @@ RUN ./configure --prefix=/usr/local --modules=lib --state=/var/local/unit --pid=
 
 FROM python:2.7-alpine3.7 as dist
 
-RUN apk add --no-cache git
+RUN apk --no-cache add git
 
 COPY --from=build /usr/local/sbin/unitd /usr/local/sbin/unitd
 COPY --from=build /usr/local/lib/python.unit.so /usr/local/lib/python.unit.so
 
-EXPOSE 80 8080
-VOLUME /data/db
-VOLUME /data/persistent
+EXPOSE 80 8088
+VOLUME /data/db /data/persistent
 
 WORKDIR /src/core
 ENV SCITRAN_PERSISTENT_DATA_PATH=/data/persistent
@@ -35,14 +34,17 @@ ARG VCS_BRANCH=NULL
 ARG VCS_COMMIT=NULL
 RUN ./bin/build_info.sh $VCS_BRANCH $VCS_COMMIT | tee /version.json
 
-CMD ["unitd", "--control", "*:8080", "--no-daemon", "--log", "/dev/stdout"]
+CMD ["unitd", "--control", "*:8088", "--no-daemon", "--log", "/dev/stdout"]
 
 
 FROM dist as dev
 
 EXPOSE 27017
 
-RUN apk add --no-cache mongodb
+RUN apk --no-cache add mongodb nginx
+RUN mkdir /run/nginx
+
+COPY nginx.conf /etc/nginx/nginx.conf
 
 RUN pip install -r tests/requirements.txt
 
