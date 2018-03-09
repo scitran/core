@@ -106,7 +106,7 @@ class ContainerHandler(base.RequestHandler):
                 fileinfo['path'] = util.path_from_hash(fileinfo['hash'])
 
         inflate_job_info = cont_name == 'sessions'
-        result['analyses'] = AnalysisStorage().get_analyses(cont_name, _id, inflate_job_info)
+        result['analyses'] = AnalysisStorage().get_analyses(None, cont_name, _id, inflate_job_info)
 
         util.add_node_type(self.request, result)
 
@@ -235,7 +235,7 @@ class ContainerHandler(base.RequestHandler):
 
         permchecker(noop)('GET', cid)
 
-        analyses = AnalysisStorage().get_analyses('session', cont['_id'])
+        analyses = AnalysisStorage().get_analyses(None, 'session', cont['_id'])
         acquisitions = cont.get('acquisitions', [])
 
         results = []
