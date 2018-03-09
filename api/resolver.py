@@ -8,6 +8,8 @@ subjects are not formalized and are excluded from the implementation.
 Quoted strings represent literal nodes in the graph. For example, to find the gear
 called dicom-mr-classifier, you would use the path: ["gears", "dicom-mr-classifier"]
 
+NOTE: Currently subjects and gear versions are not supported!
+
 +----+   +-------+   +-----+   +-------+
 |Root+---+"gears"+---+Gears+---+Version|
 +-+--+   +-------+   +-----+   +-------+
@@ -105,7 +107,7 @@ class BaseNode(object):
 class RootNode(BaseNode):
     """The root node of the resolver tree"""
     def __init__(self):
-        self.groups_node = ContainerNode('groups', files=False, use_id=True)
+        self.groups_node = ContainerNode('groups', files=False, use_id=True, analyses=False)
 
     def next(self, path_in, path_out, id_only):
         """Get the next node in the hierarchy"""
@@ -118,7 +120,6 @@ class RootNode(BaseNode):
         if path_el:
             return self.groups_node
 
-        # TODO: Gears
         return None
 
     def get_children(self, path_out):
@@ -126,9 +127,12 @@ class RootNode(BaseNode):
         return ContainerNode.get_container_children('groups')
 
 class FilesNode(BaseNode):
-    """Node that represents filename resolution"""
+    """Node that manages filename resolution"""
     def next(self, path_in, path_out, id_only):
         """Get the next node in the hierarchy"""
+        if not path_in:
+            return None
+
         filename = path_in.popleft()
 
         parent = get_parent(path_out)
@@ -142,6 +146,13 @@ class FilesNode(BaseNode):
 
         raise APINotFoundException('No ' + filename + ' file found.')
 
+    def get_children(self, path_out):
+        """Get the children of the current node in the hierarchy"""
+        parent = get_parent(path_out)
+        if parent:
+            return pop_files(parent)
+        return []
+
 class ContainerNode(BaseNode):
     # All lists obtained by the Resolver are sorted by the created timestamp, then the database ID as a fallback.
     # As neither property should ever change, this sort should be consistent
@@ -154,13 +165,14 @@ class ContainerNode(BaseNode):
         'files':             1,
     }
 
-    def __init__(self, cont_name, files=True, use_id=False):
+    def __init__(self, cont_name, files=True, use_id=False, analyses=True):
         self.cont_name = cont_name
         self.storage = ContainerStorage.factory(cont_name)
         # node_type is also the parent id field name
         self.node_type = containerutil.singularize(cont_name)
         self.files = files
         self.use_id = use_id        
+        self.analyses = analyses
         self.child_name = self.storage.get_child_container_name()
 
     def next(self, path_in, path_out, id_only):
@@ -188,10 +200,6 @@ class ContainerNode(BaseNode):
             else:
                 query['label'] = criterion
 
-        # Add parent to query
-        if parent:
-            query[parent['node_type']] = parent['_id']
-
         # Setup projection
         if id_only: 
             proj = ContainerNode.id_only_projection.copy()
@@ -204,7 +212,7 @@ class ContainerNode(BaseNode):
 
         # We don't use the user field here because we want to return a 403 if
         # they try to resolve something they don't have access to
-        results = self.storage.get_all_el(query, None, proj, sort=ContainerNode.sorting, limit=1)
+        results = self.find(query, parent, proj)
         if not results:
             raise APINotFoundException('No {0} {1} found.'.format(criterion, self.node_type))
         
@@ -218,11 +226,18 @@ class ContainerNode(BaseNode):
         if not path_in:
             return None
 
+        # Files
         if fetch_files:
             path_in.popleft()
             return FilesNode()
 
-        # TODO: Check for analyses
+        # Check for analyses
+        if path_peek(path_in) == 'analyses':
+            if self.analyses:
+                path_in.popleft()
+                return AnalysesNode()
+
+            raise APINotFoundException('No analyses at the {0} level'.format(self.node_type))
 
         if self.child_name:
             return ContainerNode(self.child_name)
@@ -243,10 +258,28 @@ class ContainerNode(BaseNode):
         else:
             children = []
 
-        # TODO: Add analyses?
+        # Add analyses
+        if self.analyses:
+            analyses_node = AnalysesNode()
+
+            proj = analyses_node.storage.get_list_projection()
+            if proj:
+                proj['files'] = 0
+
+            analyses = analyses_node.list_analyses(parent, proj=proj)
+            apply_node_type(analyses, analyses_node.node_type)
+            children = children + analyses
 
         # Add files
         return children + pop_files(parent)
+
+    def find(self, query, parent, proj):
+        """ Find the one child of this container that matches query """
+        # Add parent to query
+        if parent:
+            query[parent['node_type']] = parent['_id']
+
+        return self.storage.get_all_el(query, None, proj, sort=ContainerNode.sorting, limit=1)
 
     @classmethod
     def get_container_children(cls, cont_name, query=None):
@@ -297,6 +330,33 @@ class GearsNode(BaseNode):
 
         return list(results)
 
+class AnalysesNode(ContainerNode):
+    """The analyses node"""
+    def __init__(self):
+        super(AnalysesNode, self).__init__('analyses', files=True, use_id=False, analyses=False)
+
+    def find(self, query, parent, proj):
+        """Find the one child of this container that matches query"""
+        return self.list_analyses(parent, query, proj, limit=1)
+
+    def get_children(self, path_out):
+        """Get a list of all gears"""
+        parent = get_parent(path_out)
+        if not parent:
+            raise APINotFoundException('No analyses at that level')
+
+        # Only children of an analyses is files
+        if parent.get('node_type') == 'analysis':
+            return pop_files(parent)
+
+        results = self.list_analyses(parent)
+        apply_node_type(results, self.node_type)
+        return results
+
+    def list_analyses(self, parent, query=None, proj=None, **kwargs):
+        """Get a list of all analyses that match query, using the given projection"""
+        return self.storage.get_analyses(query, parent['node_type'], parent['_id'], projection=proj, sort=ContainerNode.sorting, **kwargs)
+
 
 class Resolver(object):
     """
@@ -335,4 +395,3 @@ class Resolver(object):
             'path': resolved_path,
             'children': resolved_children
         }
-

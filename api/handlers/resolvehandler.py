@@ -3,6 +3,7 @@ API request handlers for the jobs module
 """
 from webapp2 import Request
 
+from ..dao import containerutil
 from ..web import base
 from ..web.errors import APINotFoundException
 from ..resolver import Resolver
@@ -52,8 +53,12 @@ class ResolveHandler(base.RequestHandler):
 
     def _get_node_path(self, node):
         """Get the actual resource path for node"""
-        # Right now all containers are just node_type + 's'
-        cname = node['node_type'] + 's'
+        try:
+            cname = containerutil.pluralize(node['node_type'])  
+        except ValueError:
+            # Handle everything else...
+            cname = node['node_type'] + 's'
+            
         return '{0}/{1}'.format(cname, node['_id'])
 
     def _resolve_and_check_permissions(self, id_only):
@@ -70,7 +75,7 @@ class ResolveHandler(base.RequestHandler):
         if not self.superuser_request:
             for x in result["path"]:
                 ok = False
-                if x['node_type'] in ['acquisition', 'session', 'project', 'group']:
+                if x['node_type'] in ['acquisition', 'session', 'project', 'group', 'analysis']:
                     perms = x.get('permissions', [])
                     for y in perms:
                         if y.get('_id') == self.uid:
@@ -83,7 +88,7 @@ class ResolveHandler(base.RequestHandler):
             filtered_children = []
             for x in result["children"]:
                 ok = False
-                if x['node_type'] in ['acquisition', 'session', 'project', 'group']:
+                if x['node_type'] in ['acquisition', 'session', 'project', 'group', 'analysis']:
                     perms =  x.get('permissions', [])
                     for y in perms:
                         if y.get('_id') == self.uid:
