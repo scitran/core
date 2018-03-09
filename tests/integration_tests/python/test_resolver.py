@@ -5,6 +5,8 @@ def path_in_result(path, result):
 def child_in_result(child, result):
     return sum(all((k in c and c[k]==v) for k,v in child.iteritems()) for c in result['children']) == 1
 
+def idz(s):
+    return '<id:' + s + '>'
 
 def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
     # ROOT
@@ -91,8 +93,13 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
     assert child_in_result({'_id': session, 'node_type': 'session'}, result)
     assert len(result['children']) == 2
 
-    # resolve root/group/project/file
+    # resolve root/group/project/file (old way)
     r = as_admin.post('/resolve', json={'path': [group, project_label, project_file]})
+    result = r.json()
+    assert r.status_code == 404
+
+    # resolve root/group/project/file
+    r = as_admin.post('/resolve', json={'path': [group, project_label, 'files', project_file]})
     result = r.json()
     assert r.ok
     assert path_in_result([group, project, project_file], result)
@@ -133,7 +140,7 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
     assert len(result['children']) == 2
 
     # resolve root/group/project/session/file
-    r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, session_file]})
+    r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, 'files', session_file]})
     result = r.json()
     assert r.ok
     assert path_in_result([group, project, session, session_file], result)
@@ -164,24 +171,21 @@ def test_resolver(data_builder, as_admin, as_user, as_public, file_form):
     assert len(result['children']) == 1
 
     # resolve root/group/project/session/acquisition/file
-    r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, acquisition_label, acquisition_file]})
+    r = as_admin.post('/resolve', json={'path': [group, project_label, session_label, acquisition_label, 'files', acquisition_file]})
     result = r.json()
     assert r.ok
     assert path_in_result([group, project, session, acquisition, acquisition_file], result)
     assert result['children'] == []
 
-    def idz(s):
-        return '<id:' + s + '>'
-
     # resolve root/group/project/session/acquisition/file with id
-    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), acquisition_file]})
+    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), 'files', acquisition_file]})
     result = r.json()
     assert r.ok
     assert path_in_result([group, project, session, acquisition, acquisition_file], result)
     assert result['children'] == []
 
     # resolve root/group/project/session/acquisition/file with invalid id
-    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz('not-valid'), idz(acquisition), acquisition_file]})
+    r = as_admin.post('/resolve', json={'path': [idz(group), idz(project), idz('not-valid'), idz(acquisition), 'files', acquisition_file]})
     assert r.status_code == 400
 
     # try to resolve non-existent root/group/project/session/acquisition/child
@@ -253,7 +257,7 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     r = as_admin.post('/projects/' + project + '/files', files=file_form(project_file))
     assert r.ok
 
-    r = as_admin.post('/lookup', json={'path': [group, project_label, project_file]})
+    r = as_admin.post('/lookup', json={'path': [group, project_label, 'files', project_file]})
     result = r.json()
     assert r.ok
     assert result['node_type'] == 'file'
@@ -282,7 +286,7 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     r = as_admin.post('/sessions/' + session + '/files', files=file_form(session_file))
     assert r.ok
 
-    r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, session_file]})
+    r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, 'files', session_file]})
     result = r.json()
     assert r.ok
     assert result['node_type'] == 'file'
@@ -309,7 +313,7 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     r = as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(acquisition_file))
     assert r.ok
 
-    r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, acquisition_label, acquisition_file]})
+    r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, acquisition_label, 'files', acquisition_file]})
     result = r.json()
     assert r.ok
     assert result['node_type'] == 'file'
@@ -317,9 +321,6 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     assert 'mimetype' in result
     assert 'size' in result
 
-    def idz(s):
-        return '<id:' + s + '>'
-    
     # lookup root/group/project/session/acquisition with id
     r = as_admin.post('/lookup', json={'path': [idz(group), idz(project), idz(session), idz(acquisition)]})
     result = r.json()
@@ -328,7 +329,7 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
     assert result['_id'] == acquisition 
 
     # lookup root/group/project/session/acquisition/file with id
-    r = as_admin.post('/lookup', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), acquisition_file]})
+    r = as_admin.post('/lookup', json={'path': [idz(group), idz(project), idz(session), idz(acquisition), 'files', acquisition_file]})
     result = r.json()
     assert r.ok
     assert result['node_type'] == 'file'
@@ -343,6 +344,6 @@ def test_lookup(data_builder, as_admin, as_user, as_public, file_form):
 
     # FILE
     # try to lookup non-existent (also invalid) root/group/project/session/acquisition/file/child
-    r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, acquisition_label, acquisition_file, 'child']})
+    r = as_admin.post('/lookup', json={'path': [group, project_label, session_label, acquisition_label, 'files', acquisition_file, 'child']})
     assert r.status_code == 404
 

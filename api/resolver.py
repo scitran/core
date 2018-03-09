@@ -1,12 +1,147 @@
 """
 Resolve an ambiguous path through the data hierarchy.
+
+The goal of the resolver is to provide a virtual graph that can be navigated using
+path notation. Below is how the graph will ultimately be represented. Currently
+subjects are not formalized and are excluded from the implementation.
+
+Quoted strings represent literal nodes in the graph. For example, to find the gear
+called dicom-mr-classifier, you would use the path: ["gears", "dicom-mr-classifier"]
+
++----+   +-------+   +-----+   +-------+
+|Root+---+"gears"+---+Gears+---+Version|
++-+--+   +-------+   +-----+   +-------+
+  |
++-+----+
+|Groups|
++-+----+
+  |
++-+------+
+|Projects+---+
++-+------+   |
+  |          |
++-+------+   |   +----------+   +--------+
+|Subjects+---+---+"analyses"+---+Analyses|
++-+------+   |   +----------+   +---+----+
+  |          |                      |
++-+------+   |                      |
+|Sessions+---+-------+              |
++-+------+           |          +---+---+   +-----+
+  |                  +----------+"files"+---+Files|
++-+----------+       |          +-------+   +-----+
+|Acquisitions+-------+
++------------+
 """
-from .dao import containerstorage, containerutil
-from .web.errors import APINotFoundException, InputValidationException
 import bson
+
 from collections import deque
 
-class Node(object):
+from .dao import containerutil
+from .dao.basecontainerstorage import ContainerStorage
+from .web.errors import APINotFoundException, InputValidationException
+
+def path_peek(path):
+    """Return the next path element or None"""
+    if len(path) > 0:
+        return path[0]
+    return None
+
+def parse_criterion(path_in):
+    """Parse criterion, returning true if we got an id"""
+    if not path_in:
+        return False, None
+
+    value = path_in.popleft()
+    use_id = False
+    # Check for <id:xyz> syntax
+    if value.startswith('<id:') and value.endswith('>'):
+        value = value[4:len(value)-1]
+        use_id = True
+
+    return use_id, value
+
+def get_parent(path_out):
+    """Return the last parent element or None"""
+    if path_out:
+        return path_out[-1]
+    return None
+
+def apply_node_type(lst, node_type):
+    """Apply node_type to each item in in the list"""
+    if lst:
+        for item in lst:
+            item['node_type'] = node_type
+
+def pop_files(container):
+    """Return a consistently-ordered set of files for a given container."""
+    if not container:
+        return []
+
+    files = container.pop('files', [])
+
+    files.sort(key=lambda f: f.get('name', ''))
+    apply_node_type(files, 'file')
+
+    return files
+
+def find_file(files, name):
+    """Find a file  by name"""
+    for f in files:
+        if str(f.get('name')) == name:
+            return f
+    return None
+
+class BaseNode(object):
+    """Base class for all nodes in the resolver tree"""
+    def next(self, path_in, path_out, id_only):
+        # pylint: disable=W0613
+        pass
+
+    def get_children(self, path_out):
+        # pylint: disable=W0613
+        return []
+
+class RootNode(BaseNode):
+    """The root node of the resolver tree"""
+    def __init__(self):
+        self.groups_node = ContainerNode('groups', files=False, use_id=True)
+
+    def next(self, path_in, path_out, id_only):
+        """Get the next node in the hierarchy"""
+        path_el = path_peek(path_in)
+
+        if path_el == 'gears':
+            path_in.popleft()
+            return GearsNode()
+
+        if path_el:
+            return self.groups_node
+
+        # TODO: Gears
+        return None
+
+    def get_children(self, path_out):
+        """Get the children of the current node in the hierarchy"""
+        return ContainerNode.get_container_children('groups')
+
+class FilesNode(BaseNode):
+    """Node that represents filename resolution"""
+    def next(self, path_in, path_out, id_only):
+        """Get the next node in the hierarchy"""
+        filename = path_in.popleft()
+
+        parent = get_parent(path_out)
+        if not parent:
+            raise APINotFoundException('No ' + filename + ' file found.')
+
+        f = find_file(pop_files(parent), filename)
+        if f is not None:
+            path_out.append(f)
+            return None
+
+        raise APINotFoundException('No ' + filename + ' file found.')
+
+class ContainerNode(BaseNode):
     # All lists obtained by the Resolver are sorted by the created timestamp, then the database ID as a fallback.
     # As neither property should ever change, this sort should be consistent
     sorting = [('created', 1), ('_id', 1)]
@@ -18,17 +153,28 @@ class Node(object):
         'files':             1,
     }
 
-    def __init__(self, storage, parent, files=True, use_id=False):
-        self.storage = storage
-        self.node_type = containerutil.singularize(storage.cont_name)
-        self.parent = parent
+    def __init__(self, cont_name, files=True, use_id=False):
+        self.cont_name = cont_name
+        self.storage = ContainerStorage.factory(cont_name)
+        # node_type is also the parent id field name
+        self.node_type = containerutil.singularize(cont_name)
         self.files = files
-        self.use_id = use_id
+        self.use_id = use_id        
+        self.child_name = self.storage.get_child_container_name()
 
-    def find(self, criterion, parent=None, id_only=False, include_files=True, use_id=False, limit=0): 
-        query = {}
+    def next(self, path_in, path_out, id_only):
+        """Get the next node in the hierarchy, adding any value found to path_out"""
+        # If there is no path in, don't try to resolve
+        if not path_in:
+            return None
+
+        use_id, criterion = parse_criterion(path_in)
+        parent = get_parent(path_out)
+        # Peek to see if we need files for the next path element
+        fetch_files = (path_peek(path_in) in ['files', None])
 
         # Setup criterion match
+        query = {}
         if criterion:
             if use_id or self.use_id:
                 if self.storage.use_object_id:
@@ -42,69 +188,91 @@ class Node(object):
                 query['label'] = criterion
 
         # Add parent to query
-        if parent and self.parent:
-            query[self.parent] = parent['_id']
+        if parent:
+            query[parent['node_type']] = parent['_id']
 
         # Setup projection
         if id_only: 
-            proj = Node.id_only_projection.copy()
+            proj = ContainerNode.id_only_projection.copy()
+            if fetch_files:
+                proj['files'] = 1
         else:
             proj = self.storage.get_list_projection()
-            if not include_files:
+            if proj and not fetch_files:
                 proj['files'] = 0
 
         # We don't use the user field here because we want to return a 403 if
         # they try to resolve something they don't have access to
-        results = self.storage.get_all_el(query, None, proj, sort=Node.sorting, limit=limit)
-        for el in results:
-            self.storage.filter_deleted_files(el)
-            el['node_type'] = self.node_type
+        results = self.storage.get_all_el(query, None, proj, sort=ContainerNode.sorting, limit=1)
+        if not results:
+            raise APINotFoundException('No {0} {1} found.'.format(criterion, self.node_type))
+        
+        child = results[0]
 
-        return results
+        self.storage.filter_deleted_files(child)
+        child['node_type'] = self.node_type
+        path_out.append(child)
 
+        # Get the next node
+        if not path_in:
+            return None
 
-PROJECT_TREE = [
-    Node(containerstorage.GroupStorage(), None, files=False, use_id=True),
-    Node(containerstorage.ProjectStorage(), 'group'),
-    Node(containerstorage.SessionStorage(), 'project'),
-    Node(containerstorage.AcquisitionStorage(), 'session')
-]
+        if fetch_files:
+            path_in.popleft()
+            return FilesNode()
 
-def parse_criterion(value):
-    if not value:
-        return False, None
+        # TODO: Check for analyses
 
-    use_id = False
-    # Check for <id:xyz> syntax
-    if value.startswith('<id:') and value.endswith('>'):
-        value = value[4:len(value)-1]
-        use_id = True
+        if self.child_name:
+            return ContainerNode(self.child_name)
 
-    return use_id, value
+        return None
 
-def pop_files(container):
-    """
-    Return a consistently-ordered set of files for a given container.
-    """
-    if not container:
+    def get_children(self, path_out):
+        """Get all children of the last node"""
+        parent = get_parent(path_out)
+
+        # Get container chilren
+        if self.child_name:
+            query = {}
+            if parent:
+                query[parent['node_type']] = parent['_id']
+
+            children = ContainerNode.get_container_children(self.child_name, query)
+        else:
+            children = []
+
+        # TODO: Add analyses?
+
+        # Add files
+        return children + pop_files(parent)
+
+    @classmethod
+    def get_container_children(cls, cont_name, query=None):
+        """Get all children of container named cont_name, using query"""
+        storage = ContainerStorage.factory(cont_name)
+
+        proj = storage.get_list_projection()
+        if proj:
+            proj['files'] = 0
+
+        children = storage.get_all_el(query, None, proj, sort=ContainerNode.sorting)
+        apply_node_type(children, containerutil.singularize(cont_name))
+
+        return children
+
+class GearsNode(BaseNode):
+    """The top level "gears" node"""
+    def __init__(self):
+        pass
+
+    def next(self, path_in, path_out, id_only):
+        """Get the next node in the hierarchy, adding any value found to path_out"""
+        return None
+
+    def get_children(self, path_out):
+        """Get a list of all gears"""
         return []
-
-    files = container.pop('files', [])
-
-    files.sort(key=lambda f: f.get('name', ''))
-    for f in files:
-        f['node_type'] = 'file'
-
-    return files
-
-def find_file(files, name):
-    """ 
-    Find a file by name
-    """
-    for f in files:
-        if str(f.get('name')) == name:
-            return f
-    return None
 
 class Resolver(object):
     """
@@ -112,7 +280,6 @@ class Resolver(object):
 
     Does not tolerate ambiguity at any level of the path except the final node.
     """
-
     def __init__(self, id_only=False):
         self.id_only = id_only 
 
@@ -121,74 +288,24 @@ class Resolver(object):
             raise InputValidationException("Path must be an array of strings")
 
         path = deque(path)
-        tree = deque(PROJECT_TREE)
+        node = None
+        next_node = RootNode()
+
         resolved_path = []
         resolved_children = []
-        last = None
-        files = []
 
-        # Short circuit - just return a list of groups
-        if not path:
-            resolved_children = tree[0].find(None, id_only=self.id_only)
-            return {
-                'path': resolved_path,
-                'children': resolved_children
-            }
-
-        # Walk down the tree, building path until we get to the last node
+        # Walk down the tree, building path until we get to a leaf node
         # Keeping in mind that path may be empty
-        while len(path) > 0 and len(tree) > 0:
-            node = tree.popleft()
-            current_id, current = parse_criterion(path.popleft()) 
-            
-            # Find the next child 
-            children = node.find(current, parent=last, id_only=self.id_only, include_files=True, use_id=current_id, limit=1) 
+        while next_node:
+            node = next_node
+            next_node = node.next(path, resolved_path, self.id_only)
 
-            # If children is empty, try to find a match in the last set of files
-            if not children:
-                # Check in last set of files
-                if not current_id:
-                    child = find_file(files, current)
-                    if child:
-                        children = [child]
-                        files = []
-                        if len(path) > 0:
-                            raise APINotFoundException('Files have no children')
-
-            if not children:
-                # Not found
-                or_file = 'or file ' if node.files else ''
-                raise APINotFoundException('No {0} {1} {2} found.'.format(current, node.node_type, or_file))
-
-            # Otherwise build up path
-            resolved_path.append(children[0])
-            last = resolved_path[-1]
-            files = pop_files(last)
-
-        # If there are path elements left, search in the last set of files
+        # If we haven't consumed path, then we didn't find what we were looking for
         if len(path) > 0:
-            filename = path.popleft()
-            f = find_file(files, filename)
-            if not f:
-                raise APINotFoundException('No ' + filename + ' file found.')
-            if len(path) > 0:
-                raise APINotFoundException('Files have no children')
-            resolved_path.append(f)
-            files = []
+            raise APINotFoundException('Could not resolve node for: ' + '/'.join(path))
 
-        # Resolve children 
-        if not self.id_only:
-            if last and last.get('node_type') != 'file':
-                # Retrieve any child nodes
-                if len(tree) > 0:
-                    node = tree[0]
-                    resolved_children = node.find(None, parent=last, include_files=False)
-
-                # Add any files from the last node
-                resolved_children = resolved_children + files
-
-        elif len(path) > 0:
-            raise APINotFoundException('Cannot retrieve id for file: {0}'.format(path[0]))
+        if hasattr(node, 'get_children'):
+            resolved_children = node.get_children(resolved_path)
 
         return {
             'path': resolved_path,

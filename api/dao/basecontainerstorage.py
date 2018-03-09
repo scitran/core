@@ -109,6 +109,9 @@ class ContainerStorage(object):
             cont[CHILD_MAP[self.cont_name]] = children
         return cont
 
+    def get_child_container_name(self):
+        return CHILD_MAP.get(self.cont_name)
+
     def get_children(self, _id, projection=None, uid=None):
         try:
             child_name = CHILD_MAP[self.cont_name]
