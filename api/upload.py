@@ -20,8 +20,8 @@ Strategy = util.Enum('Strategy', {
     'engine': pl.EnginePlacer,  # Upload N files from the result of a successful job.
     'token': pl.TokenPlacer,  # Upload N files to a saved folder based on a token.
     'packfile': pl.PackfilePlacer,  # Upload N files as a new packfile to a container.
-    'labelupload': pl.LabelPlacer,
-    'uidupload': pl.UIDPlacer,
+    'label': pl.LabelPlacer,
+    'uid': pl.UIDPlacer,
     'uidmatch': pl.UIDMatchPlacer,
     'reaper': pl.UIDReaperPlacer,
     'analysis': pl.AnalysisPlacer,  # Upload N files to an analysis as input and output (no db updates)
@@ -174,6 +174,25 @@ def process_upload(request, strategy, container_type=None, id_=None, origin=None
 
 class Upload(base.RequestHandler):
 
+    def _create_ticket(self):
+        payload = self.request.json_body
+        metadata = payload.get('metadata', None)
+        filename = payload.get('filename', None)
+
+        if not (metadata or filename):
+            self.abort(404, 'metadata and filename are required')
+
+        tempdir = str(uuid.uuid4())
+        # Upload into a temp folder, so we will be able to cleanup
+        signed_url = files.get_signed_url(fs.path.join('tmp', tempdir, filename), config.fs, purpose='upload')
+
+        if not signed_url:
+            self.abort(405, 'Signed URLs are not supported with the current storage backend')
+
+        ticket = util.upload_ticket(self.request.client_addr, self.origin, tempdir, filename, metadata)
+        return {'ticket': config.db.uploads.insert_one(ticket).inserted_id,
+                'upload_url': signed_url}
+
     def _check_ticket(self, ticket_id):
         ticket = config.db.uploads.find_one({'_id': ticket_id})
         if not ticket:
@@ -190,64 +209,20 @@ class Upload(base.RequestHandler):
             if not user:
                 self.abort(403, 'Uploading requires login')
 
-        context = {'uid': self.uid if not self.superuser_request else None}
-
-        # TODO: what enum
-        if strategy == 'label':
-            strategy = Strategy.labelupload
-        elif strategy == 'uid':
-            strategy = Strategy.uidupload
-        elif strategy == 'uid-match':
-            strategy = Strategy.uidmatch
-        elif strategy == 'reaper':
-            strategy = Strategy.reaper
-        else:
-            self.abort(500, 'strategy {} not implemented'.format(strategy))
-        return process_upload(self.request, strategy, origin=self.origin, context=context)
-
-    def upload_signed_url(self, strategy):
-        if not self.superuser_request:
-            user = self.uid
-            if not user:
-                self.abort(403, 'Uploading requires login')
-
-        context = {'uid': self.uid if not self.superuser_request else None}
-
-        if strategy in 'label':
-            strategy = Strategy.labelupload
-        elif strategy == 'uid':
-            strategy = Strategy.uidupload
-        elif strategy == 'uid-match':
-            strategy = Strategy.uidmatch
-        elif strategy == 'reaper':
-            strategy = Strategy.reaper
+        if strategy in ['label', 'uid', 'uid-match', 'reaper']:
+            strategy = strategy.replace('-', '')
+            strategy = getattr(Strategy, strategy)
         else:
             self.abort(500, 'strategy {} not implemented'.format(strategy))
 
-        # Request for download ticket
+        context = {'uid': self.uid if not self.superuser_request else None}
+
+        # Request for upload ticket
         if self.get_param('ticket') == '':
-            payload = self.request.json_body
-            metadata = payload.get('metadata', None)
-            filename = payload.get('filename', None)
-
-            if not (metadata or filename):
-                self.abort(404, 'metadata and filename are required')
-
-            tempdir = str(uuid.uuid4())
-            # Upload into a temp folder, so we will be able to cleanup
-            print(type(config.fs))
-            signed_url = files.get_signed_url(fs.path.join('tmp', tempdir, filename), config.fs, purpose='upload')
-
-            if not signed_url:
-                self.abort(405, 'Signed URLs are not supported with the current storage backend')
-
-            ticket = util.upload_ticket(self.request.client_addr, self.origin, tempdir, filename, metadata)
-            return {'ticket': config.db.uploads.insert_one(ticket).inserted_id,
-                    'upload_url': signed_url}
+            return self._create_ticket()
 
         # Check ticket id and skip permissions check if it clears
         ticket_id = self.get_param('ticket')
-        ticket = None
         if ticket_id:
             ticket = self._check_ticket(ticket_id)
             if not self.origin.get('id'):
@@ -259,7 +234,11 @@ class Upload(base.RequestHandler):
                     'filename': ticket['filename']
                 })
             ]
-            return process_upload(self.request, strategy, metadata=ticket['metadata'], origin=self.origin, context=context, file_fields=file_fields, tempdir=ticket['tempdir'])
+
+            return process_upload(self.request, strategy, metadata=ticket['metadata'], origin=self.origin,
+                                  context=context, file_fields=file_fields, tempdir=ticket['tempdir'])
+        else:
+            return process_upload(self.request, strategy, origin=self.origin, context=context)
 
     def engine(self):
         """Handles file uploads from the engine"""
@@ -276,16 +255,42 @@ class Upload(base.RequestHandler):
             self.abort(400, 'container id is required')
         else:
             cid = bson.ObjectId(cid)
+
         context = {
             'job_id': self.get_param('job'),
             'job_ticket_id': self.get_param('job_ticket'),
         }
-        if level == 'analysis':
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level,
-                                  id_=cid, context=context)
+
+        # Request for upload ticket
+        if self.get_param('ticket') == '':
+            return self._create_ticket()
+
+        # Check ticket id and skip permissions check if it clears
+        ticket_id = self.get_param('ticket')
+        if ticket_id:
+            ticket = self._check_ticket(ticket_id)
+            if not self.origin.get('id'):
+                # If we don't have an origin with this request, use the ticket's origin
+                self.origin = ticket.get('origin')
+
+            file_fields = [
+                util.dotdict({
+                    'filename': ticket['filename']
+                })
+            ]
+
+            if level is not 'analysis':
+                return process_upload(self.request, Strategy.engine, metadata=ticket['metadata'], origin=self.origin,
+                                      context=context, file_fields=file_fields, tempdir=ticket['tempdir'],
+                                      container_type=level, id_=cid)
+
         else:
-            return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin,
-                                  context=context)
+            if level == 'analysis':
+                return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level,
+                                      id_=cid, context=context)
+            else:
+                return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin,
+                                      context=context)
 
     def clean_packfile_tokens(self):
         """Clean up expired upload tokens and invalid token directories.

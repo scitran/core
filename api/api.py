@@ -87,7 +87,6 @@ endpoints = [
         route('/download',                                      Download, h='download',              m=['GET', 'POST']),
         route('/download/summary',                              Download, h='summary',               m=['POST']),
         route('/upload/<strategy:label|uid|uid-match|reaper>',  Upload,   h='upload',                m=['POST']),
-        route('/upload/signed/<strategy:reaper>',               Upload,   h='upload_signed_url', m=['POST']),
         route('/clean-packfiles',                               Upload,   h='clean_packfile_tokens', m=['POST']),
         route('/engine',                                        Upload,   h='engine',                m=['POST']),
 
