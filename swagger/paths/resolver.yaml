@@ -10,6 +10,12 @@
         * session label
         * acquisition label
 
+      Additionally, analyses for project/session/acquisition nodes can be resolved by inserting the literal 
+      string `"analyses"`. e.g. `['scitran', 'MyProject', 'analyses']`.
+
+      Files for projects, sessions, acquisitions and analyses can be resolved by inserting the literal string 
+      `"files"`. e.g. `['scitran', 'MyProject', 'files']`.
+
       An ID can be used instead of a label by formatting the string as `<id:project_id>`. The full path
       to the node, and the node's children will be included in the response.
     operationId: resolve_path

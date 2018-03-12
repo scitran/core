@@ -70,6 +70,20 @@
     			{"$ref":"file.json#/definitions/file-output"}
     		],
     		"x-discriminator-value": "file"
-    	}
+    	},
+        "analysis-node": {
+            "allOf": [
+                {"$ref":"#/definitions/resolver-node"},
+                {"$ref":"analysis.json#/definitions/analysis-output"}
+            ],
+            "x-discriminator-value": "analysis"
+        },
+        "gear-node": {
+            "allOf": [
+                {"$ref":"#/definitions/resolver-node"},
+                {"$ref":"gear.json#/definitions/gear-doc"}
+            ],
+            "x-discriminator-value": "gear"
+        }
     }
 }
