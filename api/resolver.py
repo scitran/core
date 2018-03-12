@@ -98,11 +98,11 @@ class BaseNode(object):
     """Base class for all nodes in the resolver tree"""
     def next(self, path_in, path_out, id_only):
         # pylint: disable=W0613
-        pass
+        pass # pragma: no cover
 
     def get_children(self, path_out):
         # pylint: disable=W0613
-        return []
+        return [] # pragma: no cover
 
 class RootNode(BaseNode):
     """The root node of the resolver tree"""
@@ -340,7 +340,7 @@ class AnalysesNode(ContainerNode):
         return self.list_analyses(parent, query, proj, limit=1)
 
     def get_children(self, path_out):
-        """Get a list of all gears"""
+        """Get a list of all analyses"""
         parent = get_parent(path_out)
         if not parent:
             raise APINotFoundException('No analyses at that level')
