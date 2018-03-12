@@ -69,11 +69,11 @@ def get_parent(path_out):
         return path_out[-1]
     return None
 
-def apply_node_type(lst, node_type):
-    """Apply node_type to each item in in the list"""
+def apply_container_type(lst, container_type):
+    """Apply container_type to each item in in the list"""
     if lst:
         for item in lst:
-            item['node_type'] = node_type
+            item['container_type'] = container_type
 
 def pop_files(container):
     """Return a consistently-ordered set of files for a given container."""
@@ -83,7 +83,7 @@ def pop_files(container):
     files = container.pop('files', [])
 
     files.sort(key=lambda f: f.get('name', ''))
-    apply_node_type(files, 'file')
+    apply_container_type(files, 'file')
 
     return files
 
@@ -168,8 +168,8 @@ class ContainerNode(BaseNode):
     def __init__(self, cont_name, files=True, use_id=False, analyses=True):
         self.cont_name = cont_name
         self.storage = ContainerStorage.factory(cont_name)
-        # node_type is also the parent id field name
-        self.node_type = containerutil.singularize(cont_name)
+        # container_type is also the parent id field name
+        self.container_type = containerutil.singularize(cont_name)
         self.files = files
         self.use_id = use_id        
         self.analyses = analyses
@@ -214,12 +214,12 @@ class ContainerNode(BaseNode):
         # they try to resolve something they don't have access to
         results = self.find(query, parent, proj)
         if not results:
-            raise APINotFoundException('No {0} {1} found.'.format(criterion, self.node_type))
+            raise APINotFoundException('No {0} {1} found.'.format(criterion, self.container_type))
         
         child = results[0]
 
         self.storage.filter_deleted_files(child)
-        child['node_type'] = self.node_type
+        child['container_type'] = self.container_type
         path_out.append(child)
 
         # Get the next node
@@ -237,7 +237,7 @@ class ContainerNode(BaseNode):
                 path_in.popleft()
                 return AnalysesNode()
 
-            raise APINotFoundException('No analyses at the {0} level'.format(self.node_type))
+            raise APINotFoundException('No analyses at the {0} level'.format(self.container_type))
 
         if self.child_name:
             return ContainerNode(self.child_name)
@@ -252,7 +252,7 @@ class ContainerNode(BaseNode):
         if self.child_name:
             query = {}
             if parent:
-                query[parent['node_type']] = parent['_id']
+                query[parent['container_type']] = parent['_id']
 
             children = ContainerNode.get_container_children(self.child_name, query)
         else:
@@ -267,7 +267,7 @@ class ContainerNode(BaseNode):
                 proj['files'] = 0
 
             analyses = analyses_node.list_analyses(parent, proj=proj)
-            apply_node_type(analyses, analyses_node.node_type)
+            apply_container_type(analyses, analyses_node.container_type)
             children = children + analyses
 
         # Add files
@@ -277,7 +277,7 @@ class ContainerNode(BaseNode):
         """ Find the one child of this container that matches query """
         # Add parent to query
         if parent:
-            query[parent['node_type']] = parent['_id']
+            query[parent['container_type']] = parent['_id']
 
         return self.storage.get_all_el(query, None, proj, sort=ContainerNode.sorting, limit=1)
 
@@ -291,7 +291,7 @@ class ContainerNode(BaseNode):
             proj['files'] = 0
 
         children = storage.get_all_el(query, None, proj, sort=ContainerNode.sorting)
-        apply_node_type(children, containerutil.singularize(cont_name))
+        apply_container_type(children, containerutil.singularize(cont_name))
 
         return children
 
@@ -311,7 +311,7 @@ class GearsNode(BaseNode):
         if not gear:
             raise APINotFoundException('No gear {0} found.'.format(criterion))
 
-        gear['node_type'] = 'gear'
+        gear['container_type'] = 'gear'
         path_out.append(gear)
 
         return None
@@ -326,7 +326,7 @@ class GearsNode(BaseNode):
         results = gears.get_gears()
 
         for gear in results:
-            gear['node_type'] = 'gear'
+            gear['container_type'] = 'gear'
 
         return list(results)
 
@@ -346,16 +346,16 @@ class AnalysesNode(ContainerNode):
             raise APINotFoundException('No analyses at that level')
 
         # Only children of an analyses is files
-        if parent.get('node_type') == 'analysis':
+        if parent.get('container_type') == 'analysis':
             return pop_files(parent)
 
         results = self.list_analyses(parent)
-        apply_node_type(results, self.node_type)
+        apply_container_type(results, self.container_type)
         return results
 
     def list_analyses(self, parent, query=None, proj=None, **kwargs):
         """Get a list of all analyses that match query, using the given projection"""
-        return self.storage.get_analyses(query, parent['node_type'], parent['_id'], projection=proj, sort=ContainerNode.sorting, **kwargs)
+        return self.storage.get_analyses(query, parent['container_type'], parent['_id'], projection=proj, sort=ContainerNode.sorting, **kwargs)
 
 
 class Resolver(object):

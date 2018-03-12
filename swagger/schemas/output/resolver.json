@@ -5,7 +5,7 @@
     "example": {
     	"path": [
     		{
-    			"node_type": "group",
+    			"container_type": "group",
 				"_id": "scitran",
 				"label": "Scitran",
 				"permissions": [
@@ -18,7 +18,7 @@
 				"modified": "2016-08-19T11:41:15.360000+00:00"
 			},
 			{
-				"node_type": "project",
+				"container_type": "project",
 				"_id": "57e452791cff88b85f9f9c97",
 				"label": "Neuroscience",
 				"group": "scitran",
@@ -33,7 +33,7 @@
     	],
     	"children": [
 			{
-				"node_type": "session",
+				"container_type": "session",
 				"_id": "57e01cccb1dc04000fb83f03",
 				"label": "control_1",
 				"group": "scitran",
@@ -51,7 +51,7 @@
 				}]
 			},
 			{
-				"node_type": "file",
+				"container_type": "file",
 				"origin": {
 					"method": "importer",
 					"type": "device",

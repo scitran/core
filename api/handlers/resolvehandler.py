@@ -28,7 +28,7 @@ class ResolveHandler(base.RequestHandler):
 
         # In the event that we resolved a file, just return the file node
         dest = path[-1]
-        if dest.get('node_type') == 'file':
+        if dest.get('container_type') == 'file':
             return dest
 
         # Reroute to the actual path that will log access, resolve analyses, etc
@@ -38,10 +38,10 @@ class ResolveHandler(base.RequestHandler):
         destination_environ = self.request.environ
         for key in 'PATH_INFO', 'REQUEST_URI':
             destination_environ[key] = destination_environ[key].replace('lookup', path, 1)
-        # We also must update the method, and indicate that we want the node_type included
-        # The client will depend on node_type being set so that it can map to the correct type
+        # We also must update the method, and indicate that we want the container_type included
+        # The client will depend on container_type being set so that it can map to the correct type
         destination_environ['REQUEST_METHOD'] = 'GET'
-        destination_environ['fw_node_type'] = dest['node_type']
+        destination_environ['fw_container_type'] = dest['container_type']
         destination_request = Request(destination_environ)
 
         # Apply SciTranRequest attrs
@@ -54,10 +54,10 @@ class ResolveHandler(base.RequestHandler):
     def _get_node_path(self, node):
         """Get the actual resource path for node"""
         try:
-            cname = containerutil.pluralize(node['node_type'])  
+            cname = containerutil.pluralize(node['container_type'])  
         except ValueError:
             # Handle everything else...
-            cname = node['node_type'] + 's'
+            cname = node['container_type'] + 's'
             
         return '{0}/{1}'.format(cname, node['_id'])
 
@@ -75,7 +75,7 @@ class ResolveHandler(base.RequestHandler):
         if not self.superuser_request:
             for x in result["path"]:
                 ok = False
-                if x['node_type'] in ['acquisition', 'session', 'project', 'group', 'analysis']:
+                if x['container_type'] in ['acquisition', 'session', 'project', 'group', 'analysis']:
                     perms = x.get('permissions', [])
                     for y in perms:
                         if y.get('_id') == self.uid:
@@ -88,7 +88,7 @@ class ResolveHandler(base.RequestHandler):
             filtered_children = []
             for x in result["children"]:
                 ok = False
-                if x['node_type'] in ['acquisition', 'session', 'project', 'group', 'analysis']:
+                if x['container_type'] in ['acquisition', 'session', 'project', 'group', 'analysis']:
                     perms =  x.get('permissions', [])
                     for y in perms:
                         if y.get('_id') == self.uid:

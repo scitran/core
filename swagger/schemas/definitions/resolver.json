@@ -25,12 +25,12 @@
     	"resolver-node": {
     		"type": "object",
     		"properties": {
-    			"node_type": {
+    			"container_type": {
     				"type": "string"
     			}
     		},
-    		"discriminator": "node_type",
-    		"required": ["node_type"]
+    		"discriminator": "container_type",
+    		"required": ["container_type"]
     	},
     	"resolver-node-list": {
 			"type": "array",

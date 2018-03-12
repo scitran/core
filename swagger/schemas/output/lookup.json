@@ -3,7 +3,7 @@
     "type":"object",
     "allOf": [{ "$ref": "../definitions/resolver.json#/definitions/resolver-node" }],
     "example": {
-		"node_type": "project",
+		"container_type": "project",
 		"_id": "57e452791cff88b85f9f9c97",
 		"label": "Neuroscience",
 		"group": "scitran",
