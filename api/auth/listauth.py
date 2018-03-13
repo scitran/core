@@ -45,7 +45,7 @@ def files_sublist(handler, container):
     """
     access = _get_access(handler.uid, container)
     def g(exec_op):
-        def f(method, _id, query_params=None, payload=None, file=None, exclude_params=None):
+        def f(method, _id, query_params=None, payload=None, fileinfo=None, exclude_params=None):
             errors = None
             min_access = sys.maxint
             if method == 'GET':
@@ -54,7 +54,7 @@ def files_sublist(handler, container):
                 min_access = INTEGER_PERMISSIONS['rw']
             elif method =='DELETE':
                 min_access = INTEGER_PERMISSIONS['rw']
-                file_is_original_data = bool(file.get('origin',{}).get('type') not in [str(Origin.user), str(Origin.job)])
+                file_is_original_data = bool(fileinfo.get('origin',{}).get('type') not in [str(Origin.user), str(Origin.job)])
 
                 if file_is_original_data:
                     min_access = INTEGER_PERMISSIONS['admin']

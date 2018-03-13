@@ -567,8 +567,8 @@ class FileListHandler(ListHandler):
         filename = kwargs['name']
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
-        file = storage.exec_op('GET', _id, query_params=kwargs)
-        permchecker(noop)('DELETE', _id=_id, query_params=kwargs, file=file)
+        fileinfo = storage.exec_op('GET', _id, query_params=kwargs)
+        permchecker(noop)('DELETE', _id=_id, query_params=kwargs, fileinfo=fileinfo)
 
         analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
         if analyses:
