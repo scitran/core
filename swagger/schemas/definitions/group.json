@@ -24,7 +24,8 @@
             }
           },
           "additionalProperties":false,
-          "x-sdk-model": "group"
+          "x-sdk-model": "group",
+          "x-sdk-container-mixin": "group-mixin"
         },
         "group-input":{
           "type": "object",

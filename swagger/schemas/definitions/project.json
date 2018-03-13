@@ -11,7 +11,8 @@
                 "group":        {"$ref":"common.json#/definitions/string-id"}
             },
             "additionalProperties": false,
-            "x-sdk-model": "project"
+            "x-sdk-model": "project",
+            "x-sdk-container-mixin": "project-mixin"
         },
         "project-metadata-input": {
             "type": "object",

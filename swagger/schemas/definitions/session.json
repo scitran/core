@@ -19,7 +19,8 @@
                 "subject":      {"$ref": "subject.json#/definitions/subject-input"}
             },
             "additionalProperties": false,
-            "x-sdk-model": "session"
+            "x-sdk-model": "session",
+            "x-sdk-container-mixin": "session-mixin"
         },
         "session-metadata-input": {
             "type": "object",

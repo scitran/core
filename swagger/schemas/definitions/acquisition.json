@@ -13,7 +13,8 @@
               "timezone":     {"$ref":"container.json#/definitions/timezone"}
           },
           "additionalProperties":false,
-          "x-sdk-model": "acquisition"
+          "x-sdk-model": "acquisition",
+          "x-sdk-container-mixin": "acquisition-mixin"
         },
         "acquisition-metadata-input": {
             "type": "object",

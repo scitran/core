@@ -41,42 +41,48 @@
     			{"$ref":"#/definitions/resolver-node"},
     			{"$ref":"group.json#/definitions/group-output"}
     		],
-    		"x-discriminator-value": "group"
+    		"x-discriminator-value": "group",
+            "x-sdk-container-mixin": "group-mixin"
     	},
     	"project-node": {
     		"allOf": [
     			{"$ref":"#/definitions/resolver-node"},
     			{"$ref":"project.json#/definitions/project-output"}
     		],
-    		"x-discriminator-value": "project"
+    		"x-discriminator-value": "project",
+            "x-sdk-container-mixin": "project-mixin"
     	},
     	"session-node": {
     		"allOf": [
     			{"$ref":"#/definitions/resolver-node"},
     			{"$ref":"session.json#/definitions/session-output"}
     		],
-    		"x-discriminator-value": "session"
+    		"x-discriminator-value": "session",
+            "x-sdk-container-mixin": "session-mixin"
     	},
     	"acquisition-node": {
     		"allOf": [
     			{"$ref":"#/definitions/resolver-node"},
     			{"$ref":"acquisition.json#/definitions/acquisition-output"}
     		],
-    		"x-discriminator-value": "acquisition"
+    		"x-discriminator-value": "acquisition",
+            "x-sdk-container-mixin": "acquisition-mixin"
     	},
     	"file-node": {
     		"allOf": [
     			{"$ref":"#/definitions/resolver-node"},
     			{"$ref":"file.json#/definitions/file-output"}
     		],
-    		"x-discriminator-value": "file"
+    		"x-discriminator-value": "file",
+            "x-sdk-container-mixin": "file-mixin"
     	},
         "analysis-node": {
             "allOf": [
                 {"$ref":"#/definitions/resolver-node"},
                 {"$ref":"analysis.json#/definitions/analysis-output"}
             ],
-            "x-discriminator-value": "analysis"
+            "x-discriminator-value": "analysis",
+            "x-sdk-container-mixin": "analysis-mixin"
         },
         "gear-node": {
             "allOf": [
