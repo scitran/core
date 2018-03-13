@@ -567,14 +567,14 @@ class FileListHandler(ListHandler):
         filename = kwargs['name']
         permchecker, storage, _, _, keycheck = self._initialize_request(cont_name, list_name, _id, query_params=kwargs)
 
-        permchecker(noop)('DELETE', _id=_id, query_params=kwargs)
+        fileinfo = storage.exec_op('GET', _id, query_params=kwargs)
+        permchecker(noop)('DELETE', _id=_id, query_params=kwargs, fileinfo=fileinfo)
 
-        if cont_name == 'acquisitions':
-            analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
-            if analyses:
-                analysis_ids = [str(a['_id']) for a in analyses]
-                raise APIPermissionException('Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids),
-                    errors={'reason': 'analysis_conflict'})
+        analyses = containerutil.get_referring_analyses(cont_name, _id, filename=filename)
+        if analyses:
+            analysis_ids = [str(a['_id']) for a in analyses]
+            raise APIPermissionException('Cannot delete file {} referenced by analyses {}'.format(filename, analysis_ids),
+                errors={'reason': 'analysis_conflict'})
 
         self.log_user_access(AccessType.delete_file, cont_name=cont_name, cont_id=_id, filename=filename)
         try:
