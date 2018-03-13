@@ -128,7 +128,6 @@ class Queue(object):
 
         return new_id
 
-
     @staticmethod
     def enqueue_job(job_map, origin, perm_check_uid=None):
         """
@@ -174,7 +173,6 @@ class Queue(object):
         tags            = job_map.get('tags', [])
         attempt_n       = job_map.get('attempt_n', 1)
         previous_job_id = job_map.get('previous_job_id', None)
-        now_flag        = job_map.get('now', False) # A flag to increase job priority
         batch           = job_map.get('batch', None) # A batch id if this job is part of a batch run
 
         # Add destination container, or select one
@@ -193,7 +191,6 @@ class Queue(object):
             for x in inputs:
                 inputs[x].check_access(perm_check_uid, 'ro')
             destination.check_access(perm_check_uid, 'rw')
-            now_flag = False # Only superuser requests are allowed to set "now" flag
 
         # Config options are stored on the job object under the "config" key
         config_ = {
@@ -252,79 +249,79 @@ class Queue(object):
         if gear_name not in tags:
             tags.append(gear_name)
 
-        job = Job(str(gear['_id']), inputs, destination=destination, tags=tags, config_=config_, now=now_flag, attempt=attempt_n, previous_job_id=previous_job_id, origin=origin, batch=batch)
+        job = Job(str(gear['_id']), inputs, destination=destination, tags=tags, config_=config_, attempt=attempt_n, previous_job_id=previous_job_id, origin=origin, batch=batch)
         job.insert()
         return job
 
     @staticmethod
-    def start_job(tags=None):
+    def start_job(tags=None, peek=False):
         """
         Atomically change a 'pending' job to 'running' and returns it. Updates timestamp.
-        Will return None if there are no jobs to offer. Searches for jobs marked "now"
-        most recently first, followed by unmarked jobs in FIFO order if none are found.
+        Will return None if there are no jobs to offer. Searches for jobs in FIFO order.
 
         Potential jobs must match at least one tag, if provided.
         """
 
-        query = { 'state': 'pending', 'now': True }
-
+        query = { 'state': 'pending' }
         if tags is not None:
             query['tags'] = {'$in': tags }
 
-        # First look for jobs marked "now" sorted by modified most recently
-        # Mark as running if found
+        modification = { '$set': {
+            'state': 'running',
+            'modified': datetime.datetime.utcnow()
+        }}
+
+        if peek:
+            # placeholder noop
+            modification = {'$setOnInsert': {'1': 1}}
+
+        # Search ordering by FIFO
         result = config.db.jobs.find_one_and_update(
             query,
-
-            { '$set': {
-                'state': 'running',
-                'modified': datetime.datetime.utcnow()}
-            },
-            sort=[('modified', -1)],
+            modification,
+            sort=[('modified', 1)],
             return_document=pymongo.collection.ReturnDocument.AFTER
         )
-
-        # If no jobs marked "now" are found, search again ordering by FIFO
-        if result is None:
-            query['now'] = {'$ne': True}
-            result = config.db.jobs.find_one_and_update(
-                query,
-
-                { '$set': {
-                    'state': 'running',
-                    'modified': datetime.datetime.utcnow()}
-                },
-                sort=[('modified', 1)],
-                return_document=pymongo.collection.ReturnDocument.AFTER
-            )
 
         if result is None:
             return None
 
         job = Job.load(result)
 
-        # Return if there is a job request already, else create one
+        if peek:
+            gear = get_gear(job.gear_id)
+            for key in gear['gear']['inputs']:
+                if gear['gear']['inputs'][key] == 'api-key':
+                    # API-key gears cannot be peeked
+                    return None
+
+        # Return if there is a job request already (probably prefetch)
         if job.request is not None:
             log.info('Job ' + job.id_ + ' already has a request, so not generating')
             return job
 
-        else:
-            # Generate, save, and return a job request.
-            request = job.generate_request(get_gear(job.gear_id))
-            result = config.db.jobs.find_one_and_update(
-                {
-                    '_id': bson.ObjectId(job.id_)
-                },
-                { '$set': {
-                    'request': request }
-                },
-                return_document=pymongo.collection.ReturnDocument.AFTER
-            )
+        # Create a new request formula
+        request = job.generate_request(get_gear(job.gear_id))
 
-            if result is None:
-                raise Exception('Marked job as running but could not generate and save formula')
+        if peek:
+            job.request = request
+            return job
 
-            return Job.load(result)
+        # Save and return
+        result = config.db.jobs.find_one_and_update(
+            {
+                '_id': bson.ObjectId(job.id_)
+            },
+            { '$set': {
+                'request': request }
+            },
+            return_document=pymongo.collection.ReturnDocument.AFTER
+        )
+
+        if result is None:
+            raise Exception('Marked job as running but could not generate and save formula')
+
+        return Job.load(result)
 
     @staticmethod
     def search(containers, states=None, tags=None):

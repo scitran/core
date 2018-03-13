@@ -269,11 +269,12 @@ class JobsHandler(base.RequestHandler):
 
     @require_admin
     def next(self):
+        peek = self.is_true('peek')
         tags = self.request.GET.getall('tags')
         if len(tags) <= 0:
             tags = None
 
-        job = Queue.start_job(tags=tags)
+        job = Queue.start_job(tags=tags, peek=peek)
 
         if job is None:
             raise InputValidationException('No jobs to process')
