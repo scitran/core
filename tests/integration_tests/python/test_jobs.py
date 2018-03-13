@@ -153,6 +153,11 @@ def test_jobs(data_builder, default_payload, as_public, as_user, as_admin, as_ro
     r = as_root.get('/jobs/next', params={'tags': 'fake-tag'})
     assert r.status_code == 400
 
+    # get next job with peek
+    r = as_root.get('/jobs/next', params={'tags': 'test-tag', 'peek': True})
+    assert r.ok
+    next_job_id = r.json()['id']
+
     # get next job
     r = as_root.get('/jobs/next', params={'tags': 'test-tag'})
     assert r.ok
