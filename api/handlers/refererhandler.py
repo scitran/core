@@ -200,7 +200,7 @@ class AnalysesHandler(RefererHandler):
         """Upload ad-hoc analysis outputs generated offline."""
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
-        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
+        parent = self.storage.get_parent(_id, cont=analysis)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('POST')
 
