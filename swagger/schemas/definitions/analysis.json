@@ -10,8 +10,7 @@
 				},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
 				"description": {"$ref":"common.json#/definitions/description"},
-				"label":       {"$ref":"common.json#/definitions/label"},
-				"user":        {"$ref":"common.json#/definitions/user-id"}
+				"label":       {"$ref":"common.json#/definitions/label"}
 			},
 		    "additionalProperties": false
 		},
@@ -21,8 +20,7 @@
 				"job":         {"$ref":"job.json#/definitions/job-input"},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
 				"description": {"$ref":"common.json#/definitions/description"},
-				"label":       {"$ref":"common.json#/definitions/label"},
-				"user":        {"$ref":"common.json#/definitions/user-id"}
+				"label":       {"$ref":"common.json#/definitions/label"}
 			},
 		    "additionalProperties": false
 		},
@@ -39,8 +37,7 @@
 				},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
 				"description": {"$ref":"common.json#/definitions/description"},
-				"label":       {"$ref":"common.json#/definitions/label"},
-				"user":        {"$ref":"common.json#/definitions/user-id"}
+				"label":       {"$ref":"common.json#/definitions/label"}
 			},
 		    "additionalProperties": false
 		},
@@ -77,11 +74,10 @@
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
 				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"},
-				"user":        {"$ref":"common.json#/definitions/user-id"},
 				"created":     {"$ref":"created-modified.json#/definitions/created"},
 				"modified":    {"$ref":"created-modified.json#/definitions/modified"}
 			},
-			"required":["_id", "files", "label", "user", "created", "modified"]
+			"required":["_id", "files", "label", "created", "modified"]
 		},
 		"analysis-files-create-ticket-output": {
 			"type":"object",
