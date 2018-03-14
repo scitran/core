@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 42 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 43 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1358,6 +1358,25 @@ def upgrade_to_42():
     for cont_name in ['groups', 'projects', 'sessions', 'acquisitions']:
         cursor = config.db[cont_name].find({'archived': {'$exists': True}})
         process_cursor(cursor, upgrade_to_42_closure, context=cont_name)
+
+
+def upgrade_to_43_closure(analysis):
+    inputs = [f for f in analysis['files'] if f.get('input')]
+    outputs = [f for f in analysis['files'] if f.get('output')]
+    for f in inputs + outputs:
+        f.pop('input', None)
+        f.pop('output', None)
+    config.db.analyses.update_one({'_id': analysis['_id']}, {'$set': {'inputs': inputs, 'files': outputs}})
+    return True
+
+def upgrade_to_43():
+    """
+    Remove analysis files' input/output tags and store them separately instead:
+       - inputs under `analysis.inputs`
+       - outputs under `analysis.files`
+    """
+    cursor = config.db.analyses.find({'files': {'$exists': True, '$ne': []}})
+    process_cursor(cursor, upgrade_to_43_closure)
 
 
 ###
