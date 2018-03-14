@@ -5,6 +5,8 @@ parameters:
     type: string
   - name: tag
     type: string
+  - name: filegroup
+    type: string
 template: |
   parameters:
     - required: true
@@ -18,25 +20,25 @@ template: |
     - required: true
       type: string
       in: path
-      description: regex to select files for download
+      description: regex to select {{filegroup}} for download
       name: Filename
   get:
-    summary: Download anaylsis files with filter.
+    summary: Download anaylsis {{filegroup}} with filter.
     description: >
-      If "ticket" query param is included and not empty, download files.
+      If "ticket" query param is included and not empty, download {{filegroup}}.
 
       If "ticket" query param is included and empty, create a ticket for matching
-      files in the anlaysis.
+      {{filegroup}} in the anlaysis.
 
-      If no "ticket" query param is included, files will be downloaded directly.
-    operationId: download_{{resource}}_analysis_files_by_filename
+      If no "ticket" query param is included, {{filegroup}} will be downloaded directly.
+    operationId: download_{{resource}}_analysis_{{filegroup}}_by_filename
     tags:
     - '{{tag}}'
     produces:
       - application/json
       - application/octet-stream
     parameters:
-      - description: ticket id of the files to download
+      - description: ticket id of the {{filegroup}} to download
         type: string
         in: query
         name: ticket

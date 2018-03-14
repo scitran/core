@@ -61,9 +61,7 @@
             "created":     {"$ref":"created-modified.json#/definitions/created"},
             "modified":    {"$ref":"created-modified.json#/definitions/modified"},
             "size":        {"$ref":"#/definitions/size"},
-            "info_exists": {"type": "boolean"},
-            "input":       {"type":"boolean"},
-            "output":      {"type":"boolean"}
+            "info_exists": {"type": "boolean"}
           },
           "additionalProperties": false
         },
@@ -93,6 +91,16 @@
           "type": "object",
           "allOf": [{"$ref":"#/definitions/file"}],
           "required":["modified", "size"]
+        },
+        "file-reference": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string"},
+            "id":   {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "required": ["type", "id", "name"],
+          "additionalProperties": false
         }
     }
 }

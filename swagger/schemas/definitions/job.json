@@ -5,10 +5,6 @@
     "gear_id": {"type":"string"},
     "previous_job_id": {"type":"string"},
 
-    "inputs-property-type":{"type":"string"},
-    "inputs-property-id":{"type":"string"},
-    "inputs-property-name":{"type":"string"},
-
     "inputs-item": {
       "type":"object",
       "properties":{
@@ -19,32 +15,10 @@
       },
       "required":["type", "uri", "location"]      
     },
-    "inputs-entry": {
-      "type": "object",
-      "properties": {
-        "type": {"$ref":"#/definitions/inputs-property-type"},
-        "id": {"$ref":"#/definitions/inputs-property-id"},
-        "name": {"$ref":"#/definitions/inputs-property-name"}
-      },
-      "required": [ "type", "id", "name" ],
-      "additionalProperties":false
-    },
     "inputs-object": {
       "type": "object",
       "patternProperties": {
-        "[-_ a-zA-Z0-9]+": {"$ref":"#/definitions/inputs-entry"}
-      }
-    },
-    "inputs-array":{
-      "type":"array",
-      "items":{
-        "type":"object",
-        "properties":{
-          "type": {"$ref":"#/definitions/inputs-property-type"},
-          "id": {"$ref":"#/definitions/inputs-property-id"},
-          "name": {"$ref":"#/definitions/inputs-property-name"},
-          "input":{"type":"string"}
-        }
+        "[-_ a-zA-Z0-9]+": {"$ref":"file.json#/definitions/file-reference"}
       }
     },
     "destination": {

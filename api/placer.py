@@ -22,6 +22,7 @@ from .types import Origin
 from .web import encoder
 from .web.errors import FileFormException
 
+
 class Placer(object):
     """
     Interface for a placer, which knows how to process files and place them where they belong - on disk and database.
@@ -107,12 +108,10 @@ class Placer(object):
                 session_id = AcquisitionStorage().get_container(str(self.id_)).get('session')
             SessionStorage().recalc_session_compliance(session_id, hard=True)
 
+
 class TargetedPlacer(Placer):
     """
-    A placer that can accept N files to a specific container (acquisition, etc).
-
-    LIMITATION: To temporarily avoid messing with the JSON schema, this endpoint can only consume one file :(
-    An exception is thrown in upload.process_upload() if you try. This could be fixed by making a better schema.
+    A placer that can accept 1 file to a specific container (acquisition, etc).
     """
 
     def check(self):
@@ -128,6 +127,25 @@ class TargetedPlacer(Placer):
     def finalize(self):
         self.recalc_session_compliance()
         return self.saved
+
+
+class TargetedMultiPlacer(TargetedPlacer):
+    """
+    A placer that can accept N files to a specific container (acquisition, etc).
+    """
+
+    def check(self):
+        self.requireTarget()
+        validators.validate_data(self.metadata, 'file-list.json', 'input', 'POST', optional=True)
+
+    def process_file_field(self, field, file_attrs):
+        if self.metadata:
+            for fileinfo in self.metadata:
+                if fileinfo['name'] == file_attrs['name']:
+                    file_attrs.update(fileinfo)
+        self.save_file(field, file_attrs)
+        self.saved.append(file_attrs)
+
 
 class UIDPlacer(Placer):
     """
@@ -683,8 +701,8 @@ class PackfilePlacer(Placer):
             'data': result,
         })
 
-class AnalysisPlacer(Placer):
 
+class AnalysisPlacer(Placer):
     def check(self):
         self.requireMetadata()
         validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
@@ -694,21 +712,16 @@ class AnalysisPlacer(Placer):
         self.saved.append(file_attrs)
 
     def finalize(self):
-        # we are going to merge the "hard" infos from the processed upload
-        # with the infos from the payload
-        metadata_infos = {}
-        for info in self.metadata.pop('inputs', []):
-            info['input'] = True
-            metadata_infos[info['name']] = info
-        for info in self.metadata.pop('outputs', []):
-            info['output'] = True
-            metadata_infos[info['name']] = info
-        self.metadata['files'] = []
-        for info in self.saved:
-            metadata_info = metadata_infos.get(info['name'], {})
-            metadata_info.update(info)
-            self.metadata['files'].append(metadata_info)
+        # Merge fileinfos from the processed upload into the metadata from the payload (for inputs and outputs)
+        upload_fileinfos = {fileinfo['name']: fileinfo for fileinfo in self.saved}
+        if 'outputs' in self.metadata:
+            self.metadata['files'] = self.metadata.pop('outputs')
+        for filegroup in ('inputs', 'files'):
+            for meta_fileinfo in self.metadata.get(filegroup, []):
+                # TODO warn (err?) on meta for unknown filename?
+                meta_fileinfo.update(upload_fileinfos.get(meta_fileinfo['name'], {}))
         return self.metadata
+
 
 class AnalysisJobPlacer(Placer):
     def check(self):
@@ -730,7 +743,6 @@ class AnalysisJobPlacer(Placer):
                     file_attrs.update(file_md)
                     break
 
-        file_attrs['output'] = True
         file_attrs['created'] = file_attrs['modified']
         self.save_file(field)
         self.saved.append(file_attrs)
@@ -752,6 +764,7 @@ class AnalysisJobPlacer(Placer):
 
             config.db.analyses.update_one(q, u)
             return self.saved
+
 
 class GearPlacer(Placer):
     def check(self):

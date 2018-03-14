@@ -33,7 +33,9 @@ def _filter_check(property_filter, property_values):
 class Download(base.RequestHandler):
 
     def _append_targets(self, targets, cont_name, container, prefix, total_size, total_cnt, data_path, filters):
-        for f in container.get('files', []):
+        inputs = [('input', f) for f in container.get('inputs', [])]
+        outputs = [('output', f) for f in container.get('files', [])]
+        for file_group, f in inputs + outputs:
             if filters:
                 filtered = True
                 for filter_ in filters:
@@ -49,9 +51,9 @@ class Download(base.RequestHandler):
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
                 if cont_name == 'analyses':
-                    targets.append((filepath, prefix + '/' + ('input' if f.get('input') else 'output') + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                    targets.append((filepath, '/'.join([prefix, file_group, f['name']]), cont_name, str(container.get('_id')), f['size']))
                 else:
-                    targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')),f['size']))
+                    targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')), f['size']))
                 total_size += f['size']
                 total_cnt += 1
             else:
@@ -213,7 +215,7 @@ class Download(base.RequestHandler):
                 total_size, file_cnt = self._append_targets(targets, 'acquisitions', acq, prefix, total_size, file_cnt, data_path, req_spec.get('filters'))
 
             elif item['level'] == 'analysis':
-                analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'files', 'uid', 'timestamp'])
+                analysis = config.db.analyses.find_one(base_query, ['parent', 'label', 'inputs', 'files', 'uid', 'timestamp'])
                 if not analysis:
                     # silently(while logging it) skip missing objects/objects user does not have access to
                     log.warn("Expected anaylysis {} to exist but it is missing. Node will be skipped".format(item_id))

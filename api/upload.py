@@ -15,17 +15,18 @@ from .dao import hierarchy
 log = config.log
 
 Strategy = util.Enum('Strategy', {
-    'targeted'    : pl.TargetedPlacer,      # Upload N files to a container.
-    'engine'      : pl.EnginePlacer,        # Upload N files from the result of a successful job.
-    'token'       : pl.TokenPlacer,         # Upload N files to a saved folder based on a token.
-    'packfile'    : pl.PackfilePlacer,      # Upload N files as a new packfile to a container.
-    'labelupload' : pl.LabelPlacer,
-    'uidupload'   : pl.UIDPlacer,
-    'uidmatch'    : pl.UIDMatchPlacer,
-    'reaper'      : pl.UIDReaperPlacer,
-    'analysis'    : pl.AnalysisPlacer,      # Upload N files to an analysis as input and output (no db updates)
-    'analysis_job': pl.AnalysisJobPlacer,   # Upload N files to an analysis as output from job results
-    'gear'        : pl.GearPlacer
+    'targeted'       : pl.TargetedPlacer,       # Upload 1 files to a container.
+    'targeted_multi' : pl.TargetedMultiPlacer,  # Upload N files to a container.
+    'engine'         : pl.EnginePlacer,         # Upload N files from the result of a successful job.
+    'token'          : pl.TokenPlacer,          # Upload N files to a saved folder based on a token.
+    'packfile'       : pl.PackfilePlacer,       # Upload N files as a new packfile to a container.
+    'labelupload'    : pl.LabelPlacer,
+    'uidupload'      : pl.UIDPlacer,
+    'uidmatch'       : pl.UIDMatchPlacer,
+    'reaper'         : pl.UIDReaperPlacer,
+    'analysis'       : pl.AnalysisPlacer,       # Upload N files to an analysis as input and output (no db updates - deprecated)
+    'analysis_job'   : pl.AnalysisJobPlacer,    # Upload N files to an analysis as output from job results
+    'gear'           : pl.GearPlacer
 })
 
 def process_upload(request, strategy, container_type=None, id_=None, origin=None, context=None, response=None, metadata=None):
@@ -205,10 +206,8 @@ class Upload(base.RequestHandler):
             'job_id': self.get_param('job'),
             'job_ticket_id': self.get_param('job_ticket'),
         }
-        if level == 'analysis':
-            return process_upload(self.request, Strategy.analysis_job, origin=self.origin, container_type=level, id_=cid, context=context)
-        else:
-            return process_upload(self.request, Strategy.engine, container_type=level, id_=cid, origin=self.origin, context=context)
+        strategy = Strategy.analysis_job if level == 'analysis' else Strategy.engine
+        return process_upload(self.request, strategy, container_type=level, id_=cid, origin=self.origin, context=context)
 
     def clean_packfile_tokens(self):
         """Clean up expired upload tokens and invalid token directories.

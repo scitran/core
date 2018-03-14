@@ -121,4 +121,3 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
     assert r.ok
     assert len(r.json()['acquisitions'][0]['files']) > 0
     assert len(r.json()['analyses'][0]['files']) > 0
-

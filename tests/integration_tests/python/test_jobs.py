@@ -487,8 +487,8 @@ def test_analysis_job_creation_errors(data_builder, default_payload, as_admin, f
     assert r.ok
 
     # ensure analysis with improper gear id is not created
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'with-job',
         'job': {
             # no gear id
             'inputs': {
@@ -500,8 +500,8 @@ def test_analysis_job_creation_errors(data_builder, default_payload, as_admin, f
     assert len(as_admin.get('/sessions/' + session).json().get('analyses', [])) == 0
 
     # ensure analysis with improper inputs is not created
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'with-job',
         'job': {
             'gear_id': gear,
             'inputs': {

@@ -5,6 +5,8 @@ parameters:
     type: string
   - name: tag
     type: string
+  - name: filegroup
+    type: string
 template: |
   parameters:
     - required: true
@@ -16,22 +18,22 @@ template: |
       in: path
       name: AnalysisId
   get:
-    summary: Download analysis files.
+    summary: Download analysis {{filegroup}}.
     description: >
-      If "ticket" query param is included and not empty, download files.
+      If "ticket" query param is included and not empty, download {{filegroup}}.
 
       If "ticket" query param is included and empty, create a ticket for all
-      files in the anlaysis
+      {{filegroup}} in the anlaysis
 
       If no "ticket" query param is included, server error 500
-    operationId: download_{{resource}}_analysis_files
+    operationId: download_{{resource}}_analysis_{{filegroup}}
     tags: 
     - '{{tag}}'
     produces:
       - application/json
       - application/octet-stream
     parameters:
-      - description: ticket id of the files to download
+      - description: ticket id of the {{filegroup}} to download
         type: string
         in: query
         name: ticket

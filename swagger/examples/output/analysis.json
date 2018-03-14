@@ -1,5 +1,5 @@
 {
-    "files": [{
+    "inputs": [{
         "origin": {
             "type": "job",
             "id": "58063f24e5dc5b001657a87f"
@@ -11,11 +11,11 @@
         "measurements": [],
         "modified": "2016-10-18T15:26:35.701000+00:00",
         "modality": null,
-        "input": true,
         "size": 21804112,
         "type": "None",
         "info": {}
-    }, {
+    }],
+    "files": [{
         "origin": {
             "type": "job",
             "id": "58065fa7e5dc5b001457a882"
@@ -27,7 +27,6 @@
         "measurements": [],
         "modified": "2016-10-18T17:45:17.776000+00:00",
         "modality": null,
-        "output": true,
         "info": {},
         "type": "None",
         "size": 21804112
@@ -84,6 +83,5 @@
         "config": {},
         "id": "58065fa7e5dc5b001457a882"
     },
-    "user": "canakgun@flywheel.io",
     "_id": "58065fa7e5dc5b001457a881"
 }

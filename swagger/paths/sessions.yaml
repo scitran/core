@@ -94,11 +94,8 @@ $template_arguments:
       required: true
       name: SessionId
   post:
-    summary: Create an analysis and upload files.
-    description: |
-      When query param "job" is "true", send JSON to create
-      an analysis and job.  Otherwise, multipart/form-data
-      to upload files and create an analysis.
+    summary: Create an analysis.
+    description: ''
     operationId: add_session_analysis
     tags:
     - 'sessions'
@@ -106,20 +103,29 @@ $template_arguments:
       - in: body
         name: body
         schema:
-          $ref: schemas/input/analysis-job.json
-      - in: query
-        type: boolean
-        name: job
+          $ref: schemas/input/analysis.json
     responses:
       '200':
         description: ''
 
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+/sessions/{SessionId}/analyses/{AnalysisId}/inputs:
+  $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: inputs
+/sessions/{SessionId}/analyses/{AnalysisId}/inputs/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: inputs
 /sessions/{SessionId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: outputs
 /sessions/{SessionId}/analyses/{AnalysisId}/files/{Filename}:
   $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: outputs
 /sessions/{SessionId}/analyses/{AnalysisId}/notes:
   $template: templates/analysis-notes.yaml
 /sessions/{SessionId}/analyses/{AnalysisId}/notes/{NoteId}:

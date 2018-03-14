@@ -10,7 +10,7 @@ from .. import config
 from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..jobs.rules import copy_site_rules_for_project
-from ..web.errors import APIStorageException, APINotFoundException
+from ..web.errors import APIStorageException, APINotFoundException, APIValidationException
 from .basecontainerstorage import ContainerStorage
 
 log = config.log
@@ -315,70 +315,77 @@ class AnalysisStorage(ContainerStorage):
         return analyses
 
 
-    def fill_values(self, analysis, cont_name, cid, origin):
-        parent = self.get_parent(cont_name, cid)
+    # pylint: disable=arguments-differ
+    def create_el(self, analysis, parent_type, parent_id, origin, uid=None):
+        """
+        Create an analysis.
+
+        * Fill defaults if not provided
+        * Flatten input filerefs using `FileReference.get_file()`
+
+        If `analysis` has a `job` key, create a "job-based" analysis:
+            * Analysis inputs will are copied from the job inputs
+            * Create analysis and job, both referencing each other
+            * Do not create (remove) analysis if can't enqueue job
+
+        """
+        parent_type = containerutil.singularize(parent_type)
+        parent = self.get_parent(parent_type, parent_id)
         defaults = {
-            'parent': {
-                'type': containerutil.singularize(cont_name),
-                'id': bson.ObjectId(cid)
-            },
             '_id': bson.ObjectId(),
+            'parent': {
+                'type': parent_type,
+                'id': bson.ObjectId(parent_id)
+            },
             'created': datetime.datetime.utcnow(),
             'modified': datetime.datetime.utcnow(),
             'user': origin.get('id'),
             'permissions': parent['permissions'],
         }
+
         for key in defaults:
             analysis.setdefault(key, defaults[key])
         if 'public' in parent:
             analysis.setdefault('public', parent['public'])
 
+        job = analysis.pop('job', None)
+        if job is not None:
+            if parent_type != 'session':
+                raise APIValidationException({'reason': 'Analysis created via a job must be at the session level'})
+            analysis.setdefault('inputs', [])
+            for key, fileref_dict in job['inputs'].iteritems():
+                analysis['inputs'].append(fileref_dict)
 
-    def create_job_and_analysis(self, cont_name, cid, analysis, job, origin, uid):
-        """
-        Create and insert job and analysis.
-        """
+        # Verify and flatten input filerefs
+        for i, fileref_dict in enumerate(analysis.get('inputs', [])):
+            try:
+                fileref = containerutil.create_filereference_from_dictionary(fileref_dict)
+                analysis['inputs'][i] = fileref.get_file()
+            except KeyError:
+                # Legacy analyses already have fileinfos as inputs instead of filerefs
+                pass
 
-        self.fill_values(analysis, cont_name, cid, origin)
-
-        # Save inputs to analysis and job
-        inputs = {} # For Job object (map of FileReferences)
-        files = [] # For Analysis object (list of file objects)
-        for x in job.get('inputs', {}).keys():
-            input_map = job['inputs'][x]
-            fileref = containerutil.create_filereference_from_dictionary(input_map)
-            inputs[x] = fileref
-
-            contref = containerutil.create_containerreference_from_filereference(fileref)
-            file_ = contref.find_file(fileref.name)
-            if file_:
-                file_.pop('output', None) # If file was from an analysis
-                file_['input'] = True
-                files.append(file_)
-        analysis['files'] = files
-
-        result = self.create_el(analysis)
+        result = super(AnalysisStorage, self).create_el(analysis)
         if not result.acknowledged:
-            raise APIStorageException('Analysis not created for container {} {}'.format(cont_name, cid))
+            raise APIStorageException('Analysis not created for container {} {}'.format(parent_type, parent_id))
 
-        # Prepare job
-        job['destination'] = {'type': 'analysis', 'id': str(analysis['_id'])}
+        if job is not None:
+            # Create job
+            job['destination'] = {'type': 'analysis', 'id': str(analysis['_id'])}
+            tags = job.get('tags', [])
+            if 'analysis' not in tags:
+                tags.append('analysis')
+                job['tags'] = tags
 
-        tags = job.get('tags', [])
-        if 'analysis' not in tags:
-            tags.append('analysis')
-            job['tags'] = tags
+            try:
+                job = Queue.enqueue_job(job, origin, perm_check_uid=uid)
+                self.update_el(analysis['_id'], {'job': job.id_}, None)
+            except:
+                # NOTE #775 remove unusable analysis - until jobs have a 'hold' state
+                self.delete_el(analysis['_id'])
+                raise
 
-        try:
-
-            job = Queue.enqueue_job(job, origin, perm_check_uid=uid)
-        except Exception as e:
-            # NOTE #775 remove unusable analysis - until jobs have a 'hold' state
-            self.delete_el(analysis['_id'])
-            raise e
-
-        result = self.update_el(analysis['_id'], {'job': job.id_}, None)
-        return {'analysis': analysis, 'job_id': job.id_, 'job': job}
+        return result
 
 
     def inflate_job_info(self, analysis):
@@ -404,7 +411,7 @@ class AnalysisStorage(ContainerStorage):
             if next_job is None:
                 break
             job = Job.load(next_job)
-        if job.id_ != analysis['job']:
+        if job.id_ != str(analysis['job']):
             # Update analysis if job has changed
             self.update_el(analysis['_id'], {'job': job.id_})
 

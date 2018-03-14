@@ -313,10 +313,11 @@ def test_get_container(data_builder, default_payload, file_form, as_drone, as_ad
     assert all('avatar' in perm for perm in r.json()['permissions'])
 
     # create analyses for testing job inflation
-    as_admin.post('/sessions/' + session + '/analyses', files=file_form(
+    r = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
         'analysis.csv', meta={'label': 'no-job', 'inputs': [{'name': 'analysis.csv'}]}))
-    as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
+    assert r.ok
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'with-job',
         'job': {
             'gear_id': gear,
             'inputs': {
@@ -324,6 +325,7 @@ def test_get_container(data_builder, default_payload, file_form, as_drone, as_ad
             }
         }
     })
+    assert r.ok
 
     # get session and check analyis job inflation
     r = as_admin.get('/sessions/' + session)
@@ -358,8 +360,8 @@ def test_get_session_jobs(data_builder, default_payload, as_admin, file_form):
     assert r.ok
 
     # create an analysis together w/ a job
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'test analysis'},
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'test analysis',
         'job': {
             'gear_id': gear,
             'inputs': {
@@ -576,8 +578,8 @@ def test_analysis_put(data_builder, default_payload, as_admin, file_form):
     assert r.ok
 
     # add session analysis
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'with-job',
         'job': {
             'gear_id': gear,
             'inputs': {
@@ -1073,14 +1075,14 @@ def test_edit_analysis_info(data_builder, default_payload, file_form, as_admin, 
     gear_doc = default_payload['gear']['gear']
     gear_doc['inputs'] = {'csv': {'base': 'file'}}
     gear = data_builder.create_gear(gear=gear_doc)
-    project = data_builder.create_project()
+    session = data_builder.create_session()
 
-    assert as_admin.post('/projects/' + project + '/files', files=file_form('test.csv')).ok
-    r = as_admin.post('/projects/' + project + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
+    assert as_admin.post('/sessions/' + session + '/files', files=file_form('test.csv')).ok
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'with-job',
         'job': {
             'gear_id': gear,
-            'inputs': {'csv': {'type': 'project', 'id': project, 'name': 'test.csv'}}
+            'inputs': {'csv': {'type': 'session', 'id': session, 'name': 'test.csv'}}
         }
     })
     assert r.ok
@@ -1309,8 +1311,8 @@ def test_container_delete_tag(data_builder, default_payload, as_root, as_admin, 
     assert r.json()['reason'] == 'original_data_present'
 
     # Add session level analysis
-    r = as_admin.post('/sessions/' + session + '/analyses', params={'job': 'true'}, json={
-        'analysis': {'label': 'with-job'},
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'with-job',
         'job': {
             'gear_id': gear,
             'inputs': {'csv': {'type': 'acquisition', 'id': acquisition, 'name': 'test.csv'}}

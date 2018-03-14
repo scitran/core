@@ -78,7 +78,6 @@ def suggest_container(gear, cont_name, cid):
 
     for analysis in root.get('analyses',[]):
         files = analysis.get('files', [])
-        files[:] = [x for x in files if x.get('output')]
         for f in files:
             f['suggested'] = {}
             for x in schemas:

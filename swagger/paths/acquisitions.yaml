@@ -48,10 +48,22 @@ $template_arguments:
   $template: templates/analyses-list.yaml
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}/inputs:
+  $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: inputs
+/acquisitions/{AcquisitionId}/analyses/{AnalysisId}/inputs/{Filename}:
+  $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: inputs
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/files:
   $template: templates/analysis-files.yaml
+  arguments:
+    filegroup: outputs
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/files/{Filename}:
   $template: templates/analysis-files-create-ticket-filename.yaml
+  arguments:
+    filegroup: outputs
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/notes:
   $template: templates/analysis-notes.yaml
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/notes/{NoteId}:

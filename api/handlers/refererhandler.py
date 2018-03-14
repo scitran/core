@@ -21,7 +21,7 @@ from ..dao import containerstorage, noop
 from ..dao.basecontainerstorage import ContainerStorage
 from ..dao.containerutil import singularize
 from ..web import base
-from ..web.errors import APIStorageException
+from ..web.errors import APIStorageException, InputValidationException
 from ..web.request import log_access, AccessType
 from .listhandler import FileListHandler
 
@@ -65,42 +65,20 @@ class AnalysesHandler(RefererHandler):
 
 
     def post(self, cont_name, cid):
-        """
-        Default behavior:
-            Creates an analysis object and uploads supplied input
-            and output files.
-        When param ``job`` is true:
-            Creates an analysis object and job object that reference
-            each other via ``job`` and ``destination`` fields. Job based
-            analyses are only allowed at the session level.
-        """
         parent = self.storage.get_parent(cont_name, cid)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('POST')
 
-        if self.is_true('job'):
-
-            payload = self.request.json_body
-            analysis = payload.get('analysis')
-            job = payload.get('job')
-            if not analysis or not job:
-                self.abort(400, 'JSON body must contain map for "analysis" and "job"')
+        try:
+            analysis = self.request.json_body
             self.input_validator(analysis, 'POST')
+        except ValueError:
+            # Legacy analysis - accept direct file uploads (inputs and outputs)
+            analysis = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
 
-            uid = None
-            if not self.superuser_request:
-                uid = self.uid
-            result = self.storage.create_job_and_analysis(cont_name, cid, analysis, job, self.origin, uid)
-            return {'_id': result['analysis']['_id']}
-
-        analysis = upload.process_upload(self.request, upload.Strategy.analysis, origin=self.origin)
-        self.storage.fill_values(analysis, cont_name, cid, self.origin)
-        result = self.storage.create_el(analysis)
-
-        if result.acknowledged:
-            return {'_id': result.inserted_id}
-        else:
-            self.abort(500, 'Analysis not added for container {} {}'.format(cont_name, cid))
+        uid = None if self.superuser_request else self.uid
+        result = self.storage.create_el(analysis, cont_name, cid, self.origin, uid)
+        return {'_id': result.inserted_id}
 
     @validators.verify_payload_exists
     def put(self, cont_name, **kwargs):
@@ -211,9 +189,25 @@ class AnalysesHandler(RefererHandler):
             self.abort(404, 'Analysis {} not removed from container {} {}'.format(_id, cont_name, cid))
 
 
+    def upload(self, **kwargs):
+        """Upload ad-hoc analysis outputs generated offline."""
+        _id = kwargs.get('_id')
+        analysis = self.storage.get_container(_id)
+        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
+        permchecker = self.get_permchecker(parent)
+        permchecker(noop)('POST')
+
+        if analysis.get('job'):
+            raise InputValidationException('Analysis created via a job does not allow file uploads')
+        elif analysis.get('files'):
+            raise InputValidationException('Analysis already has outputs and does not allow repeated file uploads')
+
+        upload.process_upload(self.request, upload.Strategy.targeted_multi, container_type='analysis', id_=_id, origin=self.origin)
+
+
     def download(self, **kwargs):
         """
-        .. http:get:: /api/(cont_name)*/(cid)*/analyses/(analysis_id)/files/(file_name)*
+        .. http:get:: /api/(cont_name)*/(cid)*/analyses/(analysis_id)/{filegroup:inputs|files}/(filename)*
 
             * - not required
 
@@ -311,6 +305,7 @@ class AnalysesHandler(RefererHandler):
         """
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
+        filegroup = kwargs.get('filegroup')
         filename = kwargs.get('filename')
 
         cid = analysis['parent']['id']
@@ -327,9 +322,12 @@ class AnalysesHandler(RefererHandler):
             if not self.origin.get('id'):
                 self.origin = ticket.get('origin')
 
-        fileinfo = analysis.get('files', [])
         if filename:
+            # Allow individual file lookups to just specify `files`
+            fileinfo = analysis.get('inputs', []) + analysis.get('files',[])
             fileinfo = [fi for fi in fileinfo if fi['name'] == filename]
+        else:
+            fileinfo = analysis.get(filegroup, [])
 
         if not fileinfo:
             error_msg = 'No files on analysis {}'.format(_id)
@@ -342,8 +340,8 @@ class AnalysesHandler(RefererHandler):
                 file_cnt = 1
                 ticket = util.download_ticket(self.request.client_addr, self.origin, 'file', cid, filename, total_size)
             else:
-                targets, total_size, file_cnt = self._prepare_batch(fileinfo, analysis)
-                label = util.sanitize_string_to_filename(self.storage.get_container(_id).get('label', 'No Label'))
+                targets, total_size, file_cnt = self._prepare_batch(filegroup, fileinfo, analysis)
+                label = util.sanitize_string_to_filename(analysis.get('label', 'No Label'))
                 filename = 'analysis_' + label + '.tar'
                 ticket = util.download_ticket(self.request.client_addr, self.origin, 'batch', targets, filename, total_size)
             return {
@@ -434,17 +432,18 @@ class AnalysesHandler(RefererHandler):
         return ticket
 
 
-    def _prepare_batch(self, fileinfo, analysis):
+    def _prepare_batch(self, filegroup, fileinfo, analysis):
         ## duplicated code from download.py
         ## we need a way to avoid this
         targets = []
         total_size = total_cnt = 0
         data_path = config.get_item('persistent', 'data_path')
+        dirname = 'input' if filegroup == 'inputs' else 'output'
         for f in fileinfo:
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
                 targets.append((filepath,
-                                util.sanitize_string_to_filename(analysis['label']) + '/' + ('input' if f.get('input') else 'output') + '/'+ f['name'],
+                                '/'.join([util.sanitize_string_to_filename(analysis['label']), dirname, f['name']]),
                                 'analyses', analysis['_id'], f['size']))
                 total_size += f['size']
                 total_cnt += 1

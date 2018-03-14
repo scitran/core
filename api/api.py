@@ -241,12 +241,14 @@ endpoints = [
             ]),
         ]),
 
-        # Analysis
-        route(  '/analyses/<_id:{cid}>',                        AnalysesHandler,  m=['GET']),
-        prefix( '/analyses/<_id:{cid}>', [
-            route('/files',                                     AnalysesHandler, h='download',      m=['GET']),
-            route('/files/<filename:{fname}>',                  AnalysesHandler, h='download',      m=['GET']),
-            route( '/info',                                     AnalysesHandler, h='modify_info',   m=['POST']),
+
+        # Analyses
+        route( '/analyses/<_id:{cid}>',                      AnalysesHandler,  m=['GET']),
+        prefix('/analyses/<_id:{cid}>', [
+            route('/files',                                       AnalysesHandler, h='upload',      m=['POST']),
+            route('/<filegroup:inputs|files>',                    AnalysesHandler, h='download',    m=['GET']),
+            route('/<filegroup:inputs|files>/<filename:{fname}>', AnalysesHandler, h='download',    m=['GET']),
+            route('/info',                                        AnalysesHandler, h='modify_info', m=['POST']),
         ]),
         prefix('/<:{cname}>/<:{cid}>/<cont_name:analyses>/<cid:{cid}>', [
             route('/<list_name:notes>',                         NotesListHandler,               m=['POST']),
@@ -262,8 +264,8 @@ endpoints = [
             route( '/<cid:{cid}>',     ContainerHandler,                                m=['GET','PUT','DELETE']),
             prefix('/<cid:{cid}>', [
 
-                route( '/info',                                ContainerHandler, h='modify_info',    m=['POST']),
-                route( '/<subject:subject>/info',               ContainerHandler, h='modify_info',    m=['POST']),
+                route( '/info',                   ContainerHandler, h='modify_info', m=['POST']),
+                route( '/<subject:subject>/info', ContainerHandler, h='modify_info', m=['POST']),
 
                 route('/<list_name:tags>',               TagsListHandler, m=['POST']),
                 route('/<list_name:tags>/<value:{tag}>', TagsListHandler, m=['GET', 'PUT', 'DELETE']),
@@ -276,13 +278,14 @@ endpoints = [
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='get_info',       m=['GET']),
                 route('/<list_name:files>/<name:{fname}>/info', FileListHandler, h='modify_info',    m=['POST']),
 
-                route( '/<sub_cont_name:{cname}|all>/analyses',         AnalysesHandler, h='get_all',       m=['GET']),
-                route( '/analyses',                                     AnalysesHandler, h='get_all',       m=['GET']),
-                route( '/analyses',                                     AnalysesHandler,                    m=['POST']),
+                route( '/<sub_cont_name:{cname}|all>/analyses', AnalysesHandler, h='get_all', m=['GET']),
+                route( '/analyses',                             AnalysesHandler, h='get_all', m=['GET']),
+                route( '/analyses',                             AnalysesHandler,              m=['POST']),
                 prefix('/analyses', [
-                    route('/<_id:{cid}>',                               AnalysesHandler,                    m=['GET', 'PUT', 'DELETE']),
-                    route('/<_id:{cid}>/files',                         AnalysesHandler, h='download',      m=['GET']),
-                    route('/<_id:{cid}>/files/<filename:{fname}>',      AnalysesHandler, h='download',      m=['GET']),
+                    route('/<_id:{cid}>',                                             AnalysesHandler,               m=['GET', 'PUT', 'DELETE']),
+                    route('/<_id:{cid}>/files',                                       AnalysesHandler, h='upload',   m=['POST']),
+                    route('/<_id:{cid}>/<filegroup:inputs|files>',                    AnalysesHandler, h='download', m=['GET']),
+                    route('/<_id:{cid}>/<filegroup:inputs|files>/<filename:{fname}>', AnalysesHandler, h='download', m=['GET']),
                 ]),
 
                 route('/<list_name:notes>',             NotesListHandler,               m=['POST']),

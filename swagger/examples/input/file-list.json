@@ -1,0 +1,4 @@
+[
+    {"name": "file_1.csv", "info": {"foo": "bar"}},
+    {"name": "file_2.zip"}
+]
