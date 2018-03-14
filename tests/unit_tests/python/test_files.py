@@ -21,5 +21,11 @@ def test_qa():
     assert files.guess_type_from_filename('example.qa') == None
     assert files.guess_type_from_filename('example.qa.png.unknown') == None
 
+def test_tabular_data():
+    assert files.guess_type_from_filename('example.csv') == 'tabular data'
+    assert files.guess_type_from_filename('example.csv.gz') == 'tabular data'
+    assert files.guess_type_from_filename('example.tsv') == 'tabular data'
+    assert files.guess_type_from_filename('example.tsv.gz') == 'tabular data'
+
 def test_unknown():
     assert files.guess_type_from_filename('example.unknown') == None
