@@ -425,6 +425,10 @@ def test_resolve_gears(data_builder, as_admin, as_user, as_public, file_form):
     r = as_admin.post('/lookup', json={'path': ['gears', 'NON-EXISTENT-GEAR']})
     assert r.status_code == 404
 
+    # Lookup by id (not-found)
+    r = as_admin.post('/lookup', json={'path': ['gears', idz('ffffffffffffffffffffffff')]})
+    assert r.status_code == 404
+
 
 def test_resolve_analyses(data_builder, as_admin, as_user, as_public, file_form):
     analysis_file = 'one.csv'

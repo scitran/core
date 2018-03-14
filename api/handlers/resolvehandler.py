@@ -104,4 +104,3 @@ class ResolveHandler(base.RequestHandler):
 
         return result
 
-

@@ -47,12 +47,11 @@ class ContainerStorage(object):
     Examples: projects, sessions, acquisitions and collections
     """
 
-    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False, list_projection=None):
+    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False):
         self.cont_name = cont_name
         self.use_object_id = use_object_id
         self.use_delete_tag = use_delete_tag
         self.dbc = config.db[cont_name]
-        self.list_projection = list_projection
 
     @classmethod
     def factory(cls, cont_name):
@@ -331,6 +330,4 @@ class ContainerStorage(object):
         Return a copy of the list projection to use with this container, or None.
         It is safe to modify the returned copy.
         """
-        if self.list_projection:
-            return self.list_projection.copy()
         return None
