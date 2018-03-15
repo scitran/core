@@ -137,7 +137,7 @@ class GearHandler(base.RequestHandler):
         if collection_id and cont_name != 'collections':
             # Remove project and group, replace with collection
             parents = parents[:-2]
-            collection['cont_type'] = 'collection'
+            collection['cont_type'] = 'collections'
             parents.append(collection)
 
         response['parents'] = [{'cont_name': p['cont_type'], '_id': p['_id'], 'label': p.get('label', 'unknown')} for p in parents]
