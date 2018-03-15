@@ -131,14 +131,16 @@ class ContainerStorage(object):
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
 
 
-    def get_children(self, _id, projection=None, uid=None):
+    def get_children(self, _id, query=None, projection=None, uid=None):
         child_name = self.child_cont_name
         if not child_name:
             raise APIStorageException('Children cannot be listed from the {0} level'.format(self.cont_name))
+        if not query:
+            query = {}
         if not self.use_object_id:
-            query = {containerutil.singularize(self.cont_name): _id}
+            query[containerutil.singularize(self.cont_name)] = _id
         else:
-            query = {containerutil.singularize(self.cont_name): bson.ObjectId(_id)}
+            query[containerutil.singularize(self.cont_name)] = bson.ObjectId(_id)
 
         if uid:
             query['permissions'] = {'$elemMatch': {'_id': uid}}

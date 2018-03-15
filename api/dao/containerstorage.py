@@ -129,6 +129,7 @@ class SubjectStorage(ContainerStorage):
             self._fill_default_values(cont)
         return cont
 
+
     def get_all_el(self, query, user, projection, fill_defaults=False):
         if query is None:
             query = {}
@@ -138,6 +139,12 @@ class SubjectStorage(ContainerStorage):
             else:
                 query['permissions'] = {'$elemMatch': user}
         query['deleted'] = {'$exists': False}
+
+        if query and query.get('collections'):
+            # Find acquisition ids in this collection, add to query
+            collection_id = query.pop('collections')
+            a_ids = AcquisitionStorage().get_all_el({'collections': bson.ObjectId(collection_id)}, None, {'session': 1})
+            query['_id'] = {'$in': list(set([a['session'] for a in a_ids]))}
 
         results = list(self.dbc.find(query, projection))
         if not results:
@@ -151,7 +158,7 @@ class SubjectStorage(ContainerStorage):
 
         return formatted_results
 
-    def get_children(self, _id, projection=None, uid=None):
+    def get_children(self, _id, query=None, projection=None, uid=None):
         query = {'subject._id': bson.ObjectId(_id)}
         if uid:
             query['permissions'] = {'$elemMatch': {'_id': uid}}
@@ -231,6 +238,19 @@ class SessionStorage(ContainerStorage):
             cont = self.get_container(_id, projection=projection)
 
         return SubjectStorage().get_container(cont['subject']['_id'], projection=projection)
+
+
+    def get_all_el(self, query, user, projection, fill_defaults=False):
+        """
+        Override allows 'collections' key in the query, will transform into proper query for the caller and return results
+        """
+        if query and query.get('collections'):
+            # Find acquisition ids in this collection, add to query
+            collection_id = query.pop('collections')
+            a_ids = AcquisitionStorage().get_all_el({'collections': bson.ObjectId(collection_id)}, None, {'session': 1})
+            query['_id'] = {'$in': list(set([a['session'] for a in a_ids]))}
+
+        return super(SessionStorage, self).get_all_el(query, user, projection, fill_defaults=False)
 
 
     def recalc_session_compliance(self, session_id, session=None, template=None, hard=False):

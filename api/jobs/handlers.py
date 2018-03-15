@@ -15,7 +15,7 @@ from .. import util
 from ..auth import require_drone, require_login, require_admin, has_access
 from ..auth.apikeys import JobApiKey
 from ..dao import hierarchy
-from ..dao.containerstorage import ProjectStorage, SessionStorage, AcquisitionStorage, AnalysisStorage, cs_factory
+from ..dao.containerstorage import ProjectStorage, SessionStorage, SubjectStorage, AcquisitionStorage, AnalysisStorage, cs_factory
 from ..util import humanize_validation_error, set_for_download
 from ..validators import validate_data, verify_payload_exists
 from ..dao.containerutil import pluralize
@@ -74,6 +74,7 @@ class GearHandler(base.RequestHandler):
         Container types acceptable for reference:
           - Groups
           - Projects
+          - Collections
           - Subjects
           - Sessions
           - Acquisitions
@@ -90,6 +91,9 @@ class GearHandler(base.RequestHandler):
 
         storage = cs_factory(cont_name)
         container = storage.get_container(cid)
+        if not self.user_is_admin and not has_access(self.uid, container, 'ro'):
+            raise APIPermissionException('User does not have access to container {}.'.format(cid))
+
         cont_name = pluralize(cont_name)
 
         response = {
@@ -101,18 +105,41 @@ class GearHandler(base.RequestHandler):
             'children':     {}
         }
 
-        if cont_name != 'analysis':
+        if cont_name != 'analyses':
             analyses = AnalysisStorage().get_analyses(cont_name, cid)
             response['children']['analyses'] = [{'cont_name': 'analysis', '_id': a['_id'], 'label': a['label']} for a in analyses]
-        else:
-            # Only show output files for analyses
-            container['files'] = [f for f in container.get('files', []) if f.get('output')]
 
-        if cont_name not in ['analyses', 'acquisitions']:
-            children = storage.get_children(cid, projection={'files': 0})
+        # Get collection context, if any
+        collection_id = self.get_param('collection')
+        collection = None
+        if collection_id:
+
+            if cont_name in ['projects', 'groups']:
+                raise InputValidationException('Cannot suggest for {} with a collection context.'.format(cont_name))
+            collection = cs_factory('collections').get_container(collection_id)
+
+        # Get children
+        if cont_name == 'collections':
+            # Grab subjects within the collection context
+            children = SubjectStorage().get_all_el({'collections': collection_id}, None, None)
+            response['children']['subjects'] = [{'cont_name': 'subjects', '_id': c['_id'], 'label': c['label']} for c in children]
+
+        elif cont_name not in ['analyses', 'acquisitions']:
+            query = {}
+            if collection_id:
+                query['collections'] = bson.ObjectId(collection_id)
+            children = storage.get_children(cid, query=query, projection={'files': 0})
             response['children'][pluralize(storage.child_cont_name)] = [{'cont_name': storage.child_cont_name, '_id': c['_id'], 'label': c['label']} for c in children]
 
+
+        # Get parents
         parents = storage.get_parent_tree(cid, cont=container)
+        if collection_id and cont_name != 'collections':
+            # Remove project and group, replace with collection
+            parents = parents[:-2]
+            collection['cont_type'] = 'collection'
+            parents.append(collection)
+
         response['parents'] = [{'cont_name': p['cont_type'], '_id': p['_id'], 'label': p.get('label', 'unknown')} for p in parents]
 
         files = add_suggest_info_to_files(gear, container.get('files', []))
