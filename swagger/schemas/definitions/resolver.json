@@ -1,0 +1,75 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+    	"resolver-input": {
+    		"type": "object",
+    		"properties": {
+	    		"path": {
+	    			"type": "array",
+	    			"minLength": 1,
+	    			"items": {
+	    				"type": "string"
+	    			}
+	    		}
+	    	},
+	    	"required": ["path"]
+    	},
+    	"resolver-output": {
+    		"type": "object",
+    		"properties": {
+    			"path": { "$ref": "#/definitions/resolver-node-list" },
+    			"children": { "$ref": "#/definitions/resolver-node-list" }
+    		},
+   			"required": ["path"]
+    	},
+    	"resolver-node": {
+    		"type": "object",
+    		"properties": {
+    			"node_type": {
+    				"type": "string"
+    			}
+    		},
+    		"discriminator": "node_type",
+    		"required": ["node_type"]
+    	},
+    	"resolver-node-list": {
+			"type": "array",
+			"items": { "$ref": "#/definitions/resolver-node" }    		
+    	},
+    	"group-node": {
+    		"allOf": [
+    			{"$ref":"#/definitions/resolver-node"},
+    			{"$ref":"group.json#/definitions/group-output"}
+    		],
+    		"x-discriminator-value": "group"
+    	},
+    	"project-node": {
+    		"allOf": [
+    			{"$ref":"#/definitions/resolver-node"},
+    			{"$ref":"project.json#/definitions/project-output"}
+    		],
+    		"x-discriminator-value": "project"
+    	},
+    	"session-node": {
+    		"allOf": [
+    			{"$ref":"#/definitions/resolver-node"},
+    			{"$ref":"session.json#/definitions/session-output"}
+    		],
+    		"x-discriminator-value": "session"
+    	},
+    	"acquisition-node": {
+    		"allOf": [
+    			{"$ref":"#/definitions/resolver-node"},
+    			{"$ref":"acquisition.json#/definitions/acquisition-output"}
+    		],
+    		"x-discriminator-value": "acquisition"
+    	},
+    	"file-node": {
+    		"allOf": [
+    			{"$ref":"#/definitions/resolver-node"},
+    			{"$ref":"file.json#/definitions/file-output"}
+    		],
+    		"x-discriminator-value": "file"
+    	}
+    }
+}

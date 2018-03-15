@@ -12,36 +12,42 @@ consumes:
 - 'application/json'
 
 tags:
-  - name: files
-    description: File upload/download operations
-  - name: devices
-    description: Device operations
   - name: users
     description: User operations
-  - name: gears
-    description: Gear operations
   - name: groups
     description: Group operations
-  - name: jobs
-    description: Job operations
-  - name: collections
-    description: Collection operations
+  - name: projects
+    description: Project operations
   - name: sessions
     description: Session operations
   - name: acquisitions
     description: Acquisition operations
-  - name: projects
-    description: Project operations
+  - name: analyses
+    description: Analysis operations
+  - name: collections
+    description: Collection operations
+  - name: files
+    description: File upload/download operations
+  - name: devices
+    description: Device operations
+  - name: gears
+    description: Gear operations
+  - name: rules
+    description: Gear rule configuration
+  - name: jobs
+    description: Job operations
   - name: reports
     description: Site-wide reports
   - name: batch
     description: Batch job operations
+  - name: default
 
 paths:
   $include: 
     - paths/login.yaml
     - paths/download.yaml
     - paths/upload-by-label.yaml
+    - paths/upload-by-reaper.yaml
     - paths/upload-by-uid.yaml
     - paths/upload-match-uid.yaml
     - paths/clean-packfiles.yaml
@@ -60,6 +66,10 @@ paths:
     - paths/projects.yaml
     - paths/report.yaml
     - paths/batch.yaml
+    - paths/analyses.yaml
+    - paths/site-rules.yaml
+    - paths/dataexplorer.yaml
+    - paths/resolver.yaml
 
 
 securityDefinitions:

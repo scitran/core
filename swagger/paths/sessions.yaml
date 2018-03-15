@@ -16,6 +16,9 @@ $template_arguments:
     get-output-schema: schemas/output/session.json
     delete-description: Read-write project permissions are required to delete a session. </br>Admin project permissions are required if the session or it's acquisitions contain data uploaded by sources other than users and jobs.
 
+/sessions/{SessionId}/info:
+  $template: templates/container-item-info.yaml
+  
 /sessions/{SessionId}/jobs:
   parameters:
     - in: path
@@ -48,19 +51,13 @@ $template_arguments:
 /sessions/{SessionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
 
-# ===== Packfile =====
-/sessions/{SessionId}/packfile-start:
-  $template: templates/packfile-start.yaml
-/sessions/{SessionId}/packfile:
-  $template: templates/packfile.yaml
-/sessions/{SessionId}/packfile-end:
-  $template: templates/packfile-end.yaml
-
 # ===== Files =====
 /sessions/{SessionId}/files:
   $template: templates/file-list-upload.yaml
 /sessions/{SessionId}/files/{FileName}:
   $template: templates/file-item.yaml
+/sessions/{SessionId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Notes =====
 /sessions/{SessionId}/notes:
@@ -88,28 +85,13 @@ $template_arguments:
 
 # ===== Analyses =====
 /sessions/{SessionId}/analyses:
-  parameters:
-    - in: path
-      type: string
-      required: true
-      name: SessionId
-  post:
-    summary: Create an analysis.
-    description: ''
-    operationId: add_session_analysis
-    tags:
-    - 'sessions'
-    parameters:
-      - in: body
-        name: body
-        schema:
-          $ref: schemas/input/analysis.json
-    responses:
-      '200':
-        description: ''
-
+  $template: templates/analyses-list.yaml
+  arguments:
+    allowCreate: true
 /sessions/{SessionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: true
 /sessions/{SessionId}/analyses/{AnalysisId}/inputs:
   $template: templates/analysis-files.yaml
   arguments:

@@ -22,6 +22,22 @@
     example:
       modified: 1
 
+'200:modified-with-count-and-jobs':
+  description: The number of records modified and number of jobs started.
+  schema:
+    type: object
+    properties:
+      modified:
+        type: integer
+      jobs_triggered:
+        type: integer
+    required:
+      - modified
+      - jobs_triggered
+    example:
+      modified: 1
+      jobs_triggered: 0
+
 '400:invalid-body-json':
   description: |
     JSON did not validate against schema for this endpoint.

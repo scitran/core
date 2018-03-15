@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "allOf": [{"$ref": "../definitions/job.json#/definitions/job-log"}],
+  "example": {
+    "_id": "57ac7394c700190017123fb8",
+    "logs": [
+    	{ "fd": 1, "msg": "Hello World!" }
+    ]
+  }
+}

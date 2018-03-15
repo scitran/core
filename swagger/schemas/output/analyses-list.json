@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "array",
+    "items": {"$ref":"../definitions/analysis.json#/definitions/analysis-list-entry"},
+    "example": [{
+	    "files": [{
+	        "origin": {
+	            "type": "job",
+	            "id": "58063f24e5dc5b001657a87f"
+	        },
+	        "mimetype": "application/octet-stream",
+	        "hash": "v0-sha384-12188e00a26650b2baa3f0195337dcf504f4362bb2136eef0cdbefb57159356b1355a0402fca0ab5ab081f21c305e5c2",
+	        "name": "cortical_surface_right_hemisphere.obj",
+	        "tags": [],
+	        "measurements": [],
+	        "modified": "2016-10-18T15:26:35.701000+00:00",
+	        "modality": null,
+	        "size": 21804112,
+	        "type": "None",
+	        "info": {}
+	    }],
+	    "created": "2016-10-18T17:45:11.778000+00:00",
+	    "modified": "2016-10-18T17:45:11.778000+00:00",
+	    "label": "cortex-demo 10/18/2016 13:45:5",
+	    "job": "58065fa7e5dc5b001457a882",
+	    "user": "canakgun@flywheel.io",
+	    "_id": "58065fa7e5dc5b001457a881"
+	}]
+}

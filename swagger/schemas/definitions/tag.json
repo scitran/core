@@ -9,7 +9,7 @@
       "additionalProperties": false,
       "required": ["value"]
     },
-    "tag-output-list":{
+    "tag-list":{
       "type":"array",
       "items":{
         "allOf":[{"$ref":"#/definitions/tag"}]

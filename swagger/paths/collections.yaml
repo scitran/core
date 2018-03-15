@@ -53,6 +53,7 @@ $template_arguments:
         examples:
           response:
             $ref: examples/output/collection-curators-list.json
+            
 /collections/{CollectionId}:
   parameters:
     - required: true
@@ -96,6 +97,9 @@ $template_arguments:
       '200':
         description: Collection was deleted
 
+/collections/{CollectionId}/info:
+  $template: templates/container-item-info.yaml
+
 /collections/{CollectionId}/sessions:
   parameters:
     - required: true
@@ -118,10 +122,14 @@ $template_arguments:
 
 /collections/{CollectionId}/acquisitions:
   parameters:
-    - required: true
-      type: string
+    - name: CollectionId
       in: path
-      name: CollectionId
+      type: string      
+      required: true
+    - name: session
+      in: query
+      type: string
+      description: The id of a session, to which the acquisitions returned will be restricted
   get:
     summary: List acquisitions in a collection
     operationId: get_collection_acquisitions
@@ -142,14 +150,6 @@ $template_arguments:
 /collections/{CollectionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
 
-# ===== Packfile =====
-/collections/{CollectionId}/packfile-start:
-  $template: templates/packfile-start.yaml
-/collections/{CollectionId}/packfile:
-  $template: templates/packfile.yaml
-/collections/{CollectionId}/packfile-end:
-  $template: templates/packfile-end.yaml
-
 # ===== Files =====
 /collections/{CollectionId}/files:
   $template: templates/file-list-upload.yaml
@@ -161,6 +161,8 @@ $template_arguments:
   $template: templates/permissions.yaml
 /collections/{CollectionId}/permissions/{UserId}:
   $template: templates/permissions-user.yaml
+/collections/{CollectionId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Notes =====
 /collections/{CollectionId}/notes:
@@ -171,8 +173,12 @@ $template_arguments:
 # ===== Analyses =====
 /collections/{CollectionId}/analyses:
   $template: templates/analyses-list.yaml
+  arguments:
+    allowCreate: true
 /collections/{CollectionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: true
 /collections/{CollectionId}/analyses/{AnalysisId}/inputs:
   $template: templates/analysis-files.yaml
   arguments:

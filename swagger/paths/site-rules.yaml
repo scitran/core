@@ -1,0 +1,62 @@
+/site/rules:
+  get:
+    summary: List all site rules.
+    operationId: get_site_rules
+    tags:
+    - rules
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/rule-list.json
+  post:
+    summary: Create a new site rule.
+    operationId: add_site_rule
+    tags:
+    - rules
+    responses:
+      default:
+        description: ''
+    parameters:
+    - in: body
+      name: body
+      schema:
+        $ref: schemas/input/rule-new.json
+
+/site/rules/{RuleId}:
+  parameters:
+  - name: RuleId
+    type: string
+    in: path
+    required: true
+  get:
+    summary: Get a site rule.
+    operationId: get_site_rule
+    tags:
+    - rules
+    responses:
+      '200':
+        description: ''
+        schema:
+          $ref: schemas/output/rule.json
+  put:
+    summary: Update a site rule.
+    operationId: modify_site_rule
+    tags:
+    - rules
+    responses:
+      default:
+        description: ''
+    parameters:
+    - in: body
+      name: body
+      schema:
+        $ref: schemas/input/rule-update.json
+  delete:
+    summary: Remove a site rule.
+    operationId: remove_site_rule
+    tags:
+    - rules
+    responses:
+      '200':
+        $ref: '#/responses/200:deleted-with-count'

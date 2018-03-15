@@ -61,7 +61,7 @@
                   "items":{"$ref":"permission.json#/definitions/permission-output-default-required"}
               },
               "notes":{"allOf":[{"$ref":"note.json#/definitions/notes-list-output"}]},
-              "tags":{"allOf":[{"$ref":"tag.json#/definitions/tag-output-list"}]},
+              "tags":{"allOf":[{"$ref":"tag.json#/definitions/tag-list"}]},
               "analyses":{
                   "type":"array",
                   "items":{"$ref":"analysis.json#/definitions/analysis-output"}

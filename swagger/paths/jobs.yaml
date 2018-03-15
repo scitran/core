@@ -7,9 +7,9 @@
     parameters:
       - name: body
         in: body
+        required: true
         schema:
-          example:
-            $ref: examples/input/job-new.json
+          $ref: schemas/input/job-new.json
     responses:
       '200':
         description: ''
@@ -25,6 +25,13 @@
     operationId: get_next_job
     tags:
     - jobs
+    parameters:
+      - name: tags
+        in: query
+        type: array
+        items:
+          type: string
+        collectionFormat: multi
     responses:
       '200':
         description: ''
@@ -89,7 +96,7 @@
       'running' state.
 
       Accepts the same body as /api/jobs/add , except all fields are optional.
-    operationId: update_job
+    operationId: modify_job
     tags:
     - jobs
     responses:
@@ -98,6 +105,7 @@
     parameters:
       - name: body
         in: body
+        required: true
         schema:
           example:
             $ref: examples/input/job-update.json
@@ -142,3 +150,76 @@
         schema:
           example:
             $ref: examples/output/job-config.json
+/jobs/{JobId}/logs:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: JobId
+  get: 
+    summary: Get job logs
+    operationId: get_job_logs
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: The current job log
+        schema:
+          $ref: schemas/output/job-log.json
+  post:
+    summary: Add logs to a job.
+    operationId: add_job_logs
+    tags:
+    - jobs
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: schemas/input/job-logs.json
+    responses:
+      '200':
+        description: Logs were added. No value is returned.
+/jobs/{JobId}/accept-failed-output:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: JobId
+  post:
+    summary: Accept failed job output.
+    description: >
+      Remove the 'from_failed_job' flag from the files.
+
+      Create any automatic jobs for the accepted files.
+    operationId: accept_failed_output
+    tags:
+    - jobs
+    responses:
+      '200':
+        description: Failed output is accepted and created any automatic jobs.
+      '400':
+        description: Can only accept failed output of a job that failed.
+/jobs/{JobId}/prepare-complete:
+  parameters:
+    - required: true
+      type: string
+      in: path
+      name: JobId
+  post:
+    summary: Create a ticket with the job id and its status.
+    operationId: prepare_compete
+    tags:
+    - jobs
+    parameters:
+      - name: body
+        in: body
+        schema:
+          example:
+            success: True
+    responses:
+      '200':
+        description: 'Returns a ticket'
+        schema:
+          example:
+            ticket: 579e97738120be2ada087feb

@@ -8,6 +8,11 @@
         "uid":          {"type": "string"},
         "timestamp":    {"type": ["string", "null"], "format": "date-time"},
         "timezone":     {"type": "string"},
+        "container-type": {
+          "type": "string",
+          "enum": ["group", "project", "session", "acquisition", "collection", "analysis"],
+          "description": "The type of container (e.g. session)"
+        },
 
         "container-new-output": {
           "type": "object",
@@ -15,6 +20,30 @@
             "_id": {"$ref":"#/definitions/_id"}
           },
           "required": ["_id"]
-        }        
+        },
+        "container-reference": {
+          "type": "object",
+          "properties": {
+            "type": {"$ref":"#/definitions/container-type"},
+            "id": {"$ref":"#/definitions/_id"}
+          },
+          "required": [ "type", "id" ],
+          "additionalProperties":false,
+          "description": "A reference to an individual container, by type and id"
+        },
+        "container-output-with-files": {
+          "type": "object",
+          "properties": {
+              "_id":          {"$ref":"#/definitions/_id"},
+              "label":        {"$ref":"common.json#/definitions/label"},
+              "files":{
+                  "type":"array",
+                  "items":{"$ref":"file.json#/definitions/file-output"}
+              },
+              "created":      {"$ref":"created-modified.json#/definitions/created"},
+              "modified":     {"$ref":"created-modified.json#/definitions/modified"}
+          },
+          "description": "Generic container output with files"
+        }
     }
 }

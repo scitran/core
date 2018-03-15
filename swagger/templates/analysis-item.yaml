@@ -5,21 +5,37 @@ parameters:
     type: string
   - name: tag
     type: string
+    required: true
+  - name: supportsDelete
+    type: boolean
+    required: true
 template: |
     parameters:
+      {{#parameter}}
       - required: true
         type: string
         in: path
-        name: '{{parameter}}'
+        name: '{{.}}'
+      {{/parameter}}
       - required: true
         type: string
         in: path
         name: AnalysisId
     get:
       summary: Get an analysis.
-      operationId: get_{{resource}}_analysis
+      {{#resource}}
+      operationId: get_{{.}}_analysis
+      {{/resource}}
+      {{^resource}}
+      operationId: get_analysis
+      {{/resource}}
       tags:
       - '{{tag}}'
+      parameters:
+        - name: inflate_job
+          in: query
+          type: boolean
+          description: Return job as an object instead of an id
       responses:
         '200':
           description: ''
@@ -28,11 +44,18 @@ template: |
           examples:
             response:
               $ref: examples/output/analysis.json
+    {{#supportsDelete}}
     delete:
       summary: Delete an anaylsis
-      operationId: delete_{{resource}}_analysis
+      {{#resource}}
+      operationId: delete_{{.}}_analysis
+      {{/resource}}
+      {{^resource}}
+      operationId: delete_analysis
+      {{/resource}}
       tags:
       - '{{tag}}'
       responses:
         '200':
           $ref: '#/responses/200:deleted-with-count'
+    {{/supportsDelete}}

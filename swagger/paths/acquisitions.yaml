@@ -17,25 +17,22 @@ $template_arguments:
     delete-description: Read-write project permissions are required to delete an acquisition. </br>Admin project permissions are required if the acquisition contains data uploaded by sources other than users and jobs.
 
 
+/acquisitions/{AcquisitionId}/info:
+  $template: templates/container-item-info.yaml
+
 # ===== Tags =====
 /acquisitions/{AcquisitionId}/tags:
   $template: templates/tags.yaml
 /acquisitions/{AcquisitionId}/tags/{TagValue}:
   $template: templates/tags-tag.yaml
 
-# ===== Packfile =====
-/acquisitions/{AcquisitionId}/packfile-start:
-  $template: templates/packfile-start.yaml
-/acquisitions/{AcquisitionId}/packfile:
-  $template: templates/packfile.yaml
-/acquisitions/{AcquisitionId}/packfile-end:
-  $template: templates/packfile-end.yaml
-
 # ===== Files =====
 /acquisitions/{AcquisitionId}/files:
   $template: templates/file-list-upload.yaml
 /acquisitions/{AcquisitionId}/files/{FileName}:
   $template: templates/file-item.yaml
+/acquisitions/{AcquisitionId}/files/{FileName}/info:
+  $template: templates/file-item-info.yaml
 
 # ===== Notes =====
 /acquisitions/{AcquisitionId}/notes:
@@ -46,8 +43,12 @@ $template_arguments:
 # ===== Analyses =====
 /acquisitions/{AcquisitionId}/analyses:
   $template: templates/analyses-list.yaml
+  arguments:
+    allowCreate: true
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}:
   $template: templates/analysis-item.yaml
+  arguments:
+    supportsDelete: true
 /acquisitions/{AcquisitionId}/analyses/{AnalysisId}/inputs:
   $template: templates/analysis-files.yaml
   arguments:
