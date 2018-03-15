@@ -23,7 +23,7 @@
     "presentation": [ ".ppt", ".pptx" ],
     "source code":  [ ".c", ".py", ".cpp", ".js", ".m", ".json", ".java", ".php", ".css", ".toml", ".yaml", ".yml" ],
     "spreadsheet":  [ ".xls", ".xlsx" ],
-    "tabular data": [ ".csv.gz", ".csv" ],
+    "tabular data": [ ".csv.gz", ".csv", ".tsv.gz", ".tsv" ],
     "text":         [ ".txt" ],
     "video":        [ ".mpeg", ".mpg", ".mov", ".mp4", ".m4v", ".mts" ]
 }
