@@ -85,7 +85,7 @@ template: |
       - '{{tag}}'
     responses:
       '200':
-        $ref: '#/responses/200:deleted-with-count'
+        $ref: '#/responses/200:modified-with-count'
   put:
     summary: Modify a file's attributes
     operationId: modify_{{resource}}_file
