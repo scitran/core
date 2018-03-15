@@ -6,9 +6,11 @@
       - name: simple
         in: query
         type: boolean
+        x-sdk-default: 'true'
       - name: limit
         in: query
         type: integer
+        x-sdk-default: 100
       - name: body
         in: body
         required: true

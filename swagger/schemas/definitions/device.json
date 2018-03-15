@@ -12,6 +12,16 @@
       "type": "string",
       "enum": ["ok", "missing", "error", "unknown"]
     },
+    "device-status-entry": {
+      "type": "object",
+      "properties":{
+        "errors":    {"$ref":"#/definitions/errors"},
+        "last_seen": {"$ref":"common.json#/definitions/timestamp"},
+        "status":    {"$ref":"#/definitions/status-value"}
+      },
+      "additionalProperties":false,
+      "required": ["last_seen", "status"]      
+    },
     "device": {
       "type": "object",
       "properties": {
@@ -23,33 +33,30 @@
         "interval":  {"$ref":"#/definitions/interval"},
         "last_seen": {"$ref":"common.json#/definitions/timestamp"}
       },
+      "x-sdk-model": "device",
       "additionalProperties": false
     },
     "device-input":{
-        "type": "object",
-        "properties": {
-          "interval":       {"$ref":"#/definitions/interval"},
-          "errors":         {"$ref":"#/definitions/errors"},
-          "info":           {"$ref":"common.json#/definitions/info"}
-        },
-        "additionalProperties": false
+      "type": "object",
+      "properties": {
+        "interval":       {"$ref":"#/definitions/interval"},
+        "errors":         {"$ref":"#/definitions/errors"},
+        "info":           {"$ref":"common.json#/definitions/info"}
+      },
+      "x-sdk-model": "device",
+      "additionalProperties": false
     },
     "device-output": {
       "type": "object",
       "allOf": [{"$ref":"#/definitions/device"}],
-      "required": ["_id", "name", "method", "last_seen"]
+      "required": ["_id", "name", "method", "last_seen"],
+      "x-sdk-model": "device"
     },
     "device-status": {
       "type":"object",
       "patternProperties": {
         "^[0-9a-z.@_-]*$":{
-          "properties":{
-            "errors":    {"$ref":"#/definitions/errors"},
-            "last_seen": {"$ref":"common.json#/definitions/timestamp"},
-            "status":    {"$ref":"#/definitions/status-value"}
-          },
-          "additionalProperties":false,
-          "required": ["last_seen", "status"]
+          "$ref": "#/definitions/device-status-entry"
         }      
       }
     }

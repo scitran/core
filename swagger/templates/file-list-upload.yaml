@@ -17,7 +17,7 @@ template: |
       
   post:
     summary: Upload a file to {{resource}}.
-    operationId: upload_{{resource}}_file
+    operationId: upload_file_to_{{resource}}
     tags: 
     - '{{tag}}'
     consumes:

@@ -36,6 +36,7 @@ template: |
           in: query
           type: boolean
           description: Return job as an object instead of an id
+          x-sdk-default: 'true'
       responses:
         '200':
           description: ''

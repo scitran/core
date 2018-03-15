@@ -8,7 +8,7 @@
     "batch-proposal-detail": {
       "type": "object",
       "properties": {
-        "analysis": {"$ref": "analysis.json#/definitions/analysis-input"},
+        "analysis": {"$ref": "analysis.json#/definitions/analysis-input-job"},
         "tags": {"$ref":"tag.json#/definitions/tag-list"}
       },
       "additionalProperties": false
@@ -60,7 +60,7 @@
         "gear_id": {"$ref":"job.json#/definitions/gear_id"},
         "config": {"$ref":"job.json#/definitions/config"},
         "tags": {"$ref":"tag.json#/definitions/tag-list"},
-        "analysis": {"$ref": "analysis.json#/definitions/analysis-input"},
+        "analysis": {"$ref": "analysis.json#/definitions/analysis-input-job"},
         "targets": {
           "type": "array",
           "items": {"$ref":"container.json#/definitions/container-reference"}

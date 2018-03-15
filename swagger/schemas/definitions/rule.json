@@ -35,7 +35,8 @@
                 "all":        { "$ref": "#/definitions/rule-items" },
                 "disabled":   { "type": "boolean" }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "x-sdk-model": "rule"
         },
 
         "rule-output": {
@@ -47,7 +48,8 @@
                 "any":      { "$ref": "#/definitions/rule-items" },
                 "all":      { "$ref": "#/definitions/rule-items" },
                 "disabled": { "type": "boolean" }
-            }
+            },
+            "x-sdk-model": "rule"
         }
     }
 }

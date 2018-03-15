@@ -41,7 +41,7 @@
           "maxLength":106
         },
         "size":{"type":"integer"},
-        "file": {
+        "file-entry": {
           "type": "object",
           "properties": {
             "name":           {"$ref":"#/definitions/name"},
@@ -63,7 +63,8 @@
             "size":        {"$ref":"#/definitions/size"},
             "info_exists": {"type": "boolean"}
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "x-sdk-model": "file-entry"
         },
         "file-input":{
             "type": "object",
@@ -76,7 +77,8 @@
               "tags":           {"$ref":"#/definitions/tags"},
               "info":           {"$ref":"common.json#/definitions/info"}
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "x-sdk-model": "file-entry"
         },
         "file-update":{
             "type": "object",
@@ -85,12 +87,14 @@
               "modality":       {"$ref":"#/definitions/modality"},
               "measurements":   {"$ref":"#/definitions/measurements"}
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "x-sdk-model": "file-entry"
         },
         "file-output":{
           "type": "object",
-          "allOf": [{"$ref":"#/definitions/file"}],
-          "required":["modified", "size"]
+          "allOf": [{"$ref":"#/definitions/file-entry"}],
+          "required":["modified", "size"],
+          "x-sdk-model": "file-entry"
         },
         "file-reference": {
           "type": "object",

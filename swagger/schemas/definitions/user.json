@@ -37,7 +37,7 @@
       "properties":{
         "key":            {"type": "string"},
         "created":        {"$ref":"created-modified.json#/definitions/created"},
-        "last_used":      {}
+        "last_used":      {"$ref":"common.json#/definitions/timestamp"}
       },
       "additionalProperties":false
     },
@@ -57,7 +57,8 @@
         "firstlogin":{"$ref":"#/definitions/firstlogin"},
         "lastlogin":{"$ref":"#/definitions/lastlogin"}
       },
-      "additionalProperties":false
+      "additionalProperties":false,
+      "x-sdk-model": "user"
     },
     "user-output":{
       "type":"object",
@@ -77,7 +78,8 @@
         "created":{"$ref":"created-modified.json#/definitions/created"},
         "modified":{"$ref":"created-modified.json#/definitions/modified"}
       },
-      "additionalProperties":false
+      "additionalProperties":false,
+      "x-sdk-model": "user"
     },
     "user-output-api-key": {
       "type":"object",
@@ -102,7 +104,8 @@
       "required":[
          "_id", "firstname", "lastname",
          "root", "email", "created", "modified"
-      ]      
+      ],
+      "x-sdk-model": "user"      
     }
   }
 }

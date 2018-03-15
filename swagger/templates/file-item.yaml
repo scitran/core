@@ -28,7 +28,7 @@ template: |
         - Make another request with the received ticket id in the "ticket" parameter. A valid "Authorization" header is no longer required.
 
       When "view" is true, [RFC7233](https://tools.ietf.org/html/rfc7233) range request headers are supported.
-    operationId: download_{{resource}}_file
+    operationId: download_file_from_{{resource}}
     tags:
     - '{{tag}}'
     produces:
@@ -55,7 +55,7 @@ template: |
         in: query
         type: string
         description: The filename of a zipfile member to download rather than the entire file
-
+    x-sdk-download-ticket: get_{{resource}}_download_ticket
     responses:
       '200':
         description: ''
@@ -85,7 +85,7 @@ template: |
       - '{{tag}}'
     responses:
       '200':
-        $ref: '#/responses/200:deleted-with-count'
+        $ref: '#/responses/200:modified-with-count'
   put:
     summary: Modify a file's attributes
     operationId: modify_{{resource}}_file

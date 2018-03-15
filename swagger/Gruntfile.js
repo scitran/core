@@ -86,6 +86,16 @@ module.exports = function(grunt) {
 		},
 
 		/**
+		 * Simplify swagger for codegen
+		 */
+		simplifySwagger: {
+			core: {
+				src: 'build/swagger-ui.json',
+				dst: 'build/swagger-codegen.json'
+			}
+		},
+
+		/**
 		 * Validate swagger
 		 */
 		validateSwagger: {
@@ -152,7 +162,8 @@ module.exports = function(grunt) {
 		'createBuildDir',
 		'flattenSwagger',
 		'schemasToDefs',
-		'validateSwagger'
+		'validateSwagger',
+		'simplifySwagger'
 	]);
 
 	/**

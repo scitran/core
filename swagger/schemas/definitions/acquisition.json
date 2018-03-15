@@ -2,17 +2,18 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
         "acquisition-input":{
-            "type": "object",
-            "properties": {
-                "public":       {"$ref":"container.json#/definitions/public"},
-                "label":        {"$ref":"common.json#/definitions/label"},
-                "info":         {"$ref":"container.json#/definitions/info"},
-                "session":      {"$ref":"common.json#/definitions/objectid"},
-                "uid":          {"$ref":"container.json#/definitions/uid"},
-                "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
-                "timezone":     {"$ref":"container.json#/definitions/timezone"}
-            },
-            "additionalProperties":false
+          "type": "object",
+          "properties": {
+              "public":       {"$ref":"container.json#/definitions/public"},
+              "label":        {"$ref":"common.json#/definitions/label"},
+              "info":         {"$ref":"container.json#/definitions/info"},
+              "session":      {"$ref":"common.json#/definitions/objectid"},
+              "uid":          {"$ref":"container.json#/definitions/uid"},
+              "timestamp":    {"$ref":"container.json#/definitions/timestamp"},
+              "timezone":     {"$ref":"container.json#/definitions/timezone"}
+          },
+          "additionalProperties":false,
+          "x-sdk-model": "acquisition"
         },
         "acquisition-metadata-input": {
             "type": "object",
@@ -67,7 +68,8 @@
                   "items":{"$ref":"analysis.json#/definitions/analysis-output"}
               }
           },
-          "additionalProperties":false
+          "additionalProperties":false,
+          "x-sdk-model": "acquisition"
         }
     }
 }

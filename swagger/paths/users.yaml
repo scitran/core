@@ -17,6 +17,7 @@
     parameters:
       - name: body
         in: body
+        required: true
         schema:
           $ref: schemas/input/user-new.json
     responses:
@@ -79,6 +80,7 @@
     parameters:
       - name: body
         in: body
+        required: true
         schema: 
           $ref: schemas/input/user-update.json
         description: >

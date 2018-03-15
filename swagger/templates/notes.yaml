@@ -22,6 +22,7 @@ template: |
     parameters:
       - name: body
         in: body
+        required: true
         schema:
           $ref: schemas/input/note.json
     responses:

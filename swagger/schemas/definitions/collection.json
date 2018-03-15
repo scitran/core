@@ -1,6 +1,31 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions":{
+        "collection-node": {
+            "type": "object",
+            "properties": {
+                "level": { 
+                    "type": "string", 
+                    "enum": ["project", "session", "acquisition"]
+                },
+                "_id": { "$ref": "common.json#/definitions/objectid" }
+            },
+            "additionalProperties": false
+        },
+        "collection-operation": {
+            "type": "object",
+            "properties": {
+                "operation": {
+                    "type": "string",
+                    "enum": ["add", "remove"]
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/collection-node" }
+                }
+            },
+            "additionalProperties": false
+        },
         "collection-input":{
             "type": "object",
             "properties": {
@@ -9,6 +34,7 @@
                 "info":         {"$ref": "container.json#/definitions/info"},
                 "description":  {"$ref": "common.json#/definitions/description"}
             },
+            "x-sdk-model": "collection",
             "additionalProperties": false
         },
         "collection-input-with-contents":{
@@ -18,8 +44,9 @@
                 "label":        {"$ref": "common.json#/definitions/label"},
                 "info":         {"$ref": "container.json#/definitions/info"},
                 "description":  {"$ref": "common.json#/definitions/description"},
-                "contents":     { "type": "object" }
+                "contents":     {"$ref": "#/definitions/collection-operation"}
             },
+            "x-sdk-model": "collection",
             "additionalProperties": false
         },
         "collection-new-output": {
@@ -27,7 +54,8 @@
           "properties": {
             "_id": {"$ref":"common.json#/definitions/objectid"}
           },
-          "required": ["_id"]
+          "required": ["_id"],
+          "x-sdk-return": "_id"
         },
         "collection-output":{
             "type": "object",
@@ -56,6 +84,7 @@
                     "items":{"$ref":"analysis.json#/definitions/analysis-output"}
                 }
             },
+            "x-sdk-model": "collection",
             "additionalProperties":false
         }
     }

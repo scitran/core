@@ -2,10 +2,12 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions":{
     "created": {
-      "type": "string"
+      "type": "string",
+      "format": "date-time"
     },
     "modified": {
-      "type": "string"
+      "type": "string",
+      "format": "date-time"
     }
   }
 }

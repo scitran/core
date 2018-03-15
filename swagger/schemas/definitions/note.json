@@ -1,13 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "text":             {"type": "string"},
+    "text": {
+      "type": "string",
+      "x-sdk-positional": true
+    },
     "note-input":{
       "type":"object",
       "properties":{
         "text":{"$ref":"#/definitions/text"}
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-sdk-model": "note"
     },
     "notes-list-input": {
       "type": "array",
@@ -23,7 +27,8 @@
         "user":{"$ref":"common.json#/definitions/user-id"}
       },
       "additionalProperties": false,
-      "required":["_id", "text", "created", "modified", "user"]
+      "required":["_id", "text", "created", "modified", "user"],
+      "x-sdk-model": "note"
     },
     "notes-list-output":{
       "type":"array",

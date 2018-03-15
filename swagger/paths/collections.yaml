@@ -20,12 +20,13 @@ $template_arguments:
             $ref: examples/output/collection-list.json
   post:
     summary: Create a collection
-    operationId: create_collection
+    operationId: add_collection
     tags: 
     - collections
     parameters:
-      - in: body
-        name: body
+      - name: body
+        in: body
+        required: true
         schema:
           $ref: schemas/input/collection.json
     responses:
@@ -79,8 +80,9 @@ $template_arguments:
     tags: 
     - collections
     parameters:
-      - in: body
-        name: body
+      - name: body
+        in: body
+        required: true
         schema:
           $ref: schemas/input/collection-update.json
     responses:

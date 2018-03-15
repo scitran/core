@@ -74,11 +74,6 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs, id) {
 		schema.type = this._selectTypeFromArray(schema.type, id);
 	}
 
-	if( schema.allOf && schema.allOf.length === 1 && !schema.required ) {
-		// Merge all of object with top-level object
-		schema = this._flattenAllOf(schema, id);
-	}
-
 	// Check for top-level $ref, allOf, anyOf, oneOf
 	if( schema.$ref && schema.example ) {
 		// Special case, if object has $ref and example, then
@@ -102,7 +97,11 @@ SchemaTranspiler.prototype.draft4ToOpenApi2 = function(schema, defs, id) {
 	}
 
 	if( schema.patternProperties ) {
-		this.warn(id, '"patternProperties" is not supported in OpenApi 2');
+		var keys = _.keys(schema.patternProperties);
+		if( keys.length > 1 ) {
+			this.warn(id, 'Can only support one type in additionalProperties (from "patternProperties")');
+		}
+		schema.additionalProperties = this.draft4ToOpenApi2(schema.patternProperties[keys[0]], defs, id);
 		delete schema.patternProperties;
 	}
 

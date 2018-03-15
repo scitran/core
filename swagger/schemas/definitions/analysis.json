@@ -12,7 +12,8 @@
 				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"}
 			},
-		    "additionalProperties": false
+		    "additionalProperties": false,
+		    "x-sdk-model": "analysis-input"
 		},
 		"analysis-input-job":{
 			"type":"object",
@@ -22,7 +23,8 @@
 				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"}
 			},
-		    "additionalProperties": false
+		    "additionalProperties": false,
+		    "x-sdk-model": "analysis-input"
 		},
 		"analysis-input-legacy":{
 			"type":"object",
@@ -41,11 +43,14 @@
 			},
 		    "additionalProperties": false
 		},
-		"analysis-input": {"anyOf": [
-			{"$ref":"#/definitions/analysis-input-adhoc"},
-			{"$ref":"#/definitions/analysis-input-job"},
-			{"$ref":"#/definitions/analysis-input-legacy"}
-		]},
+		"analysis-input-any": {
+			"anyOf": [
+				{"$ref":"#/definitions/analysis-input-adhoc"},
+				{"$ref":"#/definitions/analysis-input-job"},
+				{"$ref":"#/definitions/analysis-input-legacy"}
+			],
+			"x-sdk-schema": {"$ref":"#/definitions/analysis-input-adhoc"}
+		},
 		"analysis-update":{
 			"type":"object",
 			"properties":{
@@ -59,17 +64,20 @@
 				"_id":{"$ref":"common.json#/definitions/objectid"},
 				"inputs":{
 					"type":"array",
-					"items": {"$ref":"file.json#/definitions/file"}
+					"items": {"$ref":"file.json#/definitions/file-entry"}
 				},
 				"files":{
 					"type":"array",
-					"items": {"$ref":"file.json#/definitions/file"}
+					"items":{"$ref":"file.json#/definitions/file-entry"}
 				},
 				"job":{
 					"oneOf":[
 						{"$ref":"common.json#/definitions/objectid"},
 						{"$ref": "job.json#/definitions/job-output"}
-					]
+					],
+					"x-sdk-schema": { 
+						"$ref": "job.json#/definitions/job-output"
+					}
 				},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
 				"description": {"$ref":"common.json#/definitions/description"},
@@ -77,15 +85,19 @@
 				"created":     {"$ref":"created-modified.json#/definitions/created"},
 				"modified":    {"$ref":"created-modified.json#/definitions/modified"}
 			},
-			"required":["_id", "files", "label", "created", "modified"]
+			"required":["_id", "label", "created", "modified"]
 		},
 		"analysis-list-entry":{
 			"type":"object",
 			"properties":{
 				"_id":{"$ref":"common.json#/definitions/objectid"},
+				"inputs":{
+					"type":"array",
+					"items": {"$ref":"file.json#/definitions/file-entry"}
+				},
 				"files":{
 					"type":"array",
-					"items":{"$ref":"file.json#/definitions/file"}
+					"items":{"$ref":"file.json#/definitions/file-entry"}
 				},
 				"job":         {"$ref":"common.json#/definitions/objectid"},
 				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
@@ -94,22 +106,8 @@
 				"created":     {"$ref":"created-modified.json#/definitions/created"},
 				"modified":    {"$ref":"created-modified.json#/definitions/modified"}
 			},
-			"required":["_id", "files", "label", "created", "modified"]
+			"required":["_id", "label", "created", "modified"]
 		},		
-		"analysis-job": {
-			"type": "object",
-			"properties":{
-				"analysis":{
-					"type":"object",
-					"allOf":[{"$ref":"#/definitions/analysis-input"}],
-					"required":["label"]
-				},
-				"job":{
-					"type":"object",
-					"allOf":[{"$ref":"job.json#/definitions/job-input"}]
-				}
-			}
-		},
 		"analysis-files-create-ticket-output": {
 			"type":"object",
 			"properties":{
