@@ -51,9 +51,9 @@ class Download(base.RequestHandler):
             filepath = os.path.join(data_path, util.path_from_hash(f['hash']))
             if os.path.exists(filepath): # silently skip missing files
                 if cont_name == 'analyses':
-                    targets.append((filepath, '/'.join([prefix, file_group, f['name']]), cont_name, str(container.get('_id')), f['size']))
+                    targets.append((filepath, '{}/{}/{}'.format(prefix, file_group, f['name']), cont_name, str(container.get('_id')), f['size']))
                 else:
-                    targets.append((filepath, prefix + '/' + f['name'], cont_name, str(container.get('_id')), f['size']))
+                    targets.append((filepath, '{}/{}'.format(prefix, f['name']), cont_name, str(container.get('_id')), f['size']))
                 total_size += f['size']
                 total_cnt += 1
             else:
@@ -245,7 +245,6 @@ class Download(base.RequestHandler):
                 # If the id is already associated with a path, use that instead of modifying it
                 return ids_of_paths[_id]
             used_paths = [ids_of_paths[id_] for id_ in ids_of_paths if id_ != _id]
-            path = str(path)
             i = 0
             modified_path = path
             while modified_path in used_paths:
@@ -253,7 +252,7 @@ class Download(base.RequestHandler):
                 i += 1
             return modified_path
 
-        path = None
+        path = ''
         if not path and container.get('label'):
             path = container['label']
         if not path and container.get('timestamp'):
@@ -266,6 +265,9 @@ class Download(base.RequestHandler):
             path = container['uid']
         if not path and container.get('code'):
             path = container['code']
+
+        path = path.encode('ascii', 'ignore')
+
         if not path:
             path = 'untitled'
 
@@ -318,7 +320,7 @@ class Download(base.RequestHandler):
             else:
                 self.response.app_iter = self.archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
-            self.response.headers['Content-Disposition'] = 'attachment; filename=' + str(ticket['filename'])
+            self.response.headers['Content-Disposition'] = 'attachment; filename=' + ticket['filename'].encode('ascii', 'ignore')
         else:
 
             req_spec = self.request.json_body
