@@ -150,6 +150,7 @@ class SubjectStorage(ContainerStorage):
         results = list(self.dbc.find(query, projection))
         if not results:
             return []
+
         formatted_results = []
         for cont in results:
             s = self._from_mongo(cont)
@@ -157,7 +158,14 @@ class SubjectStorage(ContainerStorage):
                 self._fill_default_values(s)
             formatted_results.append(s)
 
-        return formatted_results
+
+        # Make sure only one subject is returned per _id
+        id_hash = {}
+        for r in formatted_results:
+            if r['_id'] not in id_hash:
+                id_hash[r['_id']] = r
+
+        return id_hash.values()
 
     def get_children(self, _id, query=None, projection=None, uid=None):
         query = {'subject._id': bson.ObjectId(_id)}
