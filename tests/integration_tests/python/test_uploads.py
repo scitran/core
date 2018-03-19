@@ -708,7 +708,12 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
             'info': {'test': 'f0'}
         },
         {
-            'name': 'folder/two.csv',
+            'name': 'folderA/two.csv',
+            'type': 'engine type 1',
+            'info': {'test': 'f1'}
+        },
+        {
+            'name': 'folderB/two.csv',
             'type': 'engine type 1',
             'info': {'test': 'f1'}
         }
@@ -717,7 +722,7 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
     # engine upload
     r = as_root.post('/engine',
         params={'level': 'acquisition', 'id': acquisition, 'job': job},
-        files=file_form('one.csv', 'two.csv', meta=metadata)
+        files=file_form('one.csv', 'folderA/two.csv', 'folderB/two.csv', meta=metadata)
     )
     assert r.ok
 
@@ -751,7 +756,6 @@ def test_acquisition_engine_upload(data_builder, file_form, as_root):
         assert mf is not None
         assert f['type'] == mf['type']
         assert f['info'] == mf['info']
-
 
 def test_session_engine_upload(data_builder, file_form, as_root):
     project = data_builder.create_project()
@@ -789,7 +793,7 @@ def test_session_engine_upload(data_builder, file_form, as_root):
 
     r = as_root.post('/engine',
         params={'level': 'session', 'id': session},
-        files=file_form('one.csv', 'two.csv', 'three.csv', meta=metadata)
+        files=file_form('one.csv', 'two.csv', 'folder/three.csv', meta=metadata)
     )
     assert r.ok
 
@@ -846,7 +850,7 @@ def test_project_engine_upload(data_builder, file_form, as_root):
 
     r = as_root.post('/engine',
         params={'level': 'project', 'id': project},
-        files=file_form('one.csv', 'two.csv', 'three.csv', meta=metadata)
+        files=file_form('one.csv', 'two.csv', 'folder/three.csv', meta=metadata)
     )
     assert r.ok
 
