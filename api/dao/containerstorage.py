@@ -7,6 +7,7 @@ from . import containerutil
 from . import hierarchy
 from .. import config
 
+from ..util import deep_update
 from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..jobs.rules import copy_site_rules_for_project
@@ -204,6 +205,26 @@ class SessionStorage(ContainerStorage):
             else:
                 payload['subject']['_id'] = bson.ObjectId()
 
+        # Similarly, if we are moving the subject to a new project, check to see if a subject with that code exists
+        # on the new project. If so, use that _id, otherwise generate a new _id
+        # NOTE: This if statement might also execute as well as the one above it if both the project and subject code are changing
+        # It should result in the proper state regardless
+        if payload and payload.get('project') and payload.get('project') != session.get('project'):
+            # Either way we're going to be updating the subject._id:
+            if not payload.get('subject'):
+                payload['subject'] = {}
+
+            # Use the new code if they are setting one
+            sub_code = payload.get('subject', {}).get('code') if payload.get('subject', {}).get('code') else session.get('subject', {}).get('code')
+
+            # Look for matching subject in new project
+            sibling_session = self.dbc.find_one({'project': payload.get('project'), 'subject.code': sub_code})
+            if sibling_session:
+                payload['subject']['_id'] = sibling_session.get('subject').get('_id')
+            else:
+                payload['subject']['_id'] = bson.ObjectId()
+
+
         # Determine if we need to calc session compliance
         # First check if project is being changed
         if payload and payload.get('project'):
@@ -219,7 +240,7 @@ class SessionStorage(ContainerStorage):
         unset_payload_has_template = (unset_payload and 'project_has_template'in unset_payload)
 
         if payload_has_template or (session_has_template and not unset_payload_has_template):
-            session.update(payload)
+            session = deep_update(session, payload)
             if project and project.get('template'):
                 payload['project_has_template'] = True
                 payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
