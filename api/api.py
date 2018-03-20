@@ -35,7 +35,7 @@ routing_regexes = {
     'uid': '[0-9a-zA-Z.@_-]*',
 
     # Container name
-    'cname': 'projects|sessions|acquisitions|collections|analyses',
+    'cname': 'groups|projects|sessions|acquisitions|collections|analyses',
 
     # Tag name
     'tag': '[^/]{1,32}',
@@ -152,7 +152,7 @@ endpoints = [
         prefix('/gears', [
             route('/<:[^/]+>',                           GearHandler),
             route('/<:[^/]+>/invocation',                GearHandler, h='get_invocation'),
-            route('/<:[^/]+>/suggest/<:[^/]+>/<:[^/]+>', GearHandler, h='suggest'),
+            route('/<:[^/]+>/suggest/<:{cname}|subjects>/<:[^/]+>', GearHandler, h='suggest'),
         ]),
 
         # Batch jobs

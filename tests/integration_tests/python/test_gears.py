@@ -83,7 +83,7 @@ def test_gear_access(data_builder, as_public, as_admin, as_user):
     r = as_public.get('/gears/' + gear + '/invocation')
     assert r.status_code == 403
 
-    r = as_public.get('/gears/' + gear + '/suggest/test-container/test-id')
+    r = as_public.get('/gears/' + gear + '/suggest/projects/test-id')
     assert r.status_code == 403
 
     # test superuser required with user
@@ -157,7 +157,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest project
-    r = as_admin.get('/gears/' + gear + '/suggest/project/' + project)
+    r = as_admin.get('/gears/' + gear + '/suggest/projects/' + project)
     assert r.ok
 
     assert len(r.json()['children']['subjects']) == 2
@@ -167,7 +167,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest subject
-    r = as_admin.get('/gears/' + gear + '/suggest/subject/' + subject)
+    r = as_admin.get('/gears/' + gear + '/suggest/subjects/' + subject)
     assert r.ok
 
     assert len(r.json()['children']['sessions']) == 1
@@ -177,7 +177,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest session
-    r = as_admin.get('/gears/' + gear + '/suggest/session/' + session)
+    r = as_admin.get('/gears/' + gear + '/suggest/sessions/' + session)
     assert r.ok
 
     assert len(r.json()['children']['acquisitions']) == 1
@@ -187,7 +187,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest acquisition
-    r = as_admin.get('/gears/' + gear + '/suggest/acquisition/' + acquisition)
+    r = as_admin.get('/gears/' + gear + '/suggest/acquisitions/' + acquisition)
     assert r.ok
 
     assert len(r.json()['children']['analyses']) == 0
@@ -196,7 +196,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest analysis
-    r = as_admin.get('/gears/' + gear + '/suggest/analysis/' + analysis)
+    r = as_admin.get('/gears/' + gear + '/suggest/analyses/' + analysis)
     assert r.ok
 
     assert len(r.json()['files']) == 1
@@ -206,7 +206,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
     ### Test with collection context
 
     # test suggest project
-    r = as_admin.get('/gears/' + gear + '/suggest/collection/' + collection, params={'collection': collection})
+    r = as_admin.get('/gears/' + gear + '/suggest/collections/' + collection, params={'collection': collection})
     assert r.ok
 
     assert len(r.json()['children']['subjects']) == 1
@@ -216,7 +216,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest subject
-    r = as_admin.get('/gears/' + gear + '/suggest/subject/' + subject2, params={'collection': collection})
+    r = as_admin.get('/gears/' + gear + '/suggest/subjects/' + subject2, params={'collection': collection})
     assert r.ok
 
     assert len(r.json()['children']['sessions']) == 1
@@ -226,7 +226,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest session
-    r = as_admin.get('/gears/' + gear + '/suggest/session/' + session2, params={'collection': collection})
+    r = as_admin.get('/gears/' + gear + '/suggest/sessions/' + session2, params={'collection': collection})
     assert r.ok
 
     assert len(r.json()['children']['acquisitions']) == 1
@@ -236,7 +236,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest acquisition
-    r = as_admin.get('/gears/' + gear + '/suggest/acquisition/' + acquisition3, params={'collection': collection})
+    r = as_admin.get('/gears/' + gear + '/suggest/acquisitions/' + acquisition3, params={'collection': collection})
     assert r.ok
 
     assert len(r.json()['children']['analyses']) == 0
@@ -245,7 +245,7 @@ def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
 
 
     # test suggest analysis
-    r = as_admin.get('/gears/' + gear + '/suggest/analysis/' + analysis2, params={'collection': collection})
+    r = as_admin.get('/gears/' + gear + '/suggest/analyses/' + analysis2, params={'collection': collection})
     assert r.ok
 
     assert len(r.json()['files']) == 1
