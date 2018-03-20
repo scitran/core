@@ -360,10 +360,12 @@ class AnalysisStorage(ContainerStorage):
         for i, fileref_dict in enumerate(analysis.get('inputs', [])):
             try:
                 fileref = containerutil.create_filereference_from_dictionary(fileref_dict)
-                analysis['inputs'][i] = fileref.get_file()
             except KeyError:
                 # Legacy analyses already have fileinfos as inputs instead of filerefs
                 pass
+            else:
+                analysis['inputs'][i] = fileref.get_file()
+
 
         result = super(AnalysisStorage, self).create_el(analysis)
         if not result.acknowledged:
