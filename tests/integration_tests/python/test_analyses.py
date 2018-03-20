@@ -62,6 +62,13 @@ def test_offline_analysis(data_builder, as_admin, file_form, api_db):
     })
     assert r.status_code == 404
 
+    # Try to create ad-hoc analysis with invalid session fileref
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'offline',
+        'inputs': [{'type': 'session', 'id': session, 'name': 'input.csv'}]
+    })
+    assert r.status_code == 404
+
     # Create ad-hoc analysis
     r = as_admin.post('/sessions/' + session + '/analyses', json={
         'label': 'offline',
