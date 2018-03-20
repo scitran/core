@@ -266,7 +266,7 @@ class Download(base.RequestHandler):
         if not path and container.get('code'):
             path = container['code']
 
-        path = path.encode('ascii', 'ignore')
+        path = path.encode('ascii', errors='ignore')
 
         if not path:
             path = 'untitled'
@@ -320,7 +320,7 @@ class Download(base.RequestHandler):
             else:
                 self.response.app_iter = self.archivestream(ticket)
             self.response.headers['Content-Type'] = 'application/octet-stream'
-            self.response.headers['Content-Disposition'] = 'attachment; filename=' + ticket['filename'].encode('ascii', 'ignore')
+            self.response.headers['Content-Disposition'] = 'attachment; filename=' + ticket['filename'].encode('ascii', errors='ignore')
         else:
 
             req_spec = self.request.json_body
