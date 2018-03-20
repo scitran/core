@@ -1,11 +1,7 @@
 {
 	"notes": [{
-	    "_id":"580925ce9e512c57dc8a103b",
-	    "text":"some text",
-	    "created": "2016-10-21T17:19:40.899000+00:00",
-	    "modified": "2016-10-21T17:19:40.899000+00:00",
-	    "user": "coltonlw@flywheel.io"
-	}] ,
+	    "text": "some text"
+	}],
 	"description": "This is an analysis description",
 	"job": {
         "gear_id": "aex",

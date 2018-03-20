@@ -11,6 +11,14 @@ def test_online_analysis(data_builder, as_admin, as_drone, file_form, api_db):
     acquisition = data_builder.create_acquisition()
     assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('input.csv')).ok
 
+    # Try to create job-based analysis with invalid fileref
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'online',
+        'job': {'gear_id': gear,
+                'inputs': {'csv': {'type': 'acquisition', 'id': acquisition, 'name': 'nosuch.csv'}}}
+    })
+    assert r.status_code == 404
+
     # Create job-based analysis
     r = as_admin.post('/sessions/' + session + '/analyses', json={
         'label': 'online',
@@ -47,6 +55,20 @@ def test_offline_analysis(data_builder, as_admin, file_form, api_db):
     acquisition = data_builder.create_acquisition()
     assert as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form('input.csv')).ok
 
+    # Try to create ad-hoc analysis with invalid fileref
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'offline',
+        'inputs': [{'type': 'acquisition', 'id': acquisition, 'name': 'nosuch.csv'}]
+    })
+    assert r.status_code == 404
+
+    # Try to create ad-hoc analysis with invalid session fileref
+    r = as_admin.post('/sessions/' + session + '/analyses', json={
+        'label': 'offline',
+        'inputs': [{'type': 'session', 'id': session, 'name': 'input.csv'}]
+    })
+    assert r.status_code == 404
+
     # Create ad-hoc analysis
     r = as_admin.post('/sessions/' + session + '/analyses', json={
         'label': 'offline',
@@ -78,6 +100,7 @@ def test_offline_analysis(data_builder, as_admin, file_form, api_db):
 def test_legacy_analysis(data_builder, as_admin, file_form, api_db):
     session = data_builder.create_session()
 
+    # Create legacy analysis (upload both inputs and outputs in the same fileform)
     r = as_admin.post('/sessions/' + session + '/analyses', files=file_form('input.csv', 'output.csv', meta={
         'label': 'legacy',
         'inputs': [{'name': 'input.csv', 'info': {'foo': 'foo'}}],
@@ -94,6 +117,7 @@ def test_legacy_analysis(data_builder, as_admin, file_form, api_db):
 def test_analysis_download(data_builder, as_admin, file_form, api_db):
     session = data_builder.create_session()
 
+    # Create legacy analysis
     r = as_admin.post('/sessions/' + session + '/analyses', files=file_form('input.csv', 'output.csv', meta={
         'label': 'legacy',
         'inputs': [{'name': 'input.csv', 'info': {'foo': 'foo'}}],
@@ -103,7 +127,7 @@ def test_analysis_download(data_builder, as_admin, file_form, api_db):
     analysis = r.json()['_id']
 
     # Get download ticket for analysis via /download
-    r = as_admin.get('/download', params={'ticket': ''}, json={'optional':True, 'nodes': [{'level':'analysis','_id': analysis}]})
+    r = as_admin.get('/download', params={'ticket': ''}, json={'optional': True, 'nodes': [{'level':'analysis','_id': analysis}]})
     assert r.ok
     ticket = r.json()['ticket']
 
