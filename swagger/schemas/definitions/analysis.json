@@ -8,7 +8,7 @@
 					"type": "array",
 					"items": {"$ref":"file.json#/definitions/file-reference"}
 				},
-				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
+				"notes":       {"$ref":"note.json#/definitions/notes-list-input"},
 				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"}
 			},
@@ -19,7 +19,7 @@
 			"type":"object",
 			"properties":{
 				"job":         {"$ref":"job.json#/definitions/job-input"},
-				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
+				"notes":       {"$ref":"note.json#/definitions/notes-list-input"},
 				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"}
 			},
@@ -37,7 +37,7 @@
 					"type": "array",
 					"items": {"$ref":"file.json#/definitions/file-input"}
 				},
-				"notes":       {"$ref":"note.json#/definitions/notes-list-output"},
+				"notes":       {"$ref":"note.json#/definitions/notes-list-input"},
 				"description": {"$ref":"common.json#/definitions/description"},
 				"label":       {"$ref":"common.json#/definitions/label"}
 			},

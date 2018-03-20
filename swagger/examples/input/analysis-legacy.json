@@ -1,0 +1,9 @@
+{
+    "label": "Analysis label",
+    "description": "This is an analysis description",
+    "notes": [
+        {"text": "some text"}
+    ],
+    "inputs": [{"name": "input.csv", "info": {"example": true}}],
+    "outputs": [{"name": "output.csv", "info": {"example": true}}]
+}
