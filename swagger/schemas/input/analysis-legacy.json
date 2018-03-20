@@ -2,6 +2,6 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "title": "Analysis",
     "type": "object",
-    "allOf": [{"$ref":"../definitions/analysis.json#/definitions/analysis-input-any"}],
+    "allOf": [{"$ref":"../definitions/analysis.json#/definitions/analysis-input-legacy"}],
     "required": ["label"]
 }

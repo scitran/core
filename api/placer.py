@@ -705,7 +705,7 @@ class PackfilePlacer(Placer):
 class AnalysisPlacer(Placer):
     def check(self):
         self.requireMetadata()
-        validators.validate_data(self.metadata, 'analysis.json', 'input', 'POST', optional=True)
+        validators.validate_data(self.metadata, 'analysis-legacy.json', 'input', 'POST', optional=True)
 
     def process_file_field(self, field, file_attrs):
         self.save_file(field)

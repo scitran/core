@@ -46,8 +46,7 @@
 		"analysis-input-any": {
 			"anyOf": [
 				{"$ref":"#/definitions/analysis-input-adhoc"},
-				{"$ref":"#/definitions/analysis-input-job"},
-				{"$ref":"#/definitions/analysis-input-legacy"}
+				{"$ref":"#/definitions/analysis-input-job"}
 			],
 			"x-sdk-schema": {"$ref":"#/definitions/analysis-input-adhoc"}
 		},
