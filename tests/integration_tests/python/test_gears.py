@@ -83,7 +83,7 @@ def test_gear_access(data_builder, as_public, as_admin, as_user):
     r = as_public.get('/gears/' + gear + '/invocation')
     assert r.status_code == 403
 
-    r = as_public.get('/gears/' + gear + '/suggest/test-container/test-id')
+    r = as_public.get('/gears/' + gear + '/suggest/projects/test-id')
     assert r.status_code == 403
 
     # test superuser required with user
@@ -105,19 +105,148 @@ def test_gear_access(data_builder, as_public, as_admin, as_user):
 
 def test_gear_invocation_and_suggest(data_builder, file_form, as_admin):
     gear = data_builder.create_gear()
-    session = data_builder.create_session()
-    acquisition = data_builder.create_acquisition()
+    group = data_builder.create_group(label='test-group')
+    project = data_builder.create_project(label='test-project')
+    session = data_builder.create_session(label='test-session', subject={'code': 'test-subject'})
+    session2 = data_builder.create_session(label='test-session-2', subject={'code': 'test-subject-2'})
+    subject = as_admin.get('/sessions/' + session).json()['subject']['_id']
+    subject2 = as_admin.get('/sessions/' + session2).json()['subject']['_id']
+    acquisition = data_builder.create_acquisition(label='test-acquisition')
+    acquisition2 = data_builder.create_acquisition(label='test-acquisition', session=session2)
+    acquisition3 = data_builder.create_acquisition(label='test-acquisition', session=session2)
+
+
+    # Add collection with only the 3rd acquisition
+    collection = as_admin.post('/collections', json={'label': 'test-collection'}).json()['_id']
+    assert as_admin.put('/collections/' + collection, json={
+        'contents': {
+            'operation': 'add',
+            'nodes': [
+                {'level': 'acquisition', '_id': acquisition3}
+            ],
+        }
+    }).ok
+
+
+    # Add files to collection/project/sessions/acquisition
+    as_admin.post('/collections/' + collection + '/files', files=file_form(
+        'one.csv', meta={'name': 'one.csv'}))
+    as_admin.post('/projects/' + project + '/files', files=file_form(
+        'one.csv', meta={'name': 'one.csv'}))
+    as_admin.post('/sessions/' + session + '/files', files=file_form(
+        'one.csv', meta={'name': 'one.csv'}))
+    as_admin.post('/sessions/' + session2 + '/files', files=file_form(
+        'one.csv', meta={'name': 'one.csv'}))
     as_admin.post('/acquisitions/' + acquisition + '/files', files=file_form(
         'one.csv', meta={'name': 'one.csv'}))
-    as_admin.post('/sessions/' + session + '/analyses', files=file_form(
-        'one.csv', meta={'label': 'test', 'outputs': [{'name': 'one.csv'}]}))
+    as_admin.post('/acquisitions/' + acquisition2 + '/files', files=file_form(
+        'one.csv', meta={'name': 'one.csv'}))
+    as_admin.post('/acquisitions/' + acquisition3 + '/files', files=file_form(
+        'one.csv', meta={'name': 'one.csv'}))
+
+
+    # Add analysis
+    analysis = as_admin.post('/sessions/' + session + '/analyses', files=file_form(
+        'one.csv', meta={'label': 'test', 'outputs': [{'name': 'one.csv'}]})).json()['_id']
+    analysis2 = as_admin.post('/sessions/' + session2 + '/analyses', files=file_form(
+        'one.csv', meta={'label': 'test', 'outputs': [{'name': 'one.csv'}]})).json()['_id']
 
     # test invocation
     r = as_admin.get('/gears/' + gear + '/invocation')
     assert r.ok
 
-    # test suggest
-    r = as_admin.get('/gears/' + gear + '/suggest/session/' + session)
+
+    # test suggest project
+    r = as_admin.get('/gears/' + gear + '/suggest/projects/' + project)
     assert r.ok
-    assert len(r.json()['acquisitions'][0]['files']) > 0
-    assert len(r.json()['analyses'][0]['files']) > 0
+
+    assert len(r.json()['children']['subjects']) == 2
+    assert len(r.json()['children']['analyses']) == 0
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 1
+
+
+    # test suggest subject
+    r = as_admin.get('/gears/' + gear + '/suggest/subjects/' + subject)
+    assert r.ok
+
+    assert len(r.json()['children']['sessions']) == 1
+    assert len(r.json()['children']['analyses']) == 0
+    assert len(r.json()['files']) == 0
+    assert len(r.json()['parents']) == 2
+
+
+    # test suggest session
+    r = as_admin.get('/gears/' + gear + '/suggest/sessions/' + session)
+    assert r.ok
+
+    assert len(r.json()['children']['acquisitions']) == 1
+    assert len(r.json()['children']['analyses']) == 1
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 3
+
+
+    # test suggest acquisition
+    r = as_admin.get('/gears/' + gear + '/suggest/acquisitions/' + acquisition)
+    assert r.ok
+
+    assert len(r.json()['children']['analyses']) == 0
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 4
+
+
+    # test suggest analysis
+    r = as_admin.get('/gears/' + gear + '/suggest/analyses/' + analysis)
+    assert r.ok
+
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 4
+
+
+    ### Test with collection context
+
+    # test suggest project
+    r = as_admin.get('/gears/' + gear + '/suggest/collections/' + collection, params={'collection': collection})
+    assert r.ok
+
+    assert len(r.json()['children']['subjects']) == 1
+    assert len(r.json()['children']['analyses']) == 0
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 0
+
+
+    # test suggest subject
+    r = as_admin.get('/gears/' + gear + '/suggest/subjects/' + subject2, params={'collection': collection})
+    assert r.ok
+
+    assert len(r.json()['children']['sessions']) == 1
+    assert len(r.json()['children']['analyses']) == 0
+    assert len(r.json()['files']) == 0
+    assert len(r.json()['parents']) == 1
+
+
+    # test suggest session
+    r = as_admin.get('/gears/' + gear + '/suggest/sessions/' + session2, params={'collection': collection})
+    assert r.ok
+
+    assert len(r.json()['children']['acquisitions']) == 1
+    assert len(r.json()['children']['analyses']) == 1
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 2
+
+
+    # test suggest acquisition
+    r = as_admin.get('/gears/' + gear + '/suggest/acquisitions/' + acquisition3, params={'collection': collection})
+    assert r.ok
+
+    assert len(r.json()['children']['analyses']) == 0
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 3
+
+
+    # test suggest analysis
+    r = as_admin.get('/gears/' + gear + '/suggest/analyses/' + analysis2, params={'collection': collection})
+    assert r.ok
+
+    assert len(r.json()['files']) == 1
+    assert len(r.json()['parents']) == 3

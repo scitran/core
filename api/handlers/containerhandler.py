@@ -532,7 +532,7 @@ class ContainerHandler(base.RequestHandler):
         self.config = self.container_handler_configurations[cont_name]
         self.storage = self.config['storage']
 
-        if cont_name != 'acquisitions':
+        if cont_name == 'sessions':
             get_children = True
         else:
             get_children = False
@@ -569,6 +569,7 @@ class ContainerHandler(base.RequestHandler):
             return {'deleted': 1}
         else:
             self.abort(404, 'Element not removed from container {} {}'.format(self.storage.cont_name, _id))
+
 
     def get_groups_with_project(self):
         """

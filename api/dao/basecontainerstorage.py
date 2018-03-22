@@ -47,8 +47,10 @@ class ContainerStorage(object):
     Examples: projects, sessions, acquisitions and collections
     """
 
-    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False):
+    def __init__(self, cont_name, use_object_id=False, use_delete_tag=False, parent_cont_name=None, child_cont_name=None):
         self.cont_name = cont_name
+        self.parent_cont_name = parent_cont_name
+        self.child_cont_name = child_cont_name
         self.use_object_id = use_object_id
         self.use_delete_tag = use_delete_tag
         self.dbc = config.db[cont_name]
@@ -85,7 +87,7 @@ class ContainerStorage(object):
 
             # For each parent id, find all of its children and add them to the list of child ids in the parent tree
             for parent_id in parent_tree[parent_name]:
-                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children(parent_id, projection={'_id':1})]
+                parent_tree[child_name] = parent_tree[child_name] + [cont["_id"] for cont in storage.get_children_legacy(parent_id, projection={'_id':1})]
 
             parent_name = child_name
         return parent_tree
@@ -105,14 +107,18 @@ class ContainerStorage(object):
             raise APINotFoundException('Could not find {} {}'.format(self.cont_name, _id))
         if get_children:
             children = self.get_children(_id, projection=projection)
-            cont[CHILD_MAP[self.cont_name]] = children
+            cont[containerutil.pluralize(self.child_cont_name)] = children
         return cont
 
-    def get_children(self, _id, projection=None, uid=None):
+    def get_children_legacy(self, _id, projection=None, uid=None):
+        """
+        A get_children method that returns sessions from the project level rather than subjects.
+        Will be removed when Subject completes it's transition to a stand alone collection.
+        """
         try:
             child_name = CHILD_MAP[self.cont_name]
         except KeyError:
-            raise APINotFoundException('Children cannot be listed from the {0} level'.format(self.cont_name))
+            raise APIStorageException('Children cannot be listed from the {0} level'.format(self.cont_name))
         if not self.use_object_id:
             query = {containerutil.singularize(self.cont_name): _id}
         else:
@@ -123,6 +129,72 @@ class ContainerStorage(object):
         if not projection:
             projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
         return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
+
+
+    def get_children(self, _id, query=None, projection=None, uid=None):
+        child_name = self.child_cont_name
+        if not child_name:
+            raise APIStorageException('Children cannot be listed from the {0} level'.format(self.cont_name))
+        if not query:
+            query = {}
+        if not self.use_object_id:
+            query[containerutil.singularize(self.cont_name)] = _id
+        else:
+            query[containerutil.singularize(self.cont_name)] = bson.ObjectId(_id)
+
+        if uid:
+            query['permissions'] = {'$elemMatch': {'_id': uid}}
+        if not projection:
+            projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
+        return ContainerStorage.factory(child_name).get_all_el(query, None, projection)
+
+
+    def get_parent_tree(self, _id, cont=None, projection=None, add_self=False):
+        parents = []
+
+        curr_storage = self
+
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        if add_self:
+            # Add the referenced container to the list
+            cont['cont_type'] = self.cont_name
+            parents.append(cont)
+
+        # Walk up the hierarchy until we cannot go any further
+        while True:
+
+            try:
+                parent = curr_storage.get_parent(cont['_id'], cont=cont, projection=projection)
+
+            except (APINotFoundException, APIStorageException):
+                # We got as far as we could, either we reached the top of the hierarchy or we hit a dead end with a missing parent
+                break
+
+            curr_storage = ContainerStorage.factory(curr_storage.parent_cont_name)
+            parent['cont_type'] = curr_storage.cont_name
+            parents.append(parent)
+
+            if curr_storage.parent_cont_name:
+                cont = parent
+            else:
+                break
+
+        return parents
+
+    def get_parent(self, _id, cont=None, projection=None):
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        if self.parent_cont_name:
+            ps = ContainerStorage.factory(self.parent_cont_name)
+            parent = ps.get_container(cont[self.parent_cont_name], projection=projection)
+            return parent
+
+        else:
+            raise APIStorageException('The container level {} has no parent.'.format(self.cont_name))
+
 
     def _from_mongo(self, cont):
         pass

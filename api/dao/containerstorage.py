@@ -7,6 +7,7 @@ from . import containerutil
 from . import hierarchy
 from .. import config
 
+from ..util import deep_update
 from ..jobs.jobs import Job
 from ..jobs.queue import Queue
 from ..jobs.rules import copy_site_rules_for_project
@@ -16,10 +17,16 @@ from .basecontainerstorage import ContainerStorage
 log = config.log
 
 
+# Python circular reference workaround
+# Can be removed when dao module is reworked
+def cs_factory(cont_name):
+    return ContainerStorage.factory(cont_name)
+
+
 class GroupStorage(ContainerStorage):
 
     def __init__(self):
-        super(GroupStorage,self).__init__('groups', use_object_id=False)
+        super(GroupStorage,self).__init__('groups', use_object_id=False, parent_cont_name=None, child_cont_name='project')
 
     def _fill_default_values(self, cont):
         cont = super(GroupStorage,self)._fill_default_values(cont)
@@ -42,7 +49,7 @@ class GroupStorage(ContainerStorage):
 class ProjectStorage(ContainerStorage):
 
     def __init__(self):
-        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True)
+        super(ProjectStorage,self).__init__('projects', use_object_id=True, use_delete_tag=True, parent_cont_name='group', child_cont_name='subject')
 
     def create_el(self, payload):
         result = super(ProjectStorage, self).create_el(payload)
@@ -57,14 +64,14 @@ class ProjectStorage(ContainerStorage):
 
         if payload and 'template' in payload:
             # We are adding/changing the project template, update session compliance
-            sessions = self.get_children(_id, projection={'_id':1})
+            sessions = self.get_children_legacy(_id, projection={'_id':1})
             session_storage = SessionStorage()
             for s in sessions:
                 session_storage.update_el(s['_id'], {'project_has_template': True})
 
         elif unset_payload and 'template' in unset_payload:
             # We are removing the project template, remove session compliance
-            sessions = self.get_children(_id, projection={'_id':1})
+            sessions = self.get_children_legacy(_id, projection={'_id':1})
             session_storage = SessionStorage()
             for s in sessions:
                 session_storage.update_el(s['_id'], None, unset_payload={'project_has_template': '', 'satisfies_template': ''})
@@ -97,10 +104,84 @@ class ProjectStorage(ContainerStorage):
         return changed_sessions
 
 
+class SubjectStorage(ContainerStorage):
+
+    def __init__(self):
+        super(SubjectStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True, parent_cont_name='project', child_cont_name='session')
+        self.cont_name = 'subjects'
+
+    def _from_mongo(self, cont):
+        subject = cont['subject']
+        if cont.get('permissions'):
+            subject['permissions'] = cont['permissions']
+        if cont.get('project'):
+            subject['project'] = cont['project']
+        if subject.get('code'):
+            subject['label'] = subject.pop('code')
+        else:
+            subject['label'] = 'unknown'
+        return subject
+
+    def get_el(self, _id, projection=None, fill_defaults=False):
+        _id = bson.ObjectId(_id)
+        cont = self.dbc.find_one({'subject._id': _id, 'deleted': {'$exists': False}}, projection)
+        cont = self._from_mongo(cont)
+        if fill_defaults:
+            self._fill_default_values(cont)
+        return cont
+
+
+    def get_all_el(self, query, user, projection, fill_defaults=False):
+        if query is None:
+            query = {}
+        if user:
+            if query.get('permissions'):
+                query['$and'] = [{'permissions': {'$elemMatch': user}}, {'permissions': query.pop('permissions')}]
+            else:
+                query['permissions'] = {'$elemMatch': user}
+        query['deleted'] = {'$exists': False}
+
+        if query and query.get('collections'):
+            # Find acquisition ids in this collection, add to query
+            collection_id = query.pop('collections')
+            a_ids = AcquisitionStorage().get_all_el({'collections': bson.ObjectId(collection_id)}, None, {'session': 1})
+            query['_id'] = {'$in': list(set([a['session'] for a in a_ids]))}
+
+        results = list(self.dbc.find(query, projection))
+        if not results:
+            return []
+
+        formatted_results = []
+        for cont in results:
+            s = self._from_mongo(cont)
+            if fill_defaults:
+                self._fill_default_values(s)
+            formatted_results.append(s)
+
+
+        # Make sure only one subject is returned per _id
+        id_hash = {}
+        for r in formatted_results:
+            if r['_id'] not in id_hash:
+                id_hash[r['_id']] = r
+
+        return id_hash.values()
+
+    def get_children(self, _id, query=None, projection=None, uid=None):
+        query = {'subject._id': bson.ObjectId(_id)}
+        if uid:
+            query['permissions'] = {'$elemMatch': {'_id': uid}}
+        if not projection:
+            projection = {'info': 0, 'files.info': 0, 'subject': 0, 'tags': 0}
+        return SessionStorage().get_all_el(query, None, projection)
+
+
+
+
 class SessionStorage(ContainerStorage):
 
     def __init__(self):
-        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True)
+        super(SessionStorage,self).__init__('sessions', use_object_id=True, use_delete_tag=True, parent_cont_name='subject', child_cont_name='acquisition')
 
     def _fill_default_values(self, cont):
         cont = super(SessionStorage,self)._fill_default_values(cont)
@@ -132,6 +213,26 @@ class SessionStorage(ContainerStorage):
             else:
                 payload['subject']['_id'] = bson.ObjectId()
 
+        # Similarly, if we are moving the subject to a new project, check to see if a subject with that code exists
+        # on the new project. If so, use that _id, otherwise generate a new _id
+        # NOTE: This if statement might also execute as well as the one above it if both the project and subject code are changing
+        # It should result in the proper state regardless
+        if payload and payload.get('project') and payload.get('project') != session.get('project'):
+            # Either way we're going to be updating the subject._id:
+            if not payload.get('subject'):
+                payload['subject'] = {}
+
+            # Use the new code if they are setting one
+            sub_code = payload.get('subject', {}).get('code') if payload.get('subject', {}).get('code') else session.get('subject', {}).get('code')
+
+            # Look for matching subject in new project
+            sibling_session = self.dbc.find_one({'project': payload.get('project'), 'subject.code': sub_code})
+            if sibling_session:
+                payload['subject']['_id'] = sibling_session.get('subject').get('_id')
+            else:
+                payload['subject']['_id'] = bson.ObjectId()
+
+
         # Determine if we need to calc session compliance
         # First check if project is being changed
         if payload and payload.get('project'):
@@ -147,7 +248,7 @@ class SessionStorage(ContainerStorage):
         unset_payload_has_template = (unset_payload and 'project_has_template'in unset_payload)
 
         if payload_has_template or (session_has_template and not unset_payload_has_template):
-            session.update(payload)
+            session = deep_update(session, payload)
             if project and project.get('template'):
                 payload['project_has_template'] = True
                 payload['satisfies_template'] = hierarchy.is_session_compliant(session, project.get('template'))
@@ -157,6 +258,29 @@ class SessionStorage(ContainerStorage):
                 unset_payload['satisfies_template'] = ""
                 unset_payload['project_has_template'] = ""
         return super(SessionStorage, self).update_el(_id, payload, unset_payload=unset_payload, recursive=recursive, r_payload=r_payload, replace_metadata=replace_metadata)
+
+    def get_parent(self, _id, cont=None, projection=None):
+        """
+        Override until subject becomes it's own collection
+        """
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        return SubjectStorage().get_container(cont['subject']['_id'], projection=projection)
+
+
+    def get_all_el(self, query, user, projection, fill_defaults=False):
+        """
+        Override allows 'collections' key in the query, will transform into proper query for the caller and return results
+        """
+        if query and query.get('collections'):
+            # Find acquisition ids in this collection, add to query
+            collection_id = query.pop('collections')
+            a_ids = AcquisitionStorage().get_all_el({'collections': bson.ObjectId(collection_id)}, None, {'session': 1})
+            query['_id'] = {'$in': list(set([a['session'] for a in a_ids]))}
+
+        return super(SessionStorage, self).get_all_el(query, user, projection, fill_defaults=False)
+
 
     def recalc_session_compliance(self, session_id, session=None, template=None, hard=False):
         """
@@ -225,7 +349,7 @@ class SessionStorage(ContainerStorage):
 class AcquisitionStorage(ContainerStorage):
 
     def __init__(self):
-        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True)
+        super(AcquisitionStorage,self).__init__('acquisitions', use_object_id=True, use_delete_tag=True, parent_cont_name='session', child_cont_name=None)
 
     def create_el(self, payload):
         result = super(AcquisitionStorage, self).create_el(payload)
@@ -300,9 +424,20 @@ class AnalysisStorage(ContainerStorage):
         super(AnalysisStorage, self).__init__('analyses', use_object_id=True, use_delete_tag=True)
 
 
-    def get_parent(self, parent_type, parent_id):
-        parent_storage = ContainerStorage.factory(parent_type)
-        return parent_storage.get_container(parent_id)
+    def get_parent(self, _id, cont=None, projection=None):
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        ps = ContainerStorage.factory(cont['parent']['type'])
+        return ps.get_container(cont['parent']['id'], projection=projection)
+
+    def get_parent_tree(self, _id, cont=None, projection=None, add_self=False):
+        if not cont:
+            cont = self.get_container(_id, projection=projection)
+
+        ps = ContainerStorage.factory(cont['parent']['type'])
+
+        return ps.get_parent_tree(cont['parent']['id'], add_self=True)
 
 
     def get_analyses(self, parent_type, parent_id, inflate_job_info=False):
@@ -319,18 +454,15 @@ class AnalysisStorage(ContainerStorage):
     def create_el(self, analysis, parent_type, parent_id, origin, uid=None):
         """
         Create an analysis.
-
         * Fill defaults if not provided
         * Flatten input filerefs using `FileReference.get_file()`
-
         If `analysis` has a `job` key, create a "job-based" analysis:
             * Analysis inputs will be copied from the job inputs
             * Create analysis and job, both referencing each other
             * Do not create (remove) analysis if can't enqueue job
-
         """
         parent_type = containerutil.singularize(parent_type)
-        parent = self.get_parent(parent_type, parent_id)
+        parent = self.get_parent(None, cont={'parent': {'type': parent_type, 'id': parent_id}})
         defaults = {
             '_id': bson.ObjectId(),
             'parent': {

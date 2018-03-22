@@ -65,7 +65,16 @@ class AnalysesHandler(RefererHandler):
 
 
     def post(self, cont_name, cid):
-        parent = self.storage.get_parent(cont_name, cid)
+        """
+        Default behavior:
+            Creates an analysis object and uploads supplied input
+            and output files.
+        When param ``job`` is true:
+            Creates an analysis object and job object that reference
+            each other via ``job`` and ``destination`` fields. Job based
+            analyses are only allowed at the session level.
+        """
+        parent = ContainerStorage.factory(cont_name).get_container(cid)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('POST')
 
@@ -81,11 +90,9 @@ class AnalysesHandler(RefererHandler):
         return {'_id': result.inserted_id}
 
     @validators.verify_payload_exists
-    def put(self, cont_name, **kwargs):
-        cid = kwargs.pop('cid')
+    def put(self, **kwargs):
         _id = kwargs.pop('_id')
-
-        parent = self.storage.get_parent(cont_name, cid)
+        parent = self.storage.get_parent(_id)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('PUT')
 
@@ -107,7 +114,7 @@ class AnalysesHandler(RefererHandler):
         _id = kwargs.get('_id')
 
         analysis = self.storage.get_container(_id)
-        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
+        parent = self.storage.get_parent(_id, cont=analysis)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('PUT')
 
@@ -121,7 +128,7 @@ class AnalysesHandler(RefererHandler):
     def get(self, **kwargs):
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
-        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
+        parent = self.storage.get_parent(_id, cont=analysis)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('GET')
 
@@ -175,7 +182,7 @@ class AnalysesHandler(RefererHandler):
 
     @log_access(AccessType.delete_analysis)
     def delete(self, cont_name, cid, _id):
-        parent = self.storage.get_parent(cont_name, cid)
+        parent = self.storage.get_parent(_id)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('DELETE')
 
@@ -193,7 +200,7 @@ class AnalysesHandler(RefererHandler):
         """Upload ad-hoc analysis outputs generated offline."""
         _id = kwargs.get('_id')
         analysis = self.storage.get_container(_id)
-        parent = self.storage.get_parent(analysis['parent']['type'], analysis['parent']['id'])
+        parent = self.storage.get_parent(_id, cont=analysis)
         permchecker = self.get_permchecker(parent)
         permchecker(noop)('POST')
 
@@ -308,9 +315,9 @@ class AnalysesHandler(RefererHandler):
         filegroup = kwargs.get('filegroup')
         filename = kwargs.get('filename')
 
+        parent = self.storage.get_parent(_id, cont=analysis)
         cid = analysis['parent']['id']
         cont_name = analysis['parent']['type']
-        parent = self.storage.get_parent(cont_name, cid)
         permchecker = self.get_permchecker(parent)
 
         ticket_id = self.get_param('ticket')

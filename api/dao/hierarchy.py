@@ -133,7 +133,6 @@ def get_parent_tree(cont_name, _id):
 
     return tree
 
-
 def is_session_compliant(session, template):
     """
     Given a project-level session template and a session,
