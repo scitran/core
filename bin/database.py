@@ -22,7 +22,7 @@ from api.jobs import gears
 from api.types import Origin
 from api.jobs import batch
 
-CURRENT_DATABASE_VERSION = 43 # An int that is bumped when a new schema change is made
+CURRENT_DATABASE_VERSION = 44 # An int that is bumped when a new schema change is made
 
 def get_db_version():
 
@@ -1377,6 +1377,37 @@ def upgrade_to_43():
     """
     cursor = config.db.analyses.find({'files': {'$exists': True, '$ne': []}})
     process_cursor(cursor, upgrade_to_43_closure)
+
+
+def upgrade_to_44():
+    """
+    A rerun of scitran/core issue #263
+
+    A rerun was necessary because a bug was found when moving a session to a new project:
+    the subject id should change but it was not, causing subject linking where there should be none
+
+    Add '_id' field to session.subject
+    Give subjects with the same code and project the same _id
+    """
+
+    pipeline = [
+        {'$group' : { '_id' : {'pid': '$project', 'code': '$subject.code'}, 'sids': {'$push': '$_id' }}}
+    ]
+
+    subjects = config.db.command('aggregate', 'sessions', pipeline=pipeline)
+    for subject in subjects['result']:
+
+        # Subjects without a code and sessions without a subject
+        # will be returned grouped together, but all need unique IDs
+        if subject['_id'].get('code') is None:
+            for session_id in subject['sids']:
+                subject_id = bson.ObjectId()
+                config.db.sessions.update_one({'_id': session_id},{'$set': {'subject._id': subject_id}})
+        else:
+            subject_id = bson.ObjectId()
+            query = {'_id': {'$in': subject['sids']}}
+            update = {'$set': {'subject._id': subject_id}}
+            config.db.sessions.update_many(query, update)
 
 
 ###

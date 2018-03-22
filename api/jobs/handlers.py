@@ -99,7 +99,7 @@ class GearHandler(base.RequestHandler):
         response = {
             'cont_type':    singularize(cont_name),
             '_id':          cid,
-            'label':        container['label'],
+            'label':        container.get('label', ''),
             'parents':      [],
             'files':        [],
             'children':     {}
@@ -107,7 +107,7 @@ class GearHandler(base.RequestHandler):
 
         if cont_name != 'analyses':
             analyses = AnalysisStorage().get_analyses(cont_name, cid)
-            response['children']['analyses'] = [{'cont_type': 'analysis', '_id': a['_id'], 'label': a['label']} for a in analyses]
+            response['children']['analyses'] = [{'cont_type': 'analysis', '_id': a['_id'], 'label': a.get('label', '')} for a in analyses]
 
         # Get collection context, if any
         collection_id = self.get_param('collection')
@@ -122,14 +122,14 @@ class GearHandler(base.RequestHandler):
         if cont_name == 'collections':
             # Grab subjects within the collection context
             children = SubjectStorage().get_all_el({'collections': collection_id}, None, None)
-            response['children']['subjects'] = [{'cont_type': 'subject', '_id': c['_id'], 'label': c['label']} for c in children]
+            response['children']['subjects'] = [{'cont_type': 'subject', '_id': c['_id'], 'label': c.get('label', '')} for c in children]
 
         elif cont_name not in ['analyses', 'acquisitions']:
             query = {}
             if collection_id:
                 query['collections'] = bson.ObjectId(collection_id)
             children = storage.get_children(cid, query=query, projection={'files': 0})
-            response['children'][pluralize(storage.child_cont_name)] = [{'cont_type': singularize(storage.child_cont_name), '_id': c['_id'], 'label': c['label']} for c in children]
+            response['children'][pluralize(storage.child_cont_name)] = [{'cont_type': singularize(storage.child_cont_name), '_id': c['_id'], 'label': c.get('label', '')} for c in children]
 
 
         # Get parents
@@ -140,7 +140,7 @@ class GearHandler(base.RequestHandler):
             collection['cont_type'] = 'collection'
             parents.append(collection)
 
-        response['parents'] = [{'cont_type': singularize(p['cont_type']), '_id': p['_id'], 'label': p.get('label', 'unknown')} for p in parents]
+        response['parents'] = [{'cont_type': singularize(p['cont_type']), '_id': p['_id'], 'label': p.get('label', '')} for p in parents]
 
         files = add_suggest_info_to_files(gear, container.get('files', []))
         response['files'] = [{'name': f['name'], 'suggested': f['suggested']} for f in files]
