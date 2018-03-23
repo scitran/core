@@ -2,6 +2,8 @@
 [![Coverage Status](https://codecov.io/gh/scitran/core/branch/master/graph/badge.svg)](https://codecov.io/gh/scitran/core/branch/master)
 [![Code Climate](https://codeclimate.com/github/scitran/core/badges/gpa.svg)](https://codeclimate.com/github/scitran/core)
 
+#### Flywheel has been the primary contributor to this repository for quite some time. We have now decided to fork scitran/core into [flywheel-io/core](https://github.com/flywheel-io/core), where we are planning to maintain and develop the code as open source, under the existing MIT license. All open issues in this repo have been closed, and corresponding issues have been opened in flywheel-io/core.
+
 # SciTran – Scientific Transparency
 
 ### Overview
